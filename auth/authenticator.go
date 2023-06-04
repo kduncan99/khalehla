@@ -14,18 +14,18 @@ func (a *Authenticator) Close() error {
 	return a.database.Close()
 }
 
-func (a *Authenticator) AddAccount(loginName string,
+func (a *Authenticator) AddAccount(accountName string,
 									accountPassword string,
 									userName string,
 									emailAddress string) (string, error) {
 	query := "INSERT INTO auth_accounts " +
-		"(loginName, hashedPassword, disabled, userName, emailAddress) " +
-		"VALUES ($1, $2, false, $3, $4) " +
-		"RETURNING accountId"
+		"(accountName, passwordHash, disabled, userName, emailAddress) " +
+		"VALUES ($1, $2, 0, $3, $4) " +
+		"RETURNING accountID"
 
 	hash, _ := a.hashPassword(accountPassword)
 	var id string
-	err := a.database.SQL.QueryRow(query, loginName, hash, userName, emailAddress).Scan(&id)
+	err := a.database.SQL.QueryRow(query, accountName, hash, userName, emailAddress).Scan(&id)
 	if err != nil {
 		log.Print(err.Error())
 		return "", err
@@ -34,7 +34,7 @@ func (a *Authenticator) AddAccount(loginName string,
 	return id, nil
 }
 
-func (a *Authenticator) AddBaseGroup(groupName string) (string, error) {
+func (a *Authenticator) AddGroup(groupName string) (string, error) {
 	query := "INSERT INTO auth_groups " +
 		"(groupName) " +
 		"VALUES ($1) " +
@@ -50,14 +50,14 @@ func (a *Authenticator) AddBaseGroup(groupName string) (string, error) {
 	return id, nil
 }
 
-func (a *Authenticator) AddPrivilege(privName string) (string, error) {
+func (a *Authenticator) AddPrivilege(privilegeName string) (string, error) {
 	query := "INSERT INTO auth_privileges " +
 		"(privilegeName) " +
 		"VALUES ($1) " +
 		"RETURNING privilegeID"
 
 	var id string
-	err := a.database.SQL.QueryRow(query, privName).Scan(&id)
+	err := a.database.SQL.QueryRow(query, privilegeName).Scan(&id)
 	if err != nil {
 		log.Print(err.Error())
 		return "", err
@@ -66,27 +66,13 @@ func (a *Authenticator) AddPrivilege(privName string) (string, error) {
 	return id, nil
 }
 
-func (a *Authenticator) AddSubGroup(groupName string, parentGroupID string) (string, error) {
-	query := "INSERT INTO auth_groups " +
-		"(groupName, parentGroupID) " +
-		"VALUES ($1, $2) " +
-		"RETURNING groupID"
-
-	var id string
-	err := a.database.SQL.QueryRow(query, groupName, parentGroupID).Scan(&id)
-	if err != nil {
-		log.Print(err.Error())
-		return "", err
-	}
-
-	return id, nil
-}
-
-func (a *Authenticator) ConnectAccountToGroup(accountId string, groupId string) error {
+func (a *Authenticator) ConnectAccountToGroup(accountName string, groupName string) error {
 	query := "INSERT INTO auth_accounts_groups " +
 		"(accountID, groupID) " +
-		"VALUES ($1, $2) "
-	_, err := a.database.SQL.Exec(query, accountId, groupId)
+		"SELECT a.accountID, b.groupID " +
+		"FROM auth_accounts a, auth_groups b " +
+		"WHERE accountName = $1 AND groupName = $2"
+	_, err := a.database.SQL.Exec(query, accountName, groupName)
 	if err != nil {
 		log.Print(err.Error())
 		return err
@@ -95,35 +81,13 @@ func (a *Authenticator) ConnectAccountToGroup(accountId string, groupId string) 
 	return nil
 }
 
-func (a *Authenticator) ConnectAccountToPrivilege(accountId string, privilegeId string) error {
-	query := "INSERT INTO auth_accounts_privileges " +
-		"(accountID, privilegeID) " +
-		"VALUES ($1, $2)"
-	_, err := a.database.SQL.Exec(query, accountId, privilegeId)
-	if err != nil {
-		log.Print(err.Error())
-		return err
-	}
-
-	return nil
-}
-
-func (a *Authenticator) DisconnectAccountFromGroup(accountId string, groupId string) error {
-	query := "DELETE FROM auth_accounts_groups " +
-		"WHERE accountID=$1 AND groupID=$2 "
-	_, err := a.database.SQL.Exec(query, accountId, groupId)
-	if err != nil {
-		log.Print(err.Error())
-		return err
-	}
-
-	return nil
-}
-
-func (a *Authenticator) DisconnectAccountFromPrivilege(accountId string, privilegeId string) error {
-	query := "DELETE FROM auth_accounts_privileges " +
-		"WHERE accountID=$1 AND privilegeID=$2"
-	_, err := a.database.SQL.Exec(query, accountId, privilegeId)
+func (a *Authenticator) ConnectGroupToPrivilege(groupName string, privilegeName string) error {
+	query := "INSERT INTO auth_groups_privileges " +
+		"(groupID, privilegeID) " +
+		"SELECT a.groupID, b.privilegeID " +
+		"FROM auth_groups a, auth_privileges b " +
+		"WHERE groupName = $1 AND privilegeName = $2"
+	_, err := a.database.SQL.Exec(query, groupName, privilegeName)
 	if err != nil {
 		log.Print(err.Error())
 		return err
