@@ -34,14 +34,16 @@ func (a *Authenticator) AddAccount(accountName string,
 	return id, nil
 }
 
-func (a *Authenticator) AddGroup(groupName string) (string, error) {
+func (a *Authenticator) AddGroup(subsystemName string, groupName string) (string, error) {
 	query := "INSERT INTO auth_groups " +
-		"(groupName) " +
-		"VALUES ($1) " +
+		"(subsystemID, groupName) " +
+		"SELECT a.subsystemID, $2 " +
+		"FROM auth_subsystems a " +
+		"WHERE subsystemName = $1 " +
 		"RETURNING groupID"
 
 	var id string
-	err := a.database.SQL.QueryRow(query, groupName).Scan(&id)
+	err := a.database.SQL.QueryRow(query, subsystemName, groupName).Scan(&id)
 	if err != nil {
 		log.Print(err.Error())
 		return "", err
@@ -50,14 +52,16 @@ func (a *Authenticator) AddGroup(groupName string) (string, error) {
 	return id, nil
 }
 
-func (a *Authenticator) AddPrivilege(privilegeName string) (string, error) {
+func (a *Authenticator) AddPrivilege(subsystemName string, privilegeName string) (string, error) {
 	query := "INSERT INTO auth_privileges " +
-		"(privilegeName) " +
-		"VALUES ($1) " +
+		"(subsystemID, privilegeName) " +
+		"SELECT a.subsystemID, $2 " +
+		"FROM auth_subsystems a " +
+		"WHERE subsystemName = $1 " +
 		"RETURNING privilegeID"
 
 	var id string
-	err := a.database.SQL.QueryRow(query, privilegeName).Scan(&id)
+	err := a.database.SQL.QueryRow(query, subsystemName, privilegeName).Scan(&id)
 	if err != nil {
 		log.Print(err.Error())
 		return "", err
@@ -66,13 +70,29 @@ func (a *Authenticator) AddPrivilege(privilegeName string) (string, error) {
 	return id, nil
 }
 
-func (a *Authenticator) ConnectAccountToGroup(accountName string, groupName string) error {
+func (a *Authenticator) AddSubsystem(subsystemName string) (string, error) {
+	query := "INSERT INTO subsystems " +
+		"(subsystemName) " +
+		"VALUES ($1) " +
+		"RETURNING subsystemID"
+
+	var id string
+	err := a.database.SQL.QueryRow(query, subsystemName).Scan(&id)
+	if err != nil {
+		log.Print(err.Error())
+		return "", err
+	}
+
+	return id, nil
+}
+
+func (a *Authenticator) ConnectAccountToGroup(accountName string, subsystemName string, groupName string) error {
 	query := "INSERT INTO auth_accounts_groups " +
 		"(accountID, groupID) " +
 		"SELECT a.accountID, b.groupID " +
 		"FROM auth_accounts a, auth_groups b " +
-		"WHERE accountName = $1 AND groupName = $2"
-	_, err := a.database.SQL.Exec(query, accountName, groupName)
+		"WHERE accountName = $1 AND subsystemName = $2 AND groupName = $3"
+	_, err := a.database.SQL.Exec(query, accountName, subsystemName, groupName)
 	if err != nil {
 		log.Print(err.Error())
 		return err
@@ -81,12 +101,12 @@ func (a *Authenticator) ConnectAccountToGroup(accountName string, groupName stri
 	return nil
 }
 
-func (a *Authenticator) ConnectGroupToPrivilege(groupName string, privilegeName string) error {
+func (a *Authenticator) ConnectGroupToPrivilege(subsystemName string, groupName string, privilegeName string) error {
 	query := "INSERT INTO auth_groups_privileges " +
 		"(groupID, privilegeID) " +
 		"SELECT a.groupID, b.privilegeID " +
 		"FROM auth_groups a, auth_privileges b " +
-		"WHERE groupName = $1 AND privilegeName = $2"
+		"WHERE subsystemName = $2 groupName = $1 AND privilegeName = $3"
 	_, err := a.database.SQL.Exec(query, groupName, privilegeName)
 	if err != nil {
 		log.Print(err.Error())

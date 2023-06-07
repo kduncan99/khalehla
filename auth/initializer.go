@@ -11,19 +11,25 @@ import (
 
 const AdminAccountName = "admin"
 const AdminGroupName = "administrators"
-const AddUserPrivilege = "AUTH:ADD_USER"
-const RemoveUserPrivilege = "AUTH:REMOVE_USER"
-const UpdateUserPrivilege = "AUTH:UPDATE_USER"
-const ViewUserPrivilege = "AUTH:VIEW_USER"
+const AdminSubsystemName = "AUTH"
+const AddUserPrivilege = "ADD_USER"
+const RemoveUserPrivilege = "REMOVE_USER"
+const UpdateUserPrivilege = "UPDATE_USER"
+const ViewUserPrivilege = "VIEW_USER"
 
 var dropCommands = []string{
-	`DROP TABLE auth_accounts_groups;`,
 	`DROP TABLE auth_groups_privileges`,
-	`DROP TABLE auth_accounts;`,
+	`DROP TABLE auth_accounts_groups;`,
+	`DROP TABLE auth_privileges;`,
 	`DROP TABLE auth_groups;`,
-	`DROP TABLE auth_privileges;`}
+	`DROP TABLE auth_accounts;`,
+	`DROP TABLE auth_subsystems;`}
 
 var initCommands = []string{
+	`CREATE TABLE subsystems (
+		subsystemID uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+		subsystemName VARCHAR UNIQUE NOT NULL)`,
+
 	`CREATE TABLE auth_accounts (
 		accountID uuid DEFAULT gen_random_uuid() PRIMARY KEY,
 		accountName VARCHAR UNIQUE NOT NULL,
@@ -34,11 +40,15 @@ var initCommands = []string{
 
 	`CREATE TABLE auth_groups (
 		groupID uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-		groupName VARCHAR UNIQUE NOT NULL)`,
+		subsystemID uuid REFERENCES subsystems ON DELETE CASCADE,
+		groupName VARCHAR UNIQUE NOT NULL,
+		UNIQUE (subsystemID, groupName))`,
 
 	`CREATE TABLE auth_privileges (
 		privilegeID uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-		privilegeName VARCHAR UNIQUE NOT NULL)`,
+		subsystemID uuid REFERENCES subsystems ON DELETE CASCADE,
+		privilegeName VARCHAR UNIQUE NOT NULL)
+		UNIQUE (subsystemID, privilegeName)`,
 
 	`CREATE TABLE auth_accounts_groups (
     	accountID uuid REFERENCES auth_accounts ON DELETE CASCADE,
@@ -72,18 +82,19 @@ func (a *Authenticator) Initialize() error {
 		}
 	}
 
-	_, _ = a.AddPrivilege(AddUserPrivilege)
-	_, _ = a.AddPrivilege(RemoveUserPrivilege)
-	_, _ = a.AddPrivilege(UpdateUserPrivilege)
-	_, _ = a.AddPrivilege(ViewUserPrivilege)
-	_, _ = a.AddGroup(AdminGroupName)
+	_, _ = a.AddSubsystem(AdminSubsystemName)
+	_, _ = a.AddPrivilege(AdminSubsystemName, AddUserPrivilege)
+	_, _ = a.AddPrivilege(AdminSubsystemName, RemoveUserPrivilege)
+	_, _ = a.AddPrivilege(AdminSubsystemName, UpdateUserPrivilege)
+	_, _ = a.AddPrivilege(AdminSubsystemName, ViewUserPrivilege)
+	_, _ = a.AddGroup(AdminSubsystemName, AdminGroupName)
 	_, _ = a.AddAccount(AdminAccountName, "admin", "administrator", "n/a")
 
-	_ = a.ConnectAccountToGroup(AdminAccountName, AdminGroupName)
-	_ = a.ConnectGroupToPrivilege(AdminGroupName, AddUserPrivilege)
-	_ = a.ConnectGroupToPrivilege(AdminGroupName, RemoveUserPrivilege)
-	_ = a.ConnectGroupToPrivilege(AdminGroupName, UpdateUserPrivilege)
-	_ = a.ConnectGroupToPrivilege(AdminGroupName, ViewUserPrivilege)
+	_ = a.ConnectAccountToGroup(AdminAccountName, AdminSubsystemName, AdminGroupName)
+	_ = a.ConnectGroupToPrivilege(AdminSubsystemName, AdminGroupName, AddUserPrivilege)
+	_ = a.ConnectGroupToPrivilege(AdminSubsystemName, AdminGroupName, RemoveUserPrivilege)
+	_ = a.ConnectGroupToPrivilege(AdminSubsystemName, AdminGroupName, UpdateUserPrivilege)
+	_ = a.ConnectGroupToPrivilege(AdminSubsystemName, AdminGroupName, ViewUserPrivilege)
 
 	return nil
 }
