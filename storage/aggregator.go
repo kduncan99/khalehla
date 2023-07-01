@@ -26,6 +26,7 @@ const (
 	AggregatorStatusNotOpen
 	AggregatorStatusAlreadyOpen
 	AggregatorStatusInvalidDeviceIndex
+	AggregatorStatusInvalidFunction
 	AggregatorStatusInProgress
 	AggregatorStatusDeviceError
 	AggregatorStatusSystemError

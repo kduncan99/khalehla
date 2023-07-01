@@ -5,8 +5,8 @@ import "kalehla/types"
 // SimpleAggregator is a simple coordinator for a set of block devices.
 // It manages async IO across the multiple devices in a quasi-efficient manner.
 type SimpleAggregator struct {
-	devices map[types.DeviceIndex]*BlockDevice
-	isOpen  bool
+	deviceQueues map[types.DeviceIndex]blockDeviceQueue
+	isOpen       bool
 }
 
 func (agg *SimpleAggregator) Close() AggregatorResult {
@@ -14,8 +14,8 @@ func (agg *SimpleAggregator) Close() AggregatorResult {
 		return AggregatorResult{AggregatorStatusNotOpen, nil}
 	}
 
-	for _, dev := range agg.devices {
-		(*dev).Close()
+	for _, dq := range agg.deviceQueues {
+		dq.Close()
 	}
 	agg.isOpen = false
 
@@ -27,13 +27,13 @@ func (agg *SimpleAggregator) Open() AggregatorResult {
 		return AggregatorResult{AggregatorStatusAlreadyOpen, nil}
 	}
 
-	for _, dev := range agg.devices {
-		res := (*dev).Open(false, true)
-		if res.status != DeviceStatusSuccessful {
-			for _, dev := range agg.devices {
-				_ = (*dev).Close()
+	for _, dq := range agg.deviceQueues {
+		res := dq.Open(false, true)
+		if res.aggregatorStatus != AggregatorStatusSuccessful {
+			for _, dq2 := range agg.deviceQueues {
+				_ = dq2.Close()
 			}
-			return AggregatorResult{AggregatorStatusDeviceError, &res}
+			return res
 		}
 	}
 
@@ -41,9 +41,9 @@ func (agg *SimpleAggregator) Open() AggregatorResult {
 }
 
 func (agg *SimpleAggregator) GetDevice(deviceIndex types.DeviceIndex) (*BlockDevice, AggregatorResult) {
-	dev, ok := agg.devices[deviceIndex]
+	dev, ok := agg.deviceQueues[deviceIndex]
 	if ok {
-		return dev, AggregatorResult{AggregatorStatusSuccessful, nil}
+		return dev.device, AggregatorResult{AggregatorStatusSuccessful, nil}
 	} else {
 		return nil, AggregatorResult{AggregatorStatusInvalidDeviceIndex, nil}
 	}
@@ -54,21 +54,30 @@ func (agg *SimpleAggregator) IsOpen() bool {
 }
 
 func (agg *SimpleAggregator) RegisterDevice(deviceIndex types.DeviceIndex, device *BlockDevice) AggregatorResult {
-	_, ok := agg.devices[deviceIndex]
+	_, ok := agg.deviceQueues[deviceIndex]
 	if ok {
 		return AggregatorResult{AggregatorStatusInvalidDeviceIndex, nil}
 	}
 
-	agg.devices[deviceIndex] = device
+	dq := NewBlockDeviceQueue(device)
+	agg.deviceQueues[deviceIndex] = dq
+	go dq.routine()
+
 	return AggregatorResult{AggregatorStatusSuccessful, nil}
 }
 
 func (agg *SimpleAggregator) StartIO(request *BlockIORequest) {
-	//	TODO
+	dq, ok := agg.deviceQueues[request.deviceIndex]
+	if ok {
+		request.aggregatorStatus = AggregatorStatusInProgress
+		dq.channel <- request
+	} else {
+		request.aggregatorStatus = AggregatorStatusInvalidDeviceIndex
+	}
 }
 
 func NewSimpleAggregator() *SimpleAggregator {
 	return &SimpleAggregator{
-		devices: make(map[types.DeviceIndex]*BlockDevice),
+		deviceQueues: make(map[types.DeviceIndex]blockDeviceQueue),
 	}
 }
