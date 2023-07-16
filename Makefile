@@ -67,7 +67,7 @@ base_dir := $(abspath $(shell git rev-parse --show-toplevel))
 #	./nfsctl synthetic init
 #.PHONY: synthetic-env
 
-test/out/authd: cmd/authd.go auth/*.go db/*.go
+test/out/authd: cmd/authd.go exec/auth exec/db
 	go build -o test/out/authd cmd/authd.go
 
 

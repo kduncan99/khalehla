@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"kalehla/types"
+	"../types"
 )
 
 // A BlockGeometry struct allows a particular block device to report the included information

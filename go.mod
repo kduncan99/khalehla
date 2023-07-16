@@ -1,4 +1,4 @@
-module kalehla
+module khalehla
 
 go 1.20
 
