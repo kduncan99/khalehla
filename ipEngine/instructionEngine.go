@@ -160,6 +160,10 @@ func (e *InstructionEngine) GetBaseRegister(index uint) *BaseRegister {
 	return e.baseRegisters[index]
 }
 
+func (e *InstructionEngine) GetCurrentInstruction() InstructionWord {
+	return e.activityStatePacket.currentInstruction
+}
+
 // GetExecOrUserARegister retrieves either the EA{index} or A{index} register
 // depending upon the setting of designator register ExecRegisterSetSelected
 func (e *InstructionEngine) GetExecOrUserARegister(registerIndex uint) *pkg.Word36 {
@@ -212,6 +216,136 @@ func (e *InstructionEngine) GetExecOrUserXRegisterIndex(registerIndex uint) uint
 // GetGeneralRegisterSet retrieves a pointer to the GRS
 func (e *InstructionEngine) GetGeneralRegisterSet() *GeneralRegisterSet {
 	return &e.generalRegisterSet
+}
+
+// GetJumpOperand is similar to getImmediateOperand()
+// However the calculated U field is only ever 16 or 18 bits, and is never sign-extended.
+// Also, we do not rely upon j-field for anything, as that has no meaning for conditionalJump instructions.
+//
+// updateDesignatorRegister:
+//
+//	if true and if we are in basic mode, we update the basic mode bank selection bit
+//	in the designator register if necessary
+//
+// returns complete==true and jump operand value if complete and successful
+// returns Interrupt if an interrupt needs to be raised - caller should post the interrupt
+// returns complete==false if an address is not fully resolved (basic mode indirect address only)
+func (e *InstructionEngine) GetJumpOperand(updateDesignatorRegister bool) (complete bool, operand uint64, interrupt Interrupt) {
+	complete = true
+	interrupt = nil
+	operand = e.calculateRelativeAddressForJump()
+
+	//  The following bit is how we deal with indirect addressing for basic mode.
+	//  If we are doing that, it will update the U portion of the current instruction with new address information,
+	//  then throw UnresolvedAddressException which will eventually route us back through here again, but this
+	//  time with new address info (in reladdress), and we keep doing this until we're not doing indirect addressing.
+	asp := e.activityStatePacket
+	if asp.designatorRegister.BasicModeEnabled && (asp.currentInstruction.GetI() != 0) {
+		complete, _, interrupt = e.findBaseRegisterIndex(operand, updateDesignatorRegister)
+	} else {
+		e.incrementIndexRegisterInF0()
+	}
+
+	return
+}
+
+// GetOperand implements the general case of retrieving an operand, including all forms of addressing
+// and partial word access. Instructions which use the j-field as part of the function code will likely set
+// allowImmediate and allowPartial false.
+//
+// grsDestination: true if we are going to put this value into a GRS location
+// grsCheck: true if we should consider GRS for addresses < 0200 for our source
+// allowImmediate: true if we should allow immediate addressing
+// allowPartial: true if we should do partial word transfers (presuming we are not in a GRS address)
+//
+// returns complete == true and the operand value is successful
+// returns complete == false if address resolution is unfinished (such as can happen in Basic Mode with
+// indirect addressing). In this case, caller should call back again after checking for any pending interrupts.
+// returns an Interrupt if any interrupt needs to be raised - caller should post the interrupt
+func (e *InstructionEngine) GetOperand(grsDestination bool, grsCheck bool, allowImmediate bool, allowPartial bool) (complete bool, operand uint64, interrupt Interrupt) {
+	complete = false
+	operand = 0
+	interrupt = nil
+
+	jField := uint(e.activityStatePacket.currentInstruction.GetJ())
+	if allowImmediate {
+		//  j-field is U or XU? If so, get the value from the instruction itself (immediate addressing)
+		if jField >= 016 {
+			operand, interrupt = e.getImmediateOperand()
+			complete = true
+			return
+		}
+	}
+
+	relAddress := e.calculateRelativeAddressForGRSOrStorage()
+
+	asp := e.activityStatePacket
+	ci := asp.currentInstruction
+	dReg := asp.designatorRegister
+	basicMode := dReg.BasicModeEnabled
+	pPriv := dReg.processorPrivilege
+	grs := e.generalRegisterSet
+
+	var baseRegisterIndex uint
+	if !basicMode {
+		baseRegisterIndex = uint(ci.GetB())
+		if (pPriv < 2) && (ci.GetI() != 0) {
+			baseRegisterIndex += 16
+		}
+	}
+
+	//  Loading from GRS?  If so, go get the value.
+	//  If grsDestination is true, get the full value. Otherwise, honor j-field for partial-word transfer.
+	//  See hardware guide section 4.3.2 - any GRS-to-GRS transfer is full-word, regardless of j-field.
+	if (grsCheck) && (basicMode || (baseRegisterIndex == 0)) && (relAddress < 0200) {
+		e.incrementIndexRegisterInF0()
+
+		//  First, do accessibility checks
+		if e.isGRSAccessAllowed(relAddress, pPriv, false) {
+			interrupt = NewReferenceViolationInterrupt(ReferenceViolationReadAccess, true)
+			return
+		}
+
+		//  If we are GRS or not allowing partial word transfers, do a full word.
+		//  Otherwise, honor partial word transferring.
+		if grsDestination || !allowPartial {
+			operand = grs.GetRegister(uint(relAddress)).GetW()
+		} else {
+			qWordMode := dReg.QuarterWordModeEnabled
+			operand = e.extractPartialWord(grs.GetRegister(uint(relAddress)).GetW(), jField, qWordMode)
+			return
+		}
+	}
+
+	//  Loading from storage.  Do so, then (maybe) honor partial word handling.
+	if basicMode {
+		complete, baseRegisterIndex, interrupt = e.findBaseRegisterIndex(relAddress, false)
+		if !complete || interrupt != nil {
+			return
+		}
+	}
+
+	baseRegister := e.baseRegisters[baseRegisterIndex]
+	interrupt = e.checkAccessLimits(baseRegister, relAddress, false, true, false, asp.indicatorKeyRegister.accessKey)
+	if interrupt != nil {
+		return
+	}
+
+	e.incrementIndexRegisterInF0()
+
+	var absAddress AbsoluteAddress
+	e.getAbsoluteAddress(baseRegister, relAddress, &absAddress)
+	e.checkBreakpoint(BreakpointRead, &absAddress)
+
+	readOffset := relAddress - uint64(baseRegister.lowerLimitNormalized)
+	operand = baseRegister.storage[readOffset].GetW()
+	if allowPartial {
+		qWordMode := dReg.QuarterWordModeEnabled
+		operand = e.extractPartialWord(operand, jField, qWordMode)
+	}
+
+	complete = true
+	return
 }
 
 // PostInterrupt posts a new interrupt, provided that no higher-priority interrupt is already pending.
@@ -291,6 +425,40 @@ func (e *InstructionEngine) calculateRelativeAddressForGRSOrStorage() uint64 {
 	return pkg.AddSimple(addend1, addend2)
 }
 
+// calculateRelativeAddressForJump calculates the raw relative address (the U) for the current instruction.
+// Does NOT increment any x registers, even if their content contributes to the result.
+// returns the relative address for the current instruction
+func (e *InstructionEngine) calculateRelativeAddressForJump() uint64 {
+	ci := e.activityStatePacket.currentInstruction
+	dr := e.activityStatePacket.designatorRegister
+
+	var xReg *IndexRegister
+	xx := uint(ci.GetX())
+	if xx != 0 {
+		xReg = e.GetExecOrUserXRegister(xx)
+	}
+
+	addend1 := ci.GetU()
+	var addend2 uint64
+	if dr.BasicModeEnabled {
+		if xReg != nil {
+			addend2 = xReg.GetSignedXM()
+		}
+	} else {
+		addend1 = ci.GetU()
+		if xReg != nil {
+			if dr.Executive24BitIndexingEnabled && dr.processorPrivilege < 2 {
+				//  Exec 24-bit indexing is requested
+				addend2 = xReg.GetSignedXM24()
+			} else {
+				addend2 = xReg.GetSignedXM()
+			}
+		}
+	}
+
+	return pkg.AddSimple(addend1, addend2)
+}
+
 // checkAccessibility compares the given key to the lock for this base register, and determines whether
 // the requested access (fetch, read, and/or write) are allowed.
 // If the check fails, we return an interrupt which the caller should post
@@ -339,10 +507,7 @@ func (e *InstructionEngine) checkAccessLimits(
 // checkAccessLimitsForAddress checks whether the relative address is within the limits of the bank
 // described by this base register. We only need the fetch flag for posting an interrupt.
 // If the check fails, we return an interrupt which the caller should post
-func (e *InstructionEngine) checkAccessLimitsForAddress(
-	bReg *BaseRegister,
-	relativeAddress uint64,
-	fetchFlag bool) Interrupt {
+func (e *InstructionEngine) checkAccessLimitsForAddress(bReg *BaseRegister, relativeAddress uint64, fetchFlag bool) Interrupt {
 
 	// TODO if we try to execute something in GRS - we take ReferenceViolationInterruptClass, 01, 0, 0
 
@@ -595,6 +760,81 @@ func (e *InstructionEngine) getAbsoluteAddress(baseRegister *BaseRegister, relat
 	addr.offset = uint(uint64(baseRegister.baseAddress.offset) + actualOffset)
 }
 
+// findBaseRegisterIndex locates the index of the base register which represents the bank which contains the given
+// relative address. Does appropriate limits checking.  Delegates to the appropriate basic or extended mode implementation.
+//
+// relativeAddress: relative address to be considered
+// updateDesignatorRegister: if true and if we are in basic mode, we update the basic mode bank selection bit in the designator register if necessary
+//
+// Returns complete==true and the base register index if successful
+//
+// Returns complete==false if address resolution is unfinished (such as can happen in Basic Mode with Indirect Addressing).
+// In this case, caller should call back here again after checking for any pending interrupts.
+//
+// Returns an interrupt if any interrupt needs to be raised. In this case, the instruction is incomplete and should
+// be retried if appropriate. Caller should post the interrupt.
+func (e *InstructionEngine) findBaseRegisterIndex(relativeAddress uint64, updateDesignatorRegister bool) (complete bool, index uint, interrupt Interrupt) {
+	complete = false
+	index = 0
+	interrupt = nil
+
+	dr := e.activityStatePacket.designatorRegister
+	if dr.BasicModeEnabled {
+		//  Find the bank containing the current offset.
+		//  We don't need to check for storage limits, since this is done for us by findBasicModeBank() in terms of
+		//  returning a zero.
+		brIndex := e.FindBasicModeBank(relativeAddress, updateDesignatorRegister)
+		if brIndex == 0 {
+			interrupt = NewReferenceViolationInterrupt(ReferenceViolationStorageLimits, false)
+			return
+		}
+
+		//  Are we doing indirect addressing?
+		ci := e.activityStatePacket.currentInstruction
+		if ci.GetI() != 0 {
+			//  Increment the X register (if any) indicated by F0 (if H bit is set, of course)
+			e.incrementIndexRegisterInF0()
+			bReg := e.baseRegisters[brIndex]
+
+			//  Ensure we can read from the selected bank
+			if !e.isReadAllowed(bReg) {
+				interrupt = NewReferenceViolationInterrupt(ReferenceViolationReadAccess, false)
+				return
+			}
+
+			ikr := e.activityStatePacket.indicatorKeyRegister
+			interrupt = e.checkAccessLimits(bReg, relativeAddress, false, true, false, ikr.accessKey)
+			if interrupt != nil {
+				return
+			}
+
+			//  Get xhiu fields from the referenced word, and place them into _currentInstruction,
+			//  then throw UnresolvedAddressException so the caller knows we're not done here.
+			wx := relativeAddress - uint64(bReg.lowerLimitNormalized)
+			e.activityStatePacket.currentInstruction.SetXHIU(bReg.storage[wx].GetW())
+			return
+		}
+
+		//  We're at our final destination
+		complete = true
+		index = brIndex
+	} else {
+		index = e.getEffectiveBaseRegisterIndex()
+	}
+
+	return
+}
+
+func (e *InstructionEngine) getEffectiveBaseRegisterIndex() uint {
+	//  If PP < 2, we use the i-bit and the b-field to select the base registers from B0 to B31.
+	//  For PP >= 2, we only use the b-field, to select base registers from B0 to B15 (See IP PRM 4.3.7).
+	if e.activityStatePacket.designatorRegister.processorPrivilege < 2 {
+		return uint(e.activityStatePacket.currentInstruction.GetIB())
+	} else {
+		return uint(e.activityStatePacket.currentInstruction.GetB())
+	}
+}
+
 // getImmediateOperand retrieves an operand in the case where the u (and possibly h and i) fields
 // comprise the requested data ... e.g., for immediate operands.
 // Load the value indicated in F0 as follows:
@@ -672,99 +912,6 @@ func (e *InstructionEngine) getImmediateOperand() (operand uint64, interrupt Int
 		if extend && (operand&0_400000) != 0 {
 			operand |= 0_777777_000000
 		}
-	}
-
-	return
-}
-
-// getOperand implements the general case of retrieving an operand, including all forms of addressing
-// and partial word access. Instructions which use the j-field as part of the function code will likely set
-// allowImmediate and allowPartial false.
-//
-//		grsDestination true if we are going to put this value into a GRS location
-//		grsCheck true if we should consider GRS for addresses < 0200 for our source
-//		allowImmediate true if we should allow immediate addressing
-//		allowPartial true if we should do partial word transfers (presuming we are not in a GRS address)
-//
-//		returns operand value is successful
-//		returns MachineInterrupt if any interrupt needs to be raised.
-//			In this case, the instruction is incomplete and should be retried if appropriate.
-//		returns UnresolvedAddressException if address resolution is unfinished (such as can happen in Basic Mode with
-//	     indirect addressing). In this case, caller should call back again after checking for any pending interrupts.
-func (e *InstructionEngine) getOperand(grsDestination bool, grsCheck bool, allowImmediate bool, allowPartial bool) (operand uint64, interrupt Interrupt) {
-	operand = 0
-	interrupt = nil
-
-	jField := uint(e.activityStatePacket.currentInstruction.GetJ())
-	if allowImmediate {
-		//  j-field is U or XU? If so, get the value from the instruction itself (immediate addressing)
-		if jField >= 016 {
-			return e.getImmediateOperand()
-		}
-	}
-
-	relAddress := e.calculateRelativeAddressForGRSOrStorage()
-
-	asp := e.activityStatePacket
-	ci := asp.currentInstruction
-	dReg := asp.designatorRegister
-	basicMode := dReg.BasicModeEnabled
-	pPriv := dReg.processorPrivilege
-	grs := e.generalRegisterSet
-
-	var baseRegisterIndex uint
-	if !basicMode {
-		baseRegisterIndex = uint(ci.GetB())
-		if (pPriv < 2) && (ci.GetI() != 0) {
-			baseRegisterIndex += 16
-		}
-	}
-
-	//  Loading from GRS?  If so, go get the value.
-	//  If grsDestination is true, get the full value. Otherwise, honor j-field for partial-word transfer.
-	//  See hardware guide section 4.3.2 - any GRS-to-GRS transfer is full-word, regardless of j-field.
-	if (grsCheck) && (basicMode || (baseRegisterIndex == 0)) && (relAddress < 0200) {
-		e.incrementIndexRegisterInF0()
-
-		//  First, do accessibility checks
-		if e.isGRSAccessAllowed(relAddress, pPriv, false) {
-			interrupt = NewReferenceViolationInterrupt(ReferenceViolationReadAccess, true)
-			return
-		}
-
-		//  If we are GRS or not allowing partial word transfers, do a full word.
-		//  Otherwise, honor partial word transferring.
-		if grsDestination || !allowPartial {
-			operand = grs.GetRegister(uint(relAddress)).GetW()
-		} else {
-			qWordMode := dReg.QuarterWordModeEnabled
-			operand = e.extractPartialWord(grs.GetRegister(uint(relAddress)).GetW(), jField, qWordMode)
-			return
-		}
-	}
-
-	//  Loading from storage.  Do so, then (maybe) honor partial word handling.
-	if basicMode {
-		baseRegisterIndex = e.FindBasicModeBank(relAddress, false)
-	}
-
-	baseRegister := e.baseRegisters[baseRegisterIndex]
-	interrupt = e.checkAccessLimits(baseRegister, relAddress, false, true, false, asp.indicatorKeyRegister.accessKey)
-	if interrupt != nil {
-		return
-	}
-
-	e.incrementIndexRegisterInF0()
-
-	var absAddress AbsoluteAddress
-	e.getAbsoluteAddress(baseRegister, relAddress, &absAddress)
-	e.checkBreakpoint(BreakpointRead, &absAddress)
-
-	readOffset := relAddress - uint64(baseRegister.lowerLimitNormalized)
-	operand = baseRegister.storage[readOffset].GetW()
-	if allowPartial {
-		qWordMode := dReg.QuarterWordModeEnabled
-		operand = e.extractPartialWord(operand, jField, qWordMode)
 	}
 
 	return
