@@ -6,10 +6,10 @@ package functions
 
 import "khalehla/ipEngine"
 
-// LoadAccumulator loads the content of U under j-field control, and stores it in A(a)
+// LoadAccumulator (LA) loads the content of U under j-field control, and stores it in A(a)
 func LoadAccumulator(e *ipEngine.InstructionEngine) (completed bool, interrupt ipEngine.Interrupt) {
-	operand, interrupt := e.GetOperand(true, true, true, true)
-	if interrupt != nil {
+	completed, operand, interrupt := e.GetOperand(true, true, true, true)
+	if !completed || interrupt != nil {
 		return false, interrupt
 	}
 
@@ -18,9 +18,10 @@ func LoadAccumulator(e *ipEngine.InstructionEngine) (completed bool, interrupt i
 	return true, nil
 }
 
+// LoadIndexRegister (LX) loads the content of U under j-field control, and stores it in X(a)
 func LoadIndexRegister(e *ipEngine.InstructionEngine) (completed bool, interrupt ipEngine.Interrupt) {
-	operand, interrupt := e.GetOperand(true, true, true, true)
-	if interrupt != nil {
+	completed, operand, interrupt := e.GetOperand(true, true, true, true)
+	if !completed || interrupt != nil {
 		return false, interrupt
 	}
 
@@ -29,9 +30,10 @@ func LoadIndexRegister(e *ipEngine.InstructionEngine) (completed bool, interrupt
 	return true, nil
 }
 
+// LoadRegister (LR) loads the content of U under j-field control, and stores it in R(a)
 func LoadRegister(e *ipEngine.InstructionEngine) (completed bool, interrupt ipEngine.Interrupt) {
-	operand, interrupt := e.GetOperand(true, true, true, true)
-	if interrupt != nil {
+	completed, operand, interrupt := e.GetOperand(true, true, true, true)
+	if !completed || interrupt != nil {
 		return false, interrupt
 	}
 

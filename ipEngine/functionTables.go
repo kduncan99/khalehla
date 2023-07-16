@@ -13,12 +13,18 @@ var FunctionTable = map[bool]map[uint]func(*InstructionEngine) (completed bool, 
 }
 
 var BasicModeFunctionTable = map[uint]func(*InstructionEngine) (completed bool, interrupt Interrupt){
+	001: functions.StoreAccumulator,
+	004: functions.StoreRegister,
+	006: functions.StoreIndexRegister,
 	010: functions.LoadAccumulator,
 	023: functions.LoadRegister,
 	027: functions.LoadIndexRegister,
 }
 
 var ExtendedModeFunctionTable = map[uint]func(*InstructionEngine) (completed bool, interrupt Interrupt){
+	001: functions.StoreAccumulator,
+	004: functions.StoreRegister,
+	006: functions.StoreIndexRegister,
 	010: functions.LoadAccumulator,
 	023: functions.LoadRegister,
 	027: functions.LoadIndexRegister,

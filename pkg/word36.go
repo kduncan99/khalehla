@@ -269,43 +269,138 @@ func (w *Word36) SetW(op uint64) *Word36 {
 }
 
 func (w *Word36) SetH1(op uint64) *Word36 {
-	*w = (*w & 0777777) | ((Word36(op) & 0777777) << 18)
+	*w = (*w & 0_000000_777777) | ((Word36(op) & 0_777777) << 18)
 	return w
+}
+
+func SetH1(orig uint64, new uint64) uint64 {
+	return (orig & 0_777777) | ((new & 0_777777) << 18)
 }
 
 func (w *Word36) SetH2(op uint64) *Word36 {
-	*w = (*w & 0777777000000) | (Word36(op) & 0777777)
+	*w = (*w & 0_777777_000000) | (Word36(op) & 0_777777)
 	return w
+}
+
+func SetH2(orig uint64, new uint64) uint64 {
+	return (orig & 0_777777_000000) | (new & 0_777777)
+}
+
+func (w *Word36) SetQ1(op uint64) *Word36 {
+	*w = (*w & 0_000777_777777) | ((Word36(op) & 0777) << 27)
+	return w
+}
+
+func SetQ1(orig uint64, new uint64) uint64 {
+	return (orig & 0_000777_777777) | ((new & 0_777) << 27)
+}
+
+func (w *Word36) SetQ2(op uint64) *Word36 {
+	*w = (*w & 0_777000_777777) | ((Word36(op) & 0777) << 18)
+	return w
+}
+
+func SetQ2(orig uint64, new uint64) uint64 {
+	return (orig & 0_777000_777777) | ((new & 0_777) << 18)
+}
+
+func (w *Word36) SetQ3(op uint64) *Word36 {
+	*w = (*w & 0_777777_000777) | ((Word36(op) & 0777) << 9)
+	return w
+}
+
+func SetQ3(orig uint64, new uint64) uint64 {
+	return (orig & 0_777777_000777) | ((new & 0_777) << 9)
+}
+
+func (w *Word36) SetQ4(op uint64) *Word36 {
+	*w = (*w & 0_777777_777000) | (Word36(op) & 0777)
+	return w
+}
+
+func SetQ4(orig uint64, new uint64) uint64 {
+	return (orig & 0_777777_777000) | (new & 0_777)
 }
 
 func (w *Word36) SetS1(op uint64) *Word36 {
-	*w = (*w & 0007777777777) | ((Word36(op) & 077) << 30)
+	*w = (*w & 0_007777_777777) | ((Word36(op) & 077) << 30)
 	return w
+}
+
+func SetS1(orig uint64, new uint64) uint64 {
+	return (orig & 0_007777_777777) | ((new & 077) << 30)
 }
 
 func (w *Word36) SetS2(op uint64) *Word36 {
-	*w = (*w & 0770077777777) | ((Word36(op) & 077) << 24)
+	*w = (*w & 0_770077_777777) | ((Word36(op) & 077) << 24)
 	return w
+}
+
+func SetS2(orig uint64, new uint64) uint64 {
+	return (orig & 0_770077_777777) | ((new & 077) << 24)
 }
 
 func (w *Word36) SetS3(op uint64) *Word36 {
-	*w = (*w & 0777700777777) | ((Word36(op) & 077) << 18)
+	*w = (*w & 0_777700_777777) | ((Word36(op) & 077) << 18)
 	return w
+}
+
+func SetS3(orig uint64, new uint64) uint64 {
+	return (orig & 0_777700_777777) | ((new & 077) << 18)
 }
 
 func (w *Word36) SetS4(op uint64) *Word36 {
-	*w = (*w & 0777777007777) | ((Word36(op) & 077) << 12)
+	*w = (*w & 0_777777_007777) | ((Word36(op) & 077) << 12)
 	return w
+}
+
+func SetS4(orig uint64, new uint64) uint64 {
+	return (orig & 0_777777_007777) | ((new & 077) << 12)
 }
 
 func (w *Word36) SetS5(op uint64) *Word36 {
-	*w = (*w & 0777777770077) | ((Word36(op) & 077) << 6)
+	*w = (*w & 0_777777_770077) | ((Word36(op) & 077) << 6)
 	return w
 }
 
+func SetS5(orig uint64, new uint64) uint64 {
+	return (orig & 0_777777_770077) | ((new & 077) << 6)
+}
+
 func (w *Word36) SetS6(op uint64) *Word36 {
-	*w = (*w & 0777777777700) | (Word36(op) & 077)
+	*w = (*w & 0_777777_777700) | (Word36(op) & 077)
 	return w
+}
+
+func SetS6(orig uint64, new uint64) uint64 {
+	return (orig & 0_777777_777700) | (new & 077)
+}
+
+func (w *Word36) SetT1(op uint64) *Word36 {
+	*w = (*w & 0_000077_777777) | ((Word36(op) & 07777) << 24)
+	return w
+}
+
+func SetT1(orig uint64, new uint64) uint64 {
+	return (orig & 0_000077_777777) | ((new & 0_7777) << 24)
+}
+
+func (w *Word36) SetT2(op uint64) *Word36 {
+	*w = (*w & 0_777700_007777) | ((Word36(op) & 07777) << 12)
+	return w
+}
+
+func SetT2(orig uint64, new uint64) uint64 {
+	return (orig & 0_777700_007777) | ((new & 0_7777) << 12)
+}
+
+func (w *Word36) SetT3(op uint64) *Word36 {
+	*w = (*w & 0_777777_770000) | (Word36(op) & 07777)
+	return w
+}
+
+func SetT3(orig uint64, new uint64) uint64 {
+	return (orig & 0_777777_770000) | (new & 0_7777)
 }
 
 func (w *Word36) ToStringAsAscii() string {

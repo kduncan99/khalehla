@@ -388,6 +388,102 @@ func (e *InstructionEngine) Stop(reason StopReason, detail pkg.Word36) {
 	e.stopDetail = detail
 }
 
+// StoreOperand handles the general case of storing an operand either to storage or to a GRS location
+//
+// grsSource: true if the value came from a register, so we know whether to ignore partial-word transfers
+// grsCheck: true if relative addresses < 0200 should be considered GRS locations
+// checkImmediate: true if we should consider j-fields 016 and 017 as immediate addressing (and throw away the operand)
+// allowPartial: true if we should allow partial-word transfers (subject to GRS-GRS transfers)
+// operand: value to be stored
+//
+// returns complete==true indicates the operation is complete - if false, address resolution is unfinished and the
+// caller should try again
+// returns an interrupt if anything goes wrong, which the caller should post
+func (e *InstructionEngine) StoreOperand(grsSource bool, grsCheck bool, checkImmediate bool, allowPartial bool, operand uint64) (complete bool, interrupt Interrupt) {
+	complete = false
+	interrupt = nil
+
+	//  If we allow immediate addressing mode and j-field is U or XU... we do nothing.
+	ci := e.activityStatePacket.currentInstruction
+
+	jField := uint(ci.GetJ())
+	if (checkImmediate) && (jField >= 016) {
+		complete = true
+		return
+	}
+
+	dr := e.activityStatePacket.designatorRegister
+	relAddress := e.calculateRelativeAddressForGRSOrStorage()
+	basicMode := dr.BasicModeEnabled
+	pPriv := dr.processorPrivilege
+
+	var baseRegisterIndex uint
+	if !basicMode {
+		baseRegisterIndex = uint(ci.GetB())
+		if (pPriv < 2) && (ci.GetI() != 0) {
+			baseRegisterIndex += 16
+		}
+	}
+
+	if (grsCheck) && (basicMode || (baseRegisterIndex == 0)) && (relAddress < 0200) {
+		e.incrementIndexRegisterInF0()
+
+		//  First, do accessibility checks
+		if !e.isGRSAccessAllowed(relAddress, pPriv, true) {
+			interrupt = NewReferenceViolationInterrupt(ReferenceViolationWriteAccess, false)
+			return
+		}
+
+		//  If we are GRS or not allowing partial word transfers, do a full word.
+		//  Otherwise, honor partial word transfer.
+		if !grsSource && allowPartial {
+			qWordMode := dr.QuarterWordModeEnabled
+			originalValue := e.generalRegisterSet.GetRegister(uint(relAddress)).GetW()
+			newValue := e.injectPartialWord(originalValue, operand, jField, qWordMode)
+			e.generalRegisterSet.GetRegister(uint(relAddress)).SetW(newValue)
+		} else {
+			e.generalRegisterSet.GetRegister(uint(relAddress)).SetW(operand)
+		}
+
+		complete = true
+		return
+	}
+
+	//  This is going to be a storage thing...
+	if basicMode {
+		complete, baseRegisterIndex, interrupt = e.findBaseRegisterIndex(relAddress, false)
+		if !complete || (interrupt != nil) {
+			return
+		}
+	}
+
+	bReg := e.baseRegisters[baseRegisterIndex]
+	ikr := e.activityStatePacket.indicatorKeyRegister
+	interrupt = e.checkAccessLimits(bReg, relAddress, false, false, true, ikr.accessKey)
+	if interrupt != nil {
+		return
+	}
+
+	e.incrementIndexRegisterInF0()
+
+	var absAddr AbsoluteAddress
+	e.getAbsoluteAddress(bReg, relAddress, &absAddr)
+	e.checkBreakpoint(BreakpointWrite, &absAddr)
+
+	offset := relAddress - uint64(bReg.lowerLimitNormalized)
+	if allowPartial {
+		qWordMode := dr.QuarterWordModeEnabled
+		originalValue := bReg.storage[offset].GetW()
+		newValue := e.injectPartialWord(originalValue, operand, jField, qWordMode)
+		bReg.storage[offset].SetW(newValue)
+	} else {
+		bReg.storage[offset].SetW(operand)
+	}
+
+	complete = true
+	return
+}
+
 //	Internal stuffs ----------------------------------------------------------------------------------------------------
 
 // calculateRelativeAddressForGRSOrStorage calculates the raw relative address (the U) for the current instruction.
@@ -928,6 +1024,58 @@ func (e *InstructionEngine) incrementIndexRegisterInF0() {
 			iReg.IncrementModifier()
 		}
 	}
+}
+
+// injectPartialWord creates a value which is comprised of an original value, with a new value inserted there-in
+// under j-field control.
+func (e *InstructionEngine) injectPartialWord(originalValue uint64, newValue uint64, jField uint, quarterWordMode bool) uint64 {
+	switch jField {
+	case pkg.JFIELD_W:
+		return newValue
+	case pkg.JFIELD_H2:
+	case pkg.JFIELD_XH2:
+		return pkg.SetH2(originalValue, newValue)
+	case pkg.JFIELD_H1:
+		return pkg.SetH1(originalValue, newValue)
+	case pkg.JFIELD_XH1: // XH1 or Q2
+		if quarterWordMode {
+			return pkg.SetQ2(originalValue, newValue)
+		} else {
+			return pkg.SetH1(originalValue, newValue)
+		}
+	case pkg.JFIELD_T3: // T3 or Q4
+		if quarterWordMode {
+			return pkg.SetQ4(originalValue, newValue)
+		} else {
+			return pkg.SetT3(originalValue, newValue)
+		}
+	case pkg.JFIELD_T2: // T2 or Q3
+		if quarterWordMode {
+			return pkg.SetQ3(originalValue, newValue)
+		} else {
+			return pkg.SetT2(originalValue, newValue)
+		}
+	case pkg.JFIELD_T1: // T1 or Q1
+		if quarterWordMode {
+			return pkg.SetQ1(originalValue, newValue)
+		} else {
+			return pkg.SetT1(originalValue, newValue)
+		}
+	case pkg.JFIELD_S6:
+		return pkg.SetS6(originalValue, newValue)
+	case pkg.JFIELD_S5:
+		return pkg.SetS5(originalValue, newValue)
+	case pkg.JFIELD_S4:
+		return pkg.SetS4(originalValue, newValue)
+	case pkg.JFIELD_S3:
+		return pkg.SetS3(originalValue, newValue)
+	case pkg.JFIELD_S2:
+		return pkg.SetS2(originalValue, newValue)
+	case pkg.JFIELD_S1:
+		return pkg.SetS1(originalValue, newValue)
+	}
+
+	return originalValue
 }
 
 func (e *InstructionEngine) isGRSAccessAllowed(registerIndex uint64, processorPrivilege uint, writeAccess bool) bool {
