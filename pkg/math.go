@@ -19,7 +19,7 @@ func AddSimple(operand1 uint64, operand2 uint64) uint64 {
 // GetOnesComplement takes a standard twos-complement value and converts it to a
 // 36-bit ones-complement value packed in a uint64.
 func GetOnesComplement(operand uint64) uint64 {
-	if operand < 0 {
+	if int64(operand) < 0 {
 		return Negate(-operand)
 	} else {
 		return operand
@@ -27,12 +27,12 @@ func GetOnesComplement(operand uint64) uint64 {
 }
 
 // GetSignExtended12 sign-extends an 12-bit value to 36 bits
-func GetSignExtended12(value uint64) uint64 {
-	if (value & 04000) == 0 {
-		return value
-	} else {
-		return value | 0_777777_770000
+func GetSignExtended12(value uint64) (result uint64) {
+	result = value & 0_7777
+	if (result & 0_04000) != 0 {
+		result |= 0_777777_770000
 	}
+	return
 }
 
 // GetSignExtended18 sign-extends an 18-bit value to 36 bits
@@ -46,9 +46,9 @@ func GetSignExtended18(value uint64) (result uint64) {
 
 // GetSignExtended24 sign-extends a 24-bit value to 36 bits
 func GetSignExtended24(value uint64) (result uint64) {
-	result = value & 077_777777
-	if (result & 040_000000) != 0 {
-		result |= 0_777700_000000
+	result = value & 0_7777_7777
+	if (result & 0_4000_0000) != 0 {
+		result |= 0_7777_0000_0000
 	}
 	return
 }

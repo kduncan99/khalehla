@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"../types"
+	"khalehla/pkg"
 )
 
 // A BlockGeometry struct allows a particular block device to report the included information
@@ -12,10 +12,10 @@ import (
 // Generally, the device stores this information in some convenient format in block zero of
 // the storage - and would then reject any attempt to overwrite block 0.
 type BlockGeometry struct {
-	bytesPerBlock  types.BlockSize
-	wordsPerBlock  types.BlockSize
-	blocksPerTrack types.BlockCount
-	blockCount     types.BlockCount
+	bytesPerBlock  pkg.BlockSize
+	wordsPerBlock  pkg.BlockSize
+	blocksPerTrack pkg.BlockCount
+	blockCount     pkg.BlockCount
 	label          string // always 8 characters, LJSF
 }
 
@@ -29,13 +29,13 @@ type BlockDevice interface {
 	// For those devices, this method is a no-op.
 	// blockId is the id of the first block to be allocated.
 	// blockCount is the number of consecutive blocks to be allocated.
-	AllocateBlocks(blockId types.BlockId, blockCount types.BlockCount) DeviceResult
+	AllocateBlocks(blockId pkg.BlockId, blockCount pkg.BlockCount) DeviceResult
 
 	// Close causes the device to release the storage. For temporary devices, the storage is lost.
 	Close() DeviceResult
 
 	// GetDeviceType retrieves the device type from any device even if it is not open
-	GetDeviceType() types.DeviceType
+	GetDeviceType() pkg.DeviceType
 
 	// GetGeometry retrieves the geometry of the medium managed by the device.
 	// The device must be open.
@@ -57,7 +57,7 @@ type BlockDevice interface {
 	// blockId is the id of the first block to be read.
 	// blockCount is the number of consecutive blocks to be read.
 	// buffer is a buffer of Word36 structs, exactly large enough to contain the given number of blocks.
-	ReadBlocks(blockId types.BlockId, blockCount types.BlockCount, buffer []types.Word36) DeviceResult
+	ReadBlocks(blockId pkg.BlockId, blockCount pkg.BlockCount, buffer []pkg.Word36) DeviceResult
 
 	// ReleaseBlocks releases one or more blocks of storage.
 	// Any block which is not allocated is left alone.
@@ -65,13 +65,13 @@ type BlockDevice interface {
 	// For those devices, this method is a no-op.
 	// blockId is the id of the first block to be released.
 	// blockCount is the number of consecutive blocks to be released.
-	ReleaseBlocks(blockId types.BlockId, blockCount types.BlockCount) DeviceResult
+	ReleaseBlocks(blockId pkg.BlockId, blockCount pkg.BlockCount) DeviceResult
 
 	// WriteBlocks writes one or more blocks of Word32 structs.
 	// blockId is the id of the first block to be written.
 	// blockCount is the number of consecutive blocks to be written.
 	// buffer is a buffer of Word36 structs, exactly large enough to contain the given number of blocks.
-	WriteBlocks(blockId types.BlockId, blockCount types.BlockCount, buffer []types.Word36) DeviceResult
+	WriteBlocks(blockId pkg.BlockId, blockCount pkg.BlockCount, buffer []pkg.Word36) DeviceResult
 }
 
 func IsLabelValid(label string) bool {
@@ -79,7 +79,7 @@ func IsLabelValid(label string) bool {
 	return true
 }
 
-func IsWordsPerBlockValid(wordsPerBlock types.BlockSize) bool {
-	_, ok := types.PackedBytesPerBlockFromWords[wordsPerBlock]
+func IsWordsPerBlockValid(wordsPerBlock pkg.BlockSize) bool {
+	_, ok := pkg.PackedBytesPerBlockFromWords[wordsPerBlock]
 	return ok
 }

@@ -1,18 +1,18 @@
 package storage
 
-import "kalehla/types"
+import "khalehla/pkg"
 
 // Stuff which potentially relates to any kind of device
 
 const (
-	DeviceTypeRawBlock       types.DeviceType = 010
-	DeviceTypeFileBlock      types.DeviceType = 011
-	DeviceTypePackedBlock    types.DeviceType = 012
-	DeviceTypeTemporaryBlock types.DeviceType = 014
+	DeviceTypeRawBlock       pkg.DeviceType = 010
+	DeviceTypeFileBlock      pkg.DeviceType = 011
+	DeviceTypePackedBlock    pkg.DeviceType = 012
+	DeviceTypeTemporaryBlock pkg.DeviceType = 014
 )
 
 const (
-	DeviceStatusSuccessful types.DeviceStatus = iota
+	DeviceStatusSuccessful pkg.DeviceStatus = iota
 	DeviceStatusNotOpen
 	DeviceStatusAlreadyOpen
 	DeviceStatusSystemError
@@ -27,13 +27,13 @@ const (
 )
 
 type DeviceResult struct {
-	status      types.DeviceStatus
+	status      pkg.DeviceStatus
 	systemError error
 }
 
 type Device interface {
 	Close() DeviceResult
-	GetDeviceType() types.DeviceType
+	GetDeviceType() pkg.DeviceType
 	IsOpen() bool
 	IsWriteProtected() bool
 	Open(writeProtected bool, writeThrough bool) DeviceResult

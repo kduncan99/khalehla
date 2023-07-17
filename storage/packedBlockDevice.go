@@ -1,20 +1,20 @@
 package storage
 
 import (
-	"kalehla/types"
+	"khalehla/pkg"
 	"os"
 	"sync"
 	"unsafe"
 )
 
 type packedBlockZero struct {
-	ident         types.Word36
-	label         types.Word36
-	wordsPerBlock types.Word36
-	blockCount    types.Word36
+	ident         pkg.Word36
+	label         pkg.Word36
+	wordsPerBlock pkg.Word36
+	blockCount    pkg.Word36
 }
 
-var packedBlockZeroSize = types.RawBytesPerBlockFromWords[4]
+var packedBlockZeroSize = pkg.RawBytesPerBlockFromWords[4]
 
 const packedIdentifierConstant = "BLKDVP"
 
@@ -35,7 +35,7 @@ type PackedBlockDevice struct {
 	midBuffer      []byte
 }
 
-func (bd *PackedBlockDevice) AllocateBlocks(blockId types.BlockId, blockCount types.BlockCount) DeviceResult {
+func (bd *PackedBlockDevice) AllocateBlocks(blockId pkg.BlockId, blockCount pkg.BlockCount) DeviceResult {
 	bd.mutex.Lock()
 	defer bd.mutex.Unlock()
 
@@ -90,7 +90,7 @@ func (bd *PackedBlockDevice) Close() DeviceResult {
 	return DeviceResult{DeviceStatusSuccessful, nil}
 }
 
-func (bd *PackedBlockDevice) GetDeviceType() types.DeviceType {
+func (bd *PackedBlockDevice) GetDeviceType() pkg.DeviceType {
 	return DeviceTypeFileBlock
 }
 
@@ -156,25 +156,25 @@ func (bd *PackedBlockDevice) Open(writeProtect bool, writeThrough bool) DeviceRe
 	}
 
 	bd.geometry.label = bz.label.ToStringAsFieldata()
-	bd.geometry.blockCount = types.BlockCount(bz.blockCount.GetW())
-	bd.geometry.wordsPerBlock = types.BlockSize(bz.wordsPerBlock.GetW())
-	bd.geometry.bytesPerBlock = types.PackedBytesPerBlockFromWords[bd.geometry.wordsPerBlock]
-	bd.geometry.blocksPerTrack = types.BlockCount(1792 / bd.geometry.wordsPerBlock)
+	bd.geometry.blockCount = pkg.BlockCount(bz.blockCount.GetW())
+	bd.geometry.wordsPerBlock = pkg.BlockSize(bz.wordsPerBlock.GetW())
+	bd.geometry.bytesPerBlock = pkg.PackedBytesPerBlockFromWords[bd.geometry.wordsPerBlock]
+	bd.geometry.blocksPerTrack = pkg.BlockCount(1792 / bd.geometry.wordsPerBlock)
 
 	return DeviceResult{DeviceStatusSuccessful, nil}
 }
 
-func (bd *PackedBlockDevice) readBlock(blockId types.BlockId, buffer []types.Word36) error {
+func (bd *PackedBlockDevice) readBlock(blockId pkg.BlockId, buffer []pkg.Word36) error {
 	var err error
 	pos := int64(blockId) * int64(bd.geometry.bytesPerBlock)
 	_, err = bd.file.ReadAt(bd.midBuffer, pos)
 	if err == nil {
-		types.UnpackWord36(bd.midBuffer, buffer)
+		pkg.UnpackWord36(bd.midBuffer, buffer)
 	}
 	return err
 }
 
-func (bd *PackedBlockDevice) ReadBlocks(blockId types.BlockId, blockCount types.BlockCount, buffer []types.Word36) DeviceResult {
+func (bd *PackedBlockDevice) ReadBlocks(blockId pkg.BlockId, blockCount pkg.BlockCount, buffer []pkg.Word36) DeviceResult {
 	bd.mutex.Lock()
 	defer bd.mutex.Unlock()
 
@@ -196,7 +196,7 @@ func (bd *PackedBlockDevice) ReadBlocks(blockId types.BlockId, blockCount types.
 
 	bid := blockId
 	bx := 0
-	for bc := types.BlockCount(0); bc < blockCount; bc++ {
+	for bc := pkg.BlockCount(0); bc < blockCount; bc++ {
 		err := bd.readBlock(bid, buffer[bx:bx+int(bd.geometry.wordsPerBlock)])
 		if err != nil {
 			return DeviceResult{DeviceStatusSystemError, err}
@@ -208,7 +208,7 @@ func (bd *PackedBlockDevice) ReadBlocks(blockId types.BlockId, blockCount types.
 	return DeviceResult{DeviceStatusSuccessful, nil}
 }
 
-func (bd *PackedBlockDevice) ReleaseBlocks(blockId types.BlockId, blockCount types.BlockCount) DeviceResult {
+func (bd *PackedBlockDevice) ReleaseBlocks(blockId pkg.BlockId, blockCount pkg.BlockCount) DeviceResult {
 	bd.mutex.Lock()
 	defer bd.mutex.Unlock()
 
@@ -246,17 +246,17 @@ func (bd *PackedBlockDevice) ReleaseBlocks(blockId types.BlockId, blockCount typ
 	return DeviceResult{DeviceStatusSuccessful, nil}
 }
 
-func (bd *PackedBlockDevice) writeBlock(blockId types.BlockId, buffer []types.Word36) error {
+func (bd *PackedBlockDevice) writeBlock(blockId pkg.BlockId, buffer []pkg.Word36) error {
 	var err error
 	pos := int64(blockId) * int64(bd.geometry.bytesPerBlock)
 	_, err = bd.file.ReadAt(bd.midBuffer, pos)
 	if err == nil {
-		types.UnpackWord36(bd.midBuffer, buffer)
+		pkg.UnpackWord36(bd.midBuffer, buffer)
 	}
 	return err
 }
 
-func (bd *PackedBlockDevice) WriteBlocks(blockId types.BlockId, blockCount types.BlockCount, buffer []types.Word36) DeviceResult {
+func (bd *PackedBlockDevice) WriteBlocks(blockId pkg.BlockId, blockCount pkg.BlockCount, buffer []pkg.Word36) DeviceResult {
 	bd.mutex.Lock()
 	defer bd.mutex.Unlock()
 
@@ -282,7 +282,7 @@ func (bd *PackedBlockDevice) WriteBlocks(blockId types.BlockId, blockCount types
 
 	bid := blockId
 	bx := 0
-	for bc := types.BlockCount(0); bc < blockCount; bc++ {
+	for bc := pkg.BlockCount(0); bc < blockCount; bc++ {
 		err := bd.readBlock(bid, buffer[bx:bx+int(bd.geometry.wordsPerBlock)])
 		if err != nil {
 			return DeviceResult{DeviceStatusSystemError, err}
@@ -294,7 +294,7 @@ func (bd *PackedBlockDevice) WriteBlocks(blockId types.BlockId, blockCount types
 	return DeviceResult{DeviceStatusSuccessful, nil}
 }
 
-func CreatePackedBlockDevice(fileName string, label string, wordsPerBlock types.BlockSize, blockCount types.BlockCount, preallocate bool) DeviceResult {
+func CreatePackedBlockDevice(fileName string, label string, wordsPerBlock pkg.BlockSize, blockCount pkg.BlockCount, preallocate bool) DeviceResult {
 	if !IsLabelValid(label) {
 		return DeviceResult{DeviceStatusInvalidLabel, nil}
 	}
@@ -315,25 +315,25 @@ func CreatePackedBlockDevice(fileName string, label string, wordsPerBlock types.
 	}(bd.file)
 
 	bd.geometry = BlockGeometry{
-		blocksPerTrack: types.BlockCount(1792 / wordsPerBlock),
+		blocksPerTrack: pkg.BlockCount(1792 / wordsPerBlock),
 		blockCount:     blockCount,
-		bytesPerBlock:  types.PackedBytesPerBlockFromWords[wordsPerBlock],
+		bytesPerBlock:  pkg.PackedBytesPerBlockFromWords[wordsPerBlock],
 		wordsPerBlock:  wordsPerBlock,
 	}
 
 	//	Write the block zero content
 	ident := []byte(fileIdentifierConstant)
-	wIdent := types.Word36(0)
+	wIdent := pkg.Word36(0)
 	wIdent.FromStringToFieldata(ident)
 
-	wLabel := types.Word36(0)
+	wLabel := pkg.Word36(0)
 	wLabel.FromStringToFieldata([]byte(label + "     "))
 
 	bz := fileBlockZero{
 		ident:         wIdent,
 		label:         wLabel,
-		wordsPerBlock: types.Word36(wordsPerBlock),
-		blockCount:    types.Word36(blockCount),
+		wordsPerBlock: pkg.Word36(wordsPerBlock),
+		blockCount:    pkg.Word36(blockCount),
 	}
 
 	f, err := os.OpenFile(bd.fileName, os.O_RDWR|os.O_TRUNC, 0755)
@@ -356,7 +356,7 @@ func CreatePackedBlockDevice(fileName string, label string, wordsPerBlock types.
 	//	For a standard system block, it should be sufficient to write the last block.
 	//  This *should* cause allocation of all the bytes from the beginning of the file to the end.
 	if preallocate {
-		offset := int64(int64(blockCount)*int64(types.PackedBytesPerBlockFromWords[wordsPerBlock])) - 1
+		offset := int64(int64(blockCount)*int64(pkg.PackedBytesPerBlockFromWords[wordsPerBlock])) - 1
 		b := []byte{0}
 		_, err = f.WriteAt(b, offset)
 		if err != nil {

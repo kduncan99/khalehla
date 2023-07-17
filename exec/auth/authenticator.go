@@ -2,7 +2,7 @@ package auth
 
 import (
 	"golang.org/x/crypto/bcrypt"
-	"kalehla/db"
+	"khalehla/exec/db"
 	"log"
 )
 
@@ -15,9 +15,9 @@ func (a *Authenticator) Close() error {
 }
 
 func (a *Authenticator) AddAccount(accountName string,
-									accountPassword string,
-									userName string,
-									emailAddress string) (string, error) {
+	accountPassword string,
+	userName string,
+	emailAddress string) (string, error) {
 	query := "INSERT INTO auth_accounts " +
 		"(accountName, passwordHash, disabled, userName, emailAddress) " +
 		"VALUES ($1, $2, 0, $3, $4) " +

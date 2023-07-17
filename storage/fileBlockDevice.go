@@ -1,19 +1,19 @@
 package storage
 
 import (
-	"kalehla/types"
+	"khalehla/pkg"
 	"os"
 	"unsafe"
 )
 
 type fileBlockZero struct {
-	ident         types.Word36
-	label         types.Word36
-	wordsPerBlock types.Word36
-	blockCount    types.Word36
+	ident         pkg.Word36
+	label         pkg.Word36
+	wordsPerBlock pkg.Word36
+	blockCount    pkg.Word36
 }
 
-var fileBlockZeroSize = types.RawBytesPerBlockFromWords[4]
+var fileBlockZeroSize = pkg.RawBytesPerBlockFromWords[4]
 
 const fileIdentifierConstant = "BLKDVF"
 
@@ -29,7 +29,7 @@ type FileBlockDevice struct {
 	writeThrough   bool
 }
 
-func (bd *FileBlockDevice) AllocateBlocks(blockId types.BlockId, blockCount types.BlockCount) DeviceResult {
+func (bd *FileBlockDevice) AllocateBlocks(blockId pkg.BlockId, blockCount pkg.BlockCount) DeviceResult {
 	if !bd.IsOpen() {
 		return DeviceResult{DeviceStatusNotOpen, nil}
 	}
@@ -78,7 +78,7 @@ func (bd *FileBlockDevice) Close() DeviceResult {
 	return DeviceResult{DeviceStatusSuccessful, nil}
 }
 
-func (bd *FileBlockDevice) GetDeviceType() types.DeviceType {
+func (bd *FileBlockDevice) GetDeviceType() pkg.DeviceType {
 	return DeviceTypeFileBlock
 }
 
@@ -142,15 +142,15 @@ func (bd *FileBlockDevice) Open(writeProtected bool, writeThrough bool) DeviceRe
 	}
 
 	bd.geometry.label = bz.label.ToStringAsFieldata()
-	bd.geometry.blockCount = types.BlockCount(bz.blockCount.GetW())
-	bd.geometry.wordsPerBlock = types.BlockSize(bz.wordsPerBlock.GetW())
-	bd.geometry.bytesPerBlock = types.RawBytesPerBlockFromWords[bd.geometry.wordsPerBlock]
-	bd.geometry.blocksPerTrack = types.BlockCount(1792 / bd.geometry.wordsPerBlock)
+	bd.geometry.blockCount = pkg.BlockCount(bz.blockCount.GetW())
+	bd.geometry.wordsPerBlock = pkg.BlockSize(bz.wordsPerBlock.GetW())
+	bd.geometry.bytesPerBlock = pkg.RawBytesPerBlockFromWords[bd.geometry.wordsPerBlock]
+	bd.geometry.blocksPerTrack = pkg.BlockCount(1792 / bd.geometry.wordsPerBlock)
 
 	return DeviceResult{DeviceStatusSuccessful, nil}
 }
 
-func (bd *FileBlockDevice) ReadBlocks(blockId types.BlockId, blockCount types.BlockCount, buffer []types.Word36) DeviceResult {
+func (bd *FileBlockDevice) ReadBlocks(blockId pkg.BlockId, blockCount pkg.BlockCount, buffer []pkg.Word36) DeviceResult {
 	if !bd.IsOpen() {
 		return DeviceResult{DeviceStatusNotOpen, nil}
 	}
@@ -180,7 +180,7 @@ func (bd *FileBlockDevice) ReadBlocks(blockId types.BlockId, blockCount types.Bl
 // or surpasses the physical end of the file (so that we do not remove data which follows the indicated extent),
 // and ONLY if the beginning of the indicated area is less than the physical end of the file (so that the truncate
 // operation does not add space which wasn't there to begin with)
-func (bd *FileBlockDevice) ReleaseBlocks(blockId types.BlockId, blockCount types.BlockCount) DeviceResult {
+func (bd *FileBlockDevice) ReleaseBlocks(blockId pkg.BlockId, blockCount pkg.BlockCount) DeviceResult {
 	if !bd.IsOpen() {
 		return DeviceResult{DeviceStatusNotOpen, nil}
 	}
@@ -215,7 +215,7 @@ func (bd *FileBlockDevice) ReleaseBlocks(blockId types.BlockId, blockCount types
 	return DeviceResult{DeviceStatusSuccessful, nil}
 }
 
-func (bd *FileBlockDevice) WriteBlocks(blockId types.BlockId, blockCount types.BlockCount, buffer []types.Word36) DeviceResult {
+func (bd *FileBlockDevice) WriteBlocks(blockId pkg.BlockId, blockCount pkg.BlockCount, buffer []pkg.Word36) DeviceResult {
 	if !bd.IsOpen() {
 		return DeviceResult{DeviceStatusNotOpen, nil}
 	}
@@ -245,7 +245,7 @@ func (bd *FileBlockDevice) WriteBlocks(blockId types.BlockId, blockCount types.B
 	return DeviceResult{DeviceStatusSuccessful, nil}
 }
 
-func CreateFileBlockDevice(fileName string, label string, wordsPerBlock types.BlockSize, blockCount types.BlockCount, preallocate bool) DeviceResult {
+func CreateFileBlockDevice(fileName string, label string, wordsPerBlock pkg.BlockSize, blockCount pkg.BlockCount, preallocate bool) DeviceResult {
 	if !IsLabelValid(label) {
 		return DeviceResult{DeviceStatusInvalidLabel, nil}
 	}
@@ -266,25 +266,25 @@ func CreateFileBlockDevice(fileName string, label string, wordsPerBlock types.Bl
 	}(bd.file)
 
 	bd.geometry = BlockGeometry{
-		blocksPerTrack: types.BlockCount(1792 / wordsPerBlock),
+		blocksPerTrack: pkg.BlockCount(1792 / wordsPerBlock),
 		blockCount:     blockCount,
-		bytesPerBlock:  types.RawBytesPerBlockFromWords[wordsPerBlock],
+		bytesPerBlock:  pkg.RawBytesPerBlockFromWords[wordsPerBlock],
 		wordsPerBlock:  wordsPerBlock,
 	}
 
 	//	Write the block zero content
 	ident := []byte(fileIdentifierConstant)
-	wIdent := types.Word36(0)
+	wIdent := pkg.Word36(0)
 	wIdent.FromStringToFieldata(ident)
 
-	wLabel := types.Word36(0)
+	wLabel := pkg.Word36(0)
 	wLabel.FromStringToFieldata([]byte(label + "     "))
 
 	bz := fileBlockZero{
 		ident:         wIdent,
 		label:         wLabel,
-		wordsPerBlock: types.Word36(wordsPerBlock),
-		blockCount:    types.Word36(blockCount),
+		wordsPerBlock: pkg.Word36(wordsPerBlock),
+		blockCount:    pkg.Word36(blockCount),
 	}
 
 	f, err := os.OpenFile(bd.fileName, os.O_RDWR|os.O_TRUNC, 0755)
@@ -305,7 +305,7 @@ func CreateFileBlockDevice(fileName string, label string, wordsPerBlock types.Bl
 	//	For a standard system block, it should be sufficient to write the last byte of the last block.
 	//  This *should* cause allocation of all the bytes from the beginning of the file to the end.
 	if preallocate {
-		offset := int64(int64(blockCount)*int64(types.RawBytesPerBlockFromWords[wordsPerBlock])) - 1
+		offset := int64(int64(blockCount)*int64(pkg.RawBytesPerBlockFromWords[wordsPerBlock])) - 1
 		b := []byte{0}
 		_, err = f.WriteAt(b, offset)
 		if err != nil {

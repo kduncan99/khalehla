@@ -1,11 +1,11 @@
 package storage
 
-import "kalehla/types"
+import "khalehla/pkg"
 
 // SimpleAggregator is a simple coordinator for a set of block devices.
 // It manages async IO across the multiple devices in a quasi-efficient manner.
 type SimpleAggregator struct {
-	deviceQueues map[types.DeviceIndex]blockDeviceQueue
+	deviceQueues map[pkg.DeviceIndex]blockDeviceQueue
 	isOpen       bool
 }
 
@@ -40,7 +40,7 @@ func (agg *SimpleAggregator) Open() AggregatorResult {
 	return AggregatorResult{AggregatorStatusSuccessful, nil}
 }
 
-func (agg *SimpleAggregator) GetDevice(deviceIndex types.DeviceIndex) (*BlockDevice, AggregatorResult) {
+func (agg *SimpleAggregator) GetDevice(deviceIndex pkg.DeviceIndex) (*BlockDevice, AggregatorResult) {
 	dev, ok := agg.deviceQueues[deviceIndex]
 	if ok {
 		return dev.device, AggregatorResult{AggregatorStatusSuccessful, nil}
@@ -53,7 +53,7 @@ func (agg *SimpleAggregator) IsOpen() bool {
 	return agg.isOpen
 }
 
-func (agg *SimpleAggregator) RegisterDevice(deviceIndex types.DeviceIndex, device *BlockDevice) AggregatorResult {
+func (agg *SimpleAggregator) RegisterDevice(deviceIndex pkg.DeviceIndex, device *BlockDevice) AggregatorResult {
 	_, ok := agg.deviceQueues[deviceIndex]
 	if ok {
 		return AggregatorResult{AggregatorStatusInvalidDeviceIndex, nil}
@@ -78,6 +78,6 @@ func (agg *SimpleAggregator) StartIO(request *BlockIORequest) {
 
 func NewSimpleAggregator() *SimpleAggregator {
 	return &SimpleAggregator{
-		deviceQueues: make(map[types.DeviceIndex]blockDeviceQueue),
+		deviceQueues: make(map[pkg.DeviceIndex]blockDeviceQueue),
 	}
 }

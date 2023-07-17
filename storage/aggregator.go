@@ -1,6 +1,6 @@
 package storage
 
-import "kalehla/types"
+import "khalehla/pkg"
 
 type AggregatorFunction int
 type AggregatorStatus int
@@ -35,12 +35,12 @@ const (
 
 type BlockIORequest struct {
 	function         AggregatorFunction
-	deviceIndex      types.DeviceIndex
-	blockId          types.BlockId
-	blockCount       types.BlockCount
-	buffer           []types.Word36
+	deviceIndex      pkg.DeviceIndex
+	blockId          pkg.BlockId
+	blockCount       pkg.BlockCount
+	buffer           []pkg.Word36
 	aggregatorStatus AggregatorStatus
-	deviceStatus     types.DeviceStatus
+	deviceStatus     pkg.DeviceStatus
 	systemError      error
 }
 
@@ -59,13 +59,13 @@ type AggregatorResult struct {
 type Aggregator interface {
 	Close() AggregatorResult
 	Open() AggregatorResult
-	GetDevice(deviceIndex types.DeviceIndex) (*BlockDevice, AggregatorResult)
+	GetDevice(deviceIndex pkg.DeviceIndex) (*BlockDevice, AggregatorResult)
 	IsOpen() bool
-	RegisterDevice(deviceIndex types.DeviceIndex, device *BlockDevice) AggregatorResult
+	RegisterDevice(deviceIndex pkg.DeviceIndex, device *BlockDevice) AggregatorResult
 	StartIO(request *BlockIORequest)
 }
 
-func GetBlockGeometry(agg Aggregator, deviceIndex types.DeviceIndex) (BlockGeometry, AggregatorResult) {
+func GetBlockGeometry(agg Aggregator, deviceIndex pkg.DeviceIndex) (BlockGeometry, AggregatorResult) {
 	dev, res := agg.GetDevice(deviceIndex)
 	if res.aggregatorStatus == AggregatorStatusSuccessful {
 		geo, res := (*dev).GetGeometry()
