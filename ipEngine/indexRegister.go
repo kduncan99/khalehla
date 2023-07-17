@@ -15,7 +15,7 @@ func (ir *IndexRegister) DecrementModifier() {
 }
 
 func (ir *IndexRegister) DecrementModifier24() {
-	ir.SetXM(pkg.AddSimple(ir.GetSignedXM24(), pkg.Negate(ir.GetSignedXI12())))
+	ir.SetXM24(pkg.AddSimple(ir.GetSignedXM24(), pkg.Negate(ir.GetSignedXI12())))
 }
 
 func (ir *IndexRegister) GetSignedXI() uint64 {
@@ -39,7 +39,7 @@ func (ir *IndexRegister) GetXI() uint64 {
 }
 
 func (ir *IndexRegister) GetXI12() uint64 {
-	return uint64((*ir) >> 12)
+	return uint64((*ir) >> 24)
 }
 
 func (ir *IndexRegister) GetXM() uint64 {
@@ -59,7 +59,7 @@ func (ir *IndexRegister) IncrementModifier() {
 }
 
 func (ir *IndexRegister) IncrementModifier24() {
-	ir.SetXM(pkg.AddSimple(ir.GetSignedXM24(), ir.GetSignedXI12()))
+	ir.SetXM24(pkg.AddSimple(ir.GetSignedXM24(), ir.GetSignedXI12()))
 }
 
 func (ir *IndexRegister) SetXI(op uint64) {
