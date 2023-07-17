@@ -6,7 +6,11 @@ package functions
 
 import "khalehla/ipEngine"
 
-// NoOperation evaluates the HIU field, but takes no other action (it does x-register incrementation)
+//	TODO DoubleCountBits (DCB)
+//	TODO Execute (EX)
+//	TODO ExecuteRepeated (EXR)
+
+// NoOperation (NOP) evaluates the HIU field, but takes no other action (it does x-register incrementation)
 func NoOperation(e *ipEngine.InstructionEngine) (completed bool, interrupt ipEngine.Interrupt) {
 	completed, _, interrupt = e.GetJumpOperand(false)
 	return

@@ -15,7 +15,9 @@ import (
 
 type Word36 uint64
 
+const PositiveOne = 01
 const PositiveZero = 0
+const NegativeOne = 0_777777_777776
 const NegativeZero = 0_777777_777777
 
 func (w *Word36) EliminateNegativeZero() *Word36 {
