@@ -33,7 +33,7 @@ type IndicatorKeyRegister struct {
 
 func (ikr *IndicatorKeyRegister) GetComposite() pkg.Word36 {
 	value := pkg.Word36(0)
-	value.SetS1(ikr.shortStatusField)
+	value.SetS1(uint64(ikr.shortStatusField))
 	if ikr.instructionInF0 {
 		value |= 0_004000_000000
 	}
@@ -46,8 +46,8 @@ func (ikr *IndicatorKeyRegister) GetComposite() pkg.Word36 {
 	if ikr.softwareBreak {
 		value |= 0_000200_000000
 	}
-	value.SetS3(ikr.interruptClassField)
-	value.SetH2(ikr.accessKey.GetComposite())
+	value.SetS3(uint64(ikr.interruptClassField))
+	value.SetH2(uint64(ikr.accessKey.GetComposite()))
 
 	return value
 }

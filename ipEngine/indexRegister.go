@@ -4,7 +4,9 @@
 
 package ipEngine
 
-import "khalehla/pkg"
+import (
+	"khalehla/pkg"
+)
 
 type IndexRegister pkg.Word36
 
@@ -17,19 +19,19 @@ func (ir *IndexRegister) DecrementModifier24() {
 }
 
 func (ir *IndexRegister) GetSignedXI() uint64 {
-	return pkg.GetSignExtended18(uint64(*ir))
+	return pkg.GetSignExtended18(ir.GetXI())
 }
 
 func (ir *IndexRegister) GetSignedXI12() uint64 {
-	return pkg.GetSignExtended12(uint64(*ir))
+	return pkg.GetSignExtended12(ir.GetXI12())
 }
 
 func (ir *IndexRegister) GetSignedXM() uint64 {
-	return pkg.GetSignExtended18(uint64(*ir))
+	return pkg.GetSignExtended18(ir.GetXM())
 }
 
 func (ir *IndexRegister) GetSignedXM24() uint64 {
-	return pkg.GetSignExtended24(uint64(*ir))
+	return pkg.GetSignExtended24(ir.GetXM24())
 }
 
 func (ir *IndexRegister) GetXI() uint64 {

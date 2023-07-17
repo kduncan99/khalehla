@@ -4,8 +4,6 @@
 
 package ipEngine
 
-import "khalehla/ipEngine/functions"
-
 // FunctionTable maps the basic mode flag to either the basic mode or extended mode function table
 var FunctionTable = map[bool]map[uint]func(*InstructionEngine) (completed bool, interrupt Interrupt){
 	true:  BasicModeFunctionTable,
@@ -13,51 +11,51 @@ var FunctionTable = map[bool]map[uint]func(*InstructionEngine) (completed bool, 
 }
 
 var BasicModeFunctionTable = map[uint]func(*InstructionEngine) (completed bool, interrupt Interrupt){
-	001: functions.StoreAccumulator,
-	004: functions.StoreRegister,
+	001: StoreAccumulator,
+	004: StoreRegister,
 	005: basicModeFunction05Handler,
-	006: functions.StoreIndexRegister,
-	010: functions.LoadAccumulator,
-	023: functions.LoadRegister,
-	027: functions.LoadIndexRegister,
+	006: StoreIndexRegister,
+	010: LoadAccumulator,
+	023: LoadRegister,
+	027: LoadIndexRegister,
 	074: basicModeFunction74Handler,
 }
 
 var ExtendedModeFunctionTable = map[uint]func(*InstructionEngine) (completed bool, interrupt Interrupt){
-	001: functions.StoreAccumulator,
-	004: functions.StoreRegister,
+	001: StoreAccumulator,
+	004: StoreRegister,
 	005: extendedModeFunction05Handler,
-	006: functions.StoreIndexRegister,
-	010: functions.LoadAccumulator,
-	023: functions.LoadRegister,
-	027: functions.LoadIndexRegister,
+	006: StoreIndexRegister,
+	010: LoadAccumulator,
+	023: LoadRegister,
+	027: LoadIndexRegister,
 	073: extendedModeFunction73Handler,
 }
 
 var basicModeFunction05Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt Interrupt){
-	000: functions.StoreZero,
-	001: functions.StoreNegativeZero,
-	002: functions.StorePositiveOne,
-	003: functions.StoreNegativeOne,
-	004: functions.StoreFieldataSpaces,
-	005: functions.StoreFieldataZeroes,
-	006: functions.StoreASCIISpaces,
-	007: functions.StoreASCIIZeroes,
+	000: StoreZero,
+	001: StoreNegativeZero,
+	002: StorePositiveOne,
+	003: StoreNegativeOne,
+	004: StoreFieldataSpaces,
+	005: StoreFieldataZeroes,
+	006: StoreASCIISpaces,
+	007: StoreASCIIZeroes,
 }
 
 var basicModeFunction74Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt Interrupt){
-	006: functions.NoOperation,
+	006: NoOperation,
 }
 
 var extendedModeFunction05Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt Interrupt){
-	000: functions.StoreZero,
-	001: functions.StoreNegativeZero,
-	002: functions.StorePositiveOne,
-	003: functions.StoreNegativeOne,
-	004: functions.StoreFieldataSpaces,
-	005: functions.StoreFieldataZeroes,
-	006: functions.StoreASCIISpaces,
-	007: functions.StoreASCIIZeroes,
+	000: StoreZero,
+	001: StoreNegativeZero,
+	002: StorePositiveOne,
+	003: StoreNegativeOne,
+	004: StoreFieldataSpaces,
+	005: StoreFieldataZeroes,
+	006: StoreASCIISpaces,
+	007: StoreASCIIZeroes,
 }
 
 var extendedModeFunction73Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt Interrupt){
@@ -65,7 +63,7 @@ var extendedModeFunction73Table = map[uint]func(engine *InstructionEngine) (comp
 }
 
 var extendedModeFunction7314Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt Interrupt){
-	000: functions.NoOperation,
+	000: NoOperation,
 }
 
 func basicModeFunction05Handler(e *InstructionEngine) (completed bool, interrupt Interrupt) {

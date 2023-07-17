@@ -35,7 +35,7 @@ func (p *InstructionProcessor) GetStopDetail() pkg.Word36 {
 }
 
 // GetStopReason retrieves the reason code for the most recent stop
-func (p *InstructionProcessor) GetStopReason() uint {
+func (p *InstructionProcessor) GetStopReason() StopReason {
 	return p.engine.stopReason
 }
 
@@ -116,15 +116,15 @@ func (p *InstructionProcessor) handleInterrupt() {
 	stackOffset := icsXReg.GetXM()
 	stackFrameSize := icsXReg.GetXI()
 	stackFrameLimit := stackOffset + stackFrameSize
-	if (stackFrameLimit-1 > br[ICSBaseRegister].upperLimitNormalized) ||
-		(stackOffset < br[ICSBaseRegister].lowerLimitNormalized) {
+	if (stackFrameLimit-1 > uint64(br[ICSBaseRegister].upperLimitNormalized)) ||
+		(stackOffset < uint64(br[ICSBaseRegister].lowerLimitNormalized)) {
 		p.engine.Stop(ICSOverflowStop, 0)
 		return
 	}
 
 	//	Populate the stack frame in memory
 	icsStorage := br[ICSBaseRegister].storage
-	if stackFrameLimit >= uint(len(icsStorage)) {
+	if stackFrameLimit >= uint64(len(icsStorage)) {
 		p.engine.Stop(ICSBaseRegisterInvalidStop, 0)
 		return
 	}

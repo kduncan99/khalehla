@@ -2,16 +2,14 @@
 // Copyright © 2023 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package functions
-
-import "khalehla/ipEngine"
+package ipEngine
 
 //	TODO DoubleLoadAccumulator (DL)
 //	TODO DoubleLoadMagnitudeA (DLM)
 //	TODO DoubleLoadNegativeA (DLN)
 
 // LoadAccumulator (LA) loads the content of U under j-field control, and stores it in A(a)
-func LoadAccumulator(e *ipEngine.InstructionEngine) (completed bool, interrupt ipEngine.Interrupt) {
+func LoadAccumulator(e *InstructionEngine) (completed bool, interrupt Interrupt) {
 	completed, operand, interrupt := e.GetOperand(true, true, true, true)
 	if !completed || interrupt != nil {
 		return false, interrupt
@@ -25,7 +23,7 @@ func LoadAccumulator(e *ipEngine.InstructionEngine) (completed bool, interrupt i
 //	TODO LoadAQuarterWord (LAQW)
 
 // LoadIndexRegister (LX) loads the content of U under j-field control, and stores it in X(a)
-func LoadIndexRegister(e *ipEngine.InstructionEngine) (completed bool, interrupt ipEngine.Interrupt) {
+func LoadIndexRegister(e *InstructionEngine) (completed bool, interrupt Interrupt) {
 	completed, operand, interrupt := e.GetOperand(true, true, true, true)
 	if !completed || interrupt != nil {
 		return false, interrupt
@@ -45,7 +43,7 @@ func LoadIndexRegister(e *ipEngine.InstructionEngine) (completed bool, interrupt
 //	TODO LoadNegativeMagnitudeAccumulator (LNMA)
 
 // LoadRegister (LR) loads the content of U under j-field control, and stores it in R(a)
-func LoadRegister(e *ipEngine.InstructionEngine) (completed bool, interrupt ipEngine.Interrupt) {
+func LoadRegister(e *InstructionEngine) (completed bool, interrupt Interrupt) {
 	completed, operand, interrupt := e.GetOperand(true, true, true, true)
 	if !completed || interrupt != nil {
 		return false, interrupt

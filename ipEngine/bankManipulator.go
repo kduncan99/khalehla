@@ -35,11 +35,11 @@ type BankManipulator struct {
 	sourceBankDescriptorIndex uint
 	sourceBankLevel           uint
 	sourceBankDescriptor      *BankDescriptor
-	sourceBankOffset          uint
+	sourceBankOffset          uint64
 	targetBankDescriptor      *BankDescriptor
 	targetBankDescriptorIndex uint
 	targetBankLevel           uint
-	targetBankOffset          uint
+	targetBankOffset          uint64
 	transferMode              uint
 	returnControlStackFrame   *ReturnControlStackFrame
 }
@@ -144,13 +144,13 @@ func step3(bm *BankManipulator) bool {
 		lbdiOffset := bdtLevel0[intOffset]
 		bm.sourceBankLevel = uint(lbdiOffset >> 33)
 		bm.sourceBankDescriptorIndex = uint(lbdiOffset>>18) & 077777
-		bm.sourceBankOffset = uint(lbdiOffset & 0777777)
+		bm.sourceBankOffset = uint64(lbdiOffset) & 0777777
 	} else if bm.instructionType == URInstruction {
 		//  source L,BDI comes from operand L,BDI
 		//  offset comes from operand.PAR.PC
 		bm.sourceBankLevel = uint(bm.operands[0] >> 33)
 		bm.sourceBankDescriptorIndex = uint(bm.operands[0]>>18) & 077777
-		bm.sourceBankOffset = uint(bm.operands[0] & 0777777)
+		bm.sourceBankOffset = uint64(bm.operands[0] & 0777777)
 	} else if bm.isReturnOperation {
 		//  source L,BDI,Offset comes from RCS L,BDI and offset fields
 		//  This is where we pop an RCS frame and grab the relevant fields therefrom.
@@ -162,21 +162,21 @@ func step3(bm *BankManipulator) bool {
 		}
 
 		rcsXReg := bm.engine.GetExecOrUserXRegister(RCSIndexRegister)
-		if rcsXReg.GetXM() > rcsBReg.upperLimitNormalized {
-			i := NewRCSGenericStackUnderOverflowInterrupt(RCSGenericStackUnderflow, RCSIndexRegister, rcsXReg.GetXM())
+		if rcsXReg.GetXM() > uint64(rcsBReg.upperLimitNormalized) {
+			i := NewRCSGenericStackUnderOverflowInterrupt(RCSGenericStackUnderflow, RCSIndexRegister, uint(rcsXReg.GetXM()))
 			bm.engine.PostInterrupt(i)
 			return false
 		}
 
 		framePointer := rcsXReg.GetXM()
-		offset := framePointer - rcsBReg.lowerLimitNormalized
+		offset := framePointer - uint64(rcsBReg.lowerLimitNormalized)
 		frame := rcsBReg.storage[offset : offset+2]
 		bm.returnControlStackFrame = NewReturnControlStackFrameFromBuffer(frame)
 		rcsXReg.SetXM(framePointer + 2)
 
 		bm.sourceBankLevel = bm.returnControlStackFrame.bankLevel
 		bm.sourceBankDescriptorIndex = bm.returnControlStackFrame.bankDescriptorIndex
-		bm.sourceBankOffset = bm.returnControlStackFrame.offset
+		bm.sourceBankOffset = uint64(bm.returnControlStackFrame.offset)
 	} else if bm.isLXJInstruction {
 		//  source L,BDI comes from basic mode X(a) E,LS,BDI
 		//  offset comes from operand
@@ -197,12 +197,12 @@ func step3(bm *BankManipulator) bool {
 			}
 		}
 		bm.sourceBankDescriptorIndex = uint((bmSpec >> 18) & 077777)
-		bm.sourceBankOffset = uint(bm.operands[0] & 0777777)
+		bm.sourceBankOffset = uint64(bm.operands[0] & 0777777)
 	} else {
 		//  source L,BDI,Offset comes from operand
 		bm.sourceBankLevel = uint(bm.operands[0]>>33) & 07
 		bm.sourceBankDescriptorIndex = uint(bm.operands[0]>>18) & 077777
-		bm.sourceBankOffset = uint(bm.operands[0] & 0777777)
+		bm.sourceBankOffset = uint64(bm.operands[0] & 0777777)
 	}
 
 	bm.nextStep++
@@ -433,8 +433,8 @@ func step9(bm *BankManipulator) bool {
 
 	//	Check limits of offset against gate bank to ensure the gate offset is within limits,
 	//	and is a multiple of 8 words.
-	if (bm.sourceBankOffset < bm.sourceBankDescriptor.GetLowerLimitNormalized()) ||
-		(bm.sourceBankOffset > bm.sourceBankDescriptor.GetUpperLimitNormalized()) ||
+	if (bm.sourceBankOffset < uint64(bm.sourceBankDescriptor.GetLowerLimitNormalized())) ||
+		(bm.sourceBankOffset > uint64(bm.sourceBankDescriptor.GetUpperLimitNormalized())) ||
 		(bm.sourceBankOffset&07) != 0 {
 		bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionGateBankBoundaryViolation, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
 		return false
@@ -480,7 +480,7 @@ func step9(bm *BankManipulator) bool {
 	//	Fetch target BD
 	bm.targetBankLevel = bm.gate.targetLevel
 	bm.targetBankDescriptorIndex = bm.gate.targetBDI
-	bm.targetBankOffset = bm.gate.targetOffset
+	bm.targetBankOffset = uint64(bm.gate.targetOffset)
 	bm.targetBankDescriptor, ok = bm.engine.findBankDescriptor(bm.targetBankLevel, bm.targetBankDescriptorIndex)
 	if !ok {
 		bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionFatal, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
@@ -503,10 +503,10 @@ func step10(bm *BankManipulator) bool {
 		//	and the execution instruction will load all of B1-B15
 		bm.nextStep = 18
 	} else if bm.instructionType == LBEInstruction {
-		bm.baseRegisterIndex = bm.engine.activityStatePacket.currentInstruction.GetA() + 16
+		bm.baseRegisterIndex = uint(bm.engine.activityStatePacket.currentInstruction.GetA()) + 16
 		bm.nextStep = 18
 	} else if bm.instructionType == LBUInstruction {
-		bm.baseRegisterIndex = bm.engine.activityStatePacket.currentInstruction.GetA()
+		bm.baseRegisterIndex = uint(bm.engine.activityStatePacket.currentInstruction.GetA())
 		bm.nextStep = 18
 	} else if bm.instructionType == URInstruction {
 		bm.baseRegisterIndex = 0
@@ -614,7 +614,7 @@ func step12(bm *BankManipulator) bool {
 		}
 
 		rcsXReg := (*IndexRegister)(bm.engine.generalRegisterSet.GetRegister(RCSIndexRegister))
-		framePointer := rcsXReg.GetXM() - 2
+		framePointer := uint(rcsXReg.GetXM()) - 2
 		if framePointer < rcsBReg.lowerLimitNormalized {
 			bm.engine.PostInterrupt(NewRCSGenericStackUnderOverflowInterrupt(RCSGenericStackOverflow, RCSBaseRegister, framePointer))
 			return false
@@ -656,7 +656,7 @@ func step12(bm *BankManipulator) bool {
 		rcsFrame.WriteToBuffer(buffer)
 
 		xReg := (*IndexRegister)(bm.engine.generalRegisterSet.GetRegister(RCSIndexRegister))
-		xReg.SetXM(framePointer)
+		xReg.SetXM(uint64(framePointer))
 	}
 
 	bm.nextStep++
@@ -792,7 +792,7 @@ func step16(bm *BankManipulator) bool {
 		//  Quantum timer is undefined, and the rest of the ASP is not relevant.
 		asp := bm.engine.activityStatePacket
 		asp.programAddressRegister =
-			NewProgramAddressRegister(bm.targetBankLevel, bm.targetBankDescriptorIndex, bm.targetBankOffset)
+			NewProgramAddressRegister(bm.targetBankLevel, bm.targetBankDescriptorIndex, uint(bm.targetBankOffset))
 
 		dr := &DesignatorRegister{}
 		dr.ExecRegisterSetSelected = true
@@ -831,7 +831,7 @@ func step16(bm *BankManipulator) bool {
 //	and processing should be discontinued.
 func step17(bm *BankManipulator) bool {
 	if bm.transferMode != NoTransfer {
-		bm.engine.SetProgramCounter(bm.targetBankOffset, true)
+		bm.engine.SetProgramCounter(uint(bm.targetBankOffset), true)
 	}
 
 	bm.nextStep++
@@ -853,13 +853,13 @@ func step18(bm *BankManipulator) bool {
 			if bm.targetBankDescriptor == nil {
 				bm.engine.activeBaseTable[bm.baseRegisterIndex].SetComposite(0)
 			} else {
-				offset := uint(0)
+				var offset uint64
 				if bm.isLoadInstruction {
 					offset = bm.targetBankOffset
 				}
 				bm.engine.activeBaseTable[bm.baseRegisterIndex].SetBankLevel(bm.targetBankLevel)
 				bm.engine.activeBaseTable[bm.baseRegisterIndex].SetBankDescriptorIndex(bm.targetBankDescriptorIndex)
-				bm.engine.activeBaseTable[bm.baseRegisterIndex].SetSubsetSpecification(offset)
+				bm.engine.activeBaseTable[bm.baseRegisterIndex].SetSubsetSpecification(uint(offset))
 			}
 		}
 	}
@@ -880,8 +880,8 @@ func step19(bm *BankManipulator) bool {
 	} else if bm.isLoadInstruction && (bm.targetBankOffset != 0) {
 		//  we have sub-setting info (in targetBankOffset) -- set up a real Base Register with sub-setting.
 		storage, _ := bm.engine.mainStorage.GetBlock(bm.targetBankDescriptor.baseAddress.segment)
-		bm.engine.baseRegisters[bm.baseRegisterIndex].FromBankDescriptorWithSubsetting(
-			bm.targetBankDescriptor, bm.targetBankOffset, storage)
+		bm.engine.baseRegisters[bm.baseRegisterIndex].
+			FromBankDescriptorWithSubsetting(bm.targetBankDescriptor, uint(bm.targetBankOffset), storage)
 	} else {
 		//  A normal non-sub-setting base register - make it so.
 		storage, _ := bm.engine.mainStorage.GetBlock(bm.targetBankDescriptor.baseAddress.segment)
@@ -943,7 +943,7 @@ func step21(bm *BankManipulator) bool {
 			(bm.gate == nil) &&
 			(bm.targetBankDescriptor.bankType == BasicModeBankDescriptor) {
 			if (!perms.canEnter) &&
-				(bm.targetBankOffset != bm.targetBankDescriptor.GetLowerLimitNormalized()) {
+				(bm.targetBankOffset != uint64(bm.targetBankDescriptor.GetLowerLimitNormalized())) {
 				bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionFatal, bm.targetBankLevel, bm.targetBankDescriptorIndex))
 				return false
 			}
@@ -1054,7 +1054,7 @@ func (bm *BankManipulator) process() {
 			(bm.instructionType == LDJInstruction) ||
 			(bm.instructionType == LIJInstruction)
 
-		bm.lxjXRegisterIndex = bm.engine.activityStatePacket.currentInstruction.GetA()
+		bm.lxjXRegisterIndex = uint(bm.engine.activityStatePacket.currentInstruction.GetA())
 
 		if bm.isLXJInstruction {
 			xRegister := bm.engine.GetExecOrUserXRegister(bm.lxjXRegisterIndex)

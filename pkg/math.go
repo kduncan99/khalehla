@@ -36,21 +36,21 @@ func GetSignExtended12(value uint64) uint64 {
 }
 
 // GetSignExtended18 sign-extends an 18-bit value to 36 bits
-func GetSignExtended18(value uint64) uint64 {
-	if (value & 0_400000) == 0 {
-		return value
-	} else {
-		return value | 0_777777_000000
+func GetSignExtended18(value uint64) (result uint64) {
+	result = value & 0_777777
+	if (result & 0_400000) != 0 {
+		result |= 0_777777_000000
 	}
+	return
 }
 
 // GetSignExtended24 sign-extends a 24-bit value to 36 bits
-func GetSignExtended24(value uint64) uint64 {
-	if (value & 040_000000) == 0 {
-		return value
-	} else {
-		return value | 0_777700_000000
+func GetSignExtended24(value uint64) (result uint64) {
+	result = value & 077_777777
+	if (result & 040_000000) != 0 {
+		result |= 0_777700_000000
 	}
+	return
 }
 
 // GetTwosComplement takes a number which is a 36-bit signed value packed into a uint64,
