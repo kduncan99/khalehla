@@ -6,20 +6,30 @@
 package tasm
 
 type parsedLine struct {
-	sourceName  *string
-	lineNumber  int
-	fields      [][]string
+	sourceName *string
+	lineNumber int
+
+	//	parsed fields
+	fields [][]string
+
+	//	interpreted things
+	locationCounter     *string
+	labelSpecifications []string
+
+	//	diagnostics
 	result      bool
 	diagnostics []string
 }
 
 func parse(sourceName *string, lineNumber int, source string) *parsedLine {
 	pl := parsedLine{
-		sourceName:  sourceName,
-		lineNumber:  lineNumber,
-		fields:      make([][]string, 0),
-		result:      true,
-		diagnostics: make([]string, 0),
+		sourceName:          sourceName,
+		lineNumber:          lineNumber,
+		fields:              make([][]string, 0),
+		locationCounter:     nil,
+		labelSpecifications: make([]string, 0),
+		result:              true,
+		diagnostics:         make([]string, 0),
 	}
 
 	fieldNumber := 0
@@ -132,4 +142,43 @@ func parse(sourceName *string, lineNumber int, source string) *parsedLine {
 	}
 
 	return &pl
+}
+
+// interpret interprets the parsed line
+func (pl *parsedLine) interpret() {
+	//	Field 0 contains 0 or more subfields.
+	//  The first subfield is either a location counter or a label specification.
+	//  All subsequent subfields are label specifications.
+	f0 := pl.fields[0]
+	if f0 != nil && len(f0) > 0 {
+		sfx := 0
+		if isValidLocationCounter(f0[sfx]) {
+			pl.locationCounter = &f0[sfx]
+			sfx++
+		}
+
+		for sfx < len(f0) {
+			if !isValidLabelSpecification(f0[sfx]) {
+				pl.diagnostics = append(pl.diagnostics, "Invalid label specification:"+f0[sfx])
+				pl.result = false
+			} else {
+				pl.labelSpecifications = append(pl.labelSpecifications, f0[sfx])
+			}
+		}
+	}
+
+	//	All else depends upon the content of field 1, subfield 0 - if there is such a thing
+	f1 := pl.fields[1]
+	if f1 == nil || len(f1) == 0 {
+		return
+	}
+
+	//	Is this a PROC call?
+	//	TODO
+
+	//	Is this a directive invocation?
+	//	TODO
+
+	//	None of the above... treat it as an expression and try to generate code
+	//	TODO
 }
