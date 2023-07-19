@@ -1,4 +1,9 @@
-package tasm
+// Khalehla Project
+// simple assembler
+// Copyright © 2023 by Kurt Duncan, BearSnake LLC
+// All Rights Reserved
+
+package kasm
 
 var axrIncludes = []string{
 	" X0   $EQU 0",

@@ -1,9 +1,9 @@
 // Khalehla Project
-// testing assembler
+// simple assembler
 // Copyright © 2023 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package tasm
+package kasm
 
 import "khalehla/pkg"
 
@@ -17,13 +17,13 @@ func (m *Module) assemble(sourceName string, source []string) (result bool, diag
 	result = true
 	diagnostics = make([]string, 0)
 
-	parsedLines := make([]*parsedLine, len(source))
+	parsedLines := make([]*pl, len(source))
 	for sx := 0; sx < len(source); sx++ {
 		parsedLines[sx] = parse(&sourceName, sx+1, source[sx])
-		if !parsedLines[sx].result {
+		if !parsedLines[sx].Result {
 			result = false
 		}
-		diagnostics = append(diagnostics, parsedLines[sx].diagnostics...)
+		diagnostics = append(diagnostics, parsedLines[sx].Diagnostics...)
 	}
 
 	return
