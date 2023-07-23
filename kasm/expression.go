@@ -7,200 +7,158 @@ package kasm
 
 import (
 	"fmt"
-	"strings"
 )
+
+// ExpressionItem is an Operator or a Value
+type ExpressionItem interface {
+	Evaluate(context *ExpressionContext) error
+}
 
 // Expression represents an evaluable expression
 type Expression struct {
-	text  string
-	items []expressionItem
-
-	textIndex int
-	itemIndex int
-	context   *Context
-	values    []Value
-	operators []*operatorExpressionItem
+	items []ExpressionItem
 }
 
-func NewExpression(text string) *Expression {
+type ExpressionList struct {
+	expressions []*Expression
+}
+
+func NewExpression() *Expression {
 	return &Expression{
-		text:  text,
-		items: make([]expressionItem, 0),
+		items: make([]ExpressionItem, 0),
 	}
 }
 
-func (e *Expression) evaluate(context *Context) (Value, error) {
-	e.context = context
-	e.itemIndex = 0
-	e.values = make([]Value, 0)
-	e.operators = make([]*operatorExpressionItem, 0)
-
-	for e.itemIndex < len(e.items) {
-		if e.items[e.itemIndex].GetExpressionItemType() == OperatorItemType {
-
-		} else if e.items[e.itemIndex].GetExpressionItemType() == ValueItemType {
-			vi := e.items[e.itemIndex].(valueExpressionItem)
-			e.values = append(e.values, vi.Evaluate(e))
-		}
-	}
-
-	if len(e.values) != 1 {
-		return nil, fmt.Errorf("internal expression evaluation error")
-	}
-
-	val := e.values[0]
-	e.values = nil
-	return val, nil
+func (e *Expression) pushItem(item ExpressionItem) {
+	e.items = append(e.items, item)
 }
 
-func (e *Expression) skipWhitespace() {
-	for e.textIndex < len(e.text) {
-		if e.text[e.textIndex] != ' ' {
-			break
+func (e *Expression) Evaluate(context *ExpressionContext) error {
+	ix := 0
+	for ix < len(e.items) {
+		err := e.items[ix].Evaluate(context)
+		if err != nil {
+			return err
 		}
 	}
-}
 
-func (e *Expression) parse() error {
-	wantBinaryOperator := false
-	wantUnaryPostfixOperator := false
-	wantUnaryPrefixOperator := true
-	wantValue := true
-
-	for e.textIndex < len(e.text) {
-		e.skipWhitespace()
-
-		if wantUnaryPostfixOperator {
-			result, err := e.parseUnaryPostfixOperator()
-			if err != nil {
-				return err
-			} else if result {
-				continue
-			}
-		}
-
-		if wantUnaryPrefixOperator {
-			result, err := e.parseUnaryPrefixOperator()
-			if err != nil {
-				return err
-			} else if result {
-				continue
-			}
-		}
-
-		if wantBinaryOperator {
-			result, err := e.parseBinaryOperator()
-			if err != nil {
-				return err
-			} else if result {
-				wantBinaryOperator = false
-				wantUnaryPostfixOperator = false
-				wantUnaryPrefixOperator = true
-				wantValue = true
-				continue
-			}
-		}
-
-		if wantValue {
-			result, err := e.parseValue()
-			if err != nil {
-				return err
-			} else if result {
-				wantBinaryOperator = true
-				wantUnaryPostfixOperator = true
-				wantUnaryPrefixOperator = false
-				wantValue = false
-				continue
-			}
-		}
-
-		return fmt.Errorf("syntax error in expresion")
+	if len(context.values) != 1 {
+		return fmt.Errorf("internal expression evaluation error")
 	}
 
 	return nil
 }
 
-func (e *Expression) parseToken(token string) bool {
-	remaining := len(e.text) - e.textIndex
-	if remaining >= len(token) {
-		textx := e.textIndex
-		for tokx := 0; tokx < len(token); tokx++ {
-			tokChar := strings.ToUpper(token[tokx : tokx+1])
-			textChar := strings.ToUpper(e.text[textx : textx+1])
-			if tokChar != textChar {
-				return false
+func (p *Parser) ParseExpression() (*Expression, error) {
+	e := NewExpression()
+
+	wantBinaryOperator := false
+	wantUnaryPostfixOperator := false
+	wantUnaryPrefixOperator := true
+	wantTerm := true
+
+	p.SkipWhiteSpace()
+	for !p.AtEnd() {
+
+		if wantUnaryPostfixOperator {
+			op := p.ParseUnaryPostfixOperator()
+			if op != nil {
+				e.pushItem(op)
+				p.SkipWhiteSpace()
+				continue
 			}
 		}
 
-		e.textIndex += len(token)
-		return true
-	}
-
-	return false
-}
-
-func (e *Expression) parseBinaryOperator() (bool, error) {
-	for _, op := range Operators {
-		if op.GetOperatorPosition() == BinaryOperator && e.parseToken(op.GetToken()) {
-			e.items = append(e.items, op)
-			return true, nil
+		if wantUnaryPrefixOperator {
+			op := p.ParseUnaryPrefixOperator()
+			if op != nil {
+				e.pushItem(op)
+				p.SkipWhiteSpace()
+				continue
+			}
 		}
-	}
-	return false, nil
-}
 
-func (e *Expression) parseUnaryPostfixOperator() (bool, error) {
-	for _, op := range Operators {
-		if op.GetOperatorPosition() == UnaryPostfixOperator && e.parseToken(op.GetToken()) {
-			e.items = append(e.items, op)
-			return true, nil
+		if wantBinaryOperator {
+			op := p.ParseBinaryOperator()
+			if op != nil {
+				wantBinaryOperator = false
+				wantUnaryPostfixOperator = false
+				wantUnaryPrefixOperator = true
+				wantTerm = true
+				e.pushItem(op)
+				p.SkipWhiteSpace()
+				continue
+			}
 		}
-	}
-	return false, nil
-}
 
-func (e *Expression) parseUnaryPrefixOperator() (bool, error) {
-	for _, op := range Operators {
-		if op.GetOperatorPosition() == UnaryPrefixOperator && e.parseToken(op.GetToken()) {
-			e.items = append(e.items, op)
-			return true, nil
+		if wantTerm {
+			term, err := p.ParseTerm()
+			if err != nil {
+				return nil, err
+			} else if term != nil {
+				wantBinaryOperator = true
+				wantUnaryPostfixOperator = true
+				wantUnaryPrefixOperator = false
+				wantTerm = false
+				e.pushItem(term)
+				p.SkipWhiteSpace()
+				continue
+			}
 		}
+
+		return nil, fmt.Errorf("syntax error in expression")
 	}
-	return false, nil
+
+	return e, nil
 }
 
-func (e *Expression) parseValue() (bool, error) {
-	result, err := e.parseLiteralValue()
-	if !result && err == nil {
-		result, err = e.parseReference()
+// ParseExpressionList parses the following into a slice of references to Expression structs:
+//
+//	expr [ ',' expr ]*
+//
+// If we do not find any expression, we return nil as the result.
+// Note that we DO NOT parse nor deal with enclosing parenthesis.
+func (p *Parser) ParseExpressionList() (*ExpressionList, error) {
+	pos := p.GetPosition()
+	p.SkipWhiteSpace()
+	expr, err := p.ParseExpression()
+	if err != nil {
+		return nil, err
+	} else if expr == nil {
+		_ = p.SetPosition(pos)
+		return nil, nil
 	}
+
+	expList := []*Expression{expr}
+	p.SkipWhiteSpace()
+	for p.ParseCharacter(',') {
+		p.SkipWhiteSpace()
+		expr, err = p.ParseExpression()
+		if err != nil {
+			return nil, err
+		} else if expr == nil {
+			return nil, fmt.Errorf("expected another expression in expression list")
+		}
+
+		expList = append(expList, expr)
+		p.SkipWhiteSpace()
+	}
+
+	result := &ExpressionList{
+		expressions: expList,
+	}
+	return result, nil
+}
+
+func (el *ExpressionList) Evaluate(ec *ExpressionContext) error {
+	// TODO an interesting conundrum - bare list gives us fields equally divided into 36, but what about forms?
+}
+
+// ParseTerm parses a term from the input text. A term is anything which is not an operator.
+func (p *Parser) ParseTerm() (ExpressionItem, error) {
+	result, err := p.ParseLiteral()
+	// if result == nil && err == nil {
+	// 	result, err = p.ParseReference()
+	// }
 	return result, err
-}
-
-func (e *Expression) parseLiteralValue() (bool, error) {
-	result, err := e.parseFloatLiteralValue()
-	if !result && err == nil {
-		result, err = e.parseIntegerLiteralValue()
-	}
-	if !result && err == nil {
-		result, err = e.parseStringLiteralValue()
-	}
-
-	return result, err
-}
-
-func (e *Expression) parseFloatLiteralValue() (bool, error) {
-	return false, nil // TODO
-}
-
-func (e *Expression) parseIntegerLiteralValue() (bool, error) {
-	return false, nil // TODO
-}
-
-func (e *Expression) parseStringLiteralValue() (bool, error) {
-	return false, nil // TODO
-}
-
-func (e *Expression) parseReference() (bool, error) {
-	return false, nil // TODO
 }

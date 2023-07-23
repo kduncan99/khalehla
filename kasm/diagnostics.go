@@ -26,16 +26,16 @@ func (d *diagnosticEntry) GetText() string {
 	return d.text
 }
 
-type diagnostics struct {
-	// key is line number, value is array of diagnostics pertaining to that line number
+type Diagnostics struct {
+	// key is line number, value is array of Diagnostics pertaining to that line number
 	entries map[int][]diagnosticEntry
 }
 
-func (d *diagnostics) Clear() {
+func (d *Diagnostics) Clear() {
 	d.entries = make(map[int][]diagnosticEntry)
 }
 
-func (d *diagnostics) AppendDiagnostic(lineNumber int, entry diagnosticEntry) {
+func (d *Diagnostics) AppendDiagnostic(lineNumber int, entry diagnosticEntry) {
 	_, ok := d.entries[lineNumber]
 	if !ok {
 		d.entries[lineNumber] = []diagnosticEntry{entry}
@@ -44,7 +44,7 @@ func (d *diagnostics) AppendDiagnostic(lineNumber int, entry diagnosticEntry) {
 	}
 }
 
-func (d *diagnostics) AppendError(lineNumber int, text string) {
+func (d *Diagnostics) AppendError(lineNumber int, text string) {
 	diag := diagnosticEntry{
 		diagType: ERROR,
 		text:     text,
@@ -52,7 +52,7 @@ func (d *diagnostics) AppendError(lineNumber int, text string) {
 	d.AppendDiagnostic(lineNumber, diag)
 }
 
-func (d *diagnostics) AppendInfo(lineNumber int, text string) {
+func (d *Diagnostics) AppendInfo(lineNumber int, text string) {
 	diag := diagnosticEntry{
 		diagType: INFO,
 		text:     text,
@@ -60,7 +60,7 @@ func (d *diagnostics) AppendInfo(lineNumber int, text string) {
 	d.AppendDiagnostic(lineNumber, diag)
 }
 
-func (d *diagnostics) AppendWarning(lineNumber int, text string) {
+func (d *Diagnostics) AppendWarning(lineNumber int, text string) {
 	diag := diagnosticEntry{
 		diagType: WARNING,
 		text:     text,
@@ -68,7 +68,7 @@ func (d *diagnostics) AppendWarning(lineNumber int, text string) {
 	d.AppendDiagnostic(lineNumber, diag)
 }
 
-func (d *diagnostics) GetDiagnosticCounters() (int, int, int) {
+func (d *Diagnostics) GetDiagnosticCounters() (int, int, int) {
 	errors := 0
 	infos := 0
 	warnings := 0

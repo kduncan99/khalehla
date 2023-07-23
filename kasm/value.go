@@ -6,85 +6,40 @@
 package kasm
 
 import (
-	"math/big"
+	"fmt"
 )
 
 type ValueType int
 
 const (
-	IntegerValueType ValueType = iota
+	IntegerValueType ValueType = iota + 1
+	FloatValueType
 	StringValueType
+	NodeValueType
+	InternalNameValueType          // (NAME line label)
+	ProcedureValueType             // (label on PROC line)
+	FunctionValueType              // (label on FUNC line)
+	MasmDirectiveValueType         // (including instruction mnemonics and forms)
+	MasmIntrinsicFunctionValueType // (build-in function)
 )
 
 type Value interface {
+	Evaluate(ec *ExpressionContext) error
 	GetValueType() ValueType
 }
 
-// Integer value -------------------------------------------------------------------------------------------------------
+var nonOctalDigit = fmt.Errorf("non-octal digit in numeric literal")
+var syntaxError = fmt.Errorf("syntax error in numeric literal")
+var truncationError = fmt.Errorf("truncation in numeric literal")
 
-type ValueOffset struct {
-	symbol     string
-	isNegative bool
-}
-
-type ValueComponent struct {
-	bitCount int
-	value    *big.Int
-	offsets  []ValueOffset
-}
-
-type IntegerValue struct {
-	components []ValueComponent
-}
-
-func (v *IntegerValue) GetValueType() ValueType {
-	return IntegerValueType
-}
-
-func (v *IntegerValue) GetForm() []int {
-	result := make([]int, len(v.components))
-	for cx := 0; cx < len(v.components); cx++ {
-		result[cx] = v.components[cx].bitCount
+func (p *Parser) ParseLiteral() (Value, error) {
+	value, err := p.ParseFloatLiteral()
+	if value == nil && err == nil {
+		value, err = p.ParseIntegerLiteral()
 	}
-	return result
-}
-
-func NewBigIntegerValue(value *big.Int) *IntegerValue {
-	vc := ValueComponent{
-		bitCount: 36,
-		value:    value,
-		offsets:  nil,
+	if value == nil && err == nil {
+		value, err = p.ParseStringLiteral()
 	}
 
-	return &IntegerValue{
-		components: []ValueComponent{vc},
-	}
-}
-
-func NewSimpleIntegerValue(value int64) *IntegerValue {
-	vc := ValueComponent{
-		bitCount: 36,
-		value:    big.NewInt(value),
-		offsets:  nil,
-	}
-
-	return &IntegerValue{
-		components: []ValueComponent{vc},
-	}
-}
-
-// String value --------------------------------------------------------------------------------------------------------
-
-type StringValue struct {
-	value string
-}
-
-func (v *StringValue) GetValueType() ValueType {
-	return StringValueType
-}
-
-func NewStringValue(value string) *StringValue {
-	return &StringValue{
-		value: value,
-	}
+	return value, err
 }

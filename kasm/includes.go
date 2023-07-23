@@ -83,45 +83,19 @@ var formIncludes = []string{
 }
 
 var instructionIncludes = []string{
+	// f,j a,u,x
 	"P         $PROC     1,1   $BASIC",
 	"SA*       $NAME     001",
 	"LA*       $NAME     010",
-	"hi        $EQU      P(1,*1) << 1 | P(1,*2)",
-	"          I$        P(0,0), P(0,1), P(1,0)-A0, P(1,1), hi, P(1,2)",
+	"hi        $EQU      P(1,*2) << 1 | P(1,*1)",
+	"          I$        P(0,0), P(0,1), P(1,0)-A0, P(1,2), hi, P(1,1)",
 	"          $END",
 
-	"P         $PROC     1,1   $BASIC",
-	"SR*       $NAME     004",
-	"LR*       $NAME     023",
-	"hi        $EQU      P(1,*1) << 1 | P(1,*2)",
-	"          I$        P(0,0), P(0,1), P(1,0)-R0, P(1,1), hi, P(1,2)",
-	"          $END",
-
-	"P         $PROC     1,1   $BASIC",
-	"SX*       $NAME     006",
-	"LX*       $NAME     027",
-	"hi        $EQU      P(1,*1) << 1 | P(1,*2)",
-	"          I$        P(0,0), P(0,1), P(1,0)-X0, P(1,1), hi, P(1,2)",
-	"          $END",
-
+	// f,j a,d,x,b
 	"P         $PROC     1,1   $EXTEND",
 	"SA*       $NAME     001",
 	"LA*       $NAME     010",
-	"hi        $EQU      P(1,*1) << 1 | P(1,*2)",
-	"          I$        P(0,0), P(0,1), P(1,0)-A0, P(1,1), hi, P(1,2), P(1,3)",
-	"          $END",
-
-	"P         $PROC     1,1   $EXTEND",
-	"SR*       $NAME     004",
-	"LR*       $NAME     023",
-	"hi        $EQU      P(1,*1) << 1 | P(1,*2)",
-	"          I$        P(0,0), P(0,1), P(1,0)-R0, P(1,1), hi, P(1,2), P(1,3)",
-	"          $END",
-
-	"P         $PROC     1,1   $EXTEND",
-	"SX*       $NAME     006",
-	"LX*       $NAME     027",
-	"hi        $EQU      P(1,*1) << 1 | P(1,*2)",
-	"          I$        P(0,0), P(0,1), P(1,0)-X0, P(1,1), hi, P(1,2), P(1,3)",
+	"hi        $EQU      P(1,*1)",
+	"          EI$       P(0,0), P(0,1), P(1,0)-A0, P(1,2), hi, P(1,1), P(1,3)",
 	"          $END",
 }

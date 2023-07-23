@@ -21,106 +21,42 @@ func (a *Assembler) Assemble(sourceName string, sourceCode []string) bool {
 	a.context.currentLineIndex = 0
 	a.context.currentLocationCounter = 0
 	a.context.currentLiteralPool = 0
-	lineNumber := 1
+	a.context.currentLineNumber = 1
 	for a.context.currentLineIndex < len(sourceCode) {
-		fields, ok := a.parseLine(lineNumber, sourceCode[a.context.currentLineIndex])
+		fields, ok := a.parseLine(a.context.currentLineIndex+1, sourceCode[a.context.currentLineIndex])
+		a.context.currentLineIndex++
+
 		if !ok {
-			a.context.currentLineIndex++
 			continue
 		}
 
-		a.interpretFields(lineNumber, fields)
-		//	TODO
+		a.interpretLine(fields)
 	}
 
 	errors, _, _ := a.context.diagnostics.GetDiagnosticCounters()
 	return errors == 0
 }
 
-func (a *Assembler) interpretFields(lineNumber int, fields [][]string) {
-	var locationCounter *string
-	var labelSpecifications []string
+func (a *Assembler) interpretLine(fields [][]string) {
+	var labelField []string
+	var operationField []string
+	var operandField []string
 
-	//	Field 0 contains 0 or more subfields.
-	//  The first subfield is either a location counter or a label specification.
-	//  All subsequent subfields are label specifications.
-	f0 := fields[0]
-	if f0 != nil && len(f0) > 0 {
-		sfx := 0
-		if isValidLocationCounter(f0[sfx]) {
-			locationCounter = &f0[sfx]
-			sfx++
-		}
-
-		for sfx < len(f0) {
-			if !isValidLabelSpecification(f0[sfx]) {
-				a.context.diagnostics.AppendError(lineNumber, "Invalid label specification:"+f0[sfx])
-			} else {
-				labelSpecifications = append(labelSpecifications, f0[sfx])
+	if len(fields) > 0 {
+		labelField = fields[0]
+		if len(fields) > 1 {
+			operationField = fields[1]
+			if len(fields) > 2 {
+				operandField = fields[2]
 			}
 		}
 	}
 
-	//	All else depends upon the content of field 1, subfield 0 - if there is such a thing
-	f1 := fields[1]
-	if f1 == nil || len(f1) == 0 {
-		a.context.currentLineIndex++
-		return
-	}
-
-	//	Is this a directive invocation?
-	if a.interpretDirective(lineNumber, fields, locationCounter, labelSpecifications) {
-		return
-	}
-
-	//	Is this a PROC call?
-	//	TODO
-
-	//	None of the above... treat it as an expression and try to generate code
-	//	TODO
-}
-
-func (a *Assembler) interpretDirective(lineNumber int, fields [][]string, locCounter *string, labelSpecs []string) bool {
-	dir := fields[1][0]
-	if dir == "$EQU" {
-		//	TODO
-	} else if dir == "$EQUF" {
-		//	TODO
-	} else if dir == "$END" {
-		//	TODO
-	} else if dir == "$FUNC" {
-		//	TODO
-	} else if dir == "$LIT" {
-		a.interpretLiteralDirective(lineNumber, fields, locCounter, labelSpecs)
-		a.context.currentLineIndex++
-		return true
-	} else if dir == "$PROC" {
-		//	TODO
-	}
-
-	return false
-}
-
-func (a *Assembler) interpretLiteralDirective(lineNumber int, fields [][]string, locCounter *string, labelSpecs []string) {
-	if len(labelSpecs) > 0 {
-		//	we have labels, we'd better have a location counter spec
-		if locCounter == nil {
-			a.context.diagnostics.AppendWarning(lineNumber, "ignoring label on $LIT directive")
-			a.context.currentLiteralPool = a.context.currentLocationCounter
-		} else {
-			//	create functions out of all the label names per MASM spec
-			//	TODO
-		}
-	} else if locCounter != nil {
-		//	no label, just a location counter - set the literal pool to the lcn but do not update the current lc
-		lcn, err := interpretLocationCounter(*locCounter)
-		if err != nil {
-			a.context.diagnostics.AppendError(lineNumber, err.Error())
-		}
-		a.context.currentLiteralPool = lcn
-	} else {
-		//	no lc, no label, just $LIT - set the literal pool to the current location counter
-		a.context.currentLiteralPool = a.context.currentLocationCounter
+	dir, err := InterpretDirective(a.context, labelField, operationField, operandField)
+	if err != nil {
+		a.context.diagnostics.AppendError(a.context.currentLineNumber, err.Error())
+	} else if dir != nil {
+		//	TODO do something with the directive we got back
 	}
 }
 
@@ -218,7 +154,7 @@ func (a *Assembler) parseLine(lineNumber int, source string) ([][]string, bool) 
 	}
 
 	if inQuote {
-		a.context.diagnostics.AppendError(lineNumber, "unterminated string literal")
+		a.context.diagnostics.AppendError(lineNumber, "unterminated string literalExpressionItem")
 		return fields, false
 	}
 
