@@ -7,6 +7,7 @@ package kasm
 
 type Context struct {
 	code                   map[int][]CodeWord
+	currentStringCodeType  StringCodeType
 	currentLineIndex       int
 	currentLineNumber      int
 	currentLocationCounter int
@@ -18,6 +19,7 @@ type Context struct {
 func NewContext(dictionary *Dictionary) *Context {
 	ctx := &Context{
 		code:                   make(map[int][]CodeWord),
+		currentStringCodeType:  FieldataString,
 		currentLineIndex:       0,
 		currentLineNumber:      1,
 		currentLocationCounter: 0,

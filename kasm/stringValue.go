@@ -6,7 +6,9 @@
 package kasm
 
 type StringValue struct {
-	value string
+	value    string
+	flags    ValueFlags
+	codeType StringCodeType
 }
 
 func (v *StringValue) Evaluate(ec *ExpressionContext) error {
@@ -14,17 +16,35 @@ func (v *StringValue) Evaluate(ec *ExpressionContext) error {
 	return nil
 }
 
+func (v *StringValue) ClearFlags(flags ValueFlags) {
+	v.flags &= flags ^ ValueFlags(-1)
+}
+
 func (v *StringValue) GetValueType() ValueType {
 	return StringValueType
 }
 
-func NewStringValue(value string) *StringValue {
+func (v *StringValue) Copy() Value {
+	return NewStringValue(v.value, v.codeType, v.flags)
+}
+
+func (v *StringValue) GetFlags() ValueFlags {
+	return v.flags
+}
+
+func (v *StringValue) SetFlags(flags ValueFlags) {
+	v.flags |= flags
+}
+
+func NewStringValue(value string, codeType StringCodeType, flags ValueFlags) *StringValue {
 	return &StringValue{
-		value: value,
+		value:    value,
+		codeType: codeType,
+		flags:    flags,
 	}
 }
 
-func (p *Parser) ParseStringLiteral() (Value, error) {
+func (p *Parser) ParseStringLiteral(context *Context) (Value, error) {
 	if p.ParseCharacter('\'') {
 		var str string
 		for !p.AtEnd() {
@@ -40,7 +60,7 @@ func (p *Parser) ParseStringLiteral() (Value, error) {
 			}
 		}
 
-		return NewStringValue(str), nil
+		return NewStringValue(str, context.currentStringCodeType, 0), nil
 	}
 
 	return nil, nil

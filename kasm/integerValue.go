@@ -6,26 +6,15 @@
 package kasm
 
 import (
+	"fmt"
 	"khalehla/pkg"
 )
 
-type ValueComponent struct {
-	bitCount int
-	value    uint64 //	ones-complement
-	offsets  []Offset
-}
-
-func (vc ValueComponent) not() ValueComponent {
-	mask := (1 << vc.bitCount) - 1
-	return ValueComponent{
-		bitCount: vc.bitCount,
-		value:    vc.value ^ mask,
-		offsets:  vc.offsets,
-	}
-}
-
 type IntegerValue struct {
-	components []*ValueComponent
+	componentValues []int64 //	each value is 2-s complement native integer
+	form            *Form
+	offsets         []Offset
+	flags           ValueFlags
 }
 
 func (v *IntegerValue) Evaluate(ec *ExpressionContext) error {
@@ -37,24 +26,43 @@ func (v *IntegerValue) GetValueType() ValueType {
 	return IntegerValueType
 }
 
-func (v *IntegerValue) GetForm() []int {
-	result := make([]int, len(v.components))
-	for cx := 0; cx < len(v.components); cx++ {
-		result[cx] = v.components[cx].bitCount
-	}
+func (v *IntegerValue) ClearFlags(flags ValueFlags) {
+	v.flags &= flags ^ ValueFlags(-1)
+}
+
+func (v *IntegerValue) Copy() Value {
+	result, _ := NewIntegerValue(v.componentValues, v.form, v.offsets, v.flags)
 	return result
 }
 
-func NewSimpleIntegerValue(value uint64) *IntegerValue {
-	vc := &ValueComponent{
-		bitCount: 36,
-		value:    value * pkg.NegativeZero,
-		offsets:  nil,
+func (v *IntegerValue) GetFlags() ValueFlags {
+	return v.flags
+}
+
+func (v *IntegerValue) SetFlags(flags ValueFlags) {
+	v.flags |= flags
+}
+
+func NewSimpleIntegerValue(value int64) *IntegerValue {
+	return &IntegerValue{
+		componentValues: []int64{value},
+		form:            SimpleForm,
+		offsets:         make([]Offset, 0),
+		flags:           0,
+	}
+}
+
+func NewIntegerValue(values []int64, form *Form, offsets []Offset, flags ValueFlags) (*IntegerValue, error) {
+	if len(values) != len(form.bitSizes) {
+		return nil, fmt.Errorf("number of values does not correspond to number of form fields")
 	}
 
 	return &IntegerValue{
-		components: []*ValueComponent{vc},
-	}
+		componentValues: values,
+		form:            form,
+		offsets:         offsets,
+		flags:           flags,
+	}, nil
 }
 
 func (p *Parser) ParseIntegerLiteral() (Value, error) {
@@ -63,7 +71,7 @@ func (p *Parser) ParseIntegerLiteral() (Value, error) {
 		if ch >= '0' && ch <= '9' {
 			_ = p.Advance(1)
 			isOctal := ch == '0'
-			var value uint64
+			var value int64
 
 			for !p.AtEnd() {
 				ch, _ := p.PeekNextChar()
@@ -81,7 +89,7 @@ func (p *Parser) ParseIntegerLiteral() (Value, error) {
 				} else {
 					value *= 10
 				}
-				value += uint64(ch - '0')
+				value += int64(ch - '0')
 			}
 
 			if value&pkg.NegativeZero != value {

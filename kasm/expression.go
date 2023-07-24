@@ -49,8 +49,16 @@ func (e *Expression) Evaluate(context *ExpressionContext) error {
 	return nil
 }
 
-func (p *Parser) ParseExpression() (*Expression, error) {
+func (p *Parser) ParseExpression(context *Context) (*Expression, error) {
 	e := NewExpression()
+
+	// TODO This is a thing, which must be thing'ed somewhere (if not here):
+	//	To detect a line item, MASM evaluates the first expression following a left parenthesis.
+	//	If the next character after the expression is not a right parenthesis, the character must be a comma or a space.
+	//	If it is a comma and no significant space (not following an operator) is found before the right parenthesis,
+	//	an implicit call to $GEN is made. Otherwise, the first expression after the left parenthesis must be a directive,
+	//	instruction, or procedure call. This means MASM recognizes the format (LA,U A0,1) as a valid line item.
+	// So, yeah...
 
 	wantBinaryOperator := false
 	wantUnaryPostfixOperator := false
@@ -92,7 +100,7 @@ func (p *Parser) ParseExpression() (*Expression, error) {
 		}
 
 		if wantTerm {
-			term, err := p.ParseTerm()
+			term, err := p.ParseTerm(context)
 			if err != nil {
 				return nil, err
 			} else if term != nil {
@@ -118,10 +126,10 @@ func (p *Parser) ParseExpression() (*Expression, error) {
 //
 // If we do not find any expression, we return nil as the result.
 // Note that we DO NOT parse nor deal with enclosing parenthesis.
-func (p *Parser) ParseExpressionList() (*ExpressionList, error) {
+func (p *Parser) ParseExpressionList(context *Context) (*ExpressionList, error) {
 	pos := p.GetPosition()
 	p.SkipWhiteSpace()
-	expr, err := p.ParseExpression()
+	expr, err := p.ParseExpression(context)
 	if err != nil {
 		return nil, err
 	} else if expr == nil {
@@ -133,7 +141,7 @@ func (p *Parser) ParseExpressionList() (*ExpressionList, error) {
 	p.SkipWhiteSpace()
 	for p.ParseCharacter(',') {
 		p.SkipWhiteSpace()
-		expr, err = p.ParseExpression()
+		expr, err = p.ParseExpression(context)
 		if err != nil {
 			return nil, err
 		} else if expr == nil {
@@ -155,8 +163,8 @@ func (el *ExpressionList) Evaluate(ec *ExpressionContext) error {
 }
 
 // ParseTerm parses a term from the input text. A term is anything which is not an operator.
-func (p *Parser) ParseTerm() (ExpressionItem, error) {
-	result, err := p.ParseLiteral()
+func (p *Parser) ParseTerm(context *Context) (ExpressionItem, error) {
+	result, err := p.ParseLiteral(context)
 	// if result == nil && err == nil {
 	// 	result, err = p.ParseReference()
 	// }

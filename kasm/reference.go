@@ -69,7 +69,7 @@ func (r *Reference) Evaluate(ec *ExpressionContext) error {
 	}
 
 	if value.GetValueType() == FunctionValueType {
-		f := value.(FunctionValue)
+		f := value.(Function)
 		return f.Evaluate(ec)
 	}
 

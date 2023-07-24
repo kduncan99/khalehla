@@ -15,11 +15,19 @@ type Dictionary struct {
 	entries map[string]Value
 }
 
+var noSelectors []Value
+
 func NewTopLevelDictionary() *Dictionary {
-	return &Dictionary{
+	d := &Dictionary{
 		parent:  nil,
 		entries: make(map[string]Value),
 	}
+
+	for token, fn := range Functions {
+		_ = d.Establish(token, noSelectors, 0, fn)
+	}
+
+	return d
 }
 
 func NewSubLevelDictionary(parent *Dictionary) *Dictionary {

@@ -52,11 +52,9 @@ func (a *Assembler) interpretLine(fields [][]string) {
 		}
 	}
 
-	dir, err := InterpretDirective(a.context, labelField, operationField, operandField)
-	if err != nil {
-		a.context.diagnostics.AppendError(a.context.currentLineNumber, err.Error())
-	} else if dir != nil {
-		//	TODO do something with the directive we got back
+	ok := InterpretDirective(a.context, labelField, operationField, operandField)
+	if !ok {
+		//	TODO something else - empty line? implied $GEN?
 	}
 }
 

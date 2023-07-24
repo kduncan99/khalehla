@@ -5,8 +5,11 @@
 
 package kasm
 
+import "fmt"
+
 type FloatValue struct {
 	value float64
+	flags ValueFlags
 }
 
 func (v *FloatValue) Evaluate(ec *ExpressionContext) error {
@@ -14,13 +17,37 @@ func (v *FloatValue) Evaluate(ec *ExpressionContext) error {
 	return nil
 }
 
+func (v *FloatValue) ClearFlags(flags ValueFlags) {
+	v.flags &= flags ^ ValueFlags(-1)
+}
+
 func (v *FloatValue) GetValueType() ValueType {
 	return FloatValueType
+}
+
+func (v *FloatValue) Copy() Value {
+	return NewFloatValue(v.value)
+}
+
+func (v *FloatValue) GetFlags() ValueFlags {
+	return v.flags
+}
+
+func (v *FloatValue) SetFlags(flags ValueFlags) {
+	v.flags |= flags
 }
 
 func NewFloatValue(value float64) *FloatValue {
 	return &FloatValue{
 		value: value,
+	}
+}
+
+func NewFloatValueFromInteger(value *IntegerValue) (*FloatValue, error) {
+	if value.form.Equals(SimpleForm) && len(value.offsets) == 0 {
+		return &FloatValue{value: float64(value.componentValues[0])}, nil
+	} else {
+		return nil, fmt.Errorf("cannot convert composite integer or integer with offsets to float")
 	}
 }
 

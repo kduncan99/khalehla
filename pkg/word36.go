@@ -435,20 +435,36 @@ func (w *Word36) ToStringAsFieldata() string {
 	return string(temp)
 }
 
-func (w *Word36) And(op uint) {
+func (w *Word36) And(op uint64) {
 	*w &= Word36(op & 0777777777777)
+}
+
+func And(lhs uint64, rhs uint64) uint64 {
+	return lhs & rhs & NegativeZero
 }
 
 func (w *Word36) Not() {
 	*w ^= 0777777777777
 }
 
+func Not(op uint64) uint64 {
+	return (op ^ NegativeZero) & NegativeZero
+}
+
 func (w *Word36) Or(op uint64) {
 	*w |= Word36(op & 0777777777777)
 }
 
+func Or(lhs uint64, rhs uint64) uint64 {
+	return (lhs | rhs) & NegativeZero
+}
+
 func (w *Word36) Xor(op uint64) {
 	*w ^= Word36(op & 0777777777777)
+}
+
+func Xor(lhs uint64, rhs uint64) uint64 {
+	return (lhs ^ rhs) & NegativeZero
 }
 
 func FromStringToAsciiWords(inp string, buffer []Word36) {

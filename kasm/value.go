@@ -28,17 +28,26 @@ type Value interface {
 	GetValueType() ValueType
 }
 
+type BasicValue interface {
+	ClearFlags(flags ValueFlags)
+	Copy() Value
+	Evaluate(ec *ExpressionContext) error
+	GetFlags() ValueFlags
+	GetValueType() ValueType
+	SetFlags(flags ValueFlags)
+}
+
 var nonOctalDigit = fmt.Errorf("non-octal digit in numeric literal")
 var syntaxError = fmt.Errorf("syntax error in numeric literal")
 var truncationError = fmt.Errorf("truncation in numeric literal")
 
-func (p *Parser) ParseLiteral() (Value, error) {
+func (p *Parser) ParseLiteral(context *Context) (Value, error) {
 	value, err := p.ParseFloatLiteral()
 	if value == nil && err == nil {
 		value, err = p.ParseIntegerLiteral()
 	}
 	if value == nil && err == nil {
-		value, err = p.ParseStringLiteral()
+		value, err = p.ParseStringLiteral(context)
 	}
 
 	return value, err

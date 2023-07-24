@@ -44,7 +44,7 @@ func (ec *ExpressionContext) PeekValue() (Value, error) {
 func (ec *ExpressionContext) PopOperator() (Operator, error) {
 	l := len(ec.operators)
 	if l == 0 {
-		return nil, outOfData
+		return nil, fmt.Errorf("internal error - value stack is empty")
 	} else {
 		op := ec.operators[l-1]
 		ec.operators = ec.operators[:l-1]
