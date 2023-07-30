@@ -5,7 +5,10 @@
 
 package kasm
 
-import "fmt"
+import (
+	"fmt"
+	"khalehla/parser"
+)
 
 type FloatValue struct {
 	value float64
@@ -51,7 +54,7 @@ func NewFloatValueFromInteger(value *IntegerValue) (*FloatValue, error) {
 	}
 }
 
-func (p *Parser) ParseFloatLiteral() (Value, error) {
+func ParseFloatLiteral(p *parser.Parser) (Value, error) {
 	if !p.AtEnd() {
 		ch, _ := p.PeekNextChar()
 		if ch >= '0' && ch <= '9' {

@@ -315,8 +315,8 @@ func step7(bm *BankManipulator) bool {
 			return false
 		} else if bm.instructionType == LBUInstruction &&
 			(bm.engine.activityStatePacket.designatorRegister.processorPrivilege > 1) &&
-			!bm.sourceBankDescriptor.generalAccessPermissions.canEnter &&
-			!bm.sourceBankDescriptor.specialAccessPermissions.canEnter {
+			!bm.sourceBankDescriptor.generalAccessPermissions.CanEnter() &&
+			!bm.sourceBankDescriptor.specialAccessPermissions.CanEnter() {
 			bm.targetBankDescriptor = nil
 		} else if ((bm.instructionType == RTNInstruction) || bm.isLXJInstruction) &&
 			!bm.returnControlStackFrame.designatorRegister.BasicModeEnabled {
@@ -395,8 +395,8 @@ func step8(bm *BankManipulator) bool {
 	if bm.targetBankDescriptor.bankType == BasicModeBankDescriptor {
 		//	When PP>1 and GAP.E == 0 and SAP.E == 0, do void bank (set target bd null)
 		if (bm.engine.activityStatePacket.designatorRegister.processorPrivilege > 1) &&
-			!bm.targetBankDescriptor.generalAccessPermissions.canEnter &&
-			!bm.targetBankDescriptor.specialAccessPermissions.canEnter {
+			!bm.targetBankDescriptor.generalAccessPermissions.CanEnter() &&
+			!bm.targetBankDescriptor.specialAccessPermissions.CanEnter() {
 			bm.targetBankDescriptor = nil
 		}
 	} else if bm.targetBankDescriptor.bankType == GateBankDescriptor {
@@ -426,7 +426,7 @@ func step9(bm *BankManipulator) bool {
 		bm.engine.activityStatePacket.indicatorKeyRegister.accessKey,
 		bm.sourceBankDescriptor.generalAccessPermissions,
 		bm.sourceBankDescriptor.specialAccessPermissions)
-	if !gateBankPerms.canEnter {
+	if !gateBankPerms.CanEnter() {
 		bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionEnterAccessDenied, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
 		return false
 	}
@@ -455,7 +455,7 @@ func step9(bm *BankManipulator) bool {
 		bm.engine.activityStatePacket.indicatorKeyRegister.accessKey,
 		bm.gate.specialAccessPermissions,
 		bm.gate.generalAccessPermissions)
-	if !gatePerms.canEnter {
+	if !gatePerms.CanEnter() {
 		bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionEnterAccessDenied, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
 		return false
 	}
@@ -930,7 +930,7 @@ func step21(bm *BankManipulator) bool {
 			(bm.gate == nil) &&
 			!bm.isReturnOperation {
 			if (bm.transferMode == BasicToExtendedTransfer) || (bm.transferMode == ExtendedToExtendedTransfer) {
-				if !perms.canEnter {
+				if !perms.CanEnter() {
 					bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionFatal, bm.targetBankLevel, bm.targetBankDescriptorIndex))
 					return false
 				}
@@ -942,7 +942,7 @@ func step21(bm *BankManipulator) bool {
 		if (bm.transferMode != NoTransfer) &&
 			(bm.gate == nil) &&
 			(bm.targetBankDescriptor.bankType == BasicModeBankDescriptor) {
-			if (!perms.canEnter) &&
+			if (!perms.CanEnter()) &&
 				(bm.targetBankOffset != uint64(bm.targetBankDescriptor.GetLowerLimitNormalized())) {
 				bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionFatal, bm.targetBankLevel, bm.targetBankDescriptorIndex))
 				return false
@@ -951,7 +951,7 @@ func step21(bm *BankManipulator) bool {
 
 		//  Did we do gated transfer, or non-gated with no enter access, to a basic mode bank,
 		//  while the new PAR.PC does not refer to that bank?
-		if (bm.transferMode != NoTransfer) && ((bm.gate != nil) || !perms.canEnter) {
+		if (bm.transferMode != NoTransfer) && ((bm.gate != nil) || !perms.CanEnter()) {
 			if bm.targetBankDescriptor.bankType == BasicModeBankDescriptor {
 				bReg := bm.engine.baseRegisters[bm.baseRegisterIndex]
 				relAddr := bm.engine.activityStatePacket.programAddressRegister.programCounter

@@ -2,7 +2,7 @@
 // Copyright © 2023 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package ipEngine
+package pkg
 
 type AccessPermissions struct {
 	canEnter bool
@@ -26,6 +26,30 @@ func (perm *AccessPermissions) CanRead() bool {
 
 func (perm *AccessPermissions) CanWrite() bool {
 	return perm.canWrite
+}
+
+func (perm *AccessPermissions) GetString() string {
+	str := "Permissions:"
+
+	if perm.canEnter {
+		str += "E"
+	} else {
+		str += "-"
+	}
+
+	if perm.canRead {
+		str += "R"
+	} else {
+		str += "-"
+	}
+
+	if perm.canWrite {
+		str += "W"
+	} else {
+		str += "-"
+	}
+
+	return str
 }
 
 func NewAccessPermissions(canEnter bool, canRead bool, canWrite bool) *AccessPermissions {

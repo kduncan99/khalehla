@@ -19,13 +19,13 @@ const (
 )
 
 type BankDescriptor struct {
-	generalAccessPermissions     *AccessPermissions
-	specialAccessPermissions     *AccessPermissions
+	generalAccessPermissions     *pkg.AccessPermissions
+	specialAccessPermissions     *pkg.AccessPermissions
 	bankType                     uint
 	generalFault                 bool
 	largeBankSize                bool
 	upperLimitSuppressionControl bool
-	accessLock                   *AccessLock
+	accessLock                   *pkg.AccessLock
 	indirectLevelAndBDI          uint
 	lowerLimit                   uint
 	upperLimit                   uint
@@ -52,11 +52,11 @@ func (bd *BankDescriptor) GetUpperLimitNormalized() uint {
 }
 
 func NewBankDescriptorFromStorage(buffer []pkg.Word36) *BankDescriptor {
-	gap := NewAccessPermissions(
+	gap := pkg.NewAccessPermissions(
 		buffer[0]&0_400000_000000 != 0,
 		buffer[0]&0_200000_000000 != 0,
 		buffer[0]&0_100000_000000 != 0)
-	sap := NewAccessPermissions(
+	sap := pkg.NewAccessPermissions(
 		buffer[0]&0_0400000_000000 != 0,
 		buffer[0]&0_0200000_000000 != 0,
 		buffer[0]&0_0100000_000000 != 0)
@@ -64,7 +64,7 @@ func NewBankDescriptorFromStorage(buffer []pkg.Word36) *BankDescriptor {
 	gBit := buffer[0]&0_000020_000000 != 0
 	sBit := buffer[0]&0_000004_000000 != 0
 	uBit := buffer[0]&0_000002_000000 != 0
-	lock := NewAccessLock(uint(buffer[0]>>16)&03, uint(buffer[0]&0xFFFF))
+	lock := pkg.NewAccessLock(uint(buffer[0]>>16)&03, uint(buffer[0]&0xFFFF))
 
 	ilBDI := uint(0)
 	lLimit := uint(0)

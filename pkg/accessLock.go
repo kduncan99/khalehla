@@ -2,7 +2,9 @@
 // Copyright © 2023 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package ipEngine
+package pkg
+
+import "fmt"
 
 type AccessLock struct {
 	domain uint
@@ -33,6 +35,10 @@ func (lock *AccessLock) GetEffectivePermissions(key *AccessKey, special *AccessP
 	} else {
 		return general
 	}
+}
+
+func (lock *AccessLock) GetString() string {
+	return fmt.Sprintf("Ring:%v Domain:%06o", lock.ring, lock.domain)
 }
 
 func (lock *AccessLock) SetDomain(value uint) *AccessLock {

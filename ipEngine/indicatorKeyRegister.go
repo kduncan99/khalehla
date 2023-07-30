@@ -28,7 +28,7 @@ type IndicatorKeyRegister struct {
 	interruptClassField uint
 
 	//	Current access key for the code being executed
-	accessKey *AccessKey
+	accessKey *pkg.AccessKey
 }
 
 func (ikr *IndicatorKeyRegister) GetComposite() pkg.Word36 {
@@ -59,7 +59,7 @@ func (ikr *IndicatorKeyRegister) SetComposite(value uint64) *IndicatorKeyRegiste
 	ikr.breakpointRegisterMatchCondition = value&0_000400_000000 != 0
 	ikr.softwareBreak = value&0_000200_000000 != 0
 	ikr.interruptClassField = uint(value>>18) & 077
-	ikr.accessKey = NewAccessKeyFromComposite(uint(value & 0_777777))
+	ikr.accessKey = pkg.NewAccessKeyFromComposite(uint(value & 0_777777))
 
 	return ikr
 }

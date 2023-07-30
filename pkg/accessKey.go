@@ -2,7 +2,9 @@
 // Copyright © 2023 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package ipEngine
+package pkg
+
+import "fmt"
 
 //	Any code which sets the discrete values should use the Set* methods
 //	to ensure that the non-significant bits are zero.
@@ -18,6 +20,10 @@ func (key *AccessKey) equals(op *AccessKey) bool {
 
 func (key *AccessKey) GetComposite() uint {
 	return (key.ring << 16) | key.domain
+}
+
+func (key *AccessKey) GetString() string {
+	return fmt.Sprintf("Ring:%v Domain:%06o", key.ring, key.domain)
 }
 
 func (key *AccessKey) IsMasterKey() bool {

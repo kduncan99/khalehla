@@ -5,7 +5,10 @@
 
 package kasm
 
-import "fmt"
+import (
+	"fmt"
+	"khalehla/parser"
+)
 
 type ExpressionContext struct {
 	context   *Context
@@ -24,7 +27,7 @@ func NewExpressionContext(context *Context) *ExpressionContext {
 func (ec *ExpressionContext) PeekOperator() (Operator, error) {
 	l := len(ec.operators)
 	if l == 0 {
-		return nil, outOfData
+		return nil, parser.outOfData
 	} else {
 		op := ec.operators[l-1]
 		return op, nil
@@ -34,7 +37,7 @@ func (ec *ExpressionContext) PeekOperator() (Operator, error) {
 func (ec *ExpressionContext) PeekValue() (Value, error) {
 	l := len(ec.values)
 	if l == 0 {
-		return nil, outOfData
+		return nil, parser.outOfData
 	} else {
 		v := ec.values[l-1]
 		return v, nil
@@ -55,7 +58,7 @@ func (ec *ExpressionContext) PopOperator() (Operator, error) {
 func (ec *ExpressionContext) PopValue() (Value, error) {
 	l := len(ec.values)
 	if l == 0 {
-		return nil, outOfData
+		return nil, parser.outOfData
 	} else {
 		v := ec.values[l-1]
 		ec.values = ec.values[:l-1]

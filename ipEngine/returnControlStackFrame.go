@@ -13,7 +13,7 @@ type ReturnControlStackFrame struct {
 	trapFlag              bool
 	basicModeBaseRegister uint                // For return to basic mode, add 12 to this to find the base register for return
 	designatorRegister    *DesignatorRegister //	only bits 12-17 are significant
-	accessKey             *AccessKey
+	accessKey             *pkg.AccessKey
 }
 
 func (rcsf *ReturnControlStackFrame) SetBankLevel(value uint) *ReturnControlStackFrame {
@@ -46,7 +46,7 @@ func (rcsf *ReturnControlStackFrame) SetDesignatorRegister(value *DesignatorRegi
 	return rcsf
 }
 
-func (rcsf *ReturnControlStackFrame) SetAccessKey(value *AccessKey) *ReturnControlStackFrame {
+func (rcsf *ReturnControlStackFrame) SetAccessKey(value *pkg.AccessKey) *ReturnControlStackFrame {
 	rcsf.accessKey = value
 	return rcsf
 }
@@ -74,7 +74,7 @@ func NewReturnControlStackFrameFromComponents(
 	trapFlag bool,
 	basicModeBaseRegister uint,
 	designatorRegister *DesignatorRegister,
-	accessKey *AccessKey) *ReturnControlStackFrame {
+	accessKey *pkg.AccessKey) *ReturnControlStackFrame {
 	rcsf := ReturnControlStackFrame{}
 	rcsf.SetBankLevel(bankLevel).
 		SetBankDescriptorIndex(bankDescriptorIndex).
@@ -94,6 +94,6 @@ func NewReturnControlStackFrameFromBuffer(source []pkg.Word36) *ReturnControlSta
 		trapFlag:              (source[1] >> 35) == 01,
 		basicModeBaseRegister: uint(source[1]>>24) & 03,
 		designatorRegister:    NewDesignatorRegisterFromComposite(uint64(source[1] & 0_000077_000000)),
-		accessKey:             NewAccessKeyFromComposite(uint(source[1])),
+		accessKey:             pkg.NewAccessKeyFromComposite(uint(source[1])),
 	}
 }

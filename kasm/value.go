@@ -7,6 +7,7 @@ package kasm
 
 import (
 	"fmt"
+	"khalehla/parser"
 )
 
 type ValueType int
@@ -20,7 +21,7 @@ const (
 	ProcedureValueType             // (label on PROC line)
 	FunctionValueType              // (label on FUNC line)
 	MasmDirectiveValueType         // (including instruction mnemonics and forms)
-	MasmIntrinsicFunctionValueType // (build-in function)
+	MasmIntrinsicFunctionValueType // (built-in function)
 )
 
 type Value interface {
@@ -41,13 +42,13 @@ var nonOctalDigit = fmt.Errorf("non-octal digit in numeric literal")
 var syntaxError = fmt.Errorf("syntax error in numeric literal")
 var truncationError = fmt.Errorf("truncation in numeric literal")
 
-func (p *Parser) ParseLiteral(context *Context) (Value, error) {
-	value, err := p.ParseFloatLiteral()
+func ParseLiteral(p *parser.Parser, context *Context) (Value, error) {
+	value, err := ParseFloatLiteral(p)
 	if value == nil && err == nil {
-		value, err = p.ParseIntegerLiteral()
+		value, err = ParseIntegerLiteral(p)
 	}
 	if value == nil && err == nil {
-		value, err = p.ParseStringLiteral(context)
+		value, err = ParseStringLiteral(p, context)
 	}
 
 	return value, err

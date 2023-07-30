@@ -5,6 +5,8 @@
 
 package kasm
 
+import "khalehla/parser"
+
 type StringValue struct {
 	value    string
 	flags    ValueFlags
@@ -44,7 +46,7 @@ func NewStringValue(value string, codeType StringCodeType, flags ValueFlags) *St
 	}
 }
 
-func (p *Parser) ParseStringLiteral(context *Context) (Value, error) {
+func ParseStringLiteral(p *parser.Parser, context *Context) (Value, error) {
 	if p.ParseCharacter('\'') {
 		var str string
 		for !p.AtEnd() {

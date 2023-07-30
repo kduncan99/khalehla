@@ -563,7 +563,7 @@ func (e *InstructionEngine) checkAccessibility(
 	fetchFlag bool,
 	readFlag bool,
 	writeFlag bool,
-	accessKey *AccessKey) Interrupt {
+	accessKey *pkg.AccessKey) Interrupt {
 	perms := bReg.GetEffectivePermissions(accessKey)
 	if e.activityStatePacket.designatorRegister.BasicModeEnabled && fetchFlag && !perms.CanEnter() {
 		ssf := uint(040)
@@ -589,7 +589,7 @@ func (e *InstructionEngine) checkAccessLimits(
 	fetchFlag bool,
 	readFlag bool,
 	writeFlag bool,
-	accessKey *AccessKey) Interrupt {
+	accessKey *pkg.AccessKey) Interrupt {
 
 	i := e.checkAccessLimitsForAddress(bReg, relativeAddress, fetchFlag)
 	if i != nil {
@@ -625,7 +625,7 @@ func (e *InstructionEngine) checkAccessLimitsRange(
 	addressCount uint,
 	readFlag bool,
 	writeFlag bool,
-	accessKey *AccessKey) Interrupt {
+	accessKey *pkg.AccessKey) Interrupt {
 	if (relativeAddress < bReg.lowerLimitNormalized) ||
 		(relativeAddress+addressCount-1 > bReg.upperLimitNormalized) {
 		return NewReferenceViolationInterrupt(ReferenceViolationStorageLimits, false)

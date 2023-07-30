@@ -6,6 +6,7 @@
 package kasm
 
 import (
+	"khalehla/parser"
 	"strings"
 )
 
@@ -41,6 +42,7 @@ type ResDirective struct{}
 type UseDirective struct{}
 
 var directives = []Directive{
+	//	TODO lots
 	&EquDirective{},
 	&EqufDirective{},
 	&EndDirective{},
@@ -56,7 +58,7 @@ func InterpretDirective(context *Context, labels []string, operation []string, o
 	// If there is a label field and the first subfield contains a location counter, process it and
 	// strip the subfield from the label field.
 	if labels != nil && len(labels) > 0 {
-		lcs, err := NewLocationCounterSpecification(labels[0])
+		lcs, err := NewLocationCounterSpecification(context, labels[0])
 		if err != nil {
 			context.AppendErr(err)
 		} else if lcs != nil {
@@ -105,27 +107,17 @@ func getValuesFromExpressions(context *Context, expressions []*Expression) []Val
 
 // processLabels processes the given labels, setting each of them to the current location counter
 func processLabels(context *Context, labels []string) {
-	offset := &LocationCounterOffset{
-		locationCounter: context.currentLocationCounter,
-		startBit:        0,
-		bitLength:       36,
-		isNegative:      false,
-	}
-	comp := &ValueComponent{
-		value:   uint64(len(context.code[context.currentLocationCounter])),
-		offsets: []Offset{offset},
-	}
-	lcValue := &IntegerValue{
-		components: []*ValueComponent{comp},
-	}
+	offset := NewLocationCounterOffset(context.currentLocationCounter)
+	comp := int64(len(context.code[context.currentLocationCounter]))
+	lcValue, _ := NewIntegerValue([]int64{comp}, SimpleForm, []Offset{offset}, 0)
 
 	for _, label := range labels {
-		p := NewParser(label)
-		ref, err := p.ParseReference(false, true)
+		p := parser.NewParser(label)
+		ref, err := p.ParseLabelSpecification(context)
 		if err != nil {
 			context.AppendErr(err)
 		} else if ref != nil {
-			values := getValuesFromExpressions(context, ref.arguments)
+			values := getValuesFromExpressions(context, ref.selectors)
 			err = context.dictionary.Establish(ref.symbol, values, ref.levelCount, lcValue)
 			if err != nil {
 				context.AppendErr(err)
@@ -202,12 +194,12 @@ func (d *LitDirective) Interpret(context *Context, labels []string, operation []
 	}
 
 	if len(labels) == 1 {
-		p := NewParser(labels[0])
-		ref, err := p.ParseReference(false, true)
+		p := parser.NewParser(labels[0])
+		ref, err := p.ParseLabelSpecification(context)
 		if err != nil {
 			context.AppendErr(err)
 		} else {
-			values := getValuesFromExpressions(context, ref.arguments)
+			values := getValuesFromExpressions(context, ref.selectors)
 			fn := &LitFunction{locationCounter: context.currentLocationCounter}
 			err = context.dictionary.Establish(ref.symbol, values, ref.levelCount, fn)
 			if err != nil {

@@ -28,11 +28,29 @@ type LocationCounterOffset struct {
 	isNegative      bool
 }
 
+func NewLocationCounterOffset(lc int) *LocationCounterOffset {
+	return &LocationCounterOffset{
+		locationCounter: lc,
+		startBit:        0,
+		bitLength:       36,
+		isNegative:      false,
+	}
+}
+
 type UndefinedReferenceOffset struct {
 	symbol     string
 	startBit   int
 	bitLength  int
 	isNegative bool
+}
+
+func NewUndefinedReferenceOffset(symbol string) *UndefinedReferenceOffset {
+	return &UndefinedReferenceOffset{
+		symbol:     symbol,
+		startBit:   0,
+		bitLength:  36,
+		isNegative: false,
+	}
 }
 
 func (lco *LocationCounterOffset) Equals(comp Offset) bool {

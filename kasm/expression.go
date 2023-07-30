@@ -7,6 +7,7 @@ package kasm
 
 import (
 	"fmt"
+	"khalehla/parser"
 )
 
 // ExpressionItem is an Operator or a Value
@@ -17,10 +18,6 @@ type ExpressionItem interface {
 // Expression represents an evaluable expression
 type Expression struct {
 	items []ExpressionItem
-}
-
-type ExpressionList struct {
-	expressions []*Expression
 }
 
 func NewExpression() *Expression {
@@ -49,7 +46,7 @@ func (e *Expression) Evaluate(context *ExpressionContext) error {
 	return nil
 }
 
-func (p *Parser) ParseExpression(context *Context) (*Expression, error) {
+func ParseExpression(p *parser.Parser, context *Context) (*Expression, error) {
 	e := NewExpression()
 
 	// TODO This is a thing, which must be thing'ed somewhere (if not here):
@@ -69,7 +66,7 @@ func (p *Parser) ParseExpression(context *Context) (*Expression, error) {
 	for !p.AtEnd() {
 
 		if wantUnaryPostfixOperator {
-			op := p.ParseUnaryPostfixOperator()
+			op := ParseUnaryPostfixOperator(p)
 			if op != nil {
 				e.pushItem(op)
 				p.SkipWhiteSpace()
@@ -78,7 +75,7 @@ func (p *Parser) ParseExpression(context *Context) (*Expression, error) {
 		}
 
 		if wantUnaryPrefixOperator {
-			op := p.ParseUnaryPrefixOperator()
+			op := ParseUnaryPrefixOperator(p)
 			if op != nil {
 				e.pushItem(op)
 				p.SkipWhiteSpace()
@@ -87,7 +84,7 @@ func (p *Parser) ParseExpression(context *Context) (*Expression, error) {
 		}
 
 		if wantBinaryOperator {
-			op := p.ParseBinaryOperator()
+			op := ParseBinaryOperator(p)
 			if op != nil {
 				wantBinaryOperator = false
 				wantUnaryPostfixOperator = false
@@ -100,7 +97,7 @@ func (p *Parser) ParseExpression(context *Context) (*Expression, error) {
 		}
 
 		if wantTerm {
-			term, err := p.ParseTerm(context)
+			term, err := ParseTerm(p, context)
 			if err != nil {
 				return nil, err
 			} else if term != nil {
@@ -122,51 +119,59 @@ func (p *Parser) ParseExpression(context *Context) (*Expression, error) {
 
 // ParseExpressionList parses the following into a slice of references to Expression structs:
 //
-//	expr [ ',' expr ]*
+//	'(' [ expr [ ',' expr ]* ] ')'
 //
 // If we do not find any expression, we return nil as the result.
-// Note that we DO NOT parse nor deal with enclosing parenthesis.
-func (p *Parser) ParseExpressionList(context *Context) (*ExpressionList, error) {
-	pos := p.GetPosition()
+// This is for function references and node selectors
+func ParseExpressionList(p *parser.Parser, context *Context) ([]*Expression, error) {
 	p.SkipWhiteSpace()
-	expr, err := p.ParseExpression(context)
-	if err != nil {
-		return nil, err
-	} else if expr == nil {
-		_ = p.SetPosition(pos)
+	if !p.ParseCharacter('(') {
 		return nil, nil
 	}
 
-	expList := []*Expression{expr}
+	expList := make([]*Expression, 0)
+	p.SkipWhiteSpace()
+	if p.ParseCharacter(')') {
+		return expList, nil
+	}
+
+	exp, err := ParseExpression(p, context)
+	if err != nil {
+		return nil, err
+	} else if exp == nil {
+		return nil, fmt.Errorf("syntax error in function arguments or node selectors")
+	}
+
 	p.SkipWhiteSpace()
 	for p.ParseCharacter(',') {
 		p.SkipWhiteSpace()
-		expr, err = p.ParseExpression(context)
+		exp, err = ParseExpression(p, context)
 		if err != nil {
 			return nil, err
-		} else if expr == nil {
-			return nil, fmt.Errorf("expected another expression in expression list")
+		} else if exp == nil {
+			return nil, fmt.Errorf("syntax error in function arguments or node selectors")
 		}
 
-		expList = append(expList, expr)
+		expList = append(expList, exp)
 		p.SkipWhiteSpace()
 	}
 
-	result := &ExpressionList{
-		expressions: expList,
+	if !p.ParseCharacter('(') {
+		return nil, fmt.Errorf("unterminated function arguments or node selectors")
 	}
-	return result, nil
-}
 
-func (el *ExpressionList) Evaluate(ec *ExpressionContext) error {
-	// TODO an interesting conundrum - bare list gives us fields equally divided into 36, but what about forms?
+	return expList, nil
 }
 
 // ParseTerm parses a term from the input text. A term is anything which is not an operator.
-func (p *Parser) ParseTerm(context *Context) (ExpressionItem, error) {
-	result, err := p.ParseLiteral(context)
-	// if result == nil && err == nil {
-	// 	result, err = p.ParseReference()
-	// }
+func ParseTerm(p *parser.Parser, context *Context) (ExpressionItem, error) {
+	result, err := ParseLiteral(p, context)
+
+	if result == nil && err == nil {
+		result, err = ParseReference(p, context)
+	}
+
+	//	TODO more alternatives...
+
 	return result, err
 }

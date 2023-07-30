@@ -3,7 +3,7 @@
 // Copyright © 2023 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package kasm
+package parser
 
 import (
 	"fmt"
@@ -73,6 +73,65 @@ func (p *Parser) ParseCharacter(char uint8) bool {
 	}
 }
 
+func (p *Parser) ParseInteger(allowOctal bool) (int64, bool) {
+	if !p.AtEnd() {
+		ch, _ := p.PeekNextChar()
+		if IsDecimalDigit(ch) {
+			radix := int64(10)
+			if allowOctal && ch == '0' {
+				radix = 8
+			}
+
+			var value int64
+			for IsDecimalDigit(ch) {
+				value *= radix
+				value += int64(ch - '0')
+				_ = p.Advance(1)
+				ch, _ = p.PeekNextChar()
+			}
+
+			return value, true
+		}
+	}
+
+	return 0, false
+}
+
+func (p *Parser) PeekNextChar() (uint8, error) {
+	if p.AtEnd() {
+		return 0, outOfData
+	} else {
+		return p.text[p.index], nil
+	}
+}
+
+// TODO this needs to move into kasm
+func (p *Parser) ParseSymbol() (*string, error) {
+	if !p.AtEnd() {
+		ch, _ := p.PeekNextChar()
+		if IsAlphabetic(ch) || ch == '$' {
+			_ = p.Advance(1)
+			symbol := string(ch)
+			for !p.AtEnd() {
+				ch, _ = p.PeekNextChar()
+				if !IsAlphabetic(ch) && !IsDecimalDigit(ch) && ch != '_' && ch != '$' {
+					break
+				}
+
+				_ = p.Advance(1)
+				symbol += string(ch)
+			}
+
+			if len(symbol) > 12 {
+				return nil, fmt.Errorf("symbol is too long")
+			}
+			return &symbol, nil
+		}
+	}
+
+	return nil, nil
+}
+
 func (p *Parser) ParseToken(token string) bool {
 	if p.Remaining() >= len(token) {
 		px := p.index
@@ -89,32 +148,6 @@ func (p *Parser) ParseToken(token string) bool {
 	} else {
 		return false
 	}
-}
-
-func (p *Parser) ParseSymbol(allowLeadingDollar bool) (*string, error) {
-	if !p.AtEnd() {
-		ch, _ := p.PeekNextChar()
-		if IsAlphabetic(ch) || (allowLeadingDollar && ch == '$') {
-			_ = p.Advance(1)
-			symbol := string(ch)
-			for !p.AtEnd() {
-				ch, _ = p.PeekNextChar()
-				if !IsAlphabetic(ch) && !IsDecimalDigit(ch) && ch != '_' && ch != '$' {
-					break
-				}
-
-				_ = p.Advance(1)
-				symbol += string(ch)
-			}
-
-			if len(symbol) > 12 {
-				return nil, fmt.Errorf("symbol too long")
-			}
-			return &symbol, nil
-		}
-	}
-
-	return nil, nil
 }
 
 func (p *Parser) ParseTokenCaseInsensitive(token string) bool {
@@ -134,14 +167,6 @@ func (p *Parser) ParseTokenCaseInsensitive(token string) bool {
 		return true
 	} else {
 		return false
-	}
-}
-
-func (p *Parser) PeekNextChar() (uint8, error) {
-	if p.AtEnd() {
-		return 0, outOfData
-	} else {
-		return p.text[p.index], nil
 	}
 }
 

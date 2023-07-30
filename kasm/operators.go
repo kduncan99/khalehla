@@ -7,6 +7,7 @@ package kasm
 
 import (
 	"fmt"
+	"khalehla/parser"
 )
 
 type operatorType int
@@ -107,7 +108,7 @@ var unaryPrefixOperators = []Operator{
 
 var divideByZeroError = fmt.Errorf("divide by zero error")
 
-func (p *Parser) ParseBinaryOperator() Operator {
+func ParseBinaryOperator(p *parser.Parser) Operator {
 	for _, op := range binaryOperators {
 		result := p.ParseTokenCaseInsensitive(op.GetToken())
 		if result {
@@ -117,7 +118,7 @@ func (p *Parser) ParseBinaryOperator() Operator {
 	return nil
 }
 
-func (p *Parser) ParseUnaryPostfixOperator() Operator {
+func ParseUnaryPostfixOperator(p *parser.Parser) Operator {
 	for _, op := range unaryPostfixOperators {
 		result := p.ParseTokenCaseInsensitive(op.GetToken())
 		if result {
@@ -127,7 +128,7 @@ func (p *Parser) ParseUnaryPostfixOperator() Operator {
 	return nil
 }
 
-func (p *Parser) ParseUnaryPrefixOperator() Operator {
+func ParseUnaryPrefixOperator(p *parser.Parser) Operator {
 	for _, op := range unaryPrefixOperators {
 		result := p.ParseTokenCaseInsensitive(op.GetToken())
 		if result {

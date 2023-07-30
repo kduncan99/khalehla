@@ -8,16 +8,16 @@ import "khalehla/pkg"
 
 type BaseRegister struct {
 	//	ring and domain for the bank described by this base register
-	accessLock *AccessLock
+	accessLock *pkg.AccessLock
 
 	//	physical location of the described bank
 	baseAddress *AbsoluteAddress
 
 	//	ERW permissions for access by a key of lower privilege
-	generalAccessPermissions *AccessPermissions
+	generalAccessPermissions *pkg.AccessPermissions
 
 	//	ERW permissions for access by a key of equal or greater privilege
-	specialAccessPermissions *AccessPermissions
+	specialAccessPermissions *pkg.AccessPermissions
 
 	//	If true, area does not exceed 2^24 bytes - if false, area does not exceed 2^18 bytes
 	largeSizeFlag bool
@@ -53,7 +53,7 @@ func (reg *BaseRegister) CheckAccessLimits(relativeAddress uint, fetchFlag bool)
 
 // GetEffectivePermissions returns either special or general access permissions, depending upon the
 // combination of the lock for this base register, and the given key.
-func (reg *BaseRegister) GetEffectivePermissions(key *AccessKey) *AccessPermissions {
+func (reg *BaseRegister) GetEffectivePermissions(key *pkg.AccessKey) *pkg.AccessPermissions {
 	return reg.accessLock.GetEffectivePermissions(key, reg.specialAccessPermissions, reg.generalAccessPermissions)
 }
 
@@ -99,13 +99,13 @@ func (reg *BaseRegister) FromBankDescriptorWithSubsetting(bd *BankDescriptor, of
 	reg.accessLock = bd.accessLock
 	reg.baseAddress = bd.baseAddress
 	reg.generalAccessPermissions =
-		NewAccessPermissions(false,
-			bd.generalAccessPermissions.canRead,
-			bd.generalAccessPermissions.canWrite)
+		pkg.NewAccessPermissions(false,
+			bd.generalAccessPermissions.CanRead(),
+			bd.generalAccessPermissions.CanWrite())
 	reg.specialAccessPermissions =
-		NewAccessPermissions(false,
-			bd.specialAccessPermissions.canRead,
-			bd.specialAccessPermissions.canWrite)
+		pkg.NewAccessPermissions(false,
+			bd.specialAccessPermissions.CanRead(),
+			bd.specialAccessPermissions.CanWrite())
 	reg.largeSizeFlag = bd.largeBankSize
 
 	reg.lowerLimitNormalized = 0
@@ -133,13 +133,13 @@ func NewBaseRegisterFromBuffer(buffer []pkg.Word36, storage []pkg.Word36) *BaseR
 	}
 
 	reg := BaseRegister{
-		accessLock:  NewAccessLock(uint(buffer[0]>>16)&03, uint(buffer[0]&0xFFFF)),
+		accessLock:  pkg.NewAccessLock(uint(buffer[0]>>16)&03, uint(buffer[0]&0xFFFF)),
 		baseAddress: NewAbsoluteAddressFromComposite(((uint64(buffer[2]) << 36) & 0777777) | uint64(buffer[3])),
-		generalAccessPermissions: NewAccessPermissions(
+		generalAccessPermissions: pkg.NewAccessPermissions(
 			false,
 			buffer[0]&0_200000_000000 != 0,
 			buffer[0]&0_100000_000000 != 0),
-		specialAccessPermissions: NewAccessPermissions(
+		specialAccessPermissions: pkg.NewAccessPermissions(
 			false,
 			buffer[0]&0_020000_000000 != 0,
 			buffer[0]&0_020000_000000 != 0),

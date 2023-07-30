@@ -5,7 +5,10 @@
 
 package kasm
 
-import "fmt"
+import (
+	"fmt"
+	"khalehla/parser"
+)
 
 // LocationCounterSpecification is used to house a parsed but not-yet-executed expression
 // describing a location counter.
@@ -22,11 +25,11 @@ type LocationCounterSpecification struct {
 // If the given text does not fit the format specification, we return nil with no error.
 // If it *does* fit the general format but an error exists in the syntax of the expression,
 // we return nil with an error.
-func NewLocationCounterSpecification(text string) (*LocationCounterSpecification, error) {
-	p := NewParser(text)
+func NewLocationCounterSpecification(context *Context, text string) (*LocationCounterSpecification, error) {
+	p := parser.NewParser(text)
 	if p.ParseToken("$(") {
 		p.SkipWhiteSpace()
-		exp, err := p.ParseExpression()
+		exp, err := ParseExpression(p, context)
 		if err != nil {
 			return nil, err
 		}
@@ -63,18 +66,14 @@ func (lcs *LocationCounterSpecification) Evaluate(context *Context) (int, error)
 	}
 
 	iVal := val.(*IntegerValue)
-	if len(iVal.components) != 1 {
-		return 0, fmt.Errorf("composite value cannot be used for location counter specification")
-	}
-
-	comp := iVal.components[0]
-	if len(comp.offsets) > 0 {
-		return 0, fmt.Errorf("cannot use undefined references in location counter specification")
-	}
-
-	if comp.value > 63 {
+	if !iVal.form.Equals(SimpleForm) || len(iVal.componentValues) != 1 {
 		return 0, fmt.Errorf("invalid value for location counter specification")
 	}
 
-	return int(comp.value), nil
+	comp := iVal.componentValues[0]
+	if comp > 63 {
+		return 0, fmt.Errorf("invalid value for location counter specification")
+	}
+
+	return int(comp), nil
 }

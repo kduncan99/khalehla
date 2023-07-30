@@ -7,6 +7,7 @@ package kasm
 
 import (
 	"fmt"
+	"khalehla/parser"
 	"khalehla/pkg"
 )
 
@@ -65,7 +66,7 @@ func NewIntegerValue(values []int64, form *Form, offsets []Offset, flags ValueFl
 	}, nil
 }
 
-func (p *Parser) ParseIntegerLiteral() (Value, error) {
+func ParseIntegerLiteral(p *parser.Parser) (Value, error) {
 	if !p.AtEnd() {
 		ch, _ := p.PeekNextChar()
 		if ch >= '0' && ch <= '9' {
