@@ -2,13 +2,11 @@
 // Copyright © 2023 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package ipEngine
-
-import "khalehla/pkg"
+package pkg
 
 type VirtualAddress interface {
 	GetBankDescriptorIndex() uint
-	GetComposite() pkg.Word36
+	GetComposite() Word36
 	GetOffset() uint
 }
 
@@ -16,19 +14,19 @@ type BasicModeVirtualAddress struct {
 	execFlag            bool
 	levelFlag           bool
 	bankDescriptorIndex uint
-	offset              uint
+	offset              uint //	offset from start of bank
 }
 
-func (addr *BasicModeVirtualAddress) GetComposite() pkg.Word36 {
-	var value pkg.Word36
+func (addr *BasicModeVirtualAddress) GetComposite() Word36 {
+	var value Word36
 	if addr.execFlag {
 		value |= 0_400000_000000
 	}
 	if addr.levelFlag {
 		value |= 0_040000_000000
 	}
-	value |= pkg.Word36(addr.bankDescriptorIndex) << 18
-	value |= pkg.Word36(addr.offset)
+	value |= Word36(addr.bankDescriptorIndex) << 18
+	value |= Word36(addr.offset)
 	return value
 }
 
@@ -104,13 +102,13 @@ func NewBasicModeVirtualAddress(execFlag bool, levelFlag bool, bankDescriptorInd
 type ExtendedModeVirtualAddress struct {
 	level               uint
 	bankDescriptorIndex uint
-	offset              uint
+	offset              uint //	offset from start of bank
 }
 
-func (addr *ExtendedModeVirtualAddress) GetComposite() pkg.Word36 {
-	value := pkg.Word36(addr.level) << 33
-	value |= pkg.Word36(addr.bankDescriptorIndex) << 18
-	value |= pkg.Word36(addr.offset)
+func (addr *ExtendedModeVirtualAddress) GetComposite() Word36 {
+	value := Word36(addr.level) << 33
+	value |= Word36(addr.bankDescriptorIndex) << 18
+	value |= Word36(addr.offset)
 	return value
 }
 

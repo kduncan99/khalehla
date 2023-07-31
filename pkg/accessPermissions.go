@@ -28,6 +28,20 @@ func (perm *AccessPermissions) CanWrite() bool {
 	return perm.canWrite
 }
 
+func (perm *AccessPermissions) GetComposite() uint {
+	var value uint
+	if perm.canEnter {
+		value |= 04
+	}
+	if perm.canRead {
+		value |= 02
+	}
+	if perm.canWrite {
+		value |= 01
+	}
+	return value
+}
+
 func (perm *AccessPermissions) GetString() string {
 	str := "Permissions:"
 

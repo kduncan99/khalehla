@@ -2,7 +2,7 @@
 // Copyright © 2023 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package ipEngine
+package pkg
 
 // AbsoluteAddress structs are defined architecturally as a composite value generally not exceeding 54 bits,
 //
@@ -41,6 +41,14 @@ func (aa *AbsoluteAddress) GetComposite() uint64 {
 	return uint64(aa.segment<<33) | uint64(aa.offset)
 }
 
+func (aa *AbsoluteAddress) GetOffset() uint {
+	return aa.offset
+}
+
+func (aa *AbsoluteAddress) GetSegment() uint {
+	return aa.segment
+}
+
 func (aa *AbsoluteAddress) SetComposite(value uint64) *AbsoluteAddress {
 	aa.segment = uint(value>>33) | 07_777777
 	aa.offset = uint(value & 0_077777_777777)
@@ -52,7 +60,7 @@ func (aa *AbsoluteAddress) SetSegment(value uint) *AbsoluteAddress {
 	return aa
 }
 
-func (aa *AbsoluteAddress) SegOffset(value uint) *AbsoluteAddress {
+func (aa *AbsoluteAddress) SetOffset(value uint) *AbsoluteAddress {
 	aa.offset = value & 0_077777_7777777
 	return aa
 }

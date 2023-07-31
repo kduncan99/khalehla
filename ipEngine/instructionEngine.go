@@ -83,7 +83,7 @@ type InstructionEngine struct {
 
 	mutex sync.Mutex
 
-	breakpointAddress  AbsoluteAddress
+	breakpointAddress  pkg.AbsoluteAddress
 	breakpointRegister BreakpointComparison
 
 	stopReason StopReason
@@ -333,7 +333,7 @@ func (e *InstructionEngine) GetOperand(grsDestination bool, grsCheck bool, allow
 
 	e.incrementIndexRegisterInF0()
 
-	var absAddress AbsoluteAddress
+	var absAddress pkg.AbsoluteAddress
 	e.getAbsoluteAddress(baseRegister, relAddress, &absAddress)
 	e.checkBreakpoint(BreakpointRead, &absAddress)
 
@@ -466,7 +466,7 @@ func (e *InstructionEngine) StoreOperand(grsSource bool, grsCheck bool, checkImm
 
 	e.incrementIndexRegisterInF0()
 
-	var absAddr AbsoluteAddress
+	var absAddr pkg.AbsoluteAddress
 	e.getAbsoluteAddress(bReg, relAddress, &absAddr)
 	e.checkBreakpoint(BreakpointWrite, &absAddr)
 
@@ -634,7 +634,7 @@ func (e *InstructionEngine) checkAccessLimitsRange(
 	return e.checkAccessibility(bReg, false, readFlag, writeFlag, accessKey)
 }
 
-func (e *InstructionEngine) checkBreakpoint(comp BreakpointComparison, addr *AbsoluteAddress) {
+func (e *InstructionEngine) checkBreakpoint(comp BreakpointComparison, addr *pkg.AbsoluteAddress) {
 	//  TODO Per doc, 2.4.1.2 Breakpoint_Register - we need to halt if Halt Enable is set
 	//      which means Stop Right Now... how do we do that for all callers of this code?
 	if e.breakpointAddress.Equals(addr) {
@@ -824,7 +824,7 @@ func (e *InstructionEngine) fetchInstructionWord() bool {
 //	The bank name is in L,BDI format.
 //	bankLevel level of the bank, 0:7
 //	bankDescriptorIndex BDI of the bank 0:077777
-func (e *InstructionEngine) findBankDescriptor(bankLevel uint, bankDescriptorIndex uint) (*BankDescriptor, bool) {
+func (e *InstructionEngine) findBankDescriptor(bankLevel uint, bankDescriptorIndex uint) (*pkg.BankDescriptor, bool) {
 	// The bank descriptor tables for bank levels 0 through 7 are described by the banks based on B16 through B23.
 	// The bank descriptor will be the {n}th bank descriptor in the particular bank descriptor table,
 	// where {n} is the bank descriptor index.
@@ -844,16 +844,16 @@ func (e *InstructionEngine) findBankDescriptor(bankLevel uint, bankDescriptorInd
 	}
 
 	//  Create and return a BankDescriptor object
-	bd := NewBankDescriptorFromStorage(bdStorage[bdTableOffset : bdTableOffset+8])
+	bd := pkg.NewBankDescriptorFromStorage(bdStorage[bdTableOffset : bdTableOffset+8])
 	return bd, true
 }
 
 // getAbsoluteAddress converts a relative address to an absolute address.
 // The AbsoluteAddress is passed as a reference so that we can avoid leaving little structs all over the heap.
-func (e *InstructionEngine) getAbsoluteAddress(baseRegister *BaseRegister, relativeAddress uint64, addr *AbsoluteAddress) {
-	addr.segment = baseRegister.baseAddress.segment
+func (e *InstructionEngine) getAbsoluteAddress(baseRegister *BaseRegister, relativeAddress uint64, addr *pkg.AbsoluteAddress) {
+	addr.SetSegment(baseRegister.baseAddress.GetSegment())
 	actualOffset := relativeAddress - uint64(baseRegister.lowerLimitNormalized)
-	addr.offset = uint(uint64(baseRegister.baseAddress.offset) + actualOffset)
+	addr.SetOffset(baseRegister.baseAddress.GetOffset() + uint(actualOffset))
 }
 
 // findBaseRegisterIndex locates the index of the base register which represents the bank which contains the given

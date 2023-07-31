@@ -11,30 +11,25 @@ import (
 	"strings"
 )
 
-type ExecutableBank struct {
-	access              *pkg.AccessLock
-	permissions         *pkg.AccessPermissions
-	lowerLimit          uint64
-	bankDescriptorIndex uint64
-	code                []uint64 //	key is L,BDI (18 bits), value is the table of binary 36-bit values to comprise the bank
-}
-
 type Executable struct {
-	banks []*ExecutableBank
+	banks []*Bank
 }
 
-// LinkSimple links the given segments into a single bank, all access allowed, ring/domain == 0.
-// the BDI for the bank will be 0_000001.
+func (e *Executable) GetBanks() []*Bank {
+	return e.banks
+}
+
+// LinkSimple links the given segments into a single bank, all accessLock allowed, ring/domain == 0.
+// the BDI for the bank will be 0_600004 (level 6, BDI 00004)
 func (e *Executable) LinkSimple(segments map[int]*Segment) {
 	fmt.Printf("\nLink Simple...\n")
 
-	//	For now, we just create a single bank and call it 0_000001.
-	//	Later on we can get more adventuress.
-	e.banks = make([]*ExecutableBank, 1)
-	e.banks[0] = &ExecutableBank{
-		access:              pkg.NewAccessLock(0, 0),
-		permissions:         pkg.NewAccessPermissions(true, true, true),
-		bankDescriptorIndex: 0_000001,
+	e.banks = make([]*Bank, 1)
+	e.banks[0] = &Bank{
+		accessLock:          pkg.NewAccessLock(0, 0),
+		generalPermissions:  pkg.NewAccessPermissions(true, true, true),
+		specialPermissions:  pkg.NewAccessPermissions(true, true, true),
+		bankDescriptorIndex: 0_600004,
 		lowerLimit:          01000,
 	}
 
@@ -66,7 +61,7 @@ func (e *Executable) LinkSimple(segments map[int]*Segment) {
 			//	offset is from the start of the segment -
 			//  we need to also include the offset of the segment from the start of the bank,
 			//  and the lower limit (base address) of the bank.
-			resolved[symbol] = uint64(offset) + offsets[segmentNumber] + e.banks[0].lowerLimit
+			resolved[symbol] = uint64(offset) + offsets[segmentNumber] + uint64(e.banks[0].lowerLimit)
 		}
 	}
 
@@ -120,11 +115,12 @@ func addFractional(baseValue uint64, addend2 uint64, startingBit int, bitCount i
 
 func (e *Executable) Show() {
 	for _, bank := range e.banks {
-		fmt.Printf("  Bank BDI:%06o  Access:%v  %s  Lower:%012o\n",
-			bank.bankDescriptorIndex, bank.access.GetString(), bank.permissions.GetString(), bank.lowerLimit)
+		fmt.Printf("  Bank BDI:%06o  Access:%v  GAP %s  SAP %s  Lower:%012o\n",
+			bank.bankDescriptorIndex, bank.accessLock.GetString(),
+			bank.generalPermissions.GetString(), bank.specialPermissions.GetString(), bank.lowerLimit)
 		addr := bank.lowerLimit
 		for cx := 0; cx < len(bank.code); cx++ {
-			fmt.Printf("    %08o: %012o\n", addr+uint64(cx), bank.code[cx])
+			fmt.Printf("    %08o: %012o\n", addr+uint(cx), bank.code[cx])
 		}
 	}
 }

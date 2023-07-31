@@ -11,7 +11,7 @@ type BaseRegister struct {
 	accessLock *pkg.AccessLock
 
 	//	physical location of the described bank
-	baseAddress *AbsoluteAddress
+	baseAddress *pkg.AbsoluteAddress
 
 	//	ERW permissions for access by a key of lower privilege
 	generalAccessPermissions *pkg.AccessPermissions
@@ -75,12 +75,12 @@ func (reg *BaseRegister) GetUpperLimitAdjusted() uint64 {
 
 // FromBankDescriptor loads the fields of a BaseRegister struct based on the contents of the
 // given bank descriptor, and the given storage slice
-func (reg *BaseRegister) FromBankDescriptor(bd *BankDescriptor, storage []pkg.Word36) *BaseRegister {
-	reg.accessLock = bd.accessLock
-	reg.baseAddress = bd.baseAddress
-	reg.generalAccessPermissions = bd.generalAccessPermissions
-	reg.specialAccessPermissions = bd.specialAccessPermissions
-	reg.largeSizeFlag = bd.largeBankSize
+func (reg *BaseRegister) FromBankDescriptor(bd *pkg.BankDescriptor, storage []pkg.Word36) *BaseRegister {
+	reg.accessLock = bd.GetAccessLock()
+	reg.baseAddress = bd.GetBaseAddress()
+	reg.generalAccessPermissions = bd.GetGeneralAccessPermissions()
+	reg.specialAccessPermissions = bd.GetSpecialAccessPermissions()
+	reg.largeSizeFlag = bd.IsLargeBank()
 	reg.lowerLimitNormalized = bd.GetLowerLimitNormalized()
 	reg.upperLimitNormalized = bd.GetUpperLimitNormalized()
 	reg.voidFlag = false
@@ -95,18 +95,18 @@ func (reg *BaseRegister) FromBankDescriptor(bd *BankDescriptor, storage []pkg.Wo
 // In this case, we add the given offset to the base offset from the BD, and adjust the lower and upper
 // limits accordingly.  Subsequent accesses proceed as desired by virtue of the fact that we've set
 // the base address in the bank register, along with the limits, in this fashion.
-func (reg *BaseRegister) FromBankDescriptorWithSubsetting(bd *BankDescriptor, offset uint, storage []pkg.Word36) {
-	reg.accessLock = bd.accessLock
-	reg.baseAddress = bd.baseAddress
+func (reg *BaseRegister) FromBankDescriptorWithSubsetting(bd *pkg.BankDescriptor, offset uint, storage []pkg.Word36) {
+	reg.accessLock = bd.GetAccessLock()
+	reg.baseAddress = bd.GetBaseAddress()
 	reg.generalAccessPermissions =
 		pkg.NewAccessPermissions(false,
-			bd.generalAccessPermissions.CanRead(),
-			bd.generalAccessPermissions.CanWrite())
+			bd.GetGeneralAccessPermissions().CanRead(),
+			bd.GetGeneralAccessPermissions().CanWrite())
 	reg.specialAccessPermissions =
 		pkg.NewAccessPermissions(false,
-			bd.specialAccessPermissions.CanRead(),
-			bd.specialAccessPermissions.CanWrite())
-	reg.largeSizeFlag = bd.largeBankSize
+			bd.GetSpecialAccessPermissions().CanRead(),
+			bd.GetSpecialAccessPermissions().CanWrite())
+	reg.largeSizeFlag = bd.IsLargeBank()
 
 	reg.lowerLimitNormalized = 0
 	bdLowerNorm := bd.GetLowerLimitNormalized()
@@ -134,7 +134,7 @@ func NewBaseRegisterFromBuffer(buffer []pkg.Word36, storage []pkg.Word36) *BaseR
 
 	reg := BaseRegister{
 		accessLock:  pkg.NewAccessLock(uint(buffer[0]>>16)&03, uint(buffer[0]&0xFFFF)),
-		baseAddress: NewAbsoluteAddressFromComposite(((uint64(buffer[2]) << 36) & 0777777) | uint64(buffer[3])),
+		baseAddress: pkg.NewAbsoluteAddressFromComposite(((uint64(buffer[2]) << 36) & 0777777) | uint64(buffer[3])),
 		generalAccessPermissions: pkg.NewAccessPermissions(
 			false,
 			buffer[0]&0_200000_000000 != 0,

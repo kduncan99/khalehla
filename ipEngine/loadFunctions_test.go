@@ -50,7 +50,17 @@ func Test_F(t *testing.T) {
 	sourceSet := tasm.NewSourceSet("Test", code)
 	a := tasm.NewTinyAssembler()
 	a.Assemble(sourceSet)
+
 	e := tasm.Executable{}
 	e.LinkSimple(a.GetSegments())
 	e.Show()
+
+	ex := NewExecutor()
+	err := ex.Load(&e)
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	ex.Run()
 }
