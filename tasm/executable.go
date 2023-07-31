@@ -12,11 +12,67 @@ import (
 )
 
 type Executable struct {
-	banks []*Bank
+	//	map of BDIs to the bank for that BDI
+	banks map[uint]*Bank
+
+	//	map of BDIs to the base register upon which the bank should be registered at run time.
+	//  key is base register index (0 to 15) and the value is the BDI of the bank.
+	initiallyBasedBanks map[uint]uint
+
+	//  stuff for setting the designator register
+	arithmeticExceptionEnable bool
+	baseRegisterSelection     bool
+	basicMode                 bool
+	execRegisterSet           bool
+	exec24BitIndexing         bool
+	operationTrapEnable       bool
+	processorPrivilege        uint
+	quarterWordMode           bool
+	startingAddress           uint
 }
 
-func (e *Executable) GetBanks() []*Bank {
+func (e *Executable) GetBanks() map[uint]*Bank {
 	return e.banks
+}
+
+func (e *Executable) GetBaseRegisterSelection() bool {
+	return e.baseRegisterSelection
+}
+
+func (e *Executable) GetInitiallyBasedBanks() map[uint]uint {
+	return e.initiallyBasedBanks
+}
+
+func (e *Executable) GetProcessorPrivilege() uint {
+	return e.processorPrivilege
+
+}
+func (e *Executable) GetStartingAddress() uint {
+	return e.startingAddress
+}
+
+func (e *Executable) IsArithmeticExceptionEnabled() bool {
+	return e.arithmeticExceptionEnable
+}
+
+func (e *Executable) IsBasicMode() bool {
+	return e.basicMode
+}
+
+func (e *Executable) IsExecRegisterSetEnabled() bool {
+	return e.execRegisterSet
+}
+
+func (e *Executable) IsExec24BitIndexingEnabled() bool {
+	return e.exec24BitIndexing
+}
+
+func (e *Executable) IsOperationTrapEnabled() bool {
+	return e.operationTrapEnable
+}
+
+func (e *Executable) IsQuarterWordMode() bool {
+	return e.quarterWordMode
 }
 
 // LinkSimple links the given segments into a single bank, all accessLock allowed, ring/domain == 0.
@@ -24,24 +80,19 @@ func (e *Executable) GetBanks() []*Bank {
 func (e *Executable) LinkSimple(segments map[int]*Segment) {
 	fmt.Printf("\nLink Simple...\n")
 
-	e.banks = make([]*Bank, 1)
-	e.banks[0] = &Bank{
-		accessLock:          pkg.NewAccessLock(0, 0),
-		generalPermissions:  pkg.NewAccessPermissions(true, true, true),
-		specialPermissions:  pkg.NewAccessPermissions(true, true, true),
-		bankDescriptorIndex: 0_600004,
-		lowerLimit:          01000,
-	}
+	bdi := uint(0_600004)
+	e.banks = make(map[uint]*Bank)
+	e.initiallyBasedBanks = make(map[uint]uint)
 
 	//	Find the offsets of all the segments relative to the start of the bank
 	//	key is the segment number, value is the offset
-	offsets := make(map[int]uint64)
-	var offset uint64
-	var bankLength uint64
+	offsets := make(map[int]uint)
+	var offset uint
+	var bankLength uint
 	for segmentNumber, segment := range segments {
 		offsets[segmentNumber] = offset
 		for _, codeBlock := range segment.generatedCode {
-			blockLen := uint64(len(codeBlock.code))
+			blockLen := uint(len(codeBlock.code))
 			offset += blockLen
 			bankLength += blockLen
 		}
@@ -52,7 +103,8 @@ func (e *Executable) LinkSimple(segments map[int]*Segment) {
 		fmt.Printf("    Seg %03o is at offset %08o\n", segmentNumber, offset)
 	}
 
-	e.banks[0].code = make([]uint64, bankLength)
+	bankCode := make([]uint64, bankLength)
+	lowerLimit := uint(01000)
 
 	//	Resolve undefined references for the segments
 	resolved := make(map[string]uint64)
@@ -61,7 +113,7 @@ func (e *Executable) LinkSimple(segments map[int]*Segment) {
 			//	offset is from the start of the segment -
 			//  we need to also include the offset of the segment from the start of the bank,
 			//  and the lower limit (base address) of the bank.
-			resolved[symbol] = uint64(offset) + offsets[segmentNumber] + uint64(e.banks[0].lowerLimit)
+			resolved[symbol] = uint64(uint(offset) + offsets[segmentNumber] + lowerLimit)
 		}
 	}
 
@@ -75,7 +127,7 @@ func (e *Executable) LinkSimple(segments map[int]*Segment) {
 	for _, segment := range segments {
 		for _, codeBlock := range segment.generatedCode {
 			for _, code := range codeBlock.code {
-				e.banks[0].code[cx] = code
+				bankCode[cx] = code
 				cx++
 			}
 		}
@@ -87,14 +139,32 @@ func (e *Executable) LinkSimple(segments map[int]*Segment) {
 		for _, ref := range segment.references {
 			newValue := resolved[strings.ToUpper(ref.symbol)]
 			targetIndex := int(segOffset) + ref.offset
-			baseValue := e.banks[0].code[targetIndex]
+			baseValue := bankCode[targetIndex]
 			var err error
-			e.banks[0].code[targetIndex], err = addFractional(baseValue, newValue, ref.startingBit, ref.bitCount)
+			bankCode[targetIndex], err = addFractional(baseValue, newValue, ref.startingBit, ref.bitCount)
 			if err != nil {
-				fmt.Printf("E: BDI:%06o Offset:%012o: %s\n", e.banks[0].bankDescriptorIndex, targetIndex, err.Error())
+				fmt.Printf("E: BDI:%06o Offset:%012o: %s\n", bdi, targetIndex, err.Error())
 			}
 		}
 	}
+
+	bd := pkg.NewExtendedModeBankDescriptor(
+		pkg.NewAccessLock(0, 0),
+		pkg.NewAccessPermissions(true, true, true),
+		pkg.NewAccessPermissions(true, true, true),
+		nil, // this has to be filled in when the bank is loaded
+		false,
+		lowerLimit,
+		bankLength,
+		0)
+	e.banks[bdi] = &Bank{
+		bankDescriptor:      bd,
+		bankDescriptorIndex: bdi,
+		code:                bankCode,
+	}
+
+	e.initiallyBasedBanks[0] = bdi // the bank should be based on B0
+	e.startingAddress = 01000      // TODO pull this from .OPT command
 }
 
 func addFractional(baseValue uint64, addend2 uint64, startingBit int, bitCount int) (uint64, error) {
@@ -115,12 +185,16 @@ func addFractional(baseValue uint64, addend2 uint64, startingBit int, bitCount i
 
 func (e *Executable) Show() {
 	for _, bank := range e.banks {
+		bd := bank.GetBankDescriptor()
 		fmt.Printf("  Bank BDI:%06o  Access:%v  GAP %s  SAP %s  Lower:%012o\n",
-			bank.bankDescriptorIndex, bank.accessLock.GetString(),
-			bank.generalPermissions.GetString(), bank.specialPermissions.GetString(), bank.lowerLimit)
-		addr := bank.lowerLimit
+			bank.bankDescriptorIndex,
+			bd.GetAccessLock().GetString(),
+			bd.GetGeneralAccessPermissions().GetString(),
+			bd.GetSpecialAccessPermissions().GetString(),
+			bd.GetLowerLimitNormalized())
+		addr := bd.GetLowerLimitNormalized()
 		for cx := 0; cx < len(bank.code); cx++ {
-			fmt.Printf("    %08o: %012o\n", addr+uint(cx), bank.code[cx])
+			fmt.Printf("    %08o: %012o\n", addr+uint64(cx), bank.code[cx])
 		}
 	}
 }

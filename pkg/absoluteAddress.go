@@ -65,6 +65,13 @@ func (aa *AbsoluteAddress) SetOffset(value uint) *AbsoluteAddress {
 	return aa
 }
 
+func NewAbsoluteAddress(segmentIndex uint, offset uint) *AbsoluteAddress {
+	return &AbsoluteAddress{
+		segment: segmentIndex,
+		offset:  offset,
+	}
+}
+
 func NewAbsoluteAddressFromComposite(value uint64) *AbsoluteAddress {
 	aa := AbsoluteAddress{}
 	aa.SetComposite(value)

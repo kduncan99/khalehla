@@ -124,23 +124,29 @@ const (
 )
 
 type GeneralRegisterSet struct {
-	Registers []pkg.Word36
+	registers []pkg.Word36
 }
 
 func NewGeneralRegisterSet() *GeneralRegisterSet {
 	GeneralRegisterSet := GeneralRegisterSet{}
-	GeneralRegisterSet.Registers = make([]pkg.Word36, 128)
+	GeneralRegisterSet.registers = make([]pkg.Word36, 128)
 	return &GeneralRegisterSet
 }
 
+func (grs *GeneralRegisterSet) Clear() {
+	for rx := 0; rx < len(grs.registers); rx++ {
+		grs.registers[rx] = 0
+	}
+}
+
 func (grs *GeneralRegisterSet) GetRegister(regName uint) *pkg.Word36 {
-	return &grs.Registers[regName]
+	return &grs.registers[regName]
 }
 
 func (grs *GeneralRegisterSet) GetValueOfRegister(regName uint) pkg.Word36 {
-	return grs.Registers[regName]
+	return grs.registers[regName]
 }
 
 func (grs *GeneralRegisterSet) SetRegisterValue(regName uint, value pkg.Word36) {
-	grs.Registers[regName] = value
+	grs.registers[regName] = value
 }

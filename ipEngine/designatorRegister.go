@@ -5,74 +5,94 @@
 package ipEngine
 
 type DesignatorRegister struct {
-	ActivityLevelQueueMonitorEnabled bool
-	FaultHandlingInProgress          bool
-	Executive24BitIndexingEnabled    bool
-	QuantumTimerEnabled              bool
-	DeferrableInterruptEnabled       bool
+	activityLevelQueueMonitorEnabled bool
+	faultHandlingInProgress          bool
+	executive24BitIndexingEnabled    bool
+	quantumTimerEnabled              bool
+	deferrableInterruptEnabled       bool
 	processorPrivilege               uint
-	BasicModeEnabled                 bool
-	ExecRegisterSetSelected          bool
-	Carry                            bool
-	Overflow                         bool
-	CharacteristicUnderflow          bool
-	CharacteristicOverflow           bool
-	DivideCheck                      bool
-	OperationTrapEnabled             bool
-	ArithmeticExceptionEnabled       bool
-	BasicModeBaseRegisterSelection   bool
-	QuarterWordModeEnabled           bool
+	basicModeEnabled                 bool
+	execRegisterSetSelected          bool
+	carry                            bool
+	overflow                         bool
+	characteristicUnderflow          bool
+	characteristicOverflow           bool
+	divideCheck                      bool
+	operationTrapEnabled             bool
+	arithmeticExceptionEnabled       bool
+	basicModeBaseRegisterSelection   bool
+	quarterWordModeEnabled           bool
+}
+
+func (dr *DesignatorRegister) Clear() {
+	dr.activityLevelQueueMonitorEnabled = false
+	dr.faultHandlingInProgress = false
+	dr.executive24BitIndexingEnabled = false
+	dr.quantumTimerEnabled = false
+	dr.deferrableInterruptEnabled = false
+	dr.processorPrivilege = 0
+	dr.basicModeEnabled = false
+	dr.execRegisterSetSelected = false
+	dr.carry = false
+	dr.overflow = false
+	dr.characteristicUnderflow = false
+	dr.characteristicOverflow = false
+	dr.divideCheck = false
+	dr.operationTrapEnabled = false
+	dr.arithmeticExceptionEnabled = false
+	dr.basicModeBaseRegisterSelection = false
+	dr.quarterWordModeEnabled = false
 }
 
 func (dr *DesignatorRegister) GetComposite() uint64 {
 	val := uint64(0)
-	if dr.ActivityLevelQueueMonitorEnabled {
+	if dr.activityLevelQueueMonitorEnabled {
 		val |= 1 << 0
 	}
-	if dr.FaultHandlingInProgress {
+	if dr.faultHandlingInProgress {
 		val |= 1 << 6
 	}
-	if dr.Executive24BitIndexingEnabled {
+	if dr.executive24BitIndexingEnabled {
 		val |= 1 << 11
 	}
-	if dr.QuantumTimerEnabled {
+	if dr.quantumTimerEnabled {
 		val |= 1 << 12
 	}
-	if dr.DeferrableInterruptEnabled {
+	if dr.deferrableInterruptEnabled {
 		val |= 1 << 13
 	}
 	val |= uint64(dr.processorPrivilege&0x03) << 14
-	if dr.BasicModeEnabled {
+	if dr.basicModeEnabled {
 		val |= 1 << 16
 	}
-	if dr.ExecRegisterSetSelected {
+	if dr.execRegisterSetSelected {
 		val |= 1 << 17
 	}
-	if dr.Carry {
+	if dr.carry {
 		val |= 1 << 18
 	}
-	if dr.Overflow {
+	if dr.overflow {
 		val |= 1 << 19
 	}
-	if dr.CharacteristicUnderflow {
+	if dr.characteristicUnderflow {
 		val |= 1 << 21
 	}
-	if dr.CharacteristicOverflow {
+	if dr.characteristicOverflow {
 		val |= 1 << 22
 	}
-	if dr.DivideCheck {
+	if dr.divideCheck {
 		val |= 1 << 23
 	}
-	if dr.OperationTrapEnabled {
+	if dr.operationTrapEnabled {
 		val |= 1 << 27
 	}
-	if dr.ArithmeticExceptionEnabled {
+	if dr.arithmeticExceptionEnabled {
 		val |= 1 << 29
 	}
-	if dr.BasicModeBaseRegisterSelection {
+	if dr.basicModeBaseRegisterSelection {
 		val |= 1 << 31
 	}
-	if dr.QuarterWordModeEnabled {
+	if dr.quarterWordModeEnabled {
 		val |= 1 << 32
 	}
 
@@ -86,23 +106,23 @@ func (dr *DesignatorRegister) SetProcessorPrivilege(value uint) {
 }
 
 func (dr *DesignatorRegister) SetComposite(value uint64) *DesignatorRegister {
-	dr.ActivityLevelQueueMonitorEnabled = boolTable[value&01]
-	dr.FaultHandlingInProgress = boolTable[(value>>6)&01]
-	dr.Executive24BitIndexingEnabled = boolTable[(value>>11)&01]
-	dr.QuantumTimerEnabled = boolTable[(value>>12)&01]
-	dr.DeferrableInterruptEnabled = boolTable[(value>>13)&01]
+	dr.activityLevelQueueMonitorEnabled = boolTable[value&01]
+	dr.faultHandlingInProgress = boolTable[(value>>6)&01]
+	dr.executive24BitIndexingEnabled = boolTable[(value>>11)&01]
+	dr.quantumTimerEnabled = boolTable[(value>>12)&01]
+	dr.deferrableInterruptEnabled = boolTable[(value>>13)&01]
 	dr.processorPrivilege = uint((value >> 14) & 03)
-	dr.BasicModeEnabled = boolTable[(value>>16)&01]
-	dr.ExecRegisterSetSelected = boolTable[(value>>17)&01]
-	dr.Carry = boolTable[(value>>18)&01]
-	dr.Overflow = boolTable[(value>>19)&01]
-	dr.CharacteristicUnderflow = boolTable[(value>>21)&01]
-	dr.CharacteristicOverflow = boolTable[(value>>22)&01]
-	dr.DivideCheck = boolTable[(value>>23)&01]
-	dr.OperationTrapEnabled = boolTable[(value>>27)&01]
-	dr.ArithmeticExceptionEnabled = boolTable[(value>>29)&01]
-	dr.BasicModeBaseRegisterSelection = boolTable[(value>>31)&01]
-	dr.QuarterWordModeEnabled = boolTable[(value>>32)&01]
+	dr.basicModeEnabled = boolTable[(value>>16)&01]
+	dr.execRegisterSetSelected = boolTable[(value>>17)&01]
+	dr.carry = boolTable[(value>>18)&01]
+	dr.overflow = boolTable[(value>>19)&01]
+	dr.characteristicUnderflow = boolTable[(value>>21)&01]
+	dr.characteristicOverflow = boolTable[(value>>22)&01]
+	dr.divideCheck = boolTable[(value>>23)&01]
+	dr.operationTrapEnabled = boolTable[(value>>27)&01]
+	dr.arithmeticExceptionEnabled = boolTable[(value>>29)&01]
+	dr.basicModeBaseRegisterSelection = boolTable[(value>>31)&01]
+	dr.quarterWordModeEnabled = boolTable[(value>>32)&01]
 
 	return dr
 }

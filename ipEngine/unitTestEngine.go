@@ -16,9 +16,15 @@ type UnitTestEngine struct {
 	//  Our own private main storage entity
 	storage *pkg.MainStorage
 
-	//	BDT lookup into storage - key is level (0 to 7), and value is the absolute address of the table in storage
+	//	Lookup for absolute addresses of loaded banks.
+	//	key is BDI, value is the absolute address (base address) of the bank.
+	bankAddresses map[uint]*pkg.AbsoluteAddress
+
+	//	BDTable lookup into storage - key is level (0 to 7), and value is the absolute address of the table in storage
 	//  If there is not an entry for a level, then there is not a BDT for that level.
-	bankDescriptorTables map[int]*pkg.AbsoluteAddress
+	//  For now, we have one main storage segment for each BDT, so we can easily tell the size of the BDT from the
+	//  size of the segment, and the offset of the table (from the start of the segment) is always zero.
+	bankDescriptorTableAddresses map[int]*pkg.AbsoluteAddress
 
 	engine *InstructionEngine
 }
@@ -33,7 +39,8 @@ func NewExecutor() *UnitTestEngine {
 
 func (ute *UnitTestEngine) Clear() {
 	ute.storage.Clear()
-	ute.bankDescriptorTables = make(map[int]*pkg.AbsoluteAddress)
+	ute.bankAddresses = make(map[uint]*pkg.AbsoluteAddress)
+	ute.bankDescriptorTableAddresses = make(map[int]*pkg.AbsoluteAddress)
 	ute.executable = nil
 	ute.engine = nil
 }
@@ -63,6 +70,7 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 			seg[cx].SetW(code[cx])
 		}
 
+		ute.bankAddresses[bdi] = pkg.NewAbsoluteAddress(segIndex, 0)
 		//	now build a bank descriptor for the bank.
 		//	if this is the first bank with its level, then we have to allocate space for a bdt for the level.
 		bdiLevel := bdi >> 15
@@ -70,7 +78,7 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 		newBDTLen := (bdiOffset + 1) << 3
 
 		//	For this algorithm, each BDT gets its own segment and thus is always at offset 0 of the segment
-		absAddr, ok := ute.bankDescriptorTables[int(bdiLevel)]
+		absAddr, ok := ute.bankDescriptorTableAddresses[int(bdiLevel)]
 		var bdtSegment uint
 		var bdTable []pkg.Word36
 		if ok {
@@ -90,47 +98,116 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 			bdTable, _ = ute.storage.GetSegment(bdtSegment)
 			absAddr = &pkg.AbsoluteAddress{}
 			absAddr.SetSegment(bdtSegment)
+			ute.bankDescriptorTableAddresses[int(bdiLevel)] = absAddr
 		}
+		bank.GetBankDescriptor().SetBaseAddress(absAddr)
 
-		upperLimit := bank.GetLowerLimit() + bank.GetCodeLength() - 1
-		bd := pkg.NewExtendedModeBankDescriptor(
-			bank.GetAccessLock(), bank.GetGeneralPermissions(), bank.GetSpecialPermissions(),
-			absAddr, false, bank.GetLowerLimit(), upperLimit, 0)
 		bdOffset := bdiOffset * 8
-		bd.Serialize(bdTable[bdOffset : bdOffset+8])
+		bank.GetBankDescriptor().Serialize(bdTable[bdOffset : bdOffset+8])
 	}
 
 	ute.storage.Dump() // TODO remove
 	return nil
 }
 
+func (ute *UnitTestEngine) getBankDescriptor(bdi uint) (*pkg.BankDescriptor, error) {
+	//	TODO need to do translation for extended mode
+	level := int(bdi >> 15)
+	index := bdi & 077777
+
+	bdtAddress, ok := ute.bankDescriptorTableAddresses[level]
+	if !ok {
+		return nil, fmt.Errorf("no BDT for level %d for BDI %06o", level, bdi)
+	}
+
+	offset := bdtAddress.GetOffset() + (index * 8)
+	slice, ok := ute.storage.GetSlice(bdtAddress.GetSegment(), offset, offset+8)
+	if !ok {
+		return nil, fmt.Errorf("cannot retrieve BD for BDI %06o", bdi)
+	}
+
+	return pkg.NewBankDescriptorFromStorage(slice), nil
+}
+
 func (ute *UnitTestEngine) Run() error {
+	fmt.Printf("\nSetting up to run...\n")
 	if ute.executable == nil {
 		return fmt.Errorf("no executable has been loaded")
 	}
 
 	ute.engine = NewEngine(ute.storage)
+	for brx := uint(0); brx < 16; brx++ {
+		ute.engine.SetBaseRegister(brx, pkg.NewVoidBaseRegister())
+	}
 
 	//	Load BDT base registers B16 to B23. BDTable level 0 -> B16, 1 -> B17, etc.
 	//  For any level which does not have a BDT, we make the corresponding base register void.
-	// for bRegIndex := 16; bRegIndex < 24; bRegIndex++ {
-	// 	level := bRegIndex - 16
-	// 	bdi, ok := ute.bankDescriptorTables[level]
-	// 	if ok {
-	//
-	// 	} else {
-	//
-	// 	}
-	// }
+	fmt.Printf("  Loading base registers for bank descriptor tables...\n")
+	for level, address := range ute.bankDescriptorTableAddresses {
+		table, _ := ute.storage.GetSegment(address.GetSegment())
+		brx := uint(level + 16)
+		br := pkg.NewBaseRegister(
+			address,
+			pkg.NewAccessLock(0, 0),
+			pkg.NewAccessPermissions(false, true, false),
+			pkg.NewAccessPermissions(false, true, false),
+			0,
+			0,
+			false,
+			table)
+
+		ute.engine.SetBaseRegister(brx, br)
+		fmt.Printf("    Set B%d -> BDT for level %d\n", brx, level)
+	}
 
 	//	Now load the lower base registers according to the executable instructions.
-	//	TODO
+	//	This is also a convenient place to set PAR.PC
+	fmt.Printf("  Loading base registers and ABTEs with program bank information...\n")
+	banks := ute.executable.GetBanks()
+	for brx, bdi := range ute.executable.GetInitiallyBasedBanks() {
+		bank, _ := banks[bdi]
+		baseAddr := ute.bankAddresses[bdi]
+		offset := baseAddr.GetOffset()
+		limit := offset + bank.GetCodeLength()
+		storage, _ := ute.storage.GetSlice(baseAddr.GetSegment(), offset, limit)
+		br := pkg.NewBaseRegisterFromBankDescriptor(bank.GetBankDescriptor(), storage)
+		ute.engine.SetBaseRegister(brx, br)
+		fmt.Printf("    Set B%d -> %06o\n", brx, bdi)
 
-	//	Load PAR.PC and DR, reset GRS, and clear interrupts and jump history
+		level := bdi >> 15
+		index := bdi & 077777
+		if brx == 0 {
+			ute.engine.SetPARPC(level, index, ute.executable.GetStartingAddress())
+		} else {
+			abte := ute.engine.GetActiveBaseTableEntry(brx)
+			abte.SetBankLevel(level).SetBankDescriptorIndex(index).SetSubsetSpecification(0)
+			fmt.Printf("    Set ABTE[%d]\n", brx)
+		}
+
+	}
+
+	//	Initialize designator register
+	dr := ute.engine.GetDesignatorRegister()
+	dr.Clear()
+	dr.SetProcessorPrivilege(ute.executable.GetProcessorPrivilege())
+	dr.arithmeticExceptionEnabled = ute.executable.IsArithmeticExceptionEnabled()
+	dr.basicModeBaseRegisterSelection = ute.executable.GetBaseRegisterSelection()
+	dr.basicModeEnabled = ute.executable.IsBasicMode()
+	dr.executive24BitIndexingEnabled = ute.executable.IsExec24BitIndexingEnabled()
+	dr.execRegisterSetSelected = ute.executable.IsExecRegisterSetEnabled()
+	dr.operationTrapEnabled = ute.executable.IsOperationTrapEnabled()
+	dr.quarterWordModeEnabled = ute.executable.IsQuarterWordMode()
+
+	//	Reset GRS, clear interrupts and jump history
+	//  TODO maybe we should have a Clear() on the engine?
+	ute.engine.GetGeneralRegisterSet().Clear()
+	ute.engine.ClearInterrupt()
 	//	TODO
 
 	//	Now Iterate until an interrupt is posted
-	//	TODO
+	for !ute.engine.HasPendingInterrupt() {
+		ute.engine.doCycle()
+	}
 
 	return nil
 }

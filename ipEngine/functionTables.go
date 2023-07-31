@@ -4,13 +4,15 @@
 
 package ipEngine
 
+import "khalehla/pkg"
+
 // FunctionTable maps the basic mode flag to either the basic mode or extended mode function table
-var FunctionTable = map[bool]map[uint]func(*InstructionEngine) (completed bool, interrupt Interrupt){
+var FunctionTable = map[bool]map[uint]func(*InstructionEngine) (completed bool, interrupt pkg.Interrupt){
 	true:  BasicModeFunctionTable,
 	false: ExtendedModeFunctionTable,
 }
 
-var BasicModeFunctionTable = map[uint]func(*InstructionEngine) (completed bool, interrupt Interrupt){
+var BasicModeFunctionTable = map[uint]func(*InstructionEngine) (completed bool, interrupt pkg.Interrupt){
 	001: StoreAccumulator,
 	004: StoreRegister,
 	005: basicModeFunction05Handler,
@@ -21,7 +23,7 @@ var BasicModeFunctionTable = map[uint]func(*InstructionEngine) (completed bool, 
 	074: basicModeFunction74Handler,
 }
 
-var ExtendedModeFunctionTable = map[uint]func(*InstructionEngine) (completed bool, interrupt Interrupt){
+var ExtendedModeFunctionTable = map[uint]func(*InstructionEngine) (completed bool, interrupt pkg.Interrupt){
 	001: StoreAccumulator,
 	004: StoreRegister,
 	005: extendedModeFunction05Handler,
@@ -32,7 +34,7 @@ var ExtendedModeFunctionTable = map[uint]func(*InstructionEngine) (completed boo
 	073: extendedModeFunction73Handler,
 }
 
-var basicModeFunction05Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt Interrupt){
+var basicModeFunction05Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
 	000: StoreZero,
 	001: StoreNegativeZero,
 	002: StorePositiveOne,
@@ -43,11 +45,11 @@ var basicModeFunction05Table = map[uint]func(engine *InstructionEngine) (complet
 	007: StoreASCIIZeroes,
 }
 
-var basicModeFunction74Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt Interrupt){
+var basicModeFunction74Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
 	006: NoOperation,
 }
 
-var extendedModeFunction05Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt Interrupt){
+var extendedModeFunction05Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
 	000: StoreZero,
 	001: StoreNegativeZero,
 	002: StorePositiveOne,
@@ -58,55 +60,55 @@ var extendedModeFunction05Table = map[uint]func(engine *InstructionEngine) (comp
 	007: StoreASCIIZeroes,
 }
 
-var extendedModeFunction73Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt Interrupt){
+var extendedModeFunction73Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
 	014: extendedModeFunction7314Handler,
 }
 
-var extendedModeFunction7314Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt Interrupt){
+var extendedModeFunction7314Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
 	000: NoOperation,
 }
 
-func basicModeFunction05Handler(e *InstructionEngine) (completed bool, interrupt Interrupt) {
+func basicModeFunction05Handler(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	ci := e.GetCurrentInstruction()
 	if inst, found := basicModeFunction05Table[uint(ci.GetA())]; found {
 		return inst(e)
 	} else {
-		return false, NewInvalidInstructionInterrupt(InvalidInstructionBadFunctionCode)
+		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode)
 	}
 }
 
-func basicModeFunction74Handler(e *InstructionEngine) (completed bool, interrupt Interrupt) {
+func basicModeFunction74Handler(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	ci := e.GetCurrentInstruction()
 	if inst, found := basicModeFunction74Table[uint(ci.GetJ())]; found {
 		return inst(e)
 	} else {
-		return false, NewInvalidInstructionInterrupt(InvalidInstructionBadFunctionCode)
+		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode)
 	}
 }
 
-func extendedModeFunction05Handler(e *InstructionEngine) (completed bool, interrupt Interrupt) {
+func extendedModeFunction05Handler(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	ci := e.GetCurrentInstruction()
 	if inst, found := extendedModeFunction05Table[uint(ci.GetA())]; found {
 		return inst(e)
 	} else {
-		return false, NewInvalidInstructionInterrupt(InvalidInstructionBadFunctionCode)
+		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode)
 	}
 }
 
-func extendedModeFunction73Handler(e *InstructionEngine) (completed bool, interrupt Interrupt) {
+func extendedModeFunction73Handler(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	ci := e.GetCurrentInstruction()
 	if inst, found := extendedModeFunction73Table[uint(ci.GetJ())]; found {
 		return inst(e)
 	} else {
-		return false, NewInvalidInstructionInterrupt(InvalidInstructionBadFunctionCode)
+		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode)
 	}
 }
 
-func extendedModeFunction7314Handler(e *InstructionEngine) (completed bool, interrupt Interrupt) {
+func extendedModeFunction7314Handler(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	ci := e.GetCurrentInstruction()
 	if inst, found := extendedModeFunction7314Table[uint(ci.GetA())]; found {
 		return inst(e)
 	} else {
-		return false, NewInvalidInstructionInterrupt(InvalidInstructionBadFunctionCode)
+		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode)
 	}
 }

@@ -2,9 +2,7 @@
 // Copyright © 2023 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package ipEngine
-
-import "khalehla/pkg"
+package pkg
 
 const (
 	HardwareDefaultInterruptClass uint = iota
@@ -76,8 +74,8 @@ const (
 type Interrupt interface {
 	GetClass() uint
 	GetShortStatusField() uint
-	GetStatusWord0() pkg.Word36
-	GetStatusWord1() pkg.Word36
+	GetStatusWord0() Word36
+	GetStatusWord1() Word36
 	IsDeferrable() bool
 }
 
@@ -108,11 +106,11 @@ func (i *ReferenceViolationInterrupt) GetShortStatusField() uint {
 	return i.shortStatusField
 }
 
-func (i *ReferenceViolationInterrupt) GetStatusWord0() pkg.Word36 {
+func (i *ReferenceViolationInterrupt) GetStatusWord0() Word36 {
 	return 0
 }
 
-func (i *ReferenceViolationInterrupt) GetStatusWord1() pkg.Word36 {
+func (i *ReferenceViolationInterrupt) GetStatusWord1() Word36 {
 	return 0
 }
 
@@ -148,7 +146,7 @@ func NewReferenceViolationInterrupt(entryType uint, fetchOperation bool) *Refere
 
 type AddressingExceptionInterrupt struct {
 	shortStatusField     uint
-	interruptStatusWord1 pkg.Word36
+	interruptStatusWord1 Word36
 }
 
 func (i *AddressingExceptionInterrupt) GetClass() uint {
@@ -159,11 +157,11 @@ func (i *AddressingExceptionInterrupt) GetShortStatusField() uint {
 	return i.shortStatusField
 }
 
-func (i *AddressingExceptionInterrupt) GetStatusWord0() pkg.Word36 {
+func (i *AddressingExceptionInterrupt) GetStatusWord0() Word36 {
 	return 0
 }
 
-func (i *AddressingExceptionInterrupt) GetStatusWord1() pkg.Word36 {
+func (i *AddressingExceptionInterrupt) GetStatusWord1() Word36 {
 	return i.interruptStatusWord1
 }
 
@@ -172,8 +170,8 @@ func (i *AddressingExceptionInterrupt) IsDeferrable() bool {
 }
 
 func NewAddressingExceptionInterrupt(shortStatusField uint, sourceBankLevel uint, sourceBankDescriptorIndex uint) *AddressingExceptionInterrupt {
-	isw1 := pkg.Word36(sourceBankLevel&07) << 33
-	isw1 |= pkg.Word36(sourceBankDescriptorIndex&077777) << 18
+	isw1 := Word36(sourceBankLevel&07) << 33
+	isw1 |= Word36(sourceBankDescriptorIndex&077777) << 18
 	return &AddressingExceptionInterrupt{
 		shortStatusField:     shortStatusField,
 		interruptStatusWord1: isw1,
@@ -197,7 +195,7 @@ func NewAddressingExceptionInterrupt(shortStatusField uint, sourceBankLevel uint
 
 type RCSGenericStackUnderOverflowInterrupt struct {
 	shortStatusField     uint
-	interruptStatusWord0 pkg.Word36
+	interruptStatusWord0 Word36
 }
 
 func (i *RCSGenericStackUnderOverflowInterrupt) GetClass() uint {
@@ -208,11 +206,11 @@ func (i *RCSGenericStackUnderOverflowInterrupt) GetShortStatusField() uint {
 	return i.shortStatusField
 }
 
-func (i *RCSGenericStackUnderOverflowInterrupt) GetStatusWord0() pkg.Word36 {
+func (i *RCSGenericStackUnderOverflowInterrupt) GetStatusWord0() Word36 {
 	return i.interruptStatusWord0
 }
 
-func (i *RCSGenericStackUnderOverflowInterrupt) GetStatusWord1() pkg.Word36 {
+func (i *RCSGenericStackUnderOverflowInterrupt) GetStatusWord1() Word36 {
 	return 0
 }
 
@@ -221,7 +219,7 @@ func (i *RCSGenericStackUnderOverflowInterrupt) IsDeferrable() bool {
 }
 
 func NewRCSGenericStackUnderOverflowInterrupt(shortStatusField uint, baseRegister uint, relativeAddress uint) *RCSGenericStackUnderOverflowInterrupt {
-	isw0 := (pkg.Word36(baseRegister) << 30) | pkg.Word36(relativeAddress)
+	isw0 := (Word36(baseRegister) << 30) | Word36(relativeAddress)
 	return &RCSGenericStackUnderOverflowInterrupt{
 		shortStatusField:     shortStatusField,
 		interruptStatusWord0: isw0,
@@ -252,11 +250,11 @@ func (i *InvalidInstructionInterrupt) GetShortStatusField() uint {
 	return i.shortStatusField
 }
 
-func (i *InvalidInstructionInterrupt) GetStatusWord0() pkg.Word36 {
+func (i *InvalidInstructionInterrupt) GetStatusWord0() Word36 {
 	return 0
 }
 
-func (i *InvalidInstructionInterrupt) GetStatusWord1() pkg.Word36 {
+func (i *InvalidInstructionInterrupt) GetStatusWord1() Word36 {
 	return 0
 }
 

@@ -87,8 +87,8 @@ func (p *InstructionProcessor) handleInterrupt() {
 	//   then error halt and set an SCF readable “register” to indicate that a Reset failure occurred.
 
 	//	A hardware interrupt during hardware interrupt handling is a Very Bad Thing
-	if i.GetClass() == HardwareCheckInterruptClass &&
-		p.engine.activityStatePacket.designatorRegister.FaultHandlingInProgress {
+	if i.GetClass() == pkg.HardwareCheckInterruptClass &&
+		p.engine.activityStatePacket.designatorRegister.faultHandlingInProgress {
 		p.engine.Stop(InterruptHandlerHardwareFailureStop, 0)
 		return
 	}
@@ -104,7 +104,7 @@ func (p *InstructionProcessor) handleInterrupt() {
 	asp.interruptStatusWord1 = i.GetStatusWord1()
 
 	//	Make sure the interrupt control stack base register is valid
-	if br[ICSBaseRegister].voidFlag {
+	if br[ICSBaseRegister].IsVoid() {
 		p.engine.Stop(ICSBaseRegisterInvalidStop, 0)
 		return
 	}
@@ -116,20 +116,20 @@ func (p *InstructionProcessor) handleInterrupt() {
 	stackOffset := icsXReg.GetXM()
 	stackFrameSize := icsXReg.GetXI()
 	stackFrameLimit := stackOffset + stackFrameSize
-	if (stackFrameLimit-1 > uint64(br[ICSBaseRegister].upperLimitNormalized)) ||
-		(stackOffset < uint64(br[ICSBaseRegister].lowerLimitNormalized)) {
+	if (stackFrameLimit-1 > br[ICSBaseRegister].GetUpperLimitNormalized()) ||
+		(stackOffset < br[ICSBaseRegister].GetLowerLimitNormalized()) {
 		p.engine.Stop(ICSOverflowStop, 0)
 		return
 	}
 
 	//	Populate the stack frame in memory
-	icsStorage := br[ICSBaseRegister].storage
+	icsStorage := br[ICSBaseRegister].GetStorage()
 	if stackFrameLimit >= uint64(len(icsStorage)) {
 		p.engine.Stop(ICSBaseRegisterInvalidStop, 0)
 		return
 	}
 
-	icsSlice := br[ICSBaseRegister].storage[stackOffset:stackFrameLimit]
+	icsSlice := br[ICSBaseRegister].GetStorage()[stackOffset:stackFrameLimit]
 	icsSlice[0] = asp.programAddressRegister.GetComposite()
 	icsSlice[1] = pkg.Word36(asp.designatorRegister.GetComposite())
 	icsSlice[2] = asp.indicatorKeyRegister.GetComposite()
@@ -145,7 +145,7 @@ func (p *InstructionProcessor) handleInterrupt() {
 	NewBankManipulatorForInterrupt(p.engine, i).process()
 }
 
-func (p *InstructionProcessor) isReadAllowed(bReg *BaseRegister) bool {
+func (p *InstructionProcessor) isReadAllowed(bReg *pkg.BaseRegister) bool {
 	permissions := bReg.GetEffectivePermissions(p.engine.activityStatePacket.indicatorKeyRegister.accessKey)
 	return permissions.CanRead()
 }
@@ -153,10 +153,10 @@ func (p *InstructionProcessor) isReadAllowed(bReg *BaseRegister) bool {
 // isWithinLimits evaluates the given offset within the constraints of the given base register,
 //
 //	returning true if the offset is within those constraints, else false
-func (p *InstructionProcessor) isWithinLimits(bReg *BaseRegister, offset uint) bool {
-	return !bReg.voidFlag &&
-		(offset >= bReg.lowerLimitNormalized) &&
-		(offset <= bReg.upperLimitNormalized)
+func (p *InstructionProcessor) isWithinLimits(bReg *pkg.BaseRegister, offset uint64) bool {
+	return !bReg.IsVoid() &&
+		(offset >= bReg.GetLowerLimitNormalized()) &&
+		(offset <= bReg.GetUpperLimitNormalized())
 }
 
 // run is the coroutine which drives the engine
@@ -165,7 +165,7 @@ func (p *InstructionProcessor) run() {
 		//	Is there a pending interrupt?
 		// Are deferrable interrupts allowed?  If not, ignore the interrupt
 		if p.engine.pendingInterrupt != nil {
-			if !p.engine.pendingInterrupt.IsDeferrable() || p.engine.activityStatePacket.designatorRegister.DeferrableInterruptEnabled {
+			if !p.engine.pendingInterrupt.IsDeferrable() || p.engine.activityStatePacket.designatorRegister.deferrableInterruptEnabled {
 				p.handleInterrupt()
 				//	do not clear pending interrupt here - the interrupt handler may have posted an interrupt
 				continue

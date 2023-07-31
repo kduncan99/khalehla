@@ -15,7 +15,7 @@ const (
 )
 
 type BankManipulator struct {
-	interrupt       Interrupt
+	interrupt       pkg.Interrupt
 	instructionType int
 	operands        []pkg.Word36
 	engine          *InstructionEngine
@@ -53,13 +53,13 @@ func step1(bm *BankManipulator) bool {
 		//	post InvalidInstructionInterrupt if B0 or B1 are the target for an LBU instructionType
 		if (bm.instructionType == LBUInstruction) &&
 			(bm.engine.activityStatePacket.currentInstruction.GetA() < 2) {
-			bm.engine.PostInterrupt(NewInvalidInstructionInterrupt(InvalidInstructionLBUUsesB0OrB1))
+			bm.engine.PostInterrupt(pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionLBUUsesB0OrB1))
 			return false
 		}
 
 		//	post AddressingExceptionInterrupt if IS is 3 for LxJ instructions
 		if bm.isLXJInstruction && (bm.lxjInterfaceSpec == 3) {
-			bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionInvalidISValue, 0, 0))
+			bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionInvalidISValue, 0, 0))
 			return false
 		}
 	}
@@ -88,13 +88,13 @@ func step2(bm *BankManipulator) bool {
 		if bm.instructionType == LBJInstruction {
 			abtx = bm.lxjBankSelector + 12
 		} else if bm.instructionType == LDJInstruction {
-			if dr.BasicModeBaseRegisterSelection {
+			if dr.basicModeBaseRegisterSelection {
 				abtx = 15
 			} else {
 				abtx = 14
 			}
 		} else { // LIJInstruction
-			if dr.BasicModeBaseRegisterSelection {
+			if dr.basicModeBaseRegisterSelection {
 				abtx = 13
 			} else {
 				abtx = 12
@@ -128,13 +128,13 @@ func step3(bm *BankManipulator) bool {
 		//  Each word is a Program Address Register word, containing the L,BDI,Offset of the interrupt handling routine
 		//  Make sure B16 is valid before dereferencing through it.
 		bReg := bm.engine.GetBaseRegister(L0BDTBaseRegister)
-		if bReg.voidFlag {
+		if bReg.IsVoid() {
 			bm.engine.Stop(L0BaseRegisterInvalidStop, 0)
 			return false
 		}
 
 		//  intOffset is the offset from the start of the level 0 BDT, to the vector we're interested in.
-		bdtLevel0 := bm.engine.GetBaseRegister(L0BDTBaseRegister).storage
+		bdtLevel0 := bm.engine.GetBaseRegister(L0BDTBaseRegister).GetStorage()
 		intOffset := bm.interrupt.GetClass()
 		if intOffset >= uint(len(bdtLevel0)) {
 			bm.engine.Stop(InterruptHandlerOffsetOutOfRangeStop, 0)
@@ -155,22 +155,22 @@ func step3(bm *BankManipulator) bool {
 		//  source L,BDI,Offset comes from RCS L,BDI and offset fields
 		//  This is where we pop an RCS frame and grab the relevant fields therefrom.
 		rcsBReg := bm.engine.GetBaseRegister(RCSBaseRegister)
-		if rcsBReg.voidFlag {
-			i := NewRCSGenericStackUnderOverflowInterrupt(RCSGenericStackOverflow, RCSBaseRegister, 0)
+		if rcsBReg.IsVoid() {
+			i := pkg.NewRCSGenericStackUnderOverflowInterrupt(pkg.RCSGenericStackOverflow, RCSBaseRegister, 0)
 			bm.engine.PostInterrupt(i)
 			return false
 		}
 
 		rcsXReg := bm.engine.GetExecOrUserXRegister(RCSIndexRegister)
-		if rcsXReg.GetXM() > uint64(rcsBReg.upperLimitNormalized) {
-			i := NewRCSGenericStackUnderOverflowInterrupt(RCSGenericStackUnderflow, RCSIndexRegister, uint(rcsXReg.GetXM()))
+		if rcsXReg.GetXM() > rcsBReg.GetUpperLimitNormalized() {
+			i := pkg.NewRCSGenericStackUnderOverflowInterrupt(pkg.RCSGenericStackUnderflow, RCSIndexRegister, uint(rcsXReg.GetXM()))
 			bm.engine.PostInterrupt(i)
 			return false
 		}
 
 		framePointer := rcsXReg.GetXM()
-		offset := framePointer - uint64(rcsBReg.lowerLimitNormalized)
-		frame := rcsBReg.storage[offset : offset+2]
+		offset := framePointer - rcsBReg.GetLowerLimitNormalized()
+		frame := rcsBReg.GetStorage()[offset : offset+2]
 		bm.returnControlStackFrame = NewReturnControlStackFrameFromBuffer(frame)
 		rcsXReg.SetXM(framePointer + 2)
 
@@ -223,7 +223,7 @@ func step4(bm *BankManipulator) bool {
 			bm.engine.Stop(InterruptHandlerInvalidLevelBDIStop, detail)
 			return false
 		} else {
-			i := NewAddressingExceptionInterrupt(AddressingExceptionInvalidSourceLBDI, bm.sourceBankLevel, bm.sourceBankDescriptorIndex)
+			i := pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionInvalidSourceLBDI, bm.sourceBankLevel, bm.sourceBankDescriptorIndex)
 			bm.engine.PostInterrupt(i)
 			return false
 		}
@@ -252,22 +252,22 @@ func step5(bm *BankManipulator) bool {
 			return true
 		} else if bm.isReturnOperation {
 			//	pull basic mode enabled flag from rcs frame DB12-17 field
-			if bm.returnControlStackFrame.designatorRegister.BasicModeEnabled {
+			if bm.returnControlStackFrame.designatorRegister.basicModeEnabled {
 				//  return to basic mode - void bank
 				bm.nextStep = 10
 				return true
 			} else {
 				//  return to extended mode - addressing exception
-				i := NewAddressingExceptionInterrupt(AddressingExceptionInvalidSourceLBDI, bm.sourceBankLevel, bm.sourceBankDescriptorIndex)
+				i := pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionInvalidSourceLBDI, bm.sourceBankLevel, bm.sourceBankDescriptorIndex)
 				bm.engine.PostInterrupt(i)
 				return false
 			}
 		} else if bm.instructionType == URInstruction {
 			drReturn := DesignatorRegister{}
 			drReturn.SetComposite(bm.operands[1].GetW())
-			if drReturn.BasicModeEnabled {
+			if drReturn.basicModeEnabled {
 				//  return to extended mode - addressing exception
-				i := NewAddressingExceptionInterrupt(AddressingExceptionInvalidSourceLBDI, bm.sourceBankLevel, bm.sourceBankDescriptorIndex)
+				i := pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionInvalidSourceLBDI, bm.sourceBankLevel, bm.sourceBankDescriptorIndex)
 				bm.engine.PostInterrupt(i)
 				return false
 			} else {
@@ -319,8 +319,8 @@ func step7(bm *BankManipulator) bool {
 			!bm.sourceBankDescriptor.GetSpecialAccessPermissions().CanEnter() {
 			bm.targetBankDescriptor = nil
 		} else if ((bm.instructionType == RTNInstruction) || bm.isLXJInstruction) &&
-			!bm.returnControlStackFrame.designatorRegister.BasicModeEnabled {
-			bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionBDTypeInvalid, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
+			!bm.returnControlStackFrame.designatorRegister.basicModeEnabled {
+			bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionBDTypeInvalid, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
 			return false
 		}
 	} else if bm.sourceBankDescriptor.GetBankType() == pkg.GateBankDescriptor {
@@ -332,7 +332,7 @@ func step7(bm *BankManipulator) bool {
 		} else if bm.isCallOperation || (bm.instructionType == GOTOInstruction) {
 			bm.nextStep = 9
 		} else if bm.isReturnOperation || (bm.instructionType == URInstruction) {
-			bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionBDTypeInvalid, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
+			bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionBDTypeInvalid, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
 			return false
 		}
 	} else if bm.sourceBankDescriptor.GetBankType() == pkg.IndirectBankDescriptor {
@@ -344,12 +344,12 @@ func step7(bm *BankManipulator) bool {
 		} else if bm.isCallOperation || bm.isLoadInstruction {
 			bm.nextStep = 8
 		} else if bm.isReturnOperation || bm.instructionType == LAEInstruction || bm.instructionType == URInstruction {
-			bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionBDTypeInvalid, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
+			bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionBDTypeInvalid, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
 			return false
 		}
 	} else {
 		//	Undefined (or unimplemented) bank types produce addressing exception interrupts
-		bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionBDTypeInvalid, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
+		bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionBDTypeInvalid, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
 		return false
 	}
 
@@ -370,12 +370,12 @@ func step7(bm *BankManipulator) bool {
 //	and processing should be discontinued.
 func step8(bm *BankManipulator) bool {
 	if bm.sourceBankDescriptor.IsGeneralFault() {
-		bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionIndirectGBitSet, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
+		bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionIndirectGBitSet, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
 		return false
 	}
 
 	if (bm.sourceBankLevel == 0) && (bm.sourceBankDescriptorIndex < 32) {
-		bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionInvalidSourceLBDI, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
+		bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionInvalidSourceLBDI, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
 		return false
 	}
 
@@ -387,7 +387,7 @@ func step8(bm *BankManipulator) bool {
 	ok := false
 	bm.targetBankDescriptor, ok = bm.engine.findBankDescriptor(bm.targetBankLevel, bm.targetBankDescriptorIndex)
 	if !ok {
-		bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionFatal, bm.targetBankLevel, bm.targetBankDescriptorIndex))
+		bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionFatal, bm.targetBankLevel, bm.targetBankDescriptorIndex))
 		return false
 	}
 
@@ -405,7 +405,7 @@ func step8(bm *BankManipulator) bool {
 			bm.nextStep = 9
 		}
 	} else {
-		bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionFatal, bm.targetBankLevel, bm.targetBankDescriptorIndex))
+		bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionFatal, bm.targetBankLevel, bm.targetBankDescriptorIndex))
 		return false
 	}
 
@@ -418,7 +418,7 @@ func step8(bm *BankManipulator) bool {
 //	and processing should be discontinued.
 func step9(bm *BankManipulator) bool {
 	if bm.sourceBankDescriptor.IsGeneralFault() {
-		bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionIndirectGBitSet, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
+		bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionIndirectGBitSet, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
 		return false
 	}
 
@@ -427,16 +427,16 @@ func step9(bm *BankManipulator) bool {
 		bm.sourceBankDescriptor.GetGeneralAccessPermissions(),
 		bm.sourceBankDescriptor.GetSpecialAccessPermissions())
 	if !gateBankPerms.CanEnter() {
-		bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionEnterAccessDenied, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
+		bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionEnterAccessDenied, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
 		return false
 	}
 
 	//	Check limits of offset against gate bank to ensure the gate offset is within limits,
 	//	and is a multiple of 8 words.
-	if (bm.sourceBankOffset < uint64(bm.sourceBankDescriptor.GetLowerLimitNormalized())) ||
-		(bm.sourceBankOffset > uint64(bm.sourceBankDescriptor.GetUpperLimitNormalized())) ||
+	if (bm.sourceBankOffset < bm.sourceBankDescriptor.GetLowerLimitNormalized()) ||
+		(bm.sourceBankOffset > bm.sourceBankDescriptor.GetUpperLimitNormalized()) ||
 		(bm.sourceBankOffset&07) != 0 {
-		bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionGateBankBoundaryViolation, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
+		bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionGateBankBoundaryViolation, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
 		return false
 	}
 
@@ -445,7 +445,7 @@ func step9(bm *BankManipulator) bool {
 	gateAddr := bm.sourceBankDescriptor.GetBaseAddress()
 	buffer, ok := bm.engine.mainStorage.GetSlice(gateAddr.GetSegment(), gateAddr.GetOffset(), 8)
 	if !ok {
-		bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionFatal, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
+		bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionFatal, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
 		return false
 	}
 	bm.gate = NewGateFromStorage(buffer)
@@ -456,7 +456,7 @@ func step9(bm *BankManipulator) bool {
 		bm.gate.specialAccessPermissions,
 		bm.gate.generalAccessPermissions)
 	if !gatePerms.CanEnter() {
-		bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionEnterAccessDenied, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
+		bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionEnterAccessDenied, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
 		return false
 	}
 
@@ -464,14 +464,14 @@ func step9(bm *BankManipulator) bool {
 	if (bm.instructionType == GOTOInstruction) ||
 		(bm.isLXJInstruction && (bm.lxjInterfaceSpec == 1)) {
 		if bm.gate.gotoInhibit {
-			bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionGateGBitSet, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
+			bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionGateGBitSet, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
 			return false
 		}
 	}
 
 	//	If target L,BDI is less than 0,32, post interrupt
 	if (bm.gate.targetLevel == 0) && (bm.gate.targetBDI < 32) {
-		bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionFatal, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
+		bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionFatal, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
 		return false
 	}
 
@@ -483,7 +483,7 @@ func step9(bm *BankManipulator) bool {
 	bm.targetBankOffset = uint64(bm.gate.targetOffset)
 	bm.targetBankDescriptor, ok = bm.engine.findBankDescriptor(bm.targetBankLevel, bm.targetBankDescriptorIndex)
 	if !ok {
-		bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionFatal, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
+		bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionFatal, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
 		return false
 	}
 
@@ -518,10 +518,10 @@ func step10(bm *BankManipulator) bool {
 	} else {
 		//	So what is left, are transfer operations. What kind of transfer are we doing?
 		var destModeBasic bool
-		sourceModeBasic := bm.engine.activityStatePacket.designatorRegister.BasicModeEnabled
+		sourceModeBasic := bm.engine.activityStatePacket.designatorRegister.basicModeEnabled
 		if bm.isReturnOperation {
 			//	Destination mode is defined by DB16 in the RCS frame
-			destModeBasic = bm.returnControlStackFrame.designatorRegister.BasicModeEnabled
+			destModeBasic = bm.returnControlStackFrame.designatorRegister.basicModeEnabled
 		} else {
 			//	call or GOTO op - destination mode is defined by target bank type
 			if bm.targetBankDescriptor == nil {
@@ -540,13 +540,13 @@ func step10(bm *BankManipulator) bool {
 				} else if bm.instructionType == LBJInstruction {
 					bm.baseRegisterIndex = bm.lxjBankSelector + 12
 				} else if bm.instructionType == LDJInstruction {
-					if bm.engine.activityStatePacket.designatorRegister.BasicModeBaseRegisterSelection {
+					if bm.engine.activityStatePacket.designatorRegister.basicModeBaseRegisterSelection {
 						bm.baseRegisterIndex = 15
 					} else {
 						bm.baseRegisterIndex = 14
 					}
 				} else if bm.instructionType == LIJInstruction {
-					if bm.engine.activityStatePacket.designatorRegister.BasicModeBaseRegisterSelection {
+					if bm.engine.activityStatePacket.designatorRegister.basicModeBaseRegisterSelection {
 						bm.baseRegisterIndex = 13
 					} else {
 						bm.baseRegisterIndex = 12
@@ -587,13 +587,13 @@ func step10(bm *BankManipulator) bool {
 //	and processing should be discontinued.
 func step11(bm *BankManipulator) bool {
 	if bm.transferMode == ExtendedToBasicTransfer {
-		bm.engine.SetBaseRegister(0, NewVoidBaseRegister())
+		bm.engine.SetBaseRegister(0, pkg.NewVoidBaseRegister())
 		par := bm.engine.activityStatePacket.programAddressRegister
 		par.SetLevel(0)
 		par.SetBankDescriptorIndex(0)
 
 	} else if bm.transferMode == BasicToBasicTransfer {
-		bm.engine.SetBaseRegister(bm.baseRegisterIndex, NewVoidBaseRegister())
+		bm.engine.SetBaseRegister(bm.baseRegisterIndex, pkg.NewVoidBaseRegister())
 	}
 
 	bm.nextStep++
@@ -608,15 +608,15 @@ func step11(bm *BankManipulator) bool {
 func step12(bm *BankManipulator) bool {
 	if bm.isCallOperation {
 		rcsBReg := bm.engine.baseRegisters[RCSBaseRegister]
-		if rcsBReg.voidFlag {
-			bm.engine.PostInterrupt(NewRCSGenericStackUnderOverflowInterrupt(RCSGenericStackOverflow, RCSBaseRegister, 0))
+		if rcsBReg.IsVoid() {
+			bm.engine.PostInterrupt(pkg.NewRCSGenericStackUnderOverflowInterrupt(pkg.RCSGenericStackOverflow, RCSBaseRegister, 0))
 			return false
 		}
 
 		rcsXReg := (*IndexRegister)(bm.engine.generalRegisterSet.GetRegister(RCSIndexRegister))
-		framePointer := uint(rcsXReg.GetXM()) - 2
-		if framePointer < rcsBReg.lowerLimitNormalized {
-			bm.engine.PostInterrupt(NewRCSGenericStackUnderOverflowInterrupt(RCSGenericStackOverflow, RCSBaseRegister, framePointer))
+		framePointer := uint64(rcsXReg.GetXM()) - 2
+		if framePointer < rcsBReg.GetLowerLimitNormalized() {
+			bm.engine.PostInterrupt(pkg.NewRCSGenericStackUnderOverflowInterrupt(pkg.RCSGenericStackOverflow, RCSBaseRegister, uint(framePointer)))
 			return false
 		}
 
@@ -628,13 +628,13 @@ func step12(bm *BankManipulator) bool {
 			if bm.instructionType == LBJInstruction {
 				bValue = bm.lxjBankSelector
 			} else if bm.instructionType == LDJInstruction {
-				if bm.engine.activityStatePacket.designatorRegister.BasicModeBaseRegisterSelection {
+				if bm.engine.activityStatePacket.designatorRegister.basicModeBaseRegisterSelection {
 					bValue = 15
 				} else {
 					bValue = 14
 				}
 			} else if bm.instructionType == LIJInstruction {
-				if bm.engine.activityStatePacket.designatorRegister.BasicModeBaseRegisterSelection {
+				if bm.engine.activityStatePacket.designatorRegister.basicModeBaseRegisterSelection {
 					bValue = 13
 				} else {
 					bValue = 12
@@ -651,12 +651,12 @@ func step12(bm *BankManipulator) bool {
 			bm.engine.activityStatePacket.designatorRegister,
 			bm.engine.activityStatePacket.indicatorKeyRegister.accessKey)
 
-		offset := framePointer - rcsBReg.lowerLimitNormalized
-		buffer := rcsBReg.storage[offset : offset+2]
+		offset := framePointer - rcsBReg.GetLowerLimitNormalized()
+		buffer := rcsBReg.GetStorage()[offset : offset+2]
 		rcsFrame.WriteToBuffer(buffer)
 
 		xReg := (*IndexRegister)(bm.engine.generalRegisterSet.GetRegister(RCSIndexRegister))
-		xReg.SetXM(uint64(framePointer))
+		xReg.SetXM(framePointer)
 	}
 
 	bm.nextStep++
@@ -708,7 +708,7 @@ func step14(bm *BankManipulator) bool {
 		asp := bm.engine.activityStatePacket
 
 		value := uint(0)
-		if asp.designatorRegister.BasicModeEnabled {
+		if asp.designatorRegister.basicModeEnabled {
 			value = 0_400000_000000
 		}
 
@@ -795,11 +795,11 @@ func step16(bm *BankManipulator) bool {
 			NewProgramAddressRegister(bm.targetBankLevel, bm.targetBankDescriptorIndex, uint(bm.targetBankOffset))
 
 		dr := &DesignatorRegister{}
-		dr.ExecRegisterSetSelected = true
-		dr.ArithmeticExceptionEnabled = true
-		dr.BasicModeEnabled = bm.targetBankDescriptor.GetBankType() == pkg.BasicModeBankDescriptor
-		dr.BasicModeBaseRegisterSelection = asp.designatorRegister.BasicModeBaseRegisterSelection
-		dr.FaultHandlingInProgress = bm.interrupt.GetClass() == HardwareCheckInterruptClass
+		dr.execRegisterSetSelected = true
+		dr.arithmeticExceptionEnabled = true
+		dr.basicModeEnabled = bm.targetBankDescriptor.GetBankType() == pkg.BasicModeBankDescriptor
+		dr.basicModeBaseRegisterSelection = asp.designatorRegister.basicModeBaseRegisterSelection
+		dr.faultHandlingInProgress = bm.interrupt.GetClass() == pkg.HardwareCheckInterruptClass
 		asp.designatorRegister = dr
 
 		asp.indicatorKeyRegister.clear()
@@ -810,16 +810,16 @@ func step16(bm *BankManipulator) bool {
 	} else if bm.instructionType == RTNInstruction {
 		bm.engine.activityStatePacket.indicatorKeyRegister.accessKey = bm.returnControlStackFrame.accessKey
 		dr := bm.engine.activityStatePacket.designatorRegister
-		dr.QuantumTimerEnabled = bm.returnControlStackFrame.designatorRegister.QuantumTimerEnabled
-		dr.DeferrableInterruptEnabled = bm.returnControlStackFrame.designatorRegister.DeferrableInterruptEnabled
+		dr.quantumTimerEnabled = bm.returnControlStackFrame.designatorRegister.quantumTimerEnabled
+		dr.deferrableInterruptEnabled = bm.returnControlStackFrame.designatorRegister.deferrableInterruptEnabled
 		dr.processorPrivilege = bm.returnControlStackFrame.designatorRegister.processorPrivilege
-		dr.BasicModeEnabled = bm.returnControlStackFrame.designatorRegister.BasicModeEnabled
-		dr.ExecRegisterSetSelected = bm.returnControlStackFrame.designatorRegister.ExecRegisterSetSelected
+		dr.basicModeEnabled = bm.returnControlStackFrame.designatorRegister.basicModeEnabled
+		dr.execRegisterSetSelected = bm.returnControlStackFrame.designatorRegister.execRegisterSetSelected
 	} else if ((bm.instructionType == GOTOInstruction) || (bm.instructionType == CALLInstruction)) &&
 		(bm.transferMode == ExtendedToBasicTransfer) {
-		bm.engine.activityStatePacket.designatorRegister.BasicModeEnabled = true
+		bm.engine.activityStatePacket.designatorRegister.basicModeEnabled = true
 	} else if bm.isLXJInstruction && (bm.transferMode == BasicToExtendedTransfer) {
-		bm.engine.activityStatePacket.designatorRegister.BasicModeEnabled = false
+		bm.engine.activityStatePacket.designatorRegister.basicModeEnabled = false
 	}
 
 	return true
@@ -875,13 +875,12 @@ func step18(bm *BankManipulator) bool {
 func step19(bm *BankManipulator) bool {
 	if bm.targetBankDescriptor == nil {
 		//  There is no bank descriptor - set up a void base register
-		bm.engine.baseRegisters[bm.baseRegisterIndex].voidFlag = true
-		bm.engine.baseRegisters[bm.baseRegisterIndex].storage = nil
+		bm.engine.baseRegisters[bm.baseRegisterIndex].MakeVoid()
 	} else if bm.isLoadInstruction && (bm.targetBankOffset != 0) {
 		//  we have sub-setting info (in targetBankOffset) -- set up a real Base Register with sub-setting.
 		storage, _ := bm.engine.mainStorage.GetBlock(bm.targetBankDescriptor.GetBaseAddress().GetSegment())
 		bm.engine.baseRegisters[bm.baseRegisterIndex].
-			FromBankDescriptorWithSubsetting(bm.targetBankDescriptor, uint(bm.targetBankOffset), storage)
+			FromBankDescriptorWithSubsetting(bm.targetBankDescriptor, bm.targetBankOffset, storage)
 	} else {
 		//  A normal non-sub-setting base register - make it so.
 		storage, _ := bm.engine.mainStorage.GetBlock(bm.targetBankDescriptor.GetBaseAddress().GetSegment())
@@ -914,7 +913,7 @@ func step21(bm *BankManipulator) bool {
 			(bm.instructionType == LBUInstruction) ||
 			(bm.transferMode != NoTransfer) {
 			if bm.targetBankDescriptor.IsGeneralFault() {
-				bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionFatal, bm.targetBankLevel, bm.targetBankDescriptorIndex))
+				bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionFatal, bm.targetBankLevel, bm.targetBankDescriptorIndex))
 				return false
 			}
 		}
@@ -931,7 +930,7 @@ func step21(bm *BankManipulator) bool {
 			!bm.isReturnOperation {
 			if (bm.transferMode == BasicToExtendedTransfer) || (bm.transferMode == ExtendedToExtendedTransfer) {
 				if !perms.CanEnter() {
-					bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionFatal, bm.targetBankLevel, bm.targetBankDescriptorIndex))
+					bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionFatal, bm.targetBankLevel, bm.targetBankDescriptorIndex))
 					return false
 				}
 			}
@@ -943,8 +942,8 @@ func step21(bm *BankManipulator) bool {
 			(bm.gate == nil) &&
 			(bm.targetBankDescriptor.GetBankType() == pkg.BasicModeBankDescriptor) {
 			if (!perms.CanEnter()) &&
-				(bm.targetBankOffset != uint64(bm.targetBankDescriptor.GetLowerLimitNormalized())) {
-				bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionFatal, bm.targetBankLevel, bm.targetBankDescriptorIndex))
+				(bm.targetBankOffset != bm.targetBankDescriptor.GetLowerLimitNormalized()) {
+				bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionFatal, bm.targetBankLevel, bm.targetBankDescriptorIndex))
 				return false
 			}
 		}
@@ -954,10 +953,10 @@ func step21(bm *BankManipulator) bool {
 		if (bm.transferMode != NoTransfer) && ((bm.gate != nil) || !perms.CanEnter()) {
 			if bm.targetBankDescriptor.GetBankType() == pkg.BasicModeBankDescriptor {
 				bReg := bm.engine.baseRegisters[bm.baseRegisterIndex]
-				relAddr := bm.engine.activityStatePacket.programAddressRegister.programCounter
+				relAddr := uint64(bm.engine.activityStatePacket.programAddressRegister.programCounter)
 				interrupt := bReg.CheckAccessLimits(relAddr, false)
 				if interrupt != nil {
-					interrupt = NewAddressingExceptionInterrupt(AddressingExceptionFatal, bm.targetBankLevel, bm.targetBankDescriptorIndex)
+					interrupt = pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionFatal, bm.targetBankLevel, bm.targetBankDescriptorIndex)
 					bm.engine.PostInterrupt(interrupt)
 					return false
 				}
@@ -966,7 +965,7 @@ func step21(bm *BankManipulator) bool {
 
 		//	Check for RCS.Trap (only if there is an RCS frame)
 		if (bm.returnControlStackFrame != nil) && (bm.returnControlStackFrame.trapFlag) {
-			bm.engine.PostInterrupt(NewAddressingExceptionInterrupt(AddressingExceptionFatal, bm.targetBankLevel, bm.targetBankDescriptorIndex))
+			bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionFatal, bm.targetBankLevel, bm.targetBankDescriptorIndex))
 			return false
 		}
 	}
@@ -1029,7 +1028,7 @@ func NewBankManipulatorForLAE(e *InstructionEngine, baseRegisterIndex uint, oper
 	}
 }
 
-func NewBankManipulatorForInterrupt(e *InstructionEngine, interrupt Interrupt) *BankManipulator {
+func NewBankManipulatorForInterrupt(e *InstructionEngine, interrupt pkg.Interrupt) *BankManipulator {
 	return &BankManipulator{
 		engine:            e,
 		interrupt:         interrupt,
