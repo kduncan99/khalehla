@@ -208,6 +208,13 @@ func (ute *UnitTestEngine) Run() error {
 	for !ute.engine.HasPendingInterrupt() {
 		ute.engine.doCycle()
 	}
+	fmt.Printf("Execution Interrupted\n")
 
+	ute.engine.Dump()
 	return nil
+}
+
+func GetInterruptString(i pkg.Interrupt) string {
+	return fmt.Sprintf("Class:%v SSF:%v ISW0:%012o ISW1:%012o",
+		i.GetClass(), i.GetShortStatusField(), i.GetStatusWord0(), i.GetStatusWord1())
 }

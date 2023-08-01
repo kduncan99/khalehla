@@ -5,6 +5,7 @@
 package ipEngine
 
 import (
+	"fmt"
 	"khalehla/pkg"
 	"sync"
 )
@@ -66,7 +67,7 @@ type InstructionEngine struct {
 	activeBaseTable     [16]*ActiveBaseTableEntry //	[0] is unused
 	activityStatePacket ActivityStatePacket
 	baseRegisters       [32]*pkg.BaseRegister
-	generalRegisterSet  GeneralRegisterSet
+	generalRegisterSet  *GeneralRegisterSet
 
 	//	If not nil, describes an interrupt which needs to be handled as soon as possible
 	pendingInterrupt pkg.Interrupt
@@ -116,14 +117,87 @@ func NewEngine(mainStorage *pkg.MainStorage) *InstructionEngine {
 		e.baseRegisters[bx] = pkg.NewVoidBaseRegister()
 	}
 
+	e.generalRegisterSet = NewGeneralRegisterSet()
 	e.activityStatePacket.designatorRegister = &DesignatorRegister{}
 	e.activityStatePacket.indicatorKeyRegister = &IndicatorKeyRegister{}
+	e.activityStatePacket.indicatorKeyRegister.accessKey = pkg.NewAccessKeyFromComponents(0, 0)
 	e.activityStatePacket.programAddressRegister = &ProgramAddressRegister{}
 
 	e.breakpointRegister = BreakpointNone
 	e.stopReason = NotStopped
 
 	return e
+}
+
+func (e *InstructionEngine) Dump() {
+	fmt.Printf("Instruction Engine Dump ---------------------------------------------------------------------\n")
+
+	if e.HasPendingInterrupt() {
+		//	TODO move the following to interrupt.go as GetString(i Interrupt) and include text description
+		//	 of (at least) the interrupt class
+		fmt.Printf("Pending Interrupt Class:%v SSF:%v ISW0:%012o ISW1:%012o\n",
+			e.pendingInterrupt.GetClass(),
+			e.pendingInterrupt.GetShortStatusField(),
+			e.pendingInterrupt.GetStatusWord0(),
+			e.pendingInterrupt.GetStatusWord1())
+	}
+
+	var f0String string
+	if e.activityStatePacket.indicatorKeyRegister.instructionInF0 {
+		// TODO disassemble the instruction as well as showing the octal word
+		f0String = fmt.Sprintf("%012o", e.activityStatePacket.currentInstruction)
+	} else {
+		f0String = "invalid"
+	}
+	fmt.Printf("  F0: %s\n", f0String)
+
+	par := e.activityStatePacket.programAddressRegister
+	fmt.Printf("  PAR.PC L:%o BDI:%05o PC:%06o\n", par.level, par.bankDescriptorIndex, par.programCounter)
+
+	ikr := e.activityStatePacket.indicatorKeyRegister
+	fmt.Printf("  Indicator Key Register: %012o\n", ikr.GetComposite())
+	fmt.Printf("    Access Key:        %s\n", ikr.accessKey.GetString())
+	fmt.Printf("    SSF:               %03o\n", ikr.shortStatusField)
+	fmt.Printf("    Interrupt Class:   %03o\n", ikr.interruptClassField)
+	fmt.Printf("    EXR Instruction:   %v\n", ikr.executeRepeatedInstruction)
+	fmt.Printf("    Breakpoint Match:  %v\n", ikr.breakpointRegisterMatchCondition)
+	fmt.Printf("    Software Break:    %v\n", ikr.softwareBreak)
+	fmt.Printf("    Instruction in F0: %v\n", ikr.instructionInF0)
+
+	dr := e.activityStatePacket.designatorRegister
+	fmt.Printf("  Designator Register: %012o\n", dr.GetComposite())
+	fmt.Printf("    FHIP:                        %v\n", dr.faultHandlingInProgress)
+	fmt.Printf("    Executive 24-bit Indexing:   %v\n", dr.executive24BitIndexingEnabled)
+	fmt.Printf("    Quantum Timer Enable:        %v\n", dr.quantumTimerEnabled)
+	fmt.Printf("    Deferrable Interrupt Enable: %v\n", dr.deferrableInterruptEnabled)
+	fmt.Printf("    Processor Privilege:         %v\n", dr.processorPrivilege)
+	fmt.Printf("    Basic Mode:                  %v\n", dr.basicModeEnabled)
+	fmt.Printf("    Exec Register Set Selection: %v\n", dr.execRegisterSetSelected)
+	fmt.Printf("    Carry:                       %v\n", dr.carry)
+	fmt.Printf("    Overflow:                    %v\n", dr.overflow)
+	fmt.Printf("    Characteristic Underflow:    %v\n", dr.characteristicUnderflow)
+	fmt.Printf("    Characteristic Overflow:     %v\n", dr.characteristicOverflow)
+	fmt.Printf("    Divide Check:                %v\n", dr.divideCheck)
+	fmt.Printf("    Operation Trap Enable:       %v\n", dr.operationTrapEnabled)
+	fmt.Printf("    Arithmetic Exception Enable: %v\n", dr.arithmeticExceptionEnabled)
+	fmt.Printf("    Basic Mode Base Reg Sel:     %v\n", dr.basicModeBaseRegisterSelection)
+	fmt.Printf("    Quarter Word Selection:      %v\n", dr.quarterWordModeEnabled)
+
+	e.generalRegisterSet.Dump()
+
+	fmt.Printf("  Base Register Set\n")
+	for bx := 0; bx < 32; bx++ {
+		br := e.baseRegisters[bx]
+		if !br.IsVoid() {
+			fmt.Printf("    B%-2d: addr:%08o.%012o lower:%012o upper:%012o large:%v\n",
+				bx,
+				br.GetBaseAddress().GetSegment(),
+				br.GetBaseAddress().GetOffset(),
+				br.GetLowerLimitNormalized(),
+				br.GetUpperLimitNormalized(),
+				br.IsLargeSize())
+		}
+	}
 }
 
 // FindBasicModeBank takes a relative address and determines which (if any) of the basic mode banks
@@ -227,7 +301,7 @@ func (e *InstructionEngine) GetExecOrUserXRegisterIndex(registerIndex uint) uint
 
 // GetGeneralRegisterSet retrieves a pointer to the GRS
 func (e *InstructionEngine) GetGeneralRegisterSet() *GeneralRegisterSet {
-	return &e.generalRegisterSet
+	return e.generalRegisterSet
 }
 
 // GetJumpOperand is similar to getImmediateOperand()
@@ -360,16 +434,24 @@ func (e *InstructionEngine) GetOperand(grsDestination bool, grsCheck bool, allow
 	return
 }
 
+func (e *InstructionEngine) GetPARPC() uint64 {
+	return uint64(e.activityStatePacket.programAddressRegister.GetComposite())
+}
+
 func (e *InstructionEngine) HasPendingInterrupt() bool {
 	return e.pendingInterrupt != nil
 }
 
+func (e *InstructionEngine) PopInterrupt() pkg.Interrupt {
+	i := e.pendingInterrupt
+	e.pendingInterrupt = nil
+	return i
+}
+
 // PostInterrupt posts a new interrupt, provided that no higher-priority interrupt is already pending.
 func (e *InstructionEngine) PostInterrupt(i pkg.Interrupt) {
-	if e.pendingInterrupt != nil {
-		if i.GetClass() < e.pendingInterrupt.GetClass() {
-			e.pendingInterrupt = i
-		}
+	if e.pendingInterrupt == nil || i.GetClass() < e.pendingInterrupt.GetClass() {
+		e.pendingInterrupt = i
 	}
 }
 
@@ -824,8 +906,10 @@ func (e *InstructionEngine) fetchInstructionWord() bool {
 		}
 	} else {
 		bReg = e.baseRegisters[0]
-		intp := e.checkAccessLimits(bReg, programCounter, true, false, false, e.activityStatePacket.indicatorKeyRegister.accessKey)
+		ikr := e.activityStatePacket.indicatorKeyRegister
+		intp := e.checkAccessLimits(bReg, programCounter, true, false, false, ikr.accessKey)
 		if intp != nil {
+			e.PostInterrupt(intp)
 			return false
 		}
 	}

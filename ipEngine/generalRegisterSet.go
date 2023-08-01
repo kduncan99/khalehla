@@ -4,7 +4,10 @@
 
 package ipEngine
 
-import "khalehla/pkg"
+import (
+	"fmt"
+	"khalehla/pkg"
+)
 
 //	TODO important - review 2.3.6 reserved for hardware, and 2.3.7 accessing GeneralRegisterSet locations
 //
@@ -136,6 +139,17 @@ func NewGeneralRegisterSet() *GeneralRegisterSet {
 func (grs *GeneralRegisterSet) Clear() {
 	for rx := 0; rx < len(grs.registers); rx++ {
 		grs.registers[rx] = 0
+	}
+}
+
+func (grs *GeneralRegisterSet) Dump() {
+	fmt.Printf("  General Register Set\n")
+	for gx := 0; gx < 128; gx += 8 {
+		str := fmt.Sprintf("    %04o:  ", gx)
+		for gy := gx; gy < gx+8; gy++ {
+			str += fmt.Sprintf("%012o ", grs.registers[gy])
+		}
+		fmt.Printf("%s\n", str)
 	}
 }
 

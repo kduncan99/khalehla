@@ -155,7 +155,7 @@ func (e *Executable) LinkSimple(segments map[int]*Segment) {
 		nil, // this has to be filled in when the bank is loaded
 		false,
 		lowerLimit,
-		bankLength,
+		lowerLimit+bankLength,
 		0)
 	e.banks[bdi] = &Bank{
 		bankDescriptor:      bd,
