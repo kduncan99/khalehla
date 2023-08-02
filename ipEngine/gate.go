@@ -19,8 +19,8 @@ type Gate struct {
 	targetLevel              uint
 	targetBDI                uint
 	targetOffset             uint
-	basicModeBaseRegister    uint                // basic mode register is actually this field + 12
-	designatorRegisterValue  *DesignatorRegister //	only bits 12-17 are significant
+	basicModeBaseRegister    uint                    // basic mode register is actually this field + 12
+	designatorRegisterValue  *pkg.DesignatorRegister //	only bits 12-17 are significant
 	newAccessKey             *pkg.AccessKey
 	latentParameterValue0    uint64
 	latentParameterValue1    uint64
@@ -41,7 +41,7 @@ func NewGateFromStorage(buffer []pkg.Word36) *Gate {
 	g.targetBDI = uint(buffer[1]>>18) & 077777
 	g.targetOffset = uint(buffer[1]) & 0777777
 	g.basicModeBaseRegister = uint(buffer[2]>>24) & 03
-	g.designatorRegisterValue = NewDesignatorRegisterFromComposite(uint64(buffer[2]) & 0_000077_000000)
+	g.designatorRegisterValue = pkg.NewDesignatorRegisterFromComposite(uint64(buffer[2]) & 0_000077_000000)
 	g.newAccessKey = pkg.NewAccessKeyFromComposite(uint(buffer[2] & 0777777))
 	g.latentParameterValue0 = uint64(buffer[3])
 	g.latentParameterValue1 = uint64(buffer[4])

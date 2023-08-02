@@ -58,7 +58,7 @@ func Test_LA_Basic(t *testing.T) {
 	ute := NewUnitTestExecutor()
 	err := ute.Load(&e)
 	if err == nil {
-		ute.GetEngine().GetDesignatorRegister().basicModeEnabled = true
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(true)
 		err = ute.Run()
 	}
 

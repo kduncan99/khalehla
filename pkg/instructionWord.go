@@ -2,11 +2,9 @@
 // Copyright © 2023 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package ipEngine
+package pkg
 
-import "khalehla/pkg"
-
-type InstructionWord pkg.Word36
+type InstructionWord Word36
 
 func (iw *InstructionWord) GetF() uint64 {
 	return uint64(*iw) >> 30

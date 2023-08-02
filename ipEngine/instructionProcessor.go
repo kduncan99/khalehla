@@ -88,7 +88,7 @@ func (p *InstructionProcessor) handleInterrupt() {
 
 	//	A hardware interrupt during hardware interrupt handling is a Very Bad Thing
 	if i.GetClass() == pkg.HardwareCheckInterruptClass &&
-		p.engine.activityStatePacket.designatorRegister.faultHandlingInProgress {
+		p.engine.activityStatePacket.GetDesignatorRegister().IsFaultHandlingInProgress() {
 		p.engine.Stop(InterruptHandlerHardwareFailureStop, 0)
 		return
 	}
@@ -98,10 +98,10 @@ func (p *InstructionProcessor) handleInterrupt() {
 	grs := p.engine.generalRegisterSet
 
 	//	Update fields in the ASP
-	asp.indicatorKeyRegister.SetShortStatusField(i.GetShortStatusField())
-	asp.indicatorKeyRegister.SetInterruptClassField(i.GetClass())
-	asp.interruptStatusWord0 = i.GetStatusWord0()
-	asp.interruptStatusWord1 = i.GetStatusWord1()
+	asp.GetIndicatorKeyRegister().SetShortStatusField(i.GetShortStatusField())
+	asp.GetIndicatorKeyRegister().SetInterruptClassField(i.GetClass())
+	asp.SetInterruptStatusWord0(i.GetStatusWord0())
+	asp.SetInterruptStatusWord1(i.GetStatusWord1())
 
 	//	Make sure the interrupt control stack base register is valid
 	if br[ICSBaseRegister].IsVoid() {
@@ -130,23 +130,23 @@ func (p *InstructionProcessor) handleInterrupt() {
 	}
 
 	icsSlice := br[ICSBaseRegister].GetStorage()[stackOffset:stackFrameLimit]
-	icsSlice[0] = asp.programAddressRegister.GetComposite()
-	icsSlice[1] = pkg.Word36(asp.designatorRegister.GetComposite())
-	icsSlice[2] = asp.indicatorKeyRegister.GetComposite()
-	icsSlice[3] = asp.quantumTimer
-	icsSlice[4] = pkg.Word36(asp.currentInstruction)
+	icsSlice[0] = asp.GetProgramAddressRegister().GetComposite()
+	icsSlice[1] = pkg.Word36(asp.GetDesignatorRegister().GetComposite())
+	icsSlice[2] = asp.GetIndicatorKeyRegister().GetComposite()
+	icsSlice[3] = asp.GetQuantumTimer()
+	icsSlice[4] = pkg.Word36(*asp.GetCurrentInstruction())
 	icsSlice[5] = i.GetStatusWord0()
 	icsSlice[6] = i.GetStatusWord1()
 	for ix := 7; ix < int(stackFrameLimit); ix++ {
 		icsSlice[ix] = 0
 	}
 
-	p.engine.createJumpHistoryTableEntry(asp.programAddressRegister.GetComposite())
+	p.engine.createJumpHistoryTableEntry(asp.GetProgramAddressRegister().GetComposite())
 	NewBankManipulatorForInterrupt(p.engine, i).process()
 }
 
 func (p *InstructionProcessor) isReadAllowed(bReg *pkg.BaseRegister) bool {
-	permissions := bReg.GetEffectivePermissions(p.engine.activityStatePacket.indicatorKeyRegister.accessKey)
+	permissions := bReg.GetEffectivePermissions(p.engine.activityStatePacket.GetIndicatorKeyRegister().GetAccessKey())
 	return permissions.CanRead()
 }
 
@@ -165,7 +165,9 @@ func (p *InstructionProcessor) run() {
 		//	Is there a pending interrupt?
 		// Are deferrable interrupts allowed?  If not, ignore the interrupt
 		if p.engine.pendingInterrupt != nil {
-			if !p.engine.pendingInterrupt.IsDeferrable() || p.engine.activityStatePacket.designatorRegister.deferrableInterruptEnabled {
+			if !p.engine.pendingInterrupt.IsDeferrable() ||
+				p.engine.activityStatePacket.GetDesignatorRegister().IsDeferrableInterruptEnabled() {
+
 				p.handleInterrupt()
 				//	do not clear pending interrupt here - the interrupt handler may have posted an interrupt
 				continue

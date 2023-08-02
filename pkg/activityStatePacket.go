@@ -2,9 +2,7 @@
 // Copyright © 2023 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package ipEngine
-
-import "khalehla/pkg"
+package pkg
 
 type ActivityStatePacket struct {
 	//	Virtual address of the current instructionType.
@@ -24,7 +22,7 @@ type ActivityStatePacket struct {
 	//	When a negative value is reached with DB12 set, we take a quantum timer interrupt.
 	//	In general, this measures the cpu cost for each instructionType executed, which is held cumulative
 	//	elsewhere (presumably by the OS). It should not be updated for the UR instructionType.
-	quantumTimer pkg.Word36
+	quantumTimer Word36
 
 	//	Loaded during the fetchInstructionWord() process (our implementation, not architectural)
 	//	Updated in one of the following cases:
@@ -34,13 +32,44 @@ type ActivityStatePacket struct {
 	currentInstruction InstructionWord
 
 	//	When found in an ICS, these fields contain interrupt status information
-	interruptStatusWord0 pkg.Word36
-	interruptStatusWord1 pkg.Word36
+	interruptStatusWord0 Word36
+	interruptStatusWord1 Word36
+}
+
+func NewActivityStatePacket() *ActivityStatePacket {
+	return &ActivityStatePacket{
+		programAddressRegister: NewProgramAddressRegister(0, 0, 0),
+		designatorRegister:     NewDesignatorRegisterFromComposite(0),
+		indicatorKeyRegister:   NewIndicatorKeyRegister(),
+		quantumTimer:           0,
+		currentInstruction:     0,
+		interruptStatusWord0:   0,
+		interruptStatusWord1:   0,
+	}
+}
+func (asp *ActivityStatePacket) GetCurrentInstruction() *InstructionWord {
+	return &asp.currentInstruction
+}
+
+func (asp *ActivityStatePacket) GetDesignatorRegister() *DesignatorRegister {
+	return asp.designatorRegister
+}
+
+func (asp *ActivityStatePacket) GetIndicatorKeyRegister() *IndicatorKeyRegister {
+	return asp.indicatorKeyRegister
+}
+
+func (asp *ActivityStatePacket) GetProgramAddressRegister() *ProgramAddressRegister {
+	return asp.programAddressRegister
+}
+
+func (asp *ActivityStatePacket) GetQuantumTimer() Word36 {
+	return asp.quantumTimer
 }
 
 // ReadFromBuffer implements the main functionality for the UR instruction
 // (see PRM, bank manipulation step 16)
-func (asp *ActivityStatePacket) ReadFromBuffer(buffer []pkg.Word36) {
+func (asp *ActivityStatePacket) ReadFromBuffer(buffer []Word36) {
 	asp.programAddressRegister.SetComposite(uint64(buffer[0]))
 	asp.designatorRegister.SetComposite(uint64(buffer[1]))
 	ssf := asp.indicatorKeyRegister.shortStatusField
@@ -49,7 +78,27 @@ func (asp *ActivityStatePacket) ReadFromBuffer(buffer []pkg.Word36) {
 	asp.currentInstruction = InstructionWord(buffer[4])
 }
 
-func (asp *ActivityStatePacket) WriteToBuffer(memory []pkg.Word36) {
+func (asp *ActivityStatePacket) SetCurrentInstruction(value *InstructionWord) *ActivityStatePacket {
+	asp.currentInstruction = *value
+	return asp
+}
+
+func (asp *ActivityStatePacket) SetInterruptStatusWord0(value Word36) *ActivityStatePacket {
+	asp.interruptStatusWord0 = value
+	return asp
+}
+
+func (asp *ActivityStatePacket) SetInterruptStatusWord1(value Word36) *ActivityStatePacket {
+	asp.interruptStatusWord1 = value
+	return asp
+}
+
+func (asp *ActivityStatePacket) SetProgramAddressRegister(level uint, index uint, counter uint) *ActivityStatePacket {
+	asp.programAddressRegister.SetLevel(level).SetBankDescriptorIndex(index).SetProgramCounter(counter)
+	return asp
+}
+
+func (asp *ActivityStatePacket) WriteToBuffer(memory []Word36) {
 	//	TODO
 }
 

@@ -2,7 +2,9 @@
 // Copyright © 2023 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package ipEngine
+package pkg
+
+var boolTable = []bool{false, true}
 
 type DesignatorRegister struct {
 	activityLevelQueueMonitorEnabled bool
@@ -42,6 +44,10 @@ func (dr *DesignatorRegister) Clear() {
 	dr.arithmeticExceptionEnabled = false
 	dr.basicModeBaseRegisterSelection = false
 	dr.quarterWordModeEnabled = false
+}
+
+func (dr *DesignatorRegister) GetBasicModeBaseRegisterSelection() bool {
+	return dr.basicModeBaseRegisterSelection
 }
 
 func (dr *DesignatorRegister) GetComposite() uint64 {
@@ -99,10 +105,84 @@ func (dr *DesignatorRegister) GetComposite() uint64 {
 	return val
 }
 
-var boolTable = []bool{false, true}
+func (dr *DesignatorRegister) GetProcessorPrivilege() uint {
+	return dr.processorPrivilege
+}
 
-func (dr *DesignatorRegister) SetProcessorPrivilege(value uint) {
-	dr.processorPrivilege = value & 03
+func (dr *DesignatorRegister) IsArithmeticExceptionEnabled() bool {
+	return dr.arithmeticExceptionEnabled
+}
+
+func (dr *DesignatorRegister) IsBasicModeEnabled() bool {
+	return dr.basicModeEnabled
+}
+
+func (dr *DesignatorRegister) IsCharacteristicOverflowSet() bool {
+	return dr.characteristicOverflow
+}
+
+func (dr *DesignatorRegister) IsCharacteristicUnderflowSet() bool {
+	return dr.characteristicUnderflow
+}
+
+func (dr *DesignatorRegister) IsDeferrableInterruptEnabled() bool {
+	return dr.deferrableInterruptEnabled
+}
+
+func (dr *DesignatorRegister) IsDivideCheckSet() bool {
+	return dr.divideCheck
+}
+
+func (dr *DesignatorRegister) IsCarrySet() bool {
+	return dr.carry
+}
+
+func (dr *DesignatorRegister) IsExecRegisterSetSelected() bool {
+	return dr.execRegisterSetSelected
+}
+
+func (dr *DesignatorRegister) IsExecutive24BitIndexingSet() bool {
+	return dr.execRegisterSetSelected
+}
+
+func (dr *DesignatorRegister) IsFaultHandlingInProgress() bool {
+	return dr.faultHandlingInProgress
+}
+
+func (dr *DesignatorRegister) IsOperationTrapEnabled() bool {
+	return dr.operationTrapEnabled
+}
+
+func (dr *DesignatorRegister) IsOverflowSet() bool {
+	return dr.overflow
+}
+
+func (dr *DesignatorRegister) IsQuantumTimerEnabled() bool {
+	return dr.quantumTimerEnabled
+}
+
+func (dr *DesignatorRegister) IsQuarterWordModeEnabled() bool {
+	return dr.quarterWordModeEnabled
+}
+
+func (dr *DesignatorRegister) SetActivityLevelQueueMonitorEnabled(value bool) *DesignatorRegister {
+	dr.activityLevelQueueMonitorEnabled = value
+	return dr
+}
+
+func (dr *DesignatorRegister) SetArithmeticExceptionEnabled(value bool) *DesignatorRegister {
+	dr.arithmeticExceptionEnabled = value
+	return dr
+}
+
+func (dr *DesignatorRegister) SetBasicModeBaseRegisterSelection(value bool) *DesignatorRegister {
+	dr.basicModeBaseRegisterSelection = value
+	return dr
+}
+
+func (dr *DesignatorRegister) SetBasicModeEnabled(value bool) *DesignatorRegister {
+	dr.basicModeEnabled = value
+	return dr
 }
 
 func (dr *DesignatorRegister) SetComposite(value uint64) *DesignatorRegister {
@@ -124,6 +204,46 @@ func (dr *DesignatorRegister) SetComposite(value uint64) *DesignatorRegister {
 	dr.basicModeBaseRegisterSelection = boolTable[(value>>31)&01]
 	dr.quarterWordModeEnabled = boolTable[(value>>32)&01]
 
+	return dr
+}
+
+func (dr *DesignatorRegister) SetDeferrableInterruptEnabled(value bool) *DesignatorRegister {
+	dr.deferrableInterruptEnabled = value
+	return dr
+}
+
+func (dr *DesignatorRegister) SetExecRegisterSetSelected(value bool) *DesignatorRegister {
+	dr.execRegisterSetSelected = value
+	return dr
+}
+
+func (dr *DesignatorRegister) SetExecutive24BitIndexingEnabled(value bool) *DesignatorRegister {
+	dr.executive24BitIndexingEnabled = value
+	return dr
+}
+
+func (dr *DesignatorRegister) SetFaultHandlingInProgress(value bool) *DesignatorRegister {
+	dr.faultHandlingInProgress = value
+	return dr
+}
+
+func (dr *DesignatorRegister) SetQuantumTimerEnabled(value bool) *DesignatorRegister {
+	dr.quantumTimerEnabled = value
+	return dr
+}
+
+func (dr *DesignatorRegister) SetQuarterWordModeEnabled(value bool) *DesignatorRegister {
+	dr.quarterWordModeEnabled = value
+	return dr
+}
+
+func (dr *DesignatorRegister) SetOperationTrapEnabled(value bool) *DesignatorRegister {
+	dr.operationTrapEnabled = value
+	return dr
+}
+
+func (dr *DesignatorRegister) SetProcessorPrivilege(value uint) *DesignatorRegister {
+	dr.processorPrivilege = value & 03
 	return dr
 }
 

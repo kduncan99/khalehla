@@ -22,6 +22,14 @@ func (key *AccessKey) GetComposite() uint {
 	return (key.ring << 16) | key.domain
 }
 
+func (key *AccessKey) GetDomain() uint {
+	return key.domain
+}
+
+func (key *AccessKey) GetRing() uint {
+	return key.ring
+}
+
 func (key *AccessKey) GetString() string {
 	return fmt.Sprintf("Ring:%v Domain:%06o", key.ring, key.domain)
 }
@@ -46,10 +54,18 @@ func (key *AccessKey) SetComposite(composite uint) *AccessKey {
 	return key
 }
 
+func NewAccessKey() *AccessKey {
+	return &AccessKey{
+		ring:   0,
+		domain: 0,
+	}
+}
+
 func NewAccessKeyFromComponents(ring uint, domain uint) *AccessKey {
-	ak := AccessKey{}
-	ak.SetRing(ring).SetDomain(domain)
-	return &ak
+	return &AccessKey{
+		ring:   ring,
+		domain: domain,
+	}
 }
 
 func NewAccessKeyFromComposite(value uint) *AccessKey {

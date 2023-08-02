@@ -52,7 +52,7 @@ func step1(bm *BankManipulator) bool {
 	if bm.instructionType != InvalidInstruction {
 		//	post InvalidInstructionInterrupt if B0 or B1 are the target for an LBU instructionType
 		if (bm.instructionType == LBUInstruction) &&
-			(bm.engine.activityStatePacket.currentInstruction.GetA() < 2) {
+			(bm.engine.activityStatePacket.GetCurrentInstruction().GetA() < 2) {
 			bm.engine.PostInterrupt(pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionLBUUsesB0OrB1))
 			return false
 		}
@@ -74,7 +74,7 @@ func step1(bm *BankManipulator) bool {
 //	and processing should be discontinued.
 func step2(bm *BankManipulator) bool {
 	if bm.instructionType == CALLInstruction {
-		par := bm.engine.activityStatePacket.programAddressRegister
+		par := bm.engine.activityStatePacket.GetProgramAddressRegister()
 		bm.priorBankLevel = par.GetLevel()
 		bm.priorBankDescriptorIndex = par.GetBankDescriptorIndex()
 	} else if bm.isLXJInstruction && (bm.lxjInterfaceSpec < 2) {
@@ -83,18 +83,18 @@ func step2(bm *BankManipulator) bool {
 		//  Because we must do this for IS == 1 and source BD is basic, and it is too early in
 		//  the algorithm to know the source BD bank type.
 		abtx := uint(0) //	active base table index
-		dr := bm.engine.activityStatePacket.designatorRegister
+		dr := bm.engine.activityStatePacket.GetDesignatorRegister()
 
 		if bm.instructionType == LBJInstruction {
 			abtx = bm.lxjBankSelector + 12
 		} else if bm.instructionType == LDJInstruction {
-			if dr.basicModeBaseRegisterSelection {
+			if dr.GetBasicModeBaseRegisterSelection() {
 				abtx = 15
 			} else {
 				abtx = 14
 			}
 		} else { // LIJInstruction
-			if dr.basicModeBaseRegisterSelection {
+			if dr.GetBasicModeBaseRegisterSelection() {
 				abtx = 13
 			} else {
 				abtx = 12
@@ -252,7 +252,7 @@ func step5(bm *BankManipulator) bool {
 			return true
 		} else if bm.isReturnOperation {
 			//	pull basic mode enabled flag from rcs frame DB12-17 field
-			if bm.returnControlStackFrame.designatorRegister.basicModeEnabled {
+			if bm.returnControlStackFrame.designatorRegister.IsBasicModeEnabled() {
 				//  return to basic mode - void bank
 				bm.nextStep = 10
 				return true
@@ -263,9 +263,9 @@ func step5(bm *BankManipulator) bool {
 				return false
 			}
 		} else if bm.instructionType == URInstruction {
-			drReturn := DesignatorRegister{}
+			drReturn := pkg.DesignatorRegister{}
 			drReturn.SetComposite(bm.operands[1].GetW())
-			if drReturn.basicModeEnabled {
+			if drReturn.IsBasicModeEnabled() {
 				//  return to extended mode - addressing exception
 				i := pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionInvalidSourceLBDI, bm.sourceBankLevel, bm.sourceBankDescriptorIndex)
 				bm.engine.PostInterrupt(i)
@@ -314,12 +314,12 @@ func step7(bm *BankManipulator) bool {
 				pkg.Word36((bm.sourceBankLevel<<15)|bm.sourceBankDescriptorIndex))
 			return false
 		} else if bm.instructionType == LBUInstruction &&
-			(bm.engine.activityStatePacket.designatorRegister.processorPrivilege > 1) &&
+			(bm.engine.activityStatePacket.GetDesignatorRegister().GetProcessorPrivilege() > 1) &&
 			!bm.sourceBankDescriptor.GetGeneralAccessPermissions().CanEnter() &&
 			!bm.sourceBankDescriptor.GetSpecialAccessPermissions().CanEnter() {
 			bm.targetBankDescriptor = nil
 		} else if ((bm.instructionType == RTNInstruction) || bm.isLXJInstruction) &&
-			!bm.returnControlStackFrame.designatorRegister.basicModeEnabled {
+			!bm.returnControlStackFrame.designatorRegister.IsBasicModeEnabled() {
 			bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionBDTypeInvalid, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
 			return false
 		}
@@ -394,7 +394,7 @@ func step8(bm *BankManipulator) bool {
 	bm.nextStep = 10
 	if bm.targetBankDescriptor.GetBankType() == pkg.BasicModeBankDescriptor {
 		//	When PP>1 and GAP.E == 0 and SAP.E == 0, do void bank (set target bd null)
-		if (bm.engine.activityStatePacket.designatorRegister.processorPrivilege > 1) &&
+		if (bm.engine.activityStatePacket.GetDesignatorRegister().GetProcessorPrivilege() > 1) &&
 			!bm.targetBankDescriptor.GetGeneralAccessPermissions().CanEnter() &&
 			!bm.targetBankDescriptor.GetSpecialAccessPermissions().CanEnter() {
 			bm.targetBankDescriptor = nil
@@ -423,7 +423,7 @@ func step9(bm *BankManipulator) bool {
 	}
 
 	gateBankPerms := bm.sourceBankDescriptor.GetAccessLock().GetEffectivePermissions(
-		bm.engine.activityStatePacket.indicatorKeyRegister.accessKey,
+		bm.engine.activityStatePacket.GetIndicatorKeyRegister().GetAccessKey(),
 		bm.sourceBankDescriptor.GetGeneralAccessPermissions(),
 		bm.sourceBankDescriptor.GetSpecialAccessPermissions())
 	if !gateBankPerms.CanEnter() {
@@ -452,7 +452,7 @@ func step9(bm *BankManipulator) bool {
 
 	//	Compare our key to the gate's lock to ensure we have enter access to the gate
 	gatePerms := bm.gate.accessLock.GetEffectivePermissions(
-		bm.engine.activityStatePacket.indicatorKeyRegister.accessKey,
+		bm.engine.activityStatePacket.GetIndicatorKeyRegister().GetAccessKey(),
 		bm.gate.specialAccessPermissions,
 		bm.gate.generalAccessPermissions)
 	if !gatePerms.CanEnter() {
@@ -503,10 +503,10 @@ func step10(bm *BankManipulator) bool {
 		//	and the execution instruction will load all of B1-B15
 		bm.nextStep = 18
 	} else if bm.instructionType == LBEInstruction {
-		bm.baseRegisterIndex = uint(bm.engine.activityStatePacket.currentInstruction.GetA()) + 16
+		bm.baseRegisterIndex = uint(bm.engine.activityStatePacket.GetCurrentInstruction().GetA()) + 16
 		bm.nextStep = 18
 	} else if bm.instructionType == LBUInstruction {
-		bm.baseRegisterIndex = uint(bm.engine.activityStatePacket.currentInstruction.GetA())
+		bm.baseRegisterIndex = uint(bm.engine.activityStatePacket.GetCurrentInstruction().GetA())
 		bm.nextStep = 18
 	} else if bm.instructionType == URInstruction {
 		bm.baseRegisterIndex = 0
@@ -518,10 +518,10 @@ func step10(bm *BankManipulator) bool {
 	} else {
 		//	So what is left, are transfer operations. What kind of transfer are we doing?
 		var destModeBasic bool
-		sourceModeBasic := bm.engine.activityStatePacket.designatorRegister.basicModeEnabled
+		sourceModeBasic := bm.engine.activityStatePacket.GetDesignatorRegister().IsBasicModeEnabled()
 		if bm.isReturnOperation {
 			//	Destination mode is defined by DB16 in the RCS frame
-			destModeBasic = bm.returnControlStackFrame.designatorRegister.basicModeEnabled
+			destModeBasic = bm.returnControlStackFrame.designatorRegister.IsBasicModeEnabled()
 		} else {
 			//	call or GOTO op - destination mode is defined by target bank type
 			if bm.targetBankDescriptor == nil {
@@ -540,13 +540,13 @@ func step10(bm *BankManipulator) bool {
 				} else if bm.instructionType == LBJInstruction {
 					bm.baseRegisterIndex = bm.lxjBankSelector + 12
 				} else if bm.instructionType == LDJInstruction {
-					if bm.engine.activityStatePacket.designatorRegister.basicModeBaseRegisterSelection {
+					if bm.engine.activityStatePacket.GetDesignatorRegister().GetBasicModeBaseRegisterSelection() {
 						bm.baseRegisterIndex = 15
 					} else {
 						bm.baseRegisterIndex = 14
 					}
 				} else if bm.instructionType == LIJInstruction {
-					if bm.engine.activityStatePacket.designatorRegister.basicModeBaseRegisterSelection {
+					if bm.engine.activityStatePacket.GetDesignatorRegister().GetBasicModeBaseRegisterSelection() {
 						bm.baseRegisterIndex = 13
 					} else {
 						bm.baseRegisterIndex = 12
@@ -588,7 +588,7 @@ func step10(bm *BankManipulator) bool {
 func step11(bm *BankManipulator) bool {
 	if bm.transferMode == ExtendedToBasicTransfer {
 		bm.engine.SetBaseRegister(0, pkg.NewVoidBaseRegister())
-		par := bm.engine.activityStatePacket.programAddressRegister
+		par := bm.engine.activityStatePacket.GetProgramAddressRegister()
 		par.SetLevel(0)
 		par.SetBankDescriptorIndex(0)
 
@@ -620,7 +620,7 @@ func step12(bm *BankManipulator) bool {
 			return false
 		}
 
-		rtnAddr := bm.engine.activityStatePacket.programAddressRegister.programCounter + 1
+		rtnAddr := bm.engine.activityStatePacket.GetProgramAddressRegister().GetProgramCounter() + 1
 		bValue := uint(0) //	basic mode register is this value + 12
 		if (bm.transferMode == ExtendedToBasicTransfer) && (bm.gate != nil) {
 			bValue = bm.gate.basicModeBaseRegister
@@ -628,13 +628,13 @@ func step12(bm *BankManipulator) bool {
 			if bm.instructionType == LBJInstruction {
 				bValue = bm.lxjBankSelector
 			} else if bm.instructionType == LDJInstruction {
-				if bm.engine.activityStatePacket.designatorRegister.basicModeBaseRegisterSelection {
+				if bm.engine.activityStatePacket.GetDesignatorRegister().GetBasicModeBaseRegisterSelection() {
 					bValue = 15
 				} else {
 					bValue = 14
 				}
 			} else if bm.instructionType == LIJInstruction {
-				if bm.engine.activityStatePacket.designatorRegister.basicModeBaseRegisterSelection {
+				if bm.engine.activityStatePacket.GetDesignatorRegister().GetBasicModeBaseRegisterSelection() {
 					bValue = 13
 				} else {
 					bValue = 12
@@ -648,8 +648,8 @@ func step12(bm *BankManipulator) bool {
 			rtnAddr,
 			false,
 			bValue,
-			bm.engine.activityStatePacket.designatorRegister,
-			bm.engine.activityStatePacket.indicatorKeyRegister.accessKey)
+			bm.engine.activityStatePacket.GetDesignatorRegister(),
+			bm.engine.activityStatePacket.GetIndicatorKeyRegister().GetAccessKey())
 
 		offset := framePointer - rcsBReg.GetLowerLimitNormalized()
 		buffer := rcsBReg.GetStorage()[offset : offset+2]
@@ -680,7 +680,7 @@ func step12(bm *BankManipulator) bool {
 // and processing should be discontinued.
 func step13(bm *BankManipulator) bool {
 	if bm.isLXJInstruction && (bm.transferMode == BasicToBasicTransfer) {
-		parPCNext := bm.engine.activityStatePacket.programAddressRegister.programCounter + 1
+		parPCNext := bm.engine.activityStatePacket.GetProgramAddressRegister().GetProgramCounter() + 1
 		value := pkg.TranslateToBasicMode(bm.priorBankLevel, bm.priorBankDescriptorIndex, parPCNext).GetComposite()
 		value |= pkg.Word36(bm.baseRegisterIndex) << 33
 		bm.engine.SetExecOrUserXRegister(bm.lxjXRegisterIndex, IndexRegister(value))
@@ -708,11 +708,11 @@ func step14(bm *BankManipulator) bool {
 		asp := bm.engine.activityStatePacket
 
 		value := uint(0)
-		if asp.designatorRegister.basicModeEnabled {
+		if asp.GetDesignatorRegister().IsBasicModeEnabled() {
 			value = 0_400000_000000
 		}
 
-		key := asp.indicatorKeyRegister.accessKey
+		key := asp.GetIndicatorKeyRegister().GetAccessKey()
 		value |= key.GetComposite()
 		bm.engine.GetGeneralRegisterSet().SetRegisterValue(X0, pkg.Word36(value))
 	}
@@ -739,13 +739,13 @@ func step15(bm *BankManipulator) bool {
 		asp := bm.engine.activityStatePacket
 
 		if !bm.gate.designatorInhibit {
-			temp := asp.designatorRegister.GetComposite() & 0_777702_777777
+			temp := asp.GetDesignatorRegister().GetComposite() & 0_777702_777777
 			temp |= bm.gate.designatorRegisterValue.GetComposite() & 0_000075_000000
-			asp.designatorRegister.SetComposite(temp)
+			asp.GetDesignatorRegister().SetComposite(temp)
 		}
 
 		if !bm.gate.accessKeyInhibit {
-			asp.indicatorKeyRegister.accessKey = bm.gate.newAccessKey
+			asp.GetIndicatorKeyRegister().SetAccessKey(bm.gate.newAccessKey)
 		}
 
 		if !bm.gate.latentParameter0Inhibit {
@@ -791,35 +791,34 @@ func step16(bm *BankManipulator) bool {
 		//  Indicator/Key register is zeroed out.
 		//  Quantum timer is undefined, and the rest of the ASP is not relevant.
 		asp := bm.engine.activityStatePacket
-		asp.programAddressRegister =
-			NewProgramAddressRegister(bm.targetBankLevel, bm.targetBankDescriptorIndex, uint(bm.targetBankOffset))
+		asp.SetProgramAddressRegister(bm.targetBankLevel, bm.targetBankDescriptorIndex, uint(bm.targetBankOffset))
 
-		dr := &DesignatorRegister{}
-		dr.execRegisterSetSelected = true
-		dr.arithmeticExceptionEnabled = true
-		dr.basicModeEnabled = bm.targetBankDescriptor.GetBankType() == pkg.BasicModeBankDescriptor
-		dr.basicModeBaseRegisterSelection = asp.designatorRegister.basicModeBaseRegisterSelection
-		dr.faultHandlingInProgress = bm.interrupt.GetClass() == pkg.HardwareCheckInterruptClass
-		asp.designatorRegister = dr
+		var dr pkg.DesignatorRegister
+		dr.SetExecRegisterSetSelected(true)
+		dr.SetArithmeticExceptionEnabled(true)
+		dr.SetBasicModeEnabled(bm.targetBankDescriptor.GetBankType() == pkg.BasicModeBankDescriptor)
+		dr.SetBasicModeBaseRegisterSelection(asp.GetDesignatorRegister().GetBasicModeBaseRegisterSelection())
+		dr.SetFaultHandlingInProgress(bm.interrupt.GetClass() == pkg.HardwareCheckInterruptClass)
+		asp.GetDesignatorRegister().SetComposite(dr.GetComposite())
 
-		asp.indicatorKeyRegister.clear()
+		asp.GetIndicatorKeyRegister().Clear()
 	} else if bm.instructionType == URInstruction {
 		//	Entire ASP is loaded form 7 consecutive operand words,
 		//	excepting the short status field of the indicator/key register and the interrupt status words.
 		bm.engine.activityStatePacket.ReadFromBuffer(bm.operands)
 	} else if bm.instructionType == RTNInstruction {
-		bm.engine.activityStatePacket.indicatorKeyRegister.accessKey = bm.returnControlStackFrame.accessKey
-		dr := bm.engine.activityStatePacket.designatorRegister
-		dr.quantumTimerEnabled = bm.returnControlStackFrame.designatorRegister.quantumTimerEnabled
-		dr.deferrableInterruptEnabled = bm.returnControlStackFrame.designatorRegister.deferrableInterruptEnabled
-		dr.processorPrivilege = bm.returnControlStackFrame.designatorRegister.processorPrivilege
-		dr.basicModeEnabled = bm.returnControlStackFrame.designatorRegister.basicModeEnabled
-		dr.execRegisterSetSelected = bm.returnControlStackFrame.designatorRegister.execRegisterSetSelected
+		bm.engine.activityStatePacket.GetIndicatorKeyRegister().SetAccessKey(bm.returnControlStackFrame.accessKey)
+		dr := bm.engine.activityStatePacket.GetDesignatorRegister()
+		dr.SetQuantumTimerEnabled(bm.returnControlStackFrame.designatorRegister.IsQuantumTimerEnabled())
+		dr.SetDeferrableInterruptEnabled(bm.returnControlStackFrame.designatorRegister.IsDeferrableInterruptEnabled())
+		dr.SetProcessorPrivilege(bm.returnControlStackFrame.designatorRegister.GetProcessorPrivilege())
+		dr.SetBasicModeEnabled(bm.returnControlStackFrame.designatorRegister.IsBasicModeEnabled())
+		dr.SetExecRegisterSetSelected(bm.returnControlStackFrame.designatorRegister.IsExecRegisterSetSelected())
 	} else if ((bm.instructionType == GOTOInstruction) || (bm.instructionType == CALLInstruction)) &&
 		(bm.transferMode == ExtendedToBasicTransfer) {
-		bm.engine.activityStatePacket.designatorRegister.basicModeEnabled = true
+		bm.engine.activityStatePacket.GetDesignatorRegister().SetBasicModeEnabled(true)
 	} else if bm.isLXJInstruction && (bm.transferMode == BasicToExtendedTransfer) {
-		bm.engine.activityStatePacket.designatorRegister.basicModeEnabled = false
+		bm.engine.activityStatePacket.GetDesignatorRegister().SetBasicModeEnabled(false)
 	}
 
 	return true
@@ -847,8 +846,8 @@ func step18(bm *BankManipulator) bool {
 	if bm.baseRegisterIndex == 0 {
 		//	This is already done for interrupt handling and for the UR instruction
 		if (bm.interrupt == nil) && (bm.instructionType != URInstruction) {
-			bm.engine.activityStatePacket.programAddressRegister.SetLevel(bm.targetBankLevel)
-			bm.engine.activityStatePacket.programAddressRegister.SetBankDescriptorIndex(bm.targetBankDescriptorIndex)
+			bm.engine.activityStatePacket.GetProgramAddressRegister().SetLevel(bm.targetBankLevel)
+			bm.engine.activityStatePacket.GetProgramAddressRegister().SetBankDescriptorIndex(bm.targetBankDescriptorIndex)
 		} else if bm.baseRegisterIndex < 16 {
 			if bm.targetBankDescriptor == nil {
 				bm.engine.activeBaseTable[bm.baseRegisterIndex].SetComposite(0)
@@ -919,7 +918,7 @@ func step21(bm *BankManipulator) bool {
 		}
 
 		perms := bm.targetBankDescriptor.GetAccessLock().GetEffectivePermissions(
-			bm.engine.activityStatePacket.indicatorKeyRegister.accessKey,
+			bm.engine.activityStatePacket.GetIndicatorKeyRegister().GetAccessKey(),
 			bm.targetBankDescriptor.GetGeneralAccessPermissions(),
 			bm.targetBankDescriptor.GetSpecialAccessPermissions())
 
@@ -953,7 +952,7 @@ func step21(bm *BankManipulator) bool {
 		if (bm.transferMode != NoTransfer) && ((bm.gate != nil) || !perms.CanEnter()) {
 			if bm.targetBankDescriptor.GetBankType() == pkg.BasicModeBankDescriptor {
 				bReg := bm.engine.baseRegisters[bm.baseRegisterIndex]
-				relAddr := uint64(bm.engine.activityStatePacket.programAddressRegister.programCounter)
+				relAddr := uint64(bm.engine.activityStatePacket.GetProgramAddressRegister().GetProgramCounter())
 				interrupt := bReg.CheckAccessLimits(relAddr, false)
 				if interrupt != nil {
 					interrupt = pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionFatal, bm.targetBankLevel, bm.targetBankDescriptorIndex)
@@ -1053,7 +1052,7 @@ func (bm *BankManipulator) process() {
 			(bm.instructionType == LDJInstruction) ||
 			(bm.instructionType == LIJInstruction)
 
-		bm.lxjXRegisterIndex = uint(bm.engine.activityStatePacket.currentInstruction.GetA())
+		bm.lxjXRegisterIndex = uint(bm.engine.activityStatePacket.GetCurrentInstruction().GetA())
 
 		if bm.isLXJInstruction {
 			xRegister := bm.engine.GetExecOrUserXRegister(bm.lxjXRegisterIndex)

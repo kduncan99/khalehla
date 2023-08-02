@@ -2,9 +2,7 @@
 // Copyright © 2023 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package ipEngine
-
-import "khalehla/pkg"
+package pkg
 
 type ProgramAddressRegister struct {
 	level               uint
@@ -24,10 +22,10 @@ func (par *ProgramAddressRegister) GetProgramCounter() uint {
 	return par.programCounter
 }
 
-func (par *ProgramAddressRegister) GetComposite() pkg.Word36 {
-	return (pkg.Word36(par.level) << 33) |
-		(pkg.Word36(par.bankDescriptorIndex) << 18) |
-		pkg.Word36(par.programCounter)
+func (par *ProgramAddressRegister) GetComposite() Word36 {
+	return (Word36(par.level) << 33) |
+		(Word36(par.bankDescriptorIndex) << 18) |
+		Word36(par.programCounter)
 }
 
 func (par *ProgramAddressRegister) IncrementProgramCounter() {

@@ -166,13 +166,13 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 	dr := ute.engine.GetDesignatorRegister()
 	dr.Clear()
 	dr.SetProcessorPrivilege(ute.executable.GetProcessorPrivilege())
-	dr.arithmeticExceptionEnabled = ute.executable.IsArithmeticExceptionEnabled()
-	dr.basicModeBaseRegisterSelection = ute.executable.GetBaseRegisterSelection()
-	dr.basicModeEnabled = ute.executable.IsBasicMode()
-	dr.executive24BitIndexingEnabled = ute.executable.IsExec24BitIndexingEnabled()
-	dr.execRegisterSetSelected = ute.executable.IsExecRegisterSetEnabled()
-	dr.operationTrapEnabled = ute.executable.IsOperationTrapEnabled()
-	dr.quarterWordModeEnabled = ute.executable.IsQuarterWordMode()
+	dr.SetArithmeticExceptionEnabled(ute.executable.IsArithmeticExceptionEnabled())
+	dr.SetBasicModeBaseRegisterSelection(ute.executable.GetBaseRegisterSelection())
+	dr.SetBasicModeEnabled(ute.executable.IsBasicMode())
+	dr.SetExecutive24BitIndexingEnabled(ute.executable.IsExec24BitIndexingEnabled())
+	dr.SetExecRegisterSetSelected(ute.executable.IsExecRegisterSetEnabled())
+	dr.SetOperationTrapEnabled(ute.executable.IsOperationTrapEnabled())
+	dr.SetQuarterWordModeEnabled(ute.executable.IsQuarterWordMode())
 
 	return nil
 }

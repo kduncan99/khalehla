@@ -65,7 +65,7 @@ type InstructionEngine struct {
 	mainStorage *pkg.MainStorage // must be set externally
 
 	activeBaseTable     [16]*ActiveBaseTableEntry //	[0] is unused
-	activityStatePacket ActivityStatePacket
+	activityStatePacket *pkg.ActivityStatePacket
 	baseRegisters       [32]*pkg.BaseRegister
 	generalRegisterSet  *GeneralRegisterSet
 
@@ -118,11 +118,7 @@ func NewEngine(mainStorage *pkg.MainStorage) *InstructionEngine {
 	}
 
 	e.generalRegisterSet = NewGeneralRegisterSet()
-	e.activityStatePacket.designatorRegister = &DesignatorRegister{}
-	e.activityStatePacket.indicatorKeyRegister = &IndicatorKeyRegister{}
-	e.activityStatePacket.indicatorKeyRegister.accessKey = pkg.NewAccessKeyFromComponents(0, 0)
-	e.activityStatePacket.programAddressRegister = &ProgramAddressRegister{}
-
+	e.activityStatePacket = pkg.NewActivityStatePacket()
 	e.breakpointRegister = BreakpointNone
 	e.stopReason = NotStopped
 
@@ -143,45 +139,46 @@ func (e *InstructionEngine) Dump() {
 	}
 
 	var f0String string
-	if e.activityStatePacket.indicatorKeyRegister.instructionInF0 {
+	if e.activityStatePacket.GetIndicatorKeyRegister().IsInstructionInF0() {
 		// TODO disassemble the instruction as well as showing the octal word
-		f0String = fmt.Sprintf("%012o", e.activityStatePacket.currentInstruction)
+		f0String = fmt.Sprintf("%012o", e.activityStatePacket.GetCurrentInstruction())
 	} else {
 		f0String = "invalid"
 	}
 	fmt.Printf("  F0: %s\n", f0String)
 
-	par := e.activityStatePacket.programAddressRegister
-	fmt.Printf("  PAR.PC L:%o BDI:%05o PC:%06o\n", par.level, par.bankDescriptorIndex, par.programCounter)
+	par := e.activityStatePacket.GetProgramAddressRegister()
+	fmt.Printf("  PAR.PC L:%o BDI:%05o PC:%06o\n",
+		par.GetLevel(), par.GetBankDescriptorIndex(), par.GetProgramCounter())
 
-	ikr := e.activityStatePacket.indicatorKeyRegister
+	ikr := e.activityStatePacket.GetIndicatorKeyRegister()
 	fmt.Printf("  Indicator Key Register: %012o\n", ikr.GetComposite())
-	fmt.Printf("    Access Key:        %s\n", ikr.accessKey.GetString())
-	fmt.Printf("    SSF:               %03o\n", ikr.shortStatusField)
-	fmt.Printf("    Interrupt Class:   %03o\n", ikr.interruptClassField)
-	fmt.Printf("    EXR Instruction:   %v\n", ikr.executeRepeatedInstruction)
-	fmt.Printf("    Breakpoint Match:  %v\n", ikr.breakpointRegisterMatchCondition)
-	fmt.Printf("    Software Break:    %v\n", ikr.softwareBreak)
-	fmt.Printf("    Instruction in F0: %v\n", ikr.instructionInF0)
+	fmt.Printf("    Access Key:        %s\n", ikr.GetAccessKey().GetString())
+	fmt.Printf("    SSF:               %03o\n", ikr.GetShortStatusField())
+	fmt.Printf("    Interrupt Class:   %03o\n", ikr.GetInterruptClassField())
+	fmt.Printf("    EXR Instruction:   %v\n", ikr.IsExecuteRepeatedInstruction())
+	fmt.Printf("    Breakpoint Match:  %v\n", ikr.IsBreakpointRegisterMatchCondition())
+	fmt.Printf("    Software Break:    %v\n", ikr.IsSoftwareBreak())
+	fmt.Printf("    Instruction in F0: %v\n", ikr.IsInstructionInF0())
 
-	dr := e.activityStatePacket.designatorRegister
+	dr := e.activityStatePacket.GetDesignatorRegister()
 	fmt.Printf("  Designator Register: %012o\n", dr.GetComposite())
-	fmt.Printf("    FHIP:                        %v\n", dr.faultHandlingInProgress)
-	fmt.Printf("    Executive 24-bit Indexing:   %v\n", dr.executive24BitIndexingEnabled)
-	fmt.Printf("    Quantum Timer Enable:        %v\n", dr.quantumTimerEnabled)
-	fmt.Printf("    Deferrable Interrupt Enable: %v\n", dr.deferrableInterruptEnabled)
-	fmt.Printf("    Processor Privilege:         %v\n", dr.processorPrivilege)
-	fmt.Printf("    Basic Mode:                  %v\n", dr.basicModeEnabled)
-	fmt.Printf("    Exec Register Set Selection: %v\n", dr.execRegisterSetSelected)
-	fmt.Printf("    Carry:                       %v\n", dr.carry)
-	fmt.Printf("    Overflow:                    %v\n", dr.overflow)
-	fmt.Printf("    Characteristic Underflow:    %v\n", dr.characteristicUnderflow)
-	fmt.Printf("    Characteristic Overflow:     %v\n", dr.characteristicOverflow)
-	fmt.Printf("    Divide Check:                %v\n", dr.divideCheck)
-	fmt.Printf("    Operation Trap Enable:       %v\n", dr.operationTrapEnabled)
-	fmt.Printf("    Arithmetic Exception Enable: %v\n", dr.arithmeticExceptionEnabled)
-	fmt.Printf("    Basic Mode Base Reg Sel:     %v\n", dr.basicModeBaseRegisterSelection)
-	fmt.Printf("    Quarter Word Selection:      %v\n", dr.quarterWordModeEnabled)
+	fmt.Printf("    FHIP:                        %v\n", dr.IsFaultHandlingInProgress())
+	fmt.Printf("    Executive 24-bit Indexing:   %v\n", dr.IsExecutive24BitIndexingSet())
+	fmt.Printf("    Quantum Timer Enable:        %v\n", dr.IsQuantumTimerEnabled())
+	fmt.Printf("    Deferrable Interrupt Enable: %v\n", dr.IsDeferrableInterruptEnabled())
+	fmt.Printf("    Processor Privilege:         %v\n", dr.GetProcessorPrivilege())
+	fmt.Printf("    Basic Mode:                  %v\n", dr.IsBasicModeEnabled())
+	fmt.Printf("    Exec Register Set Selection: %v\n", dr.IsExecRegisterSetSelected())
+	fmt.Printf("    Carry:                       %v\n", dr.IsCarrySet())
+	fmt.Printf("    Overflow:                    %v\n", dr.IsOverflowSet())
+	fmt.Printf("    Characteristic Underflow:    %v\n", dr.IsCharacteristicUnderflowSet())
+	fmt.Printf("    Characteristic Overflow:     %v\n", dr.IsCharacteristicOverflowSet())
+	fmt.Printf("    Divide Check:                %v\n", dr.IsDivideCheckSet())
+	fmt.Printf("    Operation Trap Enable:       %v\n", dr.IsOperationTrapEnabled())
+	fmt.Printf("    Arithmetic Exception Enable: %v\n", dr.IsArithmeticExceptionEnabled())
+	fmt.Printf("    Basic Mode Base Reg Sel:     %v\n", dr.GetBasicModeBaseRegisterSelection())
+	fmt.Printf("    Quarter Word Selection:      %v\n", dr.IsQuarterWordModeEnabled())
 
 	e.generalRegisterSet.Dump()
 
@@ -207,7 +204,7 @@ func (e *InstructionEngine) Dump() {
 // Returns the bank descriptor index (from 12 to 15) for the proper bank descriptor.
 // Returns zero if the address is not within any of the based bank limits.
 func (e *InstructionEngine) FindBasicModeBank(relativeAddress uint64, updateDB31 bool) uint {
-	db31 := e.activityStatePacket.designatorRegister.basicModeBaseRegisterSelection
+	db31 := e.activityStatePacket.GetDesignatorRegister().GetBasicModeBaseRegisterSelection()
 	for tx := 0; tx < 4; tx++ {
 		//  See IP PRM 4.4.5 - select the base register from the selection table.
 		//  If the bank is void, skip it.
@@ -218,7 +215,7 @@ func (e *InstructionEngine) FindBasicModeBank(relativeAddress uint64, updateDB31
 		if e.isWithinLimits(bReg, relativeAddress) {
 			if updateDB31 && (tx >= 2) {
 				//  address is found in a secondary bank, so we need to flip DB31
-				e.activityStatePacket.designatorRegister.basicModeBaseRegisterSelection = !db31
+				e.activityStatePacket.GetDesignatorRegister().SetBasicModeBaseRegisterSelection(!db31)
 			}
 
 			return brIndex
@@ -242,12 +239,12 @@ func (e *InstructionEngine) GetBaseRegister(index uint) *pkg.BaseRegister {
 	return e.baseRegisters[index]
 }
 
-func (e *InstructionEngine) GetCurrentInstruction() InstructionWord {
-	return e.activityStatePacket.currentInstruction
+func (e *InstructionEngine) GetCurrentInstruction() *pkg.InstructionWord {
+	return e.activityStatePacket.GetCurrentInstruction()
 }
 
-func (e *InstructionEngine) GetDesignatorRegister() *DesignatorRegister {
-	return e.activityStatePacket.designatorRegister
+func (e *InstructionEngine) GetDesignatorRegister() *pkg.DesignatorRegister {
+	return e.activityStatePacket.GetDesignatorRegister()
 }
 
 // GetExecOrUserARegister retrieves either the EA{index} or A{index} register
@@ -259,7 +256,7 @@ func (e *InstructionEngine) GetExecOrUserARegister(registerIndex uint) *pkg.Word
 // GetExecOrUserARegisterIndex retrieves the GRS index of either EA{index} or A{index}
 // depending upon the setting of designator register ExecRegisterSetSelected
 func (e *InstructionEngine) GetExecOrUserARegisterIndex(registerIndex uint) uint {
-	if e.activityStatePacket.designatorRegister.execRegisterSetSelected {
+	if e.activityStatePacket.GetDesignatorRegister().IsExecRegisterSetSelected() {
 		return EA0 + registerIndex
 	} else {
 		return A0 + registerIndex
@@ -275,7 +272,7 @@ func (e *InstructionEngine) GetExecOrUserRRegister(registerIndex uint) *pkg.Word
 // GetExecOrUserRRegisterIndex retrieves the GRS index of either ER{index} or R{index}
 // depending upon the setting of designator register ExecRegisterSetSelected
 func (e *InstructionEngine) GetExecOrUserRRegisterIndex(registerIndex uint) uint {
-	if e.activityStatePacket.designatorRegister.execRegisterSetSelected {
+	if e.activityStatePacket.GetDesignatorRegister().IsExecRegisterSetSelected() {
 		return ER0 + registerIndex
 	} else {
 		return R0 + registerIndex
@@ -292,7 +289,7 @@ func (e *InstructionEngine) GetExecOrUserXRegister(registerIndex uint) *IndexReg
 // GetExecOrUserXRegisterIndex retrieves the GRS index of either EX{index} or X{index}
 // depending upon the setting of designator register ExecRegisterSetSelected
 func (e *InstructionEngine) GetExecOrUserXRegisterIndex(registerIndex uint) uint {
-	if e.activityStatePacket.designatorRegister.execRegisterSetSelected {
+	if e.activityStatePacket.GetDesignatorRegister().IsExecRegisterSetSelected() {
 		return EX0 + registerIndex
 	} else {
 		return X0 + registerIndex
@@ -326,7 +323,7 @@ func (e *InstructionEngine) GetJumpOperand(updateDesignatorRegister bool) (compl
 	//  then throw UnresolvedAddressException which will eventually route us back through here again, but this
 	//  time with new address info (in reladdress), and we keep doing this until we're not doing indirect addressing.
 	asp := e.activityStatePacket
-	if asp.designatorRegister.basicModeEnabled && (asp.currentInstruction.GetI() != 0) {
+	if asp.GetDesignatorRegister().IsBasicModeEnabled() && (asp.GetCurrentInstruction().GetI() != 0) {
 		complete, _, interrupt = e.findBaseRegisterIndex(operand, updateDesignatorRegister)
 	} else {
 		e.incrementIndexRegisterInF0()
@@ -353,7 +350,7 @@ func (e *InstructionEngine) GetOperand(grsDestination bool, grsCheck bool, allow
 	operand = 0
 	interrupt = nil
 
-	jField := uint(e.activityStatePacket.currentInstruction.GetJ())
+	jField := uint(e.activityStatePacket.GetCurrentInstruction().GetJ())
 	if allowImmediate {
 		//  j-field is U or XU? If so, get the value from the instruction itself (immediate addressing)
 		if jField >= 016 {
@@ -366,10 +363,10 @@ func (e *InstructionEngine) GetOperand(grsDestination bool, grsCheck bool, allow
 	relAddress := e.calculateRelativeAddressForGRSOrStorage()
 
 	asp := e.activityStatePacket
-	ci := asp.currentInstruction
-	dReg := asp.designatorRegister
-	basicMode := dReg.basicModeEnabled
-	pPriv := dReg.processorPrivilege
+	ci := asp.GetCurrentInstruction()
+	dReg := asp.GetDesignatorRegister()
+	basicMode := dReg.IsBasicModeEnabled()
+	pPriv := dReg.GetProcessorPrivilege()
 	grs := e.generalRegisterSet
 
 	var baseRegisterIndex uint
@@ -397,7 +394,7 @@ func (e *InstructionEngine) GetOperand(grsDestination bool, grsCheck bool, allow
 		if grsDestination || !allowPartial {
 			operand = grs.GetRegister(uint(relAddress)).GetW()
 		} else {
-			qWordMode := dReg.quarterWordModeEnabled
+			qWordMode := dReg.IsQuarterWordModeEnabled()
 			operand = e.extractPartialWord(grs.GetRegister(uint(relAddress)).GetW(), jField, qWordMode)
 			return
 		}
@@ -412,7 +409,7 @@ func (e *InstructionEngine) GetOperand(grsDestination bool, grsCheck bool, allow
 	}
 
 	baseRegister := e.baseRegisters[baseRegisterIndex]
-	interrupt = e.checkAccessLimits(baseRegister, relAddress, false, true, false, asp.indicatorKeyRegister.accessKey)
+	interrupt = e.checkAccessLimits(baseRegister, relAddress, false, true, false, asp.GetIndicatorKeyRegister().GetAccessKey())
 	if interrupt != nil {
 		return
 	}
@@ -426,7 +423,7 @@ func (e *InstructionEngine) GetOperand(grsDestination bool, grsCheck bool, allow
 	readOffset := relAddress - baseRegister.GetLowerLimitNormalized()
 	operand = baseRegister.GetStorage()[readOffset].GetW()
 	if allowPartial {
-		qWordMode := dReg.quarterWordModeEnabled
+		qWordMode := dReg.IsQuarterWordModeEnabled()
 		operand = e.extractPartialWord(operand, jField, qWordMode)
 	}
 
@@ -435,7 +432,7 @@ func (e *InstructionEngine) GetOperand(grsDestination bool, grsCheck bool, allow
 }
 
 func (e *InstructionEngine) GetPARPC() uint64 {
-	return uint64(e.activityStatePacket.programAddressRegister.GetComposite())
+	return uint64(e.activityStatePacket.GetProgramAddressRegister().GetComposite())
 }
 
 func (e *InstructionEngine) HasPendingInterrupt() bool {
@@ -474,7 +471,7 @@ func (e *InstructionEngine) SetExecOrUserXRegister(regIndex uint, value IndexReg
 
 // SetPARPC sets the individual components of PAR.PC
 func (e *InstructionEngine) SetPARPC(level uint, index uint, counter uint) {
-	par := e.activityStatePacket.programAddressRegister
+	par := e.activityStatePacket.GetProgramAddressRegister()
 	par.SetLevel(level)
 	par.SetBankDescriptorIndex(index)
 	par.SetProgramCounter(counter)
@@ -482,7 +479,7 @@ func (e *InstructionEngine) SetPARPC(level uint, index uint, counter uint) {
 
 // SetProgramCounter sets the program counter in the PAR as well as the preventPCUpdate (aka prevent increment) flag
 func (e *InstructionEngine) SetProgramCounter(counter uint, preventIncrement bool) {
-	e.activityStatePacket.programAddressRegister.SetProgramCounter(counter)
+	e.activityStatePacket.GetProgramAddressRegister().SetProgramCounter(counter)
 	e.preventPCUpdate = preventIncrement
 }
 
@@ -510,7 +507,7 @@ func (e *InstructionEngine) StoreOperand(grsSource bool, grsCheck bool, checkImm
 	interrupt = nil
 
 	//  If we allow immediate addressing mode and j-field is U or XU... we do nothing.
-	ci := e.activityStatePacket.currentInstruction
+	ci := e.activityStatePacket.GetCurrentInstruction()
 
 	jField := uint(ci.GetJ())
 	if (checkImmediate) && (jField >= 016) {
@@ -518,10 +515,10 @@ func (e *InstructionEngine) StoreOperand(grsSource bool, grsCheck bool, checkImm
 		return
 	}
 
-	dr := e.activityStatePacket.designatorRegister
+	dr := e.activityStatePacket.GetDesignatorRegister()
 	relAddress := e.calculateRelativeAddressForGRSOrStorage()
-	basicMode := dr.basicModeEnabled
-	pPriv := dr.processorPrivilege
+	basicMode := dr.IsBasicModeEnabled()
+	pPriv := dr.GetProcessorPrivilege()
 
 	var baseRegisterIndex uint
 	if !basicMode {
@@ -543,7 +540,7 @@ func (e *InstructionEngine) StoreOperand(grsSource bool, grsCheck bool, checkImm
 		//  If we are GRS or not allowing partial word transfers, do a full word.
 		//  Otherwise, honor partial word transfer.
 		if !grsSource && allowPartial {
-			qWordMode := dr.quarterWordModeEnabled
+			qWordMode := dr.IsQuarterWordModeEnabled()
 			originalValue := e.generalRegisterSet.GetRegister(uint(relAddress)).GetW()
 			newValue := e.injectPartialWord(originalValue, operand, jField, qWordMode)
 			e.generalRegisterSet.GetRegister(uint(relAddress)).SetW(newValue)
@@ -564,8 +561,8 @@ func (e *InstructionEngine) StoreOperand(grsSource bool, grsCheck bool, checkImm
 	}
 
 	bReg := e.baseRegisters[baseRegisterIndex]
-	ikr := e.activityStatePacket.indicatorKeyRegister
-	interrupt = e.checkAccessLimits(bReg, relAddress, false, false, true, ikr.accessKey)
+	ikr := e.activityStatePacket.GetIndicatorKeyRegister()
+	interrupt = e.checkAccessLimits(bReg, relAddress, false, false, true, ikr.GetAccessKey())
 	if interrupt != nil {
 		return
 	}
@@ -578,7 +575,7 @@ func (e *InstructionEngine) StoreOperand(grsSource bool, grsCheck bool, checkImm
 
 	offset := relAddress - bReg.GetLowerLimitNormalized()
 	if allowPartial {
-		qWordMode := dr.quarterWordModeEnabled
+		qWordMode := dr.IsQuarterWordModeEnabled()
 		originalValue := bReg.GetStorage()[offset].GetW()
 		newValue := e.injectPartialWord(originalValue, operand, jField, qWordMode)
 		bReg.GetStorage()[offset].SetW(newValue)
@@ -596,8 +593,8 @@ func (e *InstructionEngine) StoreOperand(grsSource bool, grsCheck bool, checkImm
 // Does NOT increment any x registers, even if their content contributes to the result.
 // Returns the relative address for the current instruction
 func (e *InstructionEngine) calculateRelativeAddressForGRSOrStorage() uint64 {
-	ci := e.activityStatePacket.currentInstruction
-	dr := e.activityStatePacket.designatorRegister
+	ci := e.activityStatePacket.GetCurrentInstruction()
+	dr := e.activityStatePacket.GetDesignatorRegister()
 
 	var xReg *IndexRegister
 	xx := uint(ci.GetX())
@@ -607,7 +604,7 @@ func (e *InstructionEngine) calculateRelativeAddressForGRSOrStorage() uint64 {
 
 	var addend1 uint64
 	var addend2 uint64
-	if dr.basicModeEnabled {
+	if dr.IsBasicModeEnabled() {
 		addend1 = ci.GetU()
 		if xReg != nil {
 			addend2 = xReg.GetSignedXM()
@@ -615,7 +612,7 @@ func (e *InstructionEngine) calculateRelativeAddressForGRSOrStorage() uint64 {
 	} else {
 		addend1 = ci.GetD()
 		if xReg != nil {
-			if dr.executive24BitIndexingEnabled && dr.processorPrivilege < 2 {
+			if dr.IsExecutive24BitIndexingSet() && dr.GetProcessorPrivilege() < 2 {
 				//  Exec 24-bit indexing is requested
 				addend2 = xReg.GetSignedXM24()
 			} else {
@@ -631,8 +628,8 @@ func (e *InstructionEngine) calculateRelativeAddressForGRSOrStorage() uint64 {
 // Does NOT increment any x registers, even if their content contributes to the result.
 // returns the relative address for the current instruction
 func (e *InstructionEngine) calculateRelativeAddressForJump() uint64 {
-	ci := e.activityStatePacket.currentInstruction
-	dr := e.activityStatePacket.designatorRegister
+	ci := e.activityStatePacket.GetCurrentInstruction()
+	dr := e.activityStatePacket.GetDesignatorRegister()
 
 	var xReg *IndexRegister
 	xx := uint(ci.GetX())
@@ -642,14 +639,14 @@ func (e *InstructionEngine) calculateRelativeAddressForJump() uint64 {
 
 	addend1 := ci.GetU()
 	var addend2 uint64
-	if dr.basicModeEnabled {
+	if dr.IsBasicModeEnabled() {
 		if xReg != nil {
 			addend2 = xReg.GetSignedXM()
 		}
 	} else {
 		addend1 = ci.GetU()
 		if xReg != nil {
-			if dr.executive24BitIndexingEnabled && dr.processorPrivilege < 2 {
+			if dr.IsExecutive24BitIndexingSet() && dr.GetProcessorPrivilege() < 2 {
 				//  Exec 24-bit indexing is requested
 				addend2 = xReg.GetSignedXM24()
 			} else {
@@ -671,7 +668,7 @@ func (e *InstructionEngine) checkAccessibility(
 	writeFlag bool,
 	accessKey *pkg.AccessKey) pkg.Interrupt {
 	perms := bReg.GetEffectivePermissions(accessKey)
-	if e.activityStatePacket.designatorRegister.basicModeEnabled && fetchFlag && !perms.CanEnter() {
+	if e.activityStatePacket.GetDesignatorRegister().IsBasicModeEnabled() && fetchFlag && !perms.CanEnter() {
 		ssf := uint(040)
 		if fetchFlag {
 			ssf |= 01
@@ -745,7 +742,7 @@ func (e *InstructionEngine) checkBreakpoint(comp BreakpointComparison, addr *pkg
 	//      which means Stop Right Now... how do we do that for all callers of this code?
 	if e.breakpointAddress.Equals(addr) {
 		if comp&e.breakpointRegister != 0 {
-			e.activityStatePacket.indicatorKeyRegister.breakpointRegisterMatchCondition = true
+			e.activityStatePacket.GetIndicatorKeyRegister().SetBreakpointRegisterMatchCondition(true)
 		}
 	}
 }
@@ -790,7 +787,7 @@ func (e *InstructionEngine) doCycle() {
 	// EXRF clear until the first interrupt point after the EXR instructionType has been fetched.
 
 	// TODO have we handled all the cases above?
-	if e.activityStatePacket.indicatorKeyRegister.instructionInF0 {
+	if e.activityStatePacket.GetIndicatorKeyRegister().IsInstructionInF0() {
 		e.executeCurrentInstruction()
 		return
 	}
@@ -813,20 +810,20 @@ func (e *InstructionEngine) executeCurrentInstruction() {
 	//	TODO optionally emit a disassembly of the instruction in F0
 	//		should be a part of diagnostic package, which also allows for other types of monitoring
 
-	dr := e.activityStatePacket.designatorRegister
-	ci := e.activityStatePacket.currentInstruction
+	dr := e.activityStatePacket.GetDesignatorRegister()
+	ci := e.activityStatePacket.GetCurrentInstruction()
 
 	e.preventPCUpdate = false
-	fTable := FunctionTable[dr.basicModeEnabled]
+	fTable := FunctionTable[dr.IsBasicModeEnabled()]
 	if inst, found := fTable[uint(ci.GetF())]; found {
 		completed, interrupt := inst(e)
 		if interrupt != nil {
 			e.PostInterrupt(interrupt)
 		} else if completed {
 			e.clearStorageLocks()
-			e.activityStatePacket.indicatorKeyRegister.instructionInF0 = false
+			e.activityStatePacket.GetIndicatorKeyRegister().SetInstructionInF0(false)
 			if !e.preventPCUpdate {
-				e.activityStatePacket.programAddressRegister.IncrementProgramCounter()
+				e.activityStatePacket.GetProgramAddressRegister().IncrementProgramCounter()
 			}
 		}
 	} else {
@@ -892,8 +889,8 @@ func (e *InstructionEngine) extractPartialWord(source uint64, partialWordIndicat
 // For basic mode, we have to hunt around a bit to make sure we pull it from the most appropriate bank.
 // If something bad happens, an interrupt is posted and we return false
 func (e *InstructionEngine) fetchInstructionWord() bool {
-	basicMode := e.activityStatePacket.designatorRegister.basicModeEnabled
-	programCounter := uint64(e.activityStatePacket.programAddressRegister.GetProgramCounter())
+	basicMode := e.activityStatePacket.GetDesignatorRegister().IsBasicModeEnabled()
+	programCounter := uint64(e.activityStatePacket.GetProgramAddressRegister().GetProgramCounter())
 
 	var bReg *pkg.BaseRegister
 	if basicMode {
@@ -910,8 +907,8 @@ func (e *InstructionEngine) fetchInstructionWord() bool {
 		}
 	} else {
 		bReg = e.baseRegisters[0]
-		ikr := e.activityStatePacket.indicatorKeyRegister
-		intp := e.checkAccessLimits(bReg, programCounter, true, false, false, ikr.accessKey)
+		ikr := e.activityStatePacket.GetIndicatorKeyRegister()
+		intp := e.checkAccessLimits(bReg, programCounter, true, false, false, ikr.GetAccessKey())
 		if intp != nil {
 			e.PostInterrupt(intp)
 			return false
@@ -924,8 +921,9 @@ func (e *InstructionEngine) fetchInstructionWord() bool {
 	}
 
 	pcOffset := programCounter - bReg.GetLowerLimitNormalized()
-	e.activityStatePacket.currentInstruction = InstructionWord(bReg.GetStorage()[pcOffset])
-	e.activityStatePacket.indicatorKeyRegister.instructionInF0 = true
+	a := pkg.InstructionWord(bReg.GetStorage()[pcOffset])
+	e.activityStatePacket.SetCurrentInstruction(&a)
+	e.activityStatePacket.GetIndicatorKeyRegister().SetInstructionInF0(true)
 
 	return true
 }
@@ -986,8 +984,8 @@ func (e *InstructionEngine) findBaseRegisterIndex(relativeAddress uint64, update
 	index = 0
 	interrupt = nil
 
-	dr := e.activityStatePacket.designatorRegister
-	if dr.basicModeEnabled {
+	dr := e.activityStatePacket.GetDesignatorRegister()
+	if dr.IsBasicModeEnabled() {
 		//  Find the bank containing the current offset.
 		//  We don't need to check for storage limits, since this is done for us by findBasicModeBank() in terms of
 		//  returning a zero.
@@ -998,7 +996,7 @@ func (e *InstructionEngine) findBaseRegisterIndex(relativeAddress uint64, update
 		}
 
 		//  Are we doing indirect addressing?
-		ci := e.activityStatePacket.currentInstruction
+		ci := e.activityStatePacket.GetCurrentInstruction()
 		if ci.GetI() != 0 {
 			//  Increment the X register (if any) indicated by F0 (if H bit is set, of course)
 			e.incrementIndexRegisterInF0()
@@ -1010,8 +1008,8 @@ func (e *InstructionEngine) findBaseRegisterIndex(relativeAddress uint64, update
 				return
 			}
 
-			ikr := e.activityStatePacket.indicatorKeyRegister
-			interrupt = e.checkAccessLimits(bReg, relativeAddress, false, true, false, ikr.accessKey)
+			ikr := e.activityStatePacket.GetIndicatorKeyRegister()
+			interrupt = e.checkAccessLimits(bReg, relativeAddress, false, true, false, ikr.GetAccessKey())
 			if interrupt != nil {
 				return
 			}
@@ -1019,7 +1017,7 @@ func (e *InstructionEngine) findBaseRegisterIndex(relativeAddress uint64, update
 			//  Get xhiu fields from the referenced word, and place them into _currentInstruction,
 			//  then throw UnresolvedAddressException so the caller knows we're not done here.
 			wx := relativeAddress - bReg.GetLowerLimitNormalized()
-			e.activityStatePacket.currentInstruction.SetXHIU(bReg.GetStorage()[wx].GetW())
+			e.activityStatePacket.GetCurrentInstruction().SetXHIU(bReg.GetStorage()[wx].GetW())
 			return
 		}
 
@@ -1036,10 +1034,10 @@ func (e *InstructionEngine) findBaseRegisterIndex(relativeAddress uint64, update
 func (e *InstructionEngine) getEffectiveBaseRegisterIndex() uint {
 	//  If PP < 2, we use the i-bit and the b-field to select the base registers from B0 to B31.
 	//  For PP >= 2, we only use the b-field, to select base registers from B0 to B15 (See IP PRM 4.3.7).
-	if e.activityStatePacket.designatorRegister.processorPrivilege < 2 {
-		return uint(e.activityStatePacket.currentInstruction.GetIB())
+	if e.activityStatePacket.GetDesignatorRegister().GetProcessorPrivilege() < 2 {
+		return uint(e.activityStatePacket.GetCurrentInstruction().GetIB())
 	} else {
-		return uint(e.activityStatePacket.currentInstruction.GetB())
+		return uint(e.activityStatePacket.GetCurrentInstruction().GetB())
 	}
 }
 
@@ -1064,11 +1062,11 @@ func (e *InstructionEngine) getImmediateOperand() (operand uint64, interrupt pkg
 	operand = 0
 	interrupt = nil
 
-	ci := e.activityStatePacket.currentInstruction
-	dr := e.activityStatePacket.designatorRegister
+	ci := e.activityStatePacket.GetCurrentInstruction()
+	dr := e.activityStatePacket.GetDesignatorRegister()
 
-	exec24Index := dr.executive24BitIndexingEnabled
-	privilege := dr.processorPrivilege
+	exec24Index := dr.IsExecutive24BitIndexingSet()
+	privilege := dr.GetProcessorPrivilege()
 	valueIs24Bits := ((privilege < 2) && exec24Index) || ((privilege > 1) && (ci.GetI() != 0))
 
 	if ci.GetX() == 0 {
@@ -1093,7 +1091,7 @@ func (e *InstructionEngine) getImmediateOperand() (operand uint64, interrupt pkg
 		xReg := e.GetExecOrUserXRegister(uint(ci.GetX()))
 
 		//  24-bit indexing?
-		if !dr.basicModeEnabled && (privilege < 2) && exec24Index {
+		if !dr.IsBasicModeEnabled() && (privilege < 2) && exec24Index {
 			//  Add the 24-bit modifier
 			operand = pkg.AddSimple(operand, xReg.GetXM24())
 			if ci.GetH() != 0 {
@@ -1126,11 +1124,11 @@ func (e *InstructionEngine) getImmediateOperand() (operand uint64, interrupt pkg
 }
 
 func (e *InstructionEngine) incrementIndexRegisterInF0() {
-	ci := e.activityStatePacket.currentInstruction
+	ci := e.activityStatePacket.GetCurrentInstruction()
 	if (ci.GetX() != 0) && (ci.GetH() != 0) {
 		iReg := e.GetExecOrUserXRegister(uint(ci.GetX()))
-		dReg := e.activityStatePacket.designatorRegister
-		if !dReg.basicModeEnabled && dReg.executive24BitIndexingEnabled && (dReg.processorPrivilege < 2) {
+		dReg := e.activityStatePacket.GetDesignatorRegister()
+		if !dReg.IsBasicModeEnabled() && dReg.IsExecutive24BitIndexingSet() && (dReg.GetProcessorPrivilege() < 2) {
 			iReg.IncrementModifier24()
 		} else {
 			iReg.IncrementModifier()
@@ -1203,7 +1201,7 @@ func (e *InstructionEngine) isGRSAccessAllowed(registerIndex uint64, processorPr
 }
 
 func (e *InstructionEngine) isReadAllowed(bReg *pkg.BaseRegister) bool {
-	permissions := bReg.GetEffectivePermissions(e.activityStatePacket.indicatorKeyRegister.accessKey)
+	permissions := bReg.GetEffectivePermissions(e.activityStatePacket.GetIndicatorKeyRegister().GetAccessKey())
 	return permissions.CanRead()
 }
 
