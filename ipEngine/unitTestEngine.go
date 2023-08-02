@@ -29,7 +29,7 @@ type UnitTestEngine struct {
 	engine *InstructionEngine
 }
 
-func NewExecutor() *UnitTestEngine {
+func NewUnitTestExecutor() *UnitTestEngine {
 	e := &UnitTestEngine{
 		storage: pkg.NewMainStorage(100),
 	}
@@ -43,6 +43,10 @@ func (ute *UnitTestEngine) Clear() {
 	ute.bankDescriptorTableAddresses = make(map[int]*pkg.AbsoluteAddress)
 	ute.executable = nil
 	ute.engine = nil
+}
+
+func (ute *UnitTestEngine) GetEngine() *InstructionEngine {
+	return ute.engine
 }
 
 func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
@@ -106,35 +110,7 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 		bank.GetBankDescriptor().Serialize(bdTable[bdOffset : bdOffset+8])
 	}
 
-	ute.storage.Dump() // TODO remove
-	return nil
-}
-
-func (ute *UnitTestEngine) getBankDescriptor(bdi uint) (*pkg.BankDescriptor, error) {
-	//	TODO need to do translation for extended mode
-	level := int(bdi >> 15)
-	index := bdi & 077777
-
-	bdtAddress, ok := ute.bankDescriptorTableAddresses[level]
-	if !ok {
-		return nil, fmt.Errorf("no BDT for level %d for BDI %06o", level, bdi)
-	}
-
-	offset := bdtAddress.GetOffset() + (index * 8)
-	slice, ok := ute.storage.GetSlice(bdtAddress.GetSegment(), offset, offset+8)
-	if !ok {
-		return nil, fmt.Errorf("cannot retrieve BD for BDI %06o", bdi)
-	}
-
-	return pkg.NewBankDescriptorFromStorage(slice), nil
-}
-
-func (ute *UnitTestEngine) Run() error {
-	fmt.Printf("\nSetting up to run...\n")
-	if ute.executable == nil {
-		return fmt.Errorf("no executable has been loaded")
-	}
-
+	//	Set up base registers
 	ute.engine = NewEngine(ute.storage)
 	for brx := uint(0); brx < 16; brx++ {
 		ute.engine.SetBaseRegister(brx, pkg.NewVoidBaseRegister())
@@ -198,6 +174,34 @@ func (ute *UnitTestEngine) Run() error {
 	dr.operationTrapEnabled = ute.executable.IsOperationTrapEnabled()
 	dr.quarterWordModeEnabled = ute.executable.IsQuarterWordMode()
 
+	return nil
+}
+
+func (ute *UnitTestEngine) getBankDescriptor(bdi uint) (*pkg.BankDescriptor, error) {
+	//	TODO need to do translation for extended mode
+	level := int(bdi >> 15)
+	index := bdi & 077777
+
+	bdtAddress, ok := ute.bankDescriptorTableAddresses[level]
+	if !ok {
+		return nil, fmt.Errorf("no BDT for level %d for BDI %06o", level, bdi)
+	}
+
+	offset := bdtAddress.GetOffset() + (index * 8)
+	slice, ok := ute.storage.GetSlice(bdtAddress.GetSegment(), offset, offset+8)
+	if !ok {
+		return nil, fmt.Errorf("cannot retrieve BD for BDI %06o", bdi)
+	}
+
+	return pkg.NewBankDescriptorFromStorage(slice), nil
+}
+
+func (ute *UnitTestEngine) Run() error {
+	fmt.Printf("\nSetting up to run...\n")
+	if ute.executable == nil {
+		return fmt.Errorf("no executable has been loaded")
+	}
+
 	//	Reset GRS, clear interrupts and jump history
 	//  TODO maybe we should have a Clear() on the engine?
 	ute.engine.GetGeneralRegisterSet().Clear()
@@ -208,9 +212,8 @@ func (ute *UnitTestEngine) Run() error {
 	for !ute.engine.HasPendingInterrupt() {
 		ute.engine.doCycle()
 	}
-	fmt.Printf("Execution Interrupted\n")
 
-	ute.engine.Dump()
+	fmt.Printf("Execution Interrupted\n")
 	return nil
 }
 

@@ -809,6 +809,10 @@ func (e *InstructionEngine) executeCurrentInstruction() {
 	//	Generally, a false return results either from a repeated execution instructionType giving
 	//	up the ipEngine, or by an indirect basic mode instructionType giving up the ipEngine
 	//	before completely developing the operand address.
+
+	//	TODO optionally emit a disassembly of the instruction in F0
+	//		should be a part of diagnostic package, which also allows for other types of monitoring
+
 	dr := e.activityStatePacket.designatorRegister
 	ci := e.activityStatePacket.currentInstruction
 

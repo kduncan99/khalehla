@@ -84,12 +84,31 @@ func (e *Executable) LinkSimple(segments map[int]*Segment) {
 	e.banks = make(map[uint]*Bank)
 	e.initiallyBasedBanks = make(map[uint]uint)
 
+	//	Create a list in ascending order, of the existing segment numbers
+	orderedSegmentNumbers := make([]int, 0)
+	for segNum, _ := range segments {
+		ox := 0
+		done := false
+		for ox < len(orderedSegmentNumbers) && !done {
+			if segNum < orderedSegmentNumbers[ox] {
+				orderedSegmentNumbers = append([]int{segNum}, orderedSegmentNumbers...)
+				done = true
+			} else {
+				ox++
+			}
+		}
+		if !done {
+			orderedSegmentNumbers = append(orderedSegmentNumbers, segNum)
+		}
+	}
+
 	//	Find the offsets of all the segments relative to the start of the bank
 	//	key is the segment number, value is the offset
 	offsets := make(map[int]uint)
 	var offset uint
 	var bankLength uint
-	for segmentNumber, segment := range segments {
+	for _, segmentNumber := range orderedSegmentNumbers {
+		segment := segments[segmentNumber]
 		offsets[segmentNumber] = offset
 		for _, codeBlock := range segment.generatedCode {
 			blockLen := uint(len(codeBlock.code))
@@ -123,8 +142,8 @@ func (e *Executable) LinkSimple(segments map[int]*Segment) {
 	}
 
 	//	Load code one segment at a time (unresolved)
-	cx := 0
-	for _, segment := range segments {
+	for segmentNumber, segment := range segments {
+		cx := offsets[segmentNumber]
 		for _, codeBlock := range segment.generatedCode {
 			for _, code := range codeBlock.code {
 				bankCode[cx] = code

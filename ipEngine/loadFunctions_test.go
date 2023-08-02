@@ -36,7 +36,7 @@ var x3 = "03"
 
 var z = "0"
 
-var code = []*tasm.SourceItem{
+var laFunctionCode = []*tasm.SourceItem{
 	tasm.NewSourceItem("", ".SEG", []string{"077"}),
 	tasm.NewSourceItem("a1value", "sw", []string{"01", "02", "03", "04", "05", "06"}),
 
@@ -46,8 +46,8 @@ var code = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "w", []string{"0"}), //	cause an illop interrupt
 }
 
-func Test_F(t *testing.T) {
-	sourceSet := tasm.NewSourceSet("Test", code)
+func Test_LA_Basic(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", laFunctionCode)
 	a := tasm.NewTinyAssembler()
 	a.Assemble(sourceSet)
 
@@ -55,12 +55,61 @@ func Test_F(t *testing.T) {
 	e.LinkSimple(a.GetSegments())
 	e.Show()
 
-	ex := NewExecutor()
-	err := ex.Load(&e)
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().basicModeEnabled = true
+		err = ute.Run()
+	}
 
 	if err != nil {
 		t.Fatalf("%s\n", err.Error())
 	}
 
-	ex.Run()
+	ute.engine.Dump() // TODO remove
+	grs := ute.GetEngine().generalRegisterSet
+	res := grs.GetRegister(A0).GetW()
+	exp := uint64(0123)
+	if res != exp {
+		t.Fatalf("Register A0 is %012o, expected %012o", res, exp)
+	}
+
+	res = grs.GetRegister(A1).GetW()
+	exp = uint64(0_010203_040506)
+	if res != exp {
+		t.Fatalf("Register A0 is %012o, expected %012o", res, exp)
+	}
+}
+
+func Test_LA_Extended(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", laFunctionCode)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkSimple(a.GetSegments())
+	e.Show()
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	grs := ute.GetEngine().generalRegisterSet
+	res := grs.GetRegister(A0).GetW()
+	exp := uint64(0123)
+	if res != exp {
+		t.Fatalf("Register A0 is %012o, expected %012o", res, exp)
+	}
+
+	res = grs.GetRegister(A1).GetW()
+	exp = uint64(0_010203_040506)
+	if res != exp {
+		t.Fatalf("Register A0 is %012o, expected %012o", res, exp)
+	}
 }
