@@ -6,6 +6,7 @@ package ipEngine
 
 import (
 	"fmt"
+	"khalehla/dasm"
 	"khalehla/pkg"
 	"sync"
 )
@@ -77,6 +78,7 @@ type InstructionEngine struct {
 	jumpHistory                 [JumpHistoryTableThreshold]pkg.Word36
 	jumpHistoryIndex            int
 	jumpHistoryThresholdReached bool
+	logInstructionsExecuted     bool
 
 	//	If true, the current (or most recent) instructionType has set the PAR.PC the way it wants,
 	//	and we should not increment it for the next instruction
@@ -469,6 +471,10 @@ func (e *InstructionEngine) SetExecOrUserXRegister(regIndex uint, value IndexReg
 	e.generalRegisterSet.SetRegisterValue(e.GetExecOrUserXRegisterIndex(regIndex), pkg.Word36(value))
 }
 
+func (e *InstructionEngine) SetLogInstructionsExecuted(flag bool) {
+	e.logInstructionsExecuted = flag
+}
+
 // SetPARPC sets the individual components of PAR.PC
 func (e *InstructionEngine) SetPARPC(level uint, index uint, counter uint) {
 	par := e.activityStatePacket.GetProgramAddressRegister()
@@ -807,8 +813,10 @@ func (e *InstructionEngine) executeCurrentInstruction() {
 	//	up the ipEngine, or by an indirect basic mode instructionType giving up the ipEngine
 	//	before completely developing the operand address.
 
-	//	TODO optionally emit a disassembly of the instruction in F0
-	//		should be a part of diagnostic package, which also allows for other types of monitoring
+	if e.logInstructionsExecuted {
+		code := dasm.DisassembleInstruction(e.activityStatePacket)
+		fmt.Printf("--[%012o  %s]\n", e.activityStatePacket.GetProgramAddressRegister().GetComposite(), code)
+	}
 
 	dr := e.activityStatePacket.GetDesignatorRegister()
 	ci := e.activityStatePacket.GetCurrentInstruction()

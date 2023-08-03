@@ -174,6 +174,7 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 	dr.SetOperationTrapEnabled(ute.executable.IsOperationTrapEnabled())
 	dr.SetQuarterWordModeEnabled(ute.executable.IsQuarterWordMode())
 
+	ute.engine.SetLogInstructionsExecuted(true)
 	return nil
 }
 
