@@ -122,11 +122,6 @@ func (a *TinyAssembler) processCommand(cb *CodeBlock) {
 		a.processForm(cb)
 		break
 
-	case ".OPT":
-		//	TODO set options (such as quarter-word mode) on the bank which will contain the current segment
-		//		operators include 'BASIC', 'EXTENDED', 'QUARTER', 'THIRD', maybe some others
-		break
-
 	case ".RES":
 		//	TODO reserve space
 		break

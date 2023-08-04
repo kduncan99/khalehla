@@ -37,43 +37,43 @@ const (
 )
 
 const (
-	ReferenceViolationGRS           = 00
-	ReferenceViolationStorageLimits = 01
-	ReferenceViolationReadAccess    = 02
-	ReferenceViolationWriteAccess   = 03
+	ReferenceViolationGRS           InterruptShortStatus = 00
+	ReferenceViolationStorageLimits                      = 01
+	ReferenceViolationReadAccess                         = 02
+	ReferenceViolationWriteAccess                        = 03
 )
 
 const (
-	AddressingExceptionFatal                            = 00
-	AddressingExceptionGateGBitSet                      = 01
-	AddressingExceptionEnterAccessDenied                = 02
-	AddressingExceptionInvalidSourceLBDI                = 03
-	AddressingExceptionGateBankBoundaryViolation        = 04
-	AddressingExceptionInvalidISValue                   = 05
-	AddressingExceptionGOTOInhibit                      = 06
-	AddressingExceptionGeneralQueuingViolation          = 07
-	AddressingExceptionMaxCountEnq                      = 010
-	AddressingExceptionIndirectGBitSet                  = 011
-	AddressingExceptionInactiveQueuebDListEmpty         = 013
-	AddressingExceptionUpdateInProgress                 = 014
-	AddressingExceptionQueueBankRepositoryFull          = 015
-	AddressingExceptionBDTypeInvalid                    = 016
-	AddressingExceptionAccessDeniedPosternOrDataExpanse = 017
+	AddressingExceptionFatal                            InterruptShortStatus = 00
+	AddressingExceptionGateGBitSet                                           = 01
+	AddressingExceptionEnterAccessDenied                                     = 02
+	AddressingExceptionInvalidSourceLBDI                                     = 03
+	AddressingExceptionGateBankBoundaryViolation                             = 04
+	AddressingExceptionInvalidISValue                                        = 05
+	AddressingExceptionGOTOInhibit                                           = 06
+	AddressingExceptionGeneralQueuingViolation                               = 07
+	AddressingExceptionMaxCountEnq                                           = 010
+	AddressingExceptionIndirectGBitSet                                       = 011
+	AddressingExceptionInactiveQueuebDListEmpty                              = 013
+	AddressingExceptionUpdateInProgress                                      = 014
+	AddressingExceptionQueueBankRepositoryFull                               = 015
+	AddressingExceptionBDTypeInvalid                                         = 016
+	AddressingExceptionAccessDeniedPosternOrDataExpanse                      = 017
 	//	There are others...
 )
 
 const (
-	RCSGenericStackOverflow  = 00
-	RCSGenericStackUnderflow = 01
+	RCSGenericStackOverflow  InterruptShortStatus = 00
+	RCSGenericStackUnderflow                      = 01
 )
 
 const (
-	InvalidInstructionBadFunctionCode  = 00
-	InvalidInstructionX0Linkage        = 00
-	InvalidInstructionLBUUsesB0OrB1    = 00
-	InvalidInstructionLBUDUsesB0       = 00
-	InvalidInstructionBadPP            = 01
-	InvalidInstructionEXRInvalidTarget = 03
+	InvalidInstructionBadFunctionCode  InterruptShortStatus = 00
+	InvalidInstructionX0Linkage                             = 00
+	InvalidInstructionLBUUsesB0OrB1                         = 00
+	InvalidInstructionLBUDUsesB0                            = 00
+	InvalidInstructionBadPP                                 = 01
+	InvalidInstructionEXRInvalidTarget                      = 03
 )
 
 var InterruptNames = map[InterruptClass]string{
@@ -274,7 +274,7 @@ func NewRCSGenericStackUnderOverflowInterrupt(
 //		or LBJ/LIJ/LDJ uses X0
 //		or LBU uses B0 or B1
 //		or LBUD uses B0
-//	1 insufficient ipEngine privilege
+//	1 insufficient processor privilege
 //	3 EXR target invalid (other than as above for value 0)
 //	4 compatibility trap (we don't do this)
 

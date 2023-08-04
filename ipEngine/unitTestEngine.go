@@ -148,9 +148,6 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 		bdAddr := ute.bankDescriptorTableAddresses[level]
 		bdOffset := index * 8
 		bdSlice, _ := ute.storage.GetSlice(bdAddr.GetSegment(), bdAddr.GetOffset()+bdOffset, 8)
-		for bsx := 0; bsx < len(bdSlice); bsx++ { // TODO remove
-			fmt.Printf("BDSLICE === %012o\n", bdSlice[bsx])
-		}
 
 		//	Create an in-memory bank descriptor based on the bd in memory,
 		//	then we're ready to create the bank register.
@@ -158,9 +155,6 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 
 		bankAddr := bd.GetBaseAddress()
 		bankSlice, _ := ute.storage.GetSegment(bankAddr.GetSegment())
-		for bsx := 0; bsx < len(bankSlice); bsx++ { // TODO remove
-			fmt.Printf("BKSLICE === %012o\n", bankSlice[bsx])
-		}
 
 		br := pkg.NewBaseRegisterFromBankDescriptor(bd, bankSlice)
 		ute.engine.SetBaseRegister(brx, br)
@@ -204,10 +198,9 @@ func (ute *UnitTestEngine) Run() error {
 	}
 
 	//	Reset GRS, clear interrupts and jump history
-	//  TODO maybe we should have a Clear() on the engine?
 	ute.engine.GetGeneralRegisterSet().Clear()
 	ute.engine.ClearInterrupt()
-	//	TODO
+	//	TODO clear jump history
 
 	//	Now Iterate until an interrupt is posted
 	for !ute.engine.HasPendingInterrupt() {

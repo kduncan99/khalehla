@@ -137,8 +137,9 @@ func (e *InstructionEngine) Dump() {
 
 	var f0String string
 	if e.activityStatePacket.GetIndicatorKeyRegister().IsInstructionInF0() {
-		// TODO disassemble the instruction as well as showing the octal word
-		f0String = fmt.Sprintf("%012o", e.activityStatePacket.GetCurrentInstruction())
+		f0String = fmt.Sprintf("%012o : %s",
+			e.activityStatePacket.GetCurrentInstruction(),
+			dasm.DisassembleInstruction(e.activityStatePacket))
 	} else {
 		f0String = "invalid"
 	}
@@ -921,7 +922,6 @@ func (e *InstructionEngine) fetchInstructionWord() bool {
 	if basicMode {
 		brIndex := e.FindBasicModeBank(programCounter, true)
 		if brIndex == 0 {
-			fmt.Printf("FOO1\n") // TODO remove
 			e.PostInterrupt(pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationStorageLimits, false))
 			return false
 		}

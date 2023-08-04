@@ -12,7 +12,7 @@ type DesignatorRegister struct {
 	executive24BitIndexingEnabled    bool
 	quantumTimerEnabled              bool
 	deferrableInterruptEnabled       bool
-	processorPrivilege               uint64
+	processorPrivilege               uint64 //	only values 0 and 2 are expected
 	basicModeEnabled                 bool
 	execRegisterSetSelected          bool
 	carry                            bool
@@ -25,6 +25,28 @@ type DesignatorRegister struct {
 	basicModeBaseRegisterSelection   bool
 	quarterWordModeEnabled           bool
 }
+
+//	Corresponding bits (including the ones we don't care about):
+//	0		Activity-Level Queue Monitor
+//	1		Performance Monitoring Counter Enable
+//	2		Performance Monitoring Counter Interrupt Control
+//	3-5		Software Performance Monitor
+//	6		Fault Handling In Progress
+//	11		Executive 24-bit Indexing
+//	12		Quantum Timer Enable
+//	13		Deferrable Interrupt Enable
+//	14-15	Processor Privilege
+//	16		Basic Mode
+//	17		Exec Register Set Selection
+//	18		Carry
+//	19		Overflow
+//	21		Characteristic Underflow
+//	22		Characteristic Overflow
+//	23		Divide Check
+//	27		Operation Trap Enable
+//	29		Arithmetic Exception Enable
+//	31		Basic Mode Base Register Set Selection
+//	32		Quarter Word Selection
 
 func (dr *DesignatorRegister) Clear() {
 	dr.activityLevelQueueMonitorEnabled = false
@@ -191,9 +213,13 @@ func (dr *DesignatorRegister) SetComposite(value uint64) *DesignatorRegister {
 	dr.executive24BitIndexingEnabled = boolTable[(value>>11)&01]
 	dr.quantumTimerEnabled = boolTable[(value>>12)&01]
 	dr.deferrableInterruptEnabled = boolTable[(value>>13)&01]
-	dr.processorPrivilege = (value >> 14) & 03
+	dr.processorPrivilege = (value >> 14) & 02 // remember, we only allow PP 0 and 2
 	dr.basicModeEnabled = boolTable[(value>>16)&01]
-	dr.execRegisterSetSelected = boolTable[(value>>17)&01]
+	if dr.processorPrivilege == 0 {
+		dr.execRegisterSetSelected = boolTable[(value>>17)&01]
+	} else {
+		dr.execRegisterSetSelected = false
+	}
 	dr.carry = boolTable[(value>>18)&01]
 	dr.overflow = boolTable[(value>>19)&01]
 	dr.characteristicUnderflow = boolTable[(value>>21)&01]
@@ -213,6 +239,7 @@ func (dr *DesignatorRegister) SetDeferrableInterruptEnabled(value bool) *Designa
 }
 
 func (dr *DesignatorRegister) SetExecRegisterSetSelected(value bool) *DesignatorRegister {
+	dr.processorPrivilege = 0
 	dr.execRegisterSetSelected = value
 	return dr
 }
@@ -243,7 +270,7 @@ func (dr *DesignatorRegister) SetOperationTrapEnabled(value bool) *DesignatorReg
 }
 
 func (dr *DesignatorRegister) SetProcessorPrivilege(value uint64) *DesignatorRegister {
-	dr.processorPrivilege = value & 03
+	dr.processorPrivilege = value & 02
 	return dr
 }
 
