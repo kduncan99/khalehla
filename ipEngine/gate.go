@@ -16,10 +16,10 @@ type Gate struct {
 	latentParameter0Inhibit  bool
 	latentParameter1Inhibit  bool
 	accessLock               *pkg.AccessLock
-	targetLevel              uint
-	targetBDI                uint
-	targetOffset             uint
-	basicModeBaseRegister    uint                    // basic mode register is actually this field + 12
+	targetLevel              uint64
+	targetBDI                uint64
+	targetOffset             uint64
+	basicModeBaseRegister    uint64                  // basic mode register is actually this field + 12
 	designatorRegisterValue  *pkg.DesignatorRegister //	only bits 12-17 are significant
 	newAccessKey             *pkg.AccessKey
 	latentParameterValue0    uint64
@@ -36,14 +36,14 @@ func NewGateFromStorage(buffer []pkg.Word36) *Gate {
 	g.accessKeyInhibit = buffer[0]&0_004_000000 != 0
 	g.latentParameter1Inhibit = buffer[0]&0_002_000000 != 0
 	g.latentParameter1Inhibit = buffer[0]&0_001_000000 != 0
-	g.accessLock = pkg.NewAccessLockFromComposite(uint(buffer[0] & 0777777))
-	g.targetLevel = uint(buffer[1] >> 33)
-	g.targetBDI = uint(buffer[1]>>18) & 077777
-	g.targetOffset = uint(buffer[1]) & 0777777
-	g.basicModeBaseRegister = uint(buffer[2]>>24) & 03
-	g.designatorRegisterValue = pkg.NewDesignatorRegisterFromComposite(uint64(buffer[2]) & 0_000077_000000)
-	g.newAccessKey = pkg.NewAccessKeyFromComposite(uint(buffer[2] & 0777777))
-	g.latentParameterValue0 = uint64(buffer[3])
-	g.latentParameterValue1 = uint64(buffer[4])
+	g.accessLock = pkg.NewAccessLockFromComposite(buffer[0].GetW() & 0777777)
+	g.targetLevel = buffer[1].GetW() >> 33
+	g.targetBDI = buffer[1].GetH1() & 077777
+	g.targetOffset = buffer[1].GetH2()
+	g.basicModeBaseRegister = (buffer[2].GetW() >> 24) & 03
+	g.designatorRegisterValue = pkg.NewDesignatorRegisterFromComposite(buffer[2].GetW() & 0_000077_000000)
+	g.newAccessKey = pkg.NewAccessKeyFromComposite(buffer[2].GetH2())
+	g.latentParameterValue0 = buffer[3].GetW()
+	g.latentParameterValue1 = buffer[4].GetW()
 	return &g
 }

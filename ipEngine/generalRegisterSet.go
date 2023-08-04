@@ -13,7 +13,7 @@ import (
 //
 // register names
 const (
-	X0 uint = iota
+	X0 uint64 = iota
 	X1
 	X2
 	X3
@@ -32,7 +32,7 @@ const (
 )
 
 const (
-	A0 uint = iota + 12
+	A0 uint64 = iota + 12
 	A1
 	A2
 	A3
@@ -51,7 +51,7 @@ const (
 )
 
 const (
-	R0 uint = iota + 64
+	R0 uint64 = iota + 64
 	R1
 	R2
 	R3
@@ -70,7 +70,7 @@ const (
 )
 
 const (
-	ER0 uint = iota + 80
+	ER0 uint64 = iota + 80
 	ER1
 	ER2
 	ER3
@@ -89,7 +89,7 @@ const (
 )
 
 const (
-	EX0 uint = iota + 96
+	EX0 uint64 = iota + 96
 	EX1
 	EX2
 	EX3
@@ -108,7 +108,7 @@ const (
 )
 
 const (
-	EA0 uint = iota + 108
+	EA0 uint64 = iota + 108
 	EA1
 	EA2
 	EA3
@@ -153,14 +153,14 @@ func (grs *GeneralRegisterSet) Dump() {
 	}
 }
 
-func (grs *GeneralRegisterSet) GetRegister(regName uint) *pkg.Word36 {
+func (grs *GeneralRegisterSet) GetRegister(regName uint64) *pkg.Word36 {
 	return &grs.registers[regName]
 }
 
-func (grs *GeneralRegisterSet) GetValueOfRegister(regName uint) pkg.Word36 {
+func (grs *GeneralRegisterSet) GetValueOfRegister(regName uint64) pkg.Word36 {
 	return grs.registers[regName]
 }
 
-func (grs *GeneralRegisterSet) SetRegisterValue(regName uint, value pkg.Word36) {
+func (grs *GeneralRegisterSet) SetRegisterValue(regName uint64, value pkg.Word36) {
 	grs.registers[regName] = value
 }

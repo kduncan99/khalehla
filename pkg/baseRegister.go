@@ -180,8 +180,8 @@ func NewBaseRegisterFromBuffer(buffer []Word36, storage []Word36) *BaseRegister 
 	}
 
 	reg := BaseRegister{
-		accessLock:  NewAccessLock(uint(buffer[0]>>16)&03, uint(buffer[0]&0xFFFF)),
-		baseAddress: NewAbsoluteAddressFromComposite(((uint64(buffer[2]) << 36) & 0777777) | uint64(buffer[3])),
+		accessLock:  NewAccessLock((buffer[0].GetW()>>16)&03, buffer[0].GetW()&0xFFFF),
+		baseAddress: NewAbsoluteAddress(0, 0).SetCompositeFromWord36(buffer[2:4]),
 		generalAccessPermissions: NewAccessPermissions(
 			false,
 			buffer[0]&0_200000_000000 != 0,

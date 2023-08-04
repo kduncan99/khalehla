@@ -5,6 +5,7 @@
 package ipEngine
 
 import (
+	"fmt"
 	"khalehla/pkg"
 	"sync"
 	"time"
@@ -91,6 +92,10 @@ func (p *InstructionProcessor) handleInterrupt() {
 		p.engine.activityStatePacket.GetDesignatorRegister().IsFaultHandlingInProgress() {
 		p.engine.Stop(InterruptHandlerHardwareFailureStop, 0)
 		return
+	}
+
+	if p.engine.IsLoggingInterrupts() {
+		fmt.Printf("--{%s}\n", pkg.GetInterruptString(p.engine.pendingInterrupt))
 	}
 
 	asp := p.engine.activityStatePacket

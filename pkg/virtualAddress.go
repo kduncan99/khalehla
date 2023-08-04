@@ -5,16 +5,16 @@
 package pkg
 
 type VirtualAddress interface {
-	GetBankDescriptorIndex() uint
+	GetBankDescriptorIndex() uint64
 	GetComposite() Word36
-	GetOffset() uint
+	GetOffset() uint64
 }
 
 type BasicModeVirtualAddress struct {
 	execFlag            bool
 	levelFlag           bool
-	bankDescriptorIndex uint
-	offset              uint //	offset from start of bank
+	bankDescriptorIndex uint64
+	offset              uint64 //	offset from start of bank
 }
 
 func (addr *BasicModeVirtualAddress) GetComposite() Word36 {
@@ -38,11 +38,11 @@ func (addr *BasicModeVirtualAddress) GetLevelFlag() bool {
 	return addr.levelFlag
 }
 
-func (addr *BasicModeVirtualAddress) GetBankDescriptorIndex() uint {
+func (addr *BasicModeVirtualAddress) GetBankDescriptorIndex() uint64 {
 	return addr.bankDescriptorIndex
 }
 
-func (addr *BasicModeVirtualAddress) GetOffset() uint {
+func (addr *BasicModeVirtualAddress) GetOffset() uint64 {
 	return addr.offset
 }
 
@@ -56,19 +56,19 @@ func (addr *BasicModeVirtualAddress) SetLevelFlag(value bool) *BasicModeVirtualA
 	return addr
 }
 
-func (addr *BasicModeVirtualAddress) SetBankDescriptorIndex(value uint) *BasicModeVirtualAddress {
+func (addr *BasicModeVirtualAddress) SetBankDescriptorIndex(value uint64) *BasicModeVirtualAddress {
 	addr.bankDescriptorIndex = value & 07777
 	return addr
 }
 
-func (addr *BasicModeVirtualAddress) SetOffset(value uint) *BasicModeVirtualAddress {
+func (addr *BasicModeVirtualAddress) SetOffset(value uint64) *BasicModeVirtualAddress {
 	addr.offset = value & 0777777
 	return addr
 }
 
 // TranslateToBasicMode translates extended mode semantic level, BDI, and offset to basic mode semantics
-func TranslateToBasicMode(bankLevel uint, bankDescriptorIndex uint, offset uint) *BasicModeVirtualAddress {
-	var bdi uint
+func TranslateToBasicMode(bankLevel uint64, bankDescriptorIndex uint64, offset uint64) *BasicModeVirtualAddress {
+	var bdi uint64
 	var execFlag bool
 	var levelFlag bool
 	if (bankDescriptorIndex >= 0) && (bankDescriptorIndex <= 07777) && (bankLevel%1 == 0) {
@@ -90,7 +90,12 @@ func TranslateToBasicMode(bankLevel uint, bankDescriptorIndex uint, offset uint)
 	return &va
 }
 
-func NewBasicModeVirtualAddress(execFlag bool, levelFlag bool, bankDescriptorIndex uint, offset uint) *BasicModeVirtualAddress {
+func NewBasicModeVirtualAddress(
+	execFlag bool,
+	levelFlag bool,
+	bankDescriptorIndex uint64,
+	offset uint64) *BasicModeVirtualAddress {
+
 	addr := BasicModeVirtualAddress{}
 	addr.SetExecFlag(execFlag).
 		SetLevelFlag(levelFlag).
@@ -100,9 +105,9 @@ func NewBasicModeVirtualAddress(execFlag bool, levelFlag bool, bankDescriptorInd
 }
 
 type ExtendedModeVirtualAddress struct {
-	level               uint
-	bankDescriptorIndex uint
-	offset              uint //	offset from start of bank
+	level               uint64
+	bankDescriptorIndex uint64
+	offset              uint64 //	offset from start of bank
 }
 
 func (addr *ExtendedModeVirtualAddress) GetComposite() Word36 {
@@ -112,34 +117,34 @@ func (addr *ExtendedModeVirtualAddress) GetComposite() Word36 {
 	return value
 }
 
-func (addr *ExtendedModeVirtualAddress) GetLevel() uint {
+func (addr *ExtendedModeVirtualAddress) GetLevel() uint64 {
 	return addr.level
 }
 
-func (addr *ExtendedModeVirtualAddress) GetBankDescriptorIndex() uint {
+func (addr *ExtendedModeVirtualAddress) GetBankDescriptorIndex() uint64 {
 	return addr.bankDescriptorIndex
 }
 
-func (addr *ExtendedModeVirtualAddress) GetOffset() uint {
+func (addr *ExtendedModeVirtualAddress) GetOffset() uint64 {
 	return addr.offset
 }
 
-func (addr *ExtendedModeVirtualAddress) SetLevel(value uint) *ExtendedModeVirtualAddress {
+func (addr *ExtendedModeVirtualAddress) SetLevel(value uint64) *ExtendedModeVirtualAddress {
 	addr.level = value & 07
 	return addr
 }
 
-func (addr *ExtendedModeVirtualAddress) SetBankDescriptorIndex(value uint) *ExtendedModeVirtualAddress {
+func (addr *ExtendedModeVirtualAddress) SetBankDescriptorIndex(value uint64) *ExtendedModeVirtualAddress {
 	addr.bankDescriptorIndex = value & 077777
 	return addr
 }
 
-func (addr *ExtendedModeVirtualAddress) SetOffset(value uint) *ExtendedModeVirtualAddress {
+func (addr *ExtendedModeVirtualAddress) SetOffset(value uint64) *ExtendedModeVirtualAddress {
 	addr.offset = value & 0777777
 	return addr
 }
 
-func NewExtendedModeVirtualAddress(level uint, bankDescriptorIndex uint, offset uint) *ExtendedModeVirtualAddress {
+func NewExtendedModeVirtualAddress(level uint64, bankDescriptorIndex uint64, offset uint64) *ExtendedModeVirtualAddress {
 	addr := ExtendedModeVirtualAddress{}
 	addr.SetLevel(level).
 		SetBankDescriptorIndex(bankDescriptorIndex).

@@ -8,29 +8,29 @@ package tasm
 import "fmt"
 
 type Diagnostic interface {
-	GetLineNumber() int
+	GetLineNumber() uint64
 	GetString() string
 }
 
 type ErrorDiagnostic struct {
 	sourceSet  *SourceSet
-	lineNumber int
+	lineNumber uint64
 	message    string
 }
 
 type InfoDiagnostic struct {
 	sourceSet  *SourceSet
-	lineNumber int
+	lineNumber uint64
 	message    string
 }
 
 type WarningDiagnostic struct {
 	sourceSet  *SourceSet
-	lineNumber int
+	lineNumber uint64
 	message    string
 }
 
-func (d *ErrorDiagnostic) GetLineNumber() int {
+func (d *ErrorDiagnostic) GetLineNumber() uint64 {
 	return d.lineNumber
 }
 
@@ -38,7 +38,7 @@ func (d *ErrorDiagnostic) GetString() string {
 	return fmt.Sprintf("E:%v:%v:%v", d.sourceSet.name, d.lineNumber, d.message)
 }
 
-func (d *InfoDiagnostic) GetLineNumber() int {
+func (d *InfoDiagnostic) GetLineNumber() uint64 {
 	return d.lineNumber
 }
 
@@ -46,7 +46,7 @@ func (d *InfoDiagnostic) GetString() string {
 	return fmt.Sprintf("I:%v:%v:%v", d.sourceSet.name, d.lineNumber, d.message)
 }
 
-func (d *WarningDiagnostic) GetLineNumber() int {
+func (d *WarningDiagnostic) GetLineNumber() uint64 {
 	return d.lineNumber
 }
 
@@ -55,15 +55,15 @@ func (d *WarningDiagnostic) GetString() string {
 }
 
 type DiagnosticSet struct {
-	diagnostics  map[int][]Diagnostic
-	infoCount    int
-	warningCount int
-	errorCount   int
+	diagnostics  map[uint64][]Diagnostic
+	infoCount    uint64
+	warningCount uint64
+	errorCount   uint64
 }
 
 func NewDiagnosticSet() *DiagnosticSet {
 	return &DiagnosticSet{
-		diagnostics: make(map[int][]Diagnostic),
+		diagnostics: make(map[uint64][]Diagnostic),
 	}
 }
 
@@ -76,7 +76,7 @@ func (ds *DiagnosticSet) putDiag(diag Diagnostic) {
 	}
 }
 
-func (ds *DiagnosticSet) NewError(source *SourceSet, lineNumber int, message string) {
+func (ds *DiagnosticSet) NewError(source *SourceSet, lineNumber uint64, message string) {
 	d := &ErrorDiagnostic{
 		sourceSet:  source,
 		lineNumber: lineNumber,
@@ -86,7 +86,7 @@ func (ds *DiagnosticSet) NewError(source *SourceSet, lineNumber int, message str
 	ds.errorCount++
 }
 
-func (ds *DiagnosticSet) NewInfo(source *SourceSet, lineNumber int, message string) {
+func (ds *DiagnosticSet) NewInfo(source *SourceSet, lineNumber uint64, message string) {
 	d := &InfoDiagnostic{
 		sourceSet:  source,
 		lineNumber: lineNumber,
@@ -97,7 +97,7 @@ func (ds *DiagnosticSet) NewInfo(source *SourceSet, lineNumber int, message stri
 	ds.infoCount++
 }
 
-func (ds *DiagnosticSet) NewWarning(source *SourceSet, lineNumber int, message string) {
+func (ds *DiagnosticSet) NewWarning(source *SourceSet, lineNumber uint64, message string) {
 	d := &WarningDiagnostic{
 		sourceSet:  source,
 		lineNumber: lineNumber,

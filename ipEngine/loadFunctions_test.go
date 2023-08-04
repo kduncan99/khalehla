@@ -52,7 +52,7 @@ func Test_LA_Basic(t *testing.T) {
 	a.Assemble(sourceSet)
 
 	e := tasm.Executable{}
-	e.LinkSimple(a.GetSegments())
+	e.LinkSimple(a.GetSegments(), false)
 	e.Show()
 
 	ute := NewUnitTestExecutor()
@@ -66,7 +66,6 @@ func Test_LA_Basic(t *testing.T) {
 		t.Fatalf("%s\n", err.Error())
 	}
 
-	ute.engine.Dump() // TODO remove
 	grs := ute.GetEngine().generalRegisterSet
 	res := grs.GetRegister(A0).GetW()
 	exp := uint64(0123)
@@ -87,7 +86,7 @@ func Test_LA_Extended(t *testing.T) {
 	a.Assemble(sourceSet)
 
 	e := tasm.Executable{}
-	e.LinkSimple(a.GetSegments())
+	e.LinkSimple(a.GetSegments(), true)
 	e.Show()
 
 	ute := NewUnitTestExecutor()

@@ -5,21 +5,23 @@
 package pkg
 
 // BankType values
+type BankType uint64
+
 const (
-	ExtendedModeBankDescriptor    uint = 00
-	BasicModeBankDescriptor       uint = 01
-	GateBankDescriptor            uint = 02
-	IndirectBankDescriptor        uint = 03
-	QueueBankDescriptor           uint = 04
-	PosternBankDescriptor         uint = 05
-	QueueRepositoryBankDescriptor uint = 06
-	DataExpanseBankDescriptor     uint = 07
+	ExtendedModeBankDescriptor    BankType = 00
+	BasicModeBankDescriptor       BankType = 01
+	GateBankDescriptor            BankType = 02
+	IndirectBankDescriptor        BankType = 03
+	QueueBankDescriptor           BankType = 04
+	PosternBankDescriptor         BankType = 05
+	QueueRepositoryBankDescriptor BankType = 06
+	DataExpanseBankDescriptor     BankType = 07
 )
 
 type BankDescriptor struct {
 	generalAccessPermissions *AccessPermissions
 	specialAccessPermissions *AccessPermissions
-	bankType                 uint
+	bankType                 BankType
 
 	// If set, an addressing exception interrupt is raised if this BD is resolved via the bank manipulation alogirhtm
 	generalFault bool
@@ -36,11 +38,11 @@ type BankDescriptor struct {
 	upperLimitSuppressionControl bool
 
 	accessLock                 *AccessLock
-	indirectLevelAndBDI        uint
-	lowerLimit                 uint
-	upperLimit                 uint
+	indirectLevelAndBDI        uint64
+	lowerLimit                 uint64
+	upperLimit                 uint64
 	inactiveFlag               bool
-	displacement               uint
+	displacement               uint64
 	baseAddress                *AbsoluteAddress
 	inactiveQBDListNextPointer uint64
 }
@@ -49,7 +51,7 @@ func (bd *BankDescriptor) GetAccessLock() *AccessLock {
 	return bd.accessLock
 }
 
-func (bd *BankDescriptor) GetBankType() uint {
+func (bd *BankDescriptor) GetBankType() BankType {
 	return bd.bankType
 }
 
@@ -61,15 +63,15 @@ func (bd *BankDescriptor) GetGeneralAccessPermissions() *AccessPermissions {
 	return bd.generalAccessPermissions
 }
 
-func (bd *BankDescriptor) GetIndirectLevelAndBDI() uint {
+func (bd *BankDescriptor) GetIndirectLevelAndBDI() uint64 {
 	return bd.indirectLevelAndBDI
 }
 
 func (bd *BankDescriptor) GetLowerLimitNormalized() uint64 {
 	if bd.largeBankSize {
-		return uint64(bd.lowerLimit) << 15
+		return bd.lowerLimit << 15
 	} else {
-		return uint64(bd.lowerLimit) << 9
+		return bd.lowerLimit << 9
 	}
 }
 
@@ -79,9 +81,9 @@ func (bd *BankDescriptor) GetSpecialAccessPermissions() *AccessPermissions {
 
 func (bd *BankDescriptor) GetUpperLimitNormalized() uint64 {
 	if bd.largeBankSize {
-		return uint64(bd.upperLimit) << 6
+		return bd.upperLimit << 6
 	} else {
-		return uint64(bd.upperLimit)
+		return bd.upperLimit
 	}
 }
 
@@ -104,9 +106,9 @@ func NewExtendedModeBankDescriptor(
 	special *AccessPermissions,
 	baseAddress *AbsoluteAddress,
 	largeBank bool,
-	actualLowerLimit uint,
-	actualUpperLimit uint,
-	displacement uint) *BankDescriptor {
+	actualLowerLimit uint64,
+	actualUpperLimit uint64,
+	displacement uint64) *BankDescriptor {
 
 	bd := &BankDescriptor{}
 	bd.bankType = ExtendedModeBankDescriptor
@@ -157,26 +159,29 @@ func NewBankDescriptorFromStorage(buffer []Word36) *BankDescriptor {
 		buffer[0]&0_0400000_000000 != 0,
 		buffer[0]&0_0200000_000000 != 0,
 		buffer[0]&0_0100000_000000 != 0)
-	typ := uint(buffer[0]>>24) & 0x0F
+	typ := BankType((buffer[0] >> 24) & 0x0F)
 	gBit := buffer[0]&0_000020_000000 != 0
 	sBit := buffer[0]&0_000004_000000 != 0
 	uBit := buffer[0]&0_000002_000000 != 0
-	lock := NewAccessLock(uint(buffer[0]>>16)&03, uint(buffer[0]&0xFFFF))
+	lock := NewAccessLock((buffer[0].GetW()>>16)&03, buffer[0].GetW()&0xFFFF)
 
-	ilBDI := uint(0)
-	lLimit := uint(0)
-	uLimit := uint(0)
+	var ilBDI uint64
+	var lLimit uint64
+	var uLimit uint64
+
+	b1 := buffer[1].GetW()
 	if typ == IndirectBankDescriptor {
-		ilBDI = uint(buffer[1]>>18) & 0_777777
+		ilBDI = (b1 >> 18) & 0_777777
 	} else {
-		lLimit = uint(buffer[1]>>27) & 0777
-		uLimit = uint(buffer[1] & 0_777777777)
+		lLimit = (b1 >> 27) & 0777
+		uLimit = b1 & 0_777777777
 	}
 
-	ina := buffer[2].IsNegative()
-	disp := uint(buffer[2]>>18) & 077777
-	addr := NewAbsoluteAddressFromComposite(uint64(buffer[2]&0_777777) | uint64(buffer[3]))
-	inQBD := uint64(buffer[3])
+	addr := NewAbsoluteAddress(0, 0)
+	addr.SetCompositeFromWord36(buffer[2:4])
+	inQBD := buffer[3].GetW()
+	disp := (buffer[4].GetW() >> 18) & 077777
+	ina := buffer[4].IsNegative()
 
 	bd := BankDescriptor{
 		generalAccessPermissions:     gap,
@@ -217,27 +222,27 @@ func (bd *BankDescriptor) Serialize(buffer []Word36) {
 	if bd.upperLimitSuppressionControl {
 		value0 |= 0_000002_000000
 	}
-	value0 |= uint64(bd.accessLock.GetComposite())
+	value0 |= bd.accessLock.GetComposite()
 
 	if bd.bankType == IndirectBankDescriptor {
-		value1 |= uint64(bd.indirectLevelAndBDI) << 18
+		value1 |= bd.indirectLevelAndBDI << 18
 	} else {
-		value1 |= uint64(bd.lowerLimit) << 27
-		value1 |= uint64(bd.upperLimit)
+		value1 |= bd.lowerLimit << 27
+		value1 |= bd.upperLimit
 	}
 
-	baseAddr := bd.baseAddress.GetComposite()
-	value2 = baseAddr >> 36
+	addr := bd.baseAddress.GetComposite()
+	value2 = addr[0]
 	if bd.bankType == QueueBankDescriptor && bd.inactiveFlag {
 		value3 = bd.inactiveQBDListNextPointer
 	} else {
-		value3 = baseAddr & NegativeZero
+		value3 = addr[1]
 	}
 
 	if bd.inactiveFlag {
 		value4 |= 0_400000_000000
 	}
-	value4 |= uint64(bd.displacement&077777) << 18
+	value4 |= (bd.displacement & 077777) << 18
 
 	buffer[0].SetW(value0)
 	buffer[1].SetW(value1)

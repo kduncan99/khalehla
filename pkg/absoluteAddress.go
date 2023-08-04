@@ -29,51 +29,51 @@ package pkg
 //	To ensure that the non-significant bit fields are always zero,
 //	all code setting these values must use the Set* methods.
 type AbsoluteAddress struct {
-	segment uint //	21 bits significant
-	offset  uint //	33 bits significant
+	segment uint64 //	21 bits significant
+	offset  uint64 //	33 bits significant
 }
 
 func (aa *AbsoluteAddress) Equals(comp *AbsoluteAddress) bool {
 	return aa.segment == comp.segment && aa.offset == comp.offset
 }
 
-func (aa *AbsoluteAddress) GetComposite() uint64 {
-	return uint64(aa.segment<<33) | uint64(aa.offset)
+func (aa *AbsoluteAddress) GetComposite() []uint64 {
+	return []uint64{aa.segment, aa.offset}
 }
 
-func (aa *AbsoluteAddress) GetOffset() uint {
+func (aa *AbsoluteAddress) GetOffset() uint64 {
 	return aa.offset
 }
 
-func (aa *AbsoluteAddress) GetSegment() uint {
+func (aa *AbsoluteAddress) GetSegment() uint64 {
 	return aa.segment
 }
 
-func (aa *AbsoluteAddress) SetComposite(value uint64) *AbsoluteAddress {
-	aa.segment = uint(value>>33) | 07_777777
-	aa.offset = uint(value & 0_077777_777777)
+func (aa *AbsoluteAddress) SetComposite(value []uint64) *AbsoluteAddress {
+	aa.segment = value[0]
+	aa.offset = value[1]
 	return aa
 }
 
-func (aa *AbsoluteAddress) SetSegment(value uint) *AbsoluteAddress {
+func (aa *AbsoluteAddress) SetCompositeFromWord36(value []Word36) *AbsoluteAddress {
+	aa.segment = value[0].GetW()
+	aa.offset = value[1].GetW()
+	return aa
+}
+
+func (aa *AbsoluteAddress) SetSegment(value uint64) *AbsoluteAddress {
 	aa.segment = value & 07_777777
 	return aa
 }
 
-func (aa *AbsoluteAddress) SetOffset(value uint) *AbsoluteAddress {
+func (aa *AbsoluteAddress) SetOffset(value uint64) *AbsoluteAddress {
 	aa.offset = value & 0_077777_7777777
 	return aa
 }
 
-func NewAbsoluteAddress(segmentIndex uint, offset uint) *AbsoluteAddress {
+func NewAbsoluteAddress(segmentIndex uint64, offset uint64) *AbsoluteAddress {
 	return &AbsoluteAddress{
 		segment: segmentIndex,
 		offset:  offset,
 	}
-}
-
-func NewAbsoluteAddressFromComposite(value uint64) *AbsoluteAddress {
-	aa := AbsoluteAddress{}
-	aa.SetComposite(value)
-	return &aa
 }

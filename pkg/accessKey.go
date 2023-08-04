@@ -10,23 +10,23 @@ import "fmt"
 //	to ensure that the non-significant bits are zero.
 
 type AccessKey struct {
-	domain uint
-	ring   uint
+	domain uint64
+	ring   uint64
 }
 
 func (key *AccessKey) equals(op *AccessKey) bool {
 	return (key.ring == op.ring) && (key.domain == op.domain)
 }
 
-func (key *AccessKey) GetComposite() uint {
+func (key *AccessKey) GetComposite() uint64 {
 	return (key.ring << 16) | key.domain
 }
 
-func (key *AccessKey) GetDomain() uint {
+func (key *AccessKey) GetDomain() uint64 {
 	return key.domain
 }
 
-func (key *AccessKey) GetRing() uint {
+func (key *AccessKey) GetRing() uint64 {
 	return key.ring
 }
 
@@ -38,17 +38,17 @@ func (key *AccessKey) IsMasterKey() bool {
 	return (key.ring == 0) && (key.domain == 0)
 }
 
-func (key *AccessKey) SetDomain(value uint) *AccessKey {
+func (key *AccessKey) SetDomain(value uint64) *AccessKey {
 	key.domain = value & 03
 	return key
 }
 
-func (key *AccessKey) SetRing(value uint) *AccessKey {
+func (key *AccessKey) SetRing(value uint64) *AccessKey {
 	key.ring = value & 0xFFFF
 	return key
 }
 
-func (key *AccessKey) SetComposite(composite uint) *AccessKey {
+func (key *AccessKey) SetComposite(composite uint64) *AccessKey {
 	key.ring = (composite >> 16) & 03
 	key.domain = composite & 0xFFFF
 	return key
@@ -61,14 +61,14 @@ func NewAccessKey() *AccessKey {
 	}
 }
 
-func NewAccessKeyFromComponents(ring uint, domain uint) *AccessKey {
+func NewAccessKeyFromComponents(ring uint64, domain uint64) *AccessKey {
 	return &AccessKey{
 		ring:   ring,
 		domain: domain,
 	}
 }
 
-func NewAccessKeyFromComposite(value uint) *AccessKey {
+func NewAccessKeyFromComposite(value uint64) *AccessKey {
 	ak := AccessKey{}
 	ak.SetComposite(value)
 	return &ak

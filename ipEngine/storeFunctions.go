@@ -13,7 +13,7 @@ import (
 // StoreAccumulator (SA) stores the value of A(a) in the location indicated by U under j-field control
 func StoreAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	ci := e.GetCurrentInstruction()
-	value := e.GetExecOrUserARegister(uint(ci.GetA())).GetW()
+	value := e.GetExecOrUserARegister(ci.GetA()).GetW()
 	return e.StoreOperand(true, true, true, true, value)
 }
 
@@ -42,7 +42,7 @@ func StoreFieldataZeroes(e *InstructionEngine) (completed bool, interrupt pkg.In
 // StoreIndexRegister (SX) stores the value of X(a) in the location indicated by U under j-field control
 func StoreIndexRegister(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	ci := e.GetCurrentInstruction()
-	value := e.GetExecOrUserXRegister(uint(ci.GetA())).GetW()
+	value := e.GetExecOrUserXRegister(ci.GetA()).GetW()
 	return e.StoreOperand(true, true, true, true, value)
 }
 
@@ -67,7 +67,7 @@ func StorePositiveOne(e *InstructionEngine) (completed bool, interrupt pkg.Inter
 // StoreRegister (SR) stores the value of R(a) in the location indicated by U under j-field control
 func StoreRegister(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	ci := e.GetCurrentInstruction()
-	value := e.GetExecOrUserRRegister(uint(ci.GetA())).GetW()
+	value := e.GetExecOrUserRRegister(ci.GetA()).GetW()
 	return e.StoreOperand(true, true, true, true, value)
 }
 

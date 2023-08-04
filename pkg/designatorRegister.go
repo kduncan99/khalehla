@@ -12,7 +12,7 @@ type DesignatorRegister struct {
 	executive24BitIndexingEnabled    bool
 	quantumTimerEnabled              bool
 	deferrableInterruptEnabled       bool
-	processorPrivilege               uint
+	processorPrivilege               uint64
 	basicModeEnabled                 bool
 	execRegisterSetSelected          bool
 	carry                            bool
@@ -67,7 +67,7 @@ func (dr *DesignatorRegister) GetComposite() uint64 {
 	if dr.deferrableInterruptEnabled {
 		val |= 1 << 13
 	}
-	val |= uint64(dr.processorPrivilege&0x03) << 14
+	val |= (dr.processorPrivilege & 0x03) << 14
 	if dr.basicModeEnabled {
 		val |= 1 << 16
 	}
@@ -105,7 +105,7 @@ func (dr *DesignatorRegister) GetComposite() uint64 {
 	return val
 }
 
-func (dr *DesignatorRegister) GetProcessorPrivilege() uint {
+func (dr *DesignatorRegister) GetProcessorPrivilege() uint64 {
 	return dr.processorPrivilege
 }
 
@@ -191,7 +191,7 @@ func (dr *DesignatorRegister) SetComposite(value uint64) *DesignatorRegister {
 	dr.executive24BitIndexingEnabled = boolTable[(value>>11)&01]
 	dr.quantumTimerEnabled = boolTable[(value>>12)&01]
 	dr.deferrableInterruptEnabled = boolTable[(value>>13)&01]
-	dr.processorPrivilege = uint((value >> 14) & 03)
+	dr.processorPrivilege = (value >> 14) & 03
 	dr.basicModeEnabled = boolTable[(value>>16)&01]
 	dr.execRegisterSetSelected = boolTable[(value>>17)&01]
 	dr.carry = boolTable[(value>>18)&01]
@@ -242,7 +242,7 @@ func (dr *DesignatorRegister) SetOperationTrapEnabled(value bool) *DesignatorReg
 	return dr
 }
 
-func (dr *DesignatorRegister) SetProcessorPrivilege(value uint) *DesignatorRegister {
+func (dr *DesignatorRegister) SetProcessorPrivilege(value uint64) *DesignatorRegister {
 	dr.processorPrivilege = value & 03
 	return dr
 }

@@ -73,19 +73,19 @@ func (p *Parser) ParseCharacter(char uint8) bool {
 	}
 }
 
-func (p *Parser) ParseInteger(allowOctal bool) (int64, bool) {
+func (p *Parser) ParseInteger(allowOctal bool) (uint64, bool) {
 	if !p.AtEnd() {
 		ch, _ := p.PeekNextChar()
 		if IsDecimalDigit(ch) {
-			radix := int64(10)
+			radix := uint64(10)
 			if allowOctal && ch == '0' {
 				radix = 8
 			}
 
-			var value int64
+			var value uint64
 			for IsDecimalDigit(ch) {
 				value *= radix
-				value += int64(ch - '0')
+				value += uint64(ch - '0')
 				_ = p.Advance(1)
 				ch, _ = p.PeekNextChar()
 			}

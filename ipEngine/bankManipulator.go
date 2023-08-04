@@ -7,7 +7,7 @@ package ipEngine
 import "khalehla/pkg"
 
 const (
-	NoTransfer uint = iota
+	NoTransfer uint64 = iota
 	BasicToBasicTransfer
 	BasicToExtendedTransfer
 	ExtendedToBasicTransfer
@@ -20,27 +20,27 @@ type BankManipulator struct {
 	operands        []pkg.Word36
 	engine          *InstructionEngine
 
-	baseRegisterIndex         uint // Base register to be loaded, determined at New* or in step 10
+	baseRegisterIndex         uint64 // Base register to be loaded, determined at New* or in step 10
 	gate                      *Gate
 	isCallOperation           bool
 	isLoadInstruction         bool
 	isLXJInstruction          bool
 	isReturnOperation         bool
-	lxjBankSelector           uint
-	lxjInterfaceSpec          uint
-	lxjXRegisterIndex         uint
+	lxjBankSelector           uint64
+	lxjInterfaceSpec          uint64
+	lxjXRegisterIndex         uint64
 	nextStep                  int
-	priorBankDescriptorIndex  uint
-	priorBankLevel            uint
-	sourceBankDescriptorIndex uint
-	sourceBankLevel           uint
+	priorBankDescriptorIndex  uint64
+	priorBankLevel            uint64
+	sourceBankDescriptorIndex uint64
+	sourceBankLevel           uint64
 	sourceBankDescriptor      *pkg.BankDescriptor
 	sourceBankOffset          uint64
 	targetBankDescriptor      *pkg.BankDescriptor
-	targetBankDescriptorIndex uint
-	targetBankLevel           uint
+	targetBankDescriptorIndex uint64
+	targetBankLevel           uint64
 	targetBankOffset          uint64
-	transferMode              uint
+	transferMode              uint64
 	returnControlStackFrame   *ReturnControlStackFrame
 }
 
@@ -82,7 +82,7 @@ func step2(bm *BankManipulator) bool {
 		//  (interfaceSpec == 1 and target BD is extended with enter access, or gate)...
 		//  Because we must do this for IS == 1 and source BD is basic, and it is too early in
 		//  the algorithm to know the source BD bank type.
-		abtx := uint(0) //	active base table index
+		var abtx uint64 // active base table index
 		dr := bm.engine.activityStatePacket.GetDesignatorRegister()
 
 		if bm.instructionType == LBJInstruction {
@@ -135,22 +135,22 @@ func step3(bm *BankManipulator) bool {
 
 		//  intOffset is the offset from the start of the level 0 BDT, to the vector we're interested in.
 		bdtLevel0 := bm.engine.GetBaseRegister(L0BDTBaseRegister).GetStorage()
-		intOffset := bm.interrupt.GetClass()
+		intOffset := uint(bm.interrupt.GetClass())
 		if intOffset >= uint(len(bdtLevel0)) {
 			bm.engine.Stop(InterruptHandlerOffsetOutOfRangeStop, 0)
 			return false
 		}
 
-		lbdiOffset := bdtLevel0[intOffset]
-		bm.sourceBankLevel = uint(lbdiOffset >> 33)
-		bm.sourceBankDescriptorIndex = uint(lbdiOffset>>18) & 077777
-		bm.sourceBankOffset = uint64(lbdiOffset) & 0777777
+		lbdiOffset := bdtLevel0[intOffset].GetW()
+		bm.sourceBankLevel = lbdiOffset >> 33
+		bm.sourceBankDescriptorIndex = (lbdiOffset >> 18) & 077777
+		bm.sourceBankOffset = lbdiOffset & 0777777
 	} else if bm.instructionType == URInstruction {
 		//  source L,BDI comes from operand L,BDI
 		//  offset comes from operand.PAR.PC
-		bm.sourceBankLevel = uint(bm.operands[0] >> 33)
-		bm.sourceBankDescriptorIndex = uint(bm.operands[0]>>18) & 077777
-		bm.sourceBankOffset = uint64(bm.operands[0] & 0777777)
+		bm.sourceBankLevel = bm.operands[0].GetW() >> 33
+		bm.sourceBankDescriptorIndex = (bm.operands[0].GetW() >> 18) & 077777
+		bm.sourceBankOffset = bm.operands[0].GetW() & 0777777
 	} else if bm.isReturnOperation {
 		//  source L,BDI,Offset comes from RCS L,BDI and offset fields
 		//  This is where we pop an RCS frame and grab the relevant fields therefrom.
@@ -163,7 +163,7 @@ func step3(bm *BankManipulator) bool {
 
 		rcsXReg := bm.engine.GetExecOrUserXRegister(RCSIndexRegister)
 		if rcsXReg.GetXM() > rcsBReg.GetUpperLimitNormalized() {
-			i := pkg.NewRCSGenericStackUnderOverflowInterrupt(pkg.RCSGenericStackUnderflow, RCSIndexRegister, uint(rcsXReg.GetXM()))
+			i := pkg.NewRCSGenericStackUnderOverflowInterrupt(pkg.RCSGenericStackUnderflow, RCSIndexRegister, rcsXReg.GetXM())
 			bm.engine.PostInterrupt(i)
 			return false
 		}
@@ -176,7 +176,7 @@ func step3(bm *BankManipulator) bool {
 
 		bm.sourceBankLevel = bm.returnControlStackFrame.bankLevel
 		bm.sourceBankDescriptorIndex = bm.returnControlStackFrame.bankDescriptorIndex
-		bm.sourceBankOffset = uint64(bm.returnControlStackFrame.offset)
+		bm.sourceBankOffset = bm.returnControlStackFrame.offset
 	} else if bm.isLXJInstruction {
 		//  source L,BDI comes from basic mode X(a) E,LS,BDI
 		//  offset comes from operand
@@ -196,13 +196,14 @@ func step3(bm *BankManipulator) bool {
 				bm.sourceBankLevel = 4
 			}
 		}
-		bm.sourceBankDescriptorIndex = uint((bmSpec >> 18) & 077777)
+		bm.sourceBankDescriptorIndex = (bmSpec >> 18) & 077777
 		bm.sourceBankOffset = uint64(bm.operands[0] & 0777777)
 	} else {
 		//  source L,BDI,Offset comes from operand
-		bm.sourceBankLevel = uint(bm.operands[0]>>33) & 07
-		bm.sourceBankDescriptorIndex = uint(bm.operands[0]>>18) & 077777
-		bm.sourceBankOffset = uint64(bm.operands[0] & 0777777)
+		w := bm.operands[0].GetW()
+		bm.sourceBankLevel = (w >> 33) & 07
+		bm.sourceBankDescriptorIndex = (w >> 18) & 077777
+		bm.sourceBankOffset = w & 0777777
 	}
 
 	bm.nextStep++
@@ -480,7 +481,7 @@ func step9(bm *BankManipulator) bool {
 	//	Fetch target BD
 	bm.targetBankLevel = bm.gate.targetLevel
 	bm.targetBankDescriptorIndex = bm.gate.targetBDI
-	bm.targetBankOffset = uint64(bm.gate.targetOffset)
+	bm.targetBankOffset = bm.gate.targetOffset
 	bm.targetBankDescriptor, ok = bm.engine.findBankDescriptor(bm.targetBankLevel, bm.targetBankDescriptorIndex)
 	if !ok {
 		bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionFatal, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
@@ -503,10 +504,10 @@ func step10(bm *BankManipulator) bool {
 		//	and the execution instruction will load all of B1-B15
 		bm.nextStep = 18
 	} else if bm.instructionType == LBEInstruction {
-		bm.baseRegisterIndex = uint(bm.engine.activityStatePacket.GetCurrentInstruction().GetA()) + 16
+		bm.baseRegisterIndex = bm.engine.activityStatePacket.GetCurrentInstruction().GetA() + 16
 		bm.nextStep = 18
 	} else if bm.instructionType == LBUInstruction {
-		bm.baseRegisterIndex = uint(bm.engine.activityStatePacket.GetCurrentInstruction().GetA())
+		bm.baseRegisterIndex = bm.engine.activityStatePacket.GetCurrentInstruction().GetA()
 		bm.nextStep = 18
 	} else if bm.instructionType == URInstruction {
 		bm.baseRegisterIndex = 0
@@ -616,12 +617,12 @@ func step12(bm *BankManipulator) bool {
 		rcsXReg := (*IndexRegister)(bm.engine.generalRegisterSet.GetRegister(RCSIndexRegister))
 		framePointer := uint64(rcsXReg.GetXM()) - 2
 		if framePointer < rcsBReg.GetLowerLimitNormalized() {
-			bm.engine.PostInterrupt(pkg.NewRCSGenericStackUnderOverflowInterrupt(pkg.RCSGenericStackOverflow, RCSBaseRegister, uint(framePointer)))
+			bm.engine.PostInterrupt(pkg.NewRCSGenericStackUnderOverflowInterrupt(pkg.RCSGenericStackOverflow, RCSBaseRegister, framePointer))
 			return false
 		}
 
 		rtnAddr := bm.engine.activityStatePacket.GetProgramAddressRegister().GetProgramCounter() + 1
-		bValue := uint(0) //	basic mode register is this value + 12
+		var bValue uint64 // basic mode register is this value + 12
 		if (bm.transferMode == ExtendedToBasicTransfer) && (bm.gate != nil) {
 			bValue = bm.gate.basicModeBaseRegister
 		} else if bm.transferMode == BasicToExtendedTransfer {
@@ -707,7 +708,7 @@ func step14(bm *BankManipulator) bool {
 	if bm.isCallOperation {
 		asp := bm.engine.activityStatePacket
 
-		value := uint(0)
+		var value uint64
 		if asp.GetDesignatorRegister().IsBasicModeEnabled() {
 			value = 0_400000_000000
 		}
@@ -791,7 +792,7 @@ func step16(bm *BankManipulator) bool {
 		//  Indicator/Key register is zeroed out.
 		//  Quantum timer is undefined, and the rest of the ASP is not relevant.
 		asp := bm.engine.activityStatePacket
-		asp.SetProgramAddressRegister(bm.targetBankLevel, bm.targetBankDescriptorIndex, uint(bm.targetBankOffset))
+		asp.SetProgramAddressRegister(bm.targetBankLevel, bm.targetBankDescriptorIndex, bm.targetBankOffset)
 
 		var dr pkg.DesignatorRegister
 		dr.SetExecRegisterSetSelected(true)
@@ -830,7 +831,7 @@ func step16(bm *BankManipulator) bool {
 //	and processing should be discontinued.
 func step17(bm *BankManipulator) bool {
 	if bm.transferMode != NoTransfer {
-		bm.engine.SetProgramCounter(uint(bm.targetBankOffset), true)
+		bm.engine.SetProgramCounter(bm.targetBankOffset, true)
 	}
 
 	bm.nextStep++
@@ -858,7 +859,7 @@ func step18(bm *BankManipulator) bool {
 				}
 				bm.engine.activeBaseTable[bm.baseRegisterIndex].SetBankLevel(bm.targetBankLevel)
 				bm.engine.activeBaseTable[bm.baseRegisterIndex].SetBankDescriptorIndex(bm.targetBankDescriptorIndex)
-				bm.engine.activeBaseTable[bm.baseRegisterIndex].SetSubsetSpecification(uint(offset))
+				bm.engine.activeBaseTable[bm.baseRegisterIndex].SetSubsetSpecification(offset)
 			}
 		}
 	}
@@ -952,7 +953,7 @@ func step21(bm *BankManipulator) bool {
 		if (bm.transferMode != NoTransfer) && ((bm.gate != nil) || !perms.CanEnter()) {
 			if bm.targetBankDescriptor.GetBankType() == pkg.BasicModeBankDescriptor {
 				bReg := bm.engine.baseRegisters[bm.baseRegisterIndex]
-				relAddr := uint64(bm.engine.activityStatePacket.GetProgramAddressRegister().GetProgramCounter())
+				relAddr := bm.engine.activityStatePacket.GetProgramAddressRegister().GetProgramCounter()
 				interrupt := bReg.CheckAccessLimits(relAddr, false)
 				if interrupt != nil {
 					interrupt = pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionFatal, bm.targetBankLevel, bm.targetBankDescriptorIndex)
@@ -1017,7 +1018,7 @@ func NewBankManipulatorForUR(e *InstructionEngine, instructionType int, operands
 	}
 }
 
-func NewBankManipulatorForLAE(e *InstructionEngine, baseRegisterIndex uint, operand pkg.Word36) *BankManipulator {
+func NewBankManipulatorForLAE(e *InstructionEngine, baseRegisterIndex uint64, operand pkg.Word36) *BankManipulator {
 	return &BankManipulator{
 		engine:            e,
 		interrupt:         nil,
@@ -1052,12 +1053,12 @@ func (bm *BankManipulator) process() {
 			(bm.instructionType == LDJInstruction) ||
 			(bm.instructionType == LIJInstruction)
 
-		bm.lxjXRegisterIndex = uint(bm.engine.activityStatePacket.GetCurrentInstruction().GetA())
+		bm.lxjXRegisterIndex = bm.engine.activityStatePacket.GetCurrentInstruction().GetA()
 
 		if bm.isLXJInstruction {
 			xRegister := bm.engine.GetExecOrUserXRegister(bm.lxjXRegisterIndex)
-			bm.lxjInterfaceSpec = uint(xRegister.GetW()>>30) & 03
-			bm.lxjBankSelector = uint(xRegister.GetW()>>33) & 03
+			bm.lxjInterfaceSpec = (xRegister.GetW() >> 30) & 03
+			bm.lxjBankSelector = (xRegister.GetW() >> 33) & 03
 		}
 
 		bm.isCallOperation = (bm.instructionType == CALLInstruction) ||

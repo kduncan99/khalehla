@@ -5,20 +5,20 @@
 package pkg
 
 type ProgramAddressRegister struct {
-	level               uint
-	bankDescriptorIndex uint
-	programCounter      uint
+	level               uint64
+	bankDescriptorIndex uint64
+	programCounter      uint64
 }
 
-func (par *ProgramAddressRegister) GetLevel() uint {
+func (par *ProgramAddressRegister) GetLevel() uint64 {
 	return par.level
 }
 
-func (par *ProgramAddressRegister) GetBankDescriptorIndex() uint {
+func (par *ProgramAddressRegister) GetBankDescriptorIndex() uint64 {
 	return par.bankDescriptorIndex
 }
 
-func (par *ProgramAddressRegister) GetProgramCounter() uint {
+func (par *ProgramAddressRegister) GetProgramCounter() uint64 {
 	return par.programCounter
 }
 
@@ -35,29 +35,29 @@ func (par *ProgramAddressRegister) IncrementProgramCounter() {
 	}
 }
 
-func (par *ProgramAddressRegister) SetLevel(value uint) *ProgramAddressRegister {
+func (par *ProgramAddressRegister) SetLevel(value uint64) *ProgramAddressRegister {
 	par.level = value & 07
 	return par
 }
 
-func (par *ProgramAddressRegister) SetBankDescriptorIndex(value uint) *ProgramAddressRegister {
+func (par *ProgramAddressRegister) SetBankDescriptorIndex(value uint64) *ProgramAddressRegister {
 	par.bankDescriptorIndex = value & 077777
 	return par
 }
 
-func (par *ProgramAddressRegister) SetProgramCounter(value uint) *ProgramAddressRegister {
+func (par *ProgramAddressRegister) SetProgramCounter(value uint64) *ProgramAddressRegister {
 	par.programCounter = value & 0777777
 	return par
 }
 
 func (par *ProgramAddressRegister) SetComposite(value uint64) *ProgramAddressRegister {
-	par.level = uint((value >> 33) & 07)
-	par.bankDescriptorIndex = uint((value >> 18) & 077777)
-	par.programCounter = uint(value & 0777777)
+	par.level = (value >> 33) & 07
+	par.bankDescriptorIndex = (value >> 18) & 077777
+	par.programCounter = value & 0777777
 	return par
 }
 
-func NewProgramAddressRegister(level uint, bankDescriptorIndex uint, programCounter uint) *ProgramAddressRegister {
+func NewProgramAddressRegister(level uint64, bankDescriptorIndex uint64, programCounter uint64) *ProgramAddressRegister {
 	return &ProgramAddressRegister{
 		level:               level & 07,
 		bankDescriptorIndex: bankDescriptorIndex & 077777,

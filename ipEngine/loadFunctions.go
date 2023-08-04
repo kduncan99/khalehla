@@ -18,7 +18,7 @@ func LoadAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interr
 	}
 
 	ci := e.GetCurrentInstruction()
-	e.GetExecOrUserARegister(uint(ci.GetA())).SetW(operand)
+	e.GetExecOrUserARegister(ci.GetA()).SetW(operand)
 	return true, nil
 }
 
@@ -32,7 +32,7 @@ func LoadIndexRegister(e *InstructionEngine) (completed bool, interrupt pkg.Inte
 	}
 
 	ci := e.GetCurrentInstruction()
-	e.GetExecOrUserXRegister(uint(ci.GetA())).SetW(operand)
+	e.GetExecOrUserXRegister(ci.GetA()).SetW(operand)
 	return true, nil
 }
 
@@ -52,7 +52,7 @@ func LoadRegister(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt
 	}
 
 	ci := e.GetCurrentInstruction()
-	e.GetExecOrUserRRegister(uint(ci.GetA())).SetW(operand)
+	e.GetExecOrUserRRegister(ci.GetA()).SetW(operand)
 	return true, nil
 }
 

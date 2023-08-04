@@ -18,13 +18,13 @@ type UnitTestEngine struct {
 
 	//	Lookup for absolute addresses of loaded banks.
 	//	key is BDI, value is the absolute address (base address) of the bank.
-	bankAddresses map[uint]*pkg.AbsoluteAddress
+	bankAddresses map[uint64]*pkg.AbsoluteAddress
 
 	//	BDTable lookup into storage - key is level (0 to 7), and value is the absolute address of the table in storage
 	//  If there is not an entry for a level, then there is not a BDT for that level.
 	//  For now, we have one main storage segment for each BDT, so we can easily tell the size of the BDT from the
 	//  size of the segment, and the offset of the table (from the start of the segment) is always zero.
-	bankDescriptorTableAddresses map[int]*pkg.AbsoluteAddress
+	bankDescriptorTableAddresses map[uint64]*pkg.AbsoluteAddress
 
 	engine *InstructionEngine
 }
@@ -39,8 +39,8 @@ func NewUnitTestExecutor() *UnitTestEngine {
 
 func (ute *UnitTestEngine) Clear() {
 	ute.storage.Clear()
-	ute.bankAddresses = make(map[uint]*pkg.AbsoluteAddress)
-	ute.bankDescriptorTableAddresses = make(map[int]*pkg.AbsoluteAddress)
+	ute.bankAddresses = make(map[uint64]*pkg.AbsoluteAddress)
+	ute.bankDescriptorTableAddresses = make(map[uint64]*pkg.AbsoluteAddress)
 	ute.executable = nil
 	ute.engine = nil
 }
@@ -55,26 +55,28 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 	ute.executable = executable
 
 	// maps bdi to segment index of segment containing the bank
-	segIndexMap := make(map[int]uint)
+	segIndexMap := make(map[uint64]uint64)
 
 	for _, bank := range executable.GetBanks() {
 		//	allocate a segment from storage and copy the bank to the segment
 		//  there are no fix-ups required; all our binaries are self-contained.
 
 		bdi := bank.GetBankDescriptorIndex()
-		segIndex, err := ute.storage.Allocate(bank.GetCodeLength())
+		bankSegIndex, err := ute.storage.Allocate(bank.GetCodeLength())
 		if err != nil {
 			return err
 		}
-		seg, _ := ute.storage.GetSegment(segIndex)
-		segIndexMap[int(bdi)] = segIndex
+		seg, _ := ute.storage.GetSegment(bankSegIndex)
+		segIndexMap[bdi] = bankSegIndex
 
 		code := bank.GetCode()
 		for cx := 0; cx < len(code); cx++ {
 			seg[cx].SetW(code[cx])
 		}
 
-		ute.bankAddresses[bdi] = pkg.NewAbsoluteAddress(segIndex, 0)
+		bankAddress := pkg.NewAbsoluteAddress(bankSegIndex, 0)
+		ute.bankAddresses[bdi] = bankAddress
+
 		//	now build a bank descriptor for the bank.
 		//	if this is the first bank with its level, then we have to allocate space for a bdt for the level.
 		bdiLevel := bdi >> 15
@@ -82,13 +84,13 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 		newBDTLen := (bdiOffset + 1) << 3
 
 		//	For this algorithm, each BDT gets its own segment and thus is always at offset 0 of the segment
-		absAddr, ok := ute.bankDescriptorTableAddresses[int(bdiLevel)]
-		var bdtSegment uint
+		absAddr, ok := ute.bankDescriptorTableAddresses[bdiLevel]
+		var bdtSegment uint64
 		var bdTable []pkg.Word36
 		if ok {
 			bdtSegment := absAddr.GetSegment()
 			bdTable, _ = ute.storage.GetSegment(bdtSegment)
-			if uint(len(bdTable)) < newBDTLen {
+			if uint64(len(bdTable)) < newBDTLen {
 				err := ute.storage.Resize(bdtSegment, newBDTLen)
 				if err != nil {
 					return err
@@ -102,9 +104,9 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 			bdTable, _ = ute.storage.GetSegment(bdtSegment)
 			absAddr = &pkg.AbsoluteAddress{}
 			absAddr.SetSegment(bdtSegment)
-			ute.bankDescriptorTableAddresses[int(bdiLevel)] = absAddr
+			ute.bankDescriptorTableAddresses[bdiLevel] = absAddr
 		}
-		bank.GetBankDescriptor().SetBaseAddress(absAddr)
+		bank.GetBankDescriptor().SetBaseAddress(bankAddress)
 
 		bdOffset := bdiOffset * 8
 		bank.GetBankDescriptor().Serialize(bdTable[bdOffset : bdOffset+8])
@@ -112,7 +114,7 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 
 	//	Set up base registers
 	ute.engine = NewEngine(ute.storage)
-	for brx := uint(0); brx < 16; brx++ {
+	for brx := uint64(0); brx < 16; brx++ {
 		ute.engine.SetBaseRegister(brx, pkg.NewVoidBaseRegister())
 	}
 
@@ -121,7 +123,7 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 	fmt.Printf("  Loading base registers for bank descriptor tables...\n")
 	for level, address := range ute.bankDescriptorTableAddresses {
 		table, _ := ute.storage.GetSegment(address.GetSegment())
-		brx := uint(level + 16)
+		brx := level + 16
 		br := pkg.NewBaseRegister(
 			address,
 			pkg.NewAccessLock(0, 0),
@@ -139,27 +141,43 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 	//	Now load the lower base registers according to the executable instructions.
 	//	This is also a convenient place to set PAR.PC
 	fmt.Printf("  Loading base registers and ABTEs with program bank information...\n")
-	banks := ute.executable.GetBanks()
 	for brx, bdi := range ute.executable.GetInitiallyBasedBanks() {
-		bank, _ := banks[bdi]
-		baseAddr := ute.bankAddresses[bdi]
-		offset := baseAddr.GetOffset()
-		limit := offset + bank.GetCodeLength()
-		storage, _ := ute.storage.GetSlice(baseAddr.GetSegment(), offset, limit)
-		br := pkg.NewBaseRegisterFromBankDescriptor(bank.GetBankDescriptor(), storage)
+		//	Find the bank descriptor (in memory) for this bank
+		level := bdi >> 15
+		index := bdi & 077777
+		bdAddr := ute.bankDescriptorTableAddresses[level]
+		bdOffset := index * 8
+		bdSlice, _ := ute.storage.GetSlice(bdAddr.GetSegment(), bdAddr.GetOffset()+bdOffset, 8)
+		for bsx := 0; bsx < len(bdSlice); bsx++ { // TODO remove
+			fmt.Printf("BDSLICE === %012o\n", bdSlice[bsx])
+		}
+
+		//	Create an in-memory bank descriptor based on the bd in memory,
+		//	then we're ready to create the bank register.
+		bd := pkg.NewBankDescriptorFromStorage(bdSlice)
+
+		bankAddr := bd.GetBaseAddress()
+		bankSlice, _ := ute.storage.GetSegment(bankAddr.GetSegment())
+		for bsx := 0; bsx < len(bankSlice); bsx++ { // TODO remove
+			fmt.Printf("BKSLICE === %012o\n", bankSlice[bsx])
+		}
+
+		br := pkg.NewBaseRegisterFromBankDescriptor(bd, bankSlice)
 		ute.engine.SetBaseRegister(brx, br)
 		fmt.Printf("    Set B%d -> %06o\n", brx, bdi)
 
-		level := bdi >> 15
-		index := bdi & 077777
+		//	Update PAR.BDI or an appropriate ABTE. We are not expecting to handle large banks.
+		par := ute.engine.GetProgramAddressRegister()
 		if brx == 0 {
-			ute.engine.SetPARPC(level, index, ute.executable.GetStartingAddress())
+			par.SetLevel(level).SetBankDescriptorIndex(index)
 		} else {
 			abte := ute.engine.GetActiveBaseTableEntry(brx)
 			abte.SetBankLevel(level).SetBankDescriptorIndex(index).SetSubsetSpecification(0)
 			fmt.Printf("    Set ABTE[%d]\n", brx)
 		}
 
+		//	Finally, set program counter to initial address
+		par.SetProgramCounter(executable.GetStartingAddress())
 	}
 
 	//	Initialize designator register
@@ -174,27 +192,9 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 	dr.SetOperationTrapEnabled(ute.executable.IsOperationTrapEnabled())
 	dr.SetQuarterWordModeEnabled(ute.executable.IsQuarterWordMode())
 
-	ute.engine.SetLogInstructionsExecuted(true)
+	ute.engine.SetLogInstructions(true)
+	ute.engine.SetLogInterrupts(true)
 	return nil
-}
-
-func (ute *UnitTestEngine) getBankDescriptor(bdi uint) (*pkg.BankDescriptor, error) {
-	//	TODO need to do translation for extended mode
-	level := int(bdi >> 15)
-	index := bdi & 077777
-
-	bdtAddress, ok := ute.bankDescriptorTableAddresses[level]
-	if !ok {
-		return nil, fmt.Errorf("no BDT for level %d for BDI %06o", level, bdi)
-	}
-
-	offset := bdtAddress.GetOffset() + (index * 8)
-	slice, ok := ute.storage.GetSlice(bdtAddress.GetSegment(), offset, offset+8)
-	if !ok {
-		return nil, fmt.Errorf("cannot retrieve BD for BDI %06o", bdi)
-	}
-
-	return pkg.NewBankDescriptorFromStorage(slice), nil
 }
 
 func (ute *UnitTestEngine) Run() error {
@@ -216,9 +216,4 @@ func (ute *UnitTestEngine) Run() error {
 
 	fmt.Printf("Execution Interrupted\n")
 	return nil
-}
-
-func GetInterruptString(i pkg.Interrupt) string {
-	return fmt.Sprintf("Class:%v SSF:%v ISW0:%012o ISW1:%012o",
-		i.GetClass(), i.GetShortStatusField(), i.GetStatusWord0(), i.GetStatusWord1())
 }

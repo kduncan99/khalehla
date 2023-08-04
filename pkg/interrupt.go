@@ -4,8 +4,13 @@
 
 package pkg
 
+import "fmt"
+
+type InterruptClass uint64
+type InterruptShortStatus uint64
+
 const (
-	HardwareDefaultInterruptClass uint = iota
+	HardwareDefaultInterruptClass InterruptClass = iota
 	HardwareCheckInterruptClass
 	DiagnosticInterruptClass
 	ReferenceViolationInterruptClass = iota + 5
@@ -71,9 +76,36 @@ const (
 	InvalidInstructionEXRInvalidTarget = 03
 )
 
+var InterruptNames = map[InterruptClass]string{
+	HardwareDefaultInterruptClass:              "Hardware Default",
+	HardwareCheckInterruptClass:                "Hardware Check",
+	DiagnosticInterruptClass:                   "Diagnostic",
+	ReferenceViolationInterruptClass:           "Reference Violation",
+	AddressingExceptionInterruptClass:          "Addressing Exception",
+	TerminalAddressingExceptionInterruptClass:  "Terminal Addressing Exception",
+	RCSGenericStackUnderOverflowInterruptClass: "RCS Generic Stack Under/Overflow",
+	SignalInterruptClass:                       "Signal",
+	TestAndSetInterruptClass:                   "Test And Set",
+	InvalidInstructionInterruptClass:           "Invalid Instruction",
+	PageExceptionInterruptClass:                "Page Exception",
+	ArithmeticExceptionInterruptClass:          "Arithmetic Exception",
+	DataExceptionInterruptClass:                "Data Exception",
+	OperationTrapInterruptClass:                "Operation Trap",
+	BreakpointInterruptClass:                   "Breakpoint",
+	QuantumTimerInterruptClass:                 "Quantum Timer",
+	PageZeroedInterruptClass:                   "Page Zeroed",
+	SoftwareBreakInterruptClass:                "Software Break",
+	JumpHistoryFullInterruptClass:              "Jump History Full",
+	DayClockInterruptClass:                     "DayClock",
+	PerformanceMonitoringInterruptClass:        "Performance Monitoring",
+	IPLInterruptClass:                          "IPL",
+	UPIInitialInterruptClass:                   "UPI Initial",
+	UPINormalInterruptClass:                    "UPI Normal",
+}
+
 type Interrupt interface {
-	GetClass() uint
-	GetShortStatusField() uint
+	GetClass() InterruptClass
+	GetShortStatusField() InterruptShortStatus
 	GetStatusWord0() Word36
 	GetStatusWord1() Word36
 	IsDeferrable() bool
@@ -95,14 +127,14 @@ type Interrupt interface {
 //	bits 5: true if this occurred during an instructionType fetch
 
 type ReferenceViolationInterrupt struct {
-	shortStatusField uint
+	shortStatusField InterruptShortStatus
 }
 
-func (i *ReferenceViolationInterrupt) GetClass() uint {
+func (i *ReferenceViolationInterrupt) GetClass() InterruptClass {
 	return ReferenceViolationInterruptClass
 }
 
-func (i *ReferenceViolationInterrupt) GetShortStatusField() uint {
+func (i *ReferenceViolationInterrupt) GetShortStatusField() InterruptShortStatus {
 	return i.shortStatusField
 }
 
@@ -119,7 +151,7 @@ func (i *ReferenceViolationInterrupt) IsDeferrable() bool {
 }
 
 func NewReferenceViolationInterrupt(entryType uint, fetchOperation bool) *ReferenceViolationInterrupt {
-	ssf := (entryType & 03) << 4
+	ssf := InterruptShortStatus((entryType & 03) << 4)
 	if fetchOperation {
 		ssf |= 01
 	}
@@ -145,15 +177,15 @@ func NewReferenceViolationInterrupt(entryType uint, fetchOperation bool) *Refere
 //	014 Update in progress set in queue structure
 
 type AddressingExceptionInterrupt struct {
-	shortStatusField     uint
+	shortStatusField     InterruptShortStatus
 	interruptStatusWord1 Word36
 }
 
-func (i *AddressingExceptionInterrupt) GetClass() uint {
+func (i *AddressingExceptionInterrupt) GetClass() InterruptClass {
 	return AddressingExceptionInterruptClass
 }
 
-func (i *AddressingExceptionInterrupt) GetShortStatusField() uint {
+func (i *AddressingExceptionInterrupt) GetShortStatusField() InterruptShortStatus {
 	return i.shortStatusField
 }
 
@@ -169,7 +201,11 @@ func (i *AddressingExceptionInterrupt) IsDeferrable() bool {
 	return false
 }
 
-func NewAddressingExceptionInterrupt(shortStatusField uint, sourceBankLevel uint, sourceBankDescriptorIndex uint) *AddressingExceptionInterrupt {
+func NewAddressingExceptionInterrupt(
+	shortStatusField InterruptShortStatus,
+	sourceBankLevel uint64,
+	sourceBankDescriptorIndex uint64) *AddressingExceptionInterrupt {
+
 	isw1 := Word36(sourceBankLevel&07) << 33
 	isw1 |= Word36(sourceBankDescriptorIndex&077777) << 18
 	return &AddressingExceptionInterrupt{
@@ -194,15 +230,15 @@ func NewAddressingExceptionInterrupt(shortStatusField uint, sourceBankLevel uint
 //                      by the SELL instruction
 
 type RCSGenericStackUnderOverflowInterrupt struct {
-	shortStatusField     uint
+	shortStatusField     InterruptShortStatus
 	interruptStatusWord0 Word36
 }
 
-func (i *RCSGenericStackUnderOverflowInterrupt) GetClass() uint {
+func (i *RCSGenericStackUnderOverflowInterrupt) GetClass() InterruptClass {
 	return RCSGenericStackUnderOverflowInterruptClass
 }
 
-func (i *RCSGenericStackUnderOverflowInterrupt) GetShortStatusField() uint {
+func (i *RCSGenericStackUnderOverflowInterrupt) GetShortStatusField() InterruptShortStatus {
 	return i.shortStatusField
 }
 
@@ -218,7 +254,11 @@ func (i *RCSGenericStackUnderOverflowInterrupt) IsDeferrable() bool {
 	return false
 }
 
-func NewRCSGenericStackUnderOverflowInterrupt(shortStatusField uint, baseRegister uint, relativeAddress uint) *RCSGenericStackUnderOverflowInterrupt {
+func NewRCSGenericStackUnderOverflowInterrupt(
+	shortStatusField InterruptShortStatus,
+	baseRegister uint64,
+	relativeAddress uint64) *RCSGenericStackUnderOverflowInterrupt {
+
 	isw0 := (Word36(baseRegister) << 30) | Word36(relativeAddress)
 	return &RCSGenericStackUnderOverflowInterrupt{
 		shortStatusField:     shortStatusField,
@@ -239,14 +279,14 @@ func NewRCSGenericStackUnderOverflowInterrupt(shortStatusField uint, baseRegiste
 //	4 compatibility trap (we don't do this)
 
 type InvalidInstructionInterrupt struct {
-	shortStatusField uint
+	shortStatusField InterruptShortStatus
 }
 
-func (i *InvalidInstructionInterrupt) GetClass() uint {
+func (i *InvalidInstructionInterrupt) GetClass() InterruptClass {
 	return InvalidInstructionInterruptClass
 }
 
-func (i *InvalidInstructionInterrupt) GetShortStatusField() uint {
+func (i *InvalidInstructionInterrupt) GetShortStatusField() InterruptShortStatus {
 	return i.shortStatusField
 }
 
@@ -262,8 +302,17 @@ func (i *InvalidInstructionInterrupt) IsDeferrable() bool {
 	return false
 }
 
-func NewInvalidInstructionInterrupt(shortStatusField uint) *InvalidInstructionInterrupt {
+func NewInvalidInstructionInterrupt(shortStatusField InterruptShortStatus) *InvalidInstructionInterrupt {
 	return &InvalidInstructionInterrupt{
 		shortStatusField: shortStatusField,
 	}
+}
+
+func GetInterruptString(i Interrupt) string {
+	return fmt.Sprintf("%s(%03o) SSF:%03o ISW0=%012o ISW1=%012o",
+		InterruptNames[i.GetClass()],
+		i.GetClass(),
+		i.GetShortStatusField(),
+		i.GetStatusWord0(),
+		i.GetStatusWord1())
 }

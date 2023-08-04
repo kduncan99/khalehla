@@ -93,7 +93,7 @@ func (asp *ActivityStatePacket) SetInterruptStatusWord1(value Word36) *ActivityS
 	return asp
 }
 
-func (asp *ActivityStatePacket) SetProgramAddressRegister(level uint, index uint, counter uint) *ActivityStatePacket {
+func (asp *ActivityStatePacket) SetProgramAddressRegister(level uint64, index uint64, counter uint64) *ActivityStatePacket {
 	asp.programAddressRegister.SetLevel(level).SetBankDescriptorIndex(index).SetProgramCounter(counter)
 	return asp
 }

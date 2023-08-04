@@ -9,20 +9,20 @@ import (
 )
 
 type MainStorage struct {
-	segmentMap         map[uint][]Word36
-	freeSegmentIndices []uint
-	maxIndices         uint
+	segmentMap         map[uint64][]Word36
+	freeSegmentIndices []uint64
+	maxIndices         uint64
 }
 
 // Allocate obtains a storage segment of the indicated type, returning the index of the segment
-func (ms *MainStorage) Allocate(length uint) (uint, error) {
-	if uint(len(ms.segmentMap)) == ms.maxIndices {
+func (ms *MainStorage) Allocate(length uint64) (uint64, error) {
+	if uint64(len(ms.segmentMap)) == ms.maxIndices {
 		return 0, fmt.Errorf("main storage segment table is full")
 	}
 
-	seg := uint(0)
+	var seg uint64
 	if len(ms.freeSegmentIndices) == 0 {
-		seg = uint(len(ms.segmentMap))
+		seg = uint64(len(ms.segmentMap))
 	} else {
 		ix := len(ms.freeSegmentIndices) - 1
 		seg = ms.freeSegmentIndices[ix]
@@ -34,8 +34,8 @@ func (ms *MainStorage) Allocate(length uint) (uint, error) {
 }
 
 func (ms *MainStorage) Clear() {
-	ms.freeSegmentIndices = make([]uint, 0)
-	ms.segmentMap = make(map[uint][]Word36)
+	ms.freeSegmentIndices = make([]uint64, 0)
+	ms.segmentMap = make(map[uint64][]Word36)
 }
 
 func (ms *MainStorage) Dump() {
@@ -67,12 +67,12 @@ func (ms *MainStorage) Dump() {
 	}
 }
 
-func (ms *MainStorage) GetBlock(segment uint) ([]Word36, bool) {
+func (ms *MainStorage) GetBlock(segment uint64) ([]Word36, bool) {
 	sli, ok := ms.segmentMap[segment]
 	return sli, ok
 }
 
-func (ms *MainStorage) GetSegment(segment uint) ([]Word36, bool) {
+func (ms *MainStorage) GetSegment(segment uint64) ([]Word36, bool) {
 	sli, ok := ms.segmentMap[segment]
 	if !ok {
 		return nil, false
@@ -81,7 +81,7 @@ func (ms *MainStorage) GetSegment(segment uint) ([]Word36, bool) {
 	}
 }
 
-func (ms *MainStorage) GetSlice(segment uint, offset uint, length uint) ([]Word36, bool) {
+func (ms *MainStorage) GetSlice(segment uint64, offset uint64, length uint64) ([]Word36, bool) {
 	sli, ok := ms.segmentMap[segment]
 	if !ok {
 		return nil, false
@@ -90,7 +90,11 @@ func (ms *MainStorage) GetSlice(segment uint, offset uint, length uint) ([]Word3
 	}
 }
 
-func (ms *MainStorage) Release(segment uint) bool {
+func (ms *MainStorage) GetSliceFromAddress(addr *AbsoluteAddress, length uint64) ([]Word36, bool) {
+	return ms.GetSlice(addr.GetSegment(), addr.GetOffset(), length)
+}
+
+func (ms *MainStorage) Release(segment uint64) bool {
 	_, ok := ms.segmentMap[segment]
 	if ok {
 		delete(ms.segmentMap, segment)
@@ -99,15 +103,15 @@ func (ms *MainStorage) Release(segment uint) bool {
 	return ok
 }
 
-func (ms *MainStorage) Resize(segment uint, length uint) error {
+func (ms *MainStorage) Resize(segment uint64, length uint64) error {
 	slice, ok := ms.segmentMap[segment]
 	if !ok {
 		return fmt.Errorf("no such segment has been allocated")
 	} else {
-		if length > uint(len(slice)) {
-			extension := make([]Word36, length-uint(len(slice)))
+		if length > uint64(len(slice)) {
+			extension := make([]Word36, length-uint64(len(slice)))
 			ms.segmentMap[segment] = append(slice, extension...)
-		} else if length < uint(len(slice)) {
+		} else if length < uint64(len(slice)) {
 			dst := make([]Word36, length)
 			copy(dst, slice)
 			ms.segmentMap[segment] = dst
@@ -116,10 +120,10 @@ func (ms *MainStorage) Resize(segment uint, length uint) error {
 	}
 }
 
-func NewMainStorage(maxIndices uint) *MainStorage {
+func NewMainStorage(maxIndices uint64) *MainStorage {
 	ms := MainStorage{
-		segmentMap:         make(map[uint][]Word36),
-		freeSegmentIndices: make([]uint, 0),
+		segmentMap:         make(map[uint64][]Word36),
+		freeSegmentIndices: make([]uint64, 0),
 		maxIndices:         maxIndices,
 	}
 	return &ms

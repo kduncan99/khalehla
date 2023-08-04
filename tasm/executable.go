@@ -13,11 +13,11 @@ import (
 
 type Executable struct {
 	//	map of BDIs to the bank for that BDI
-	banks map[uint]*Bank
+	banks map[uint64]*Bank
 
 	//	map of BDIs to the base register upon which the bank should be registered at run time.
 	//  key is base register index (0 to 15) and the value is the BDI of the bank.
-	initiallyBasedBanks map[uint]uint
+	initiallyBasedBanks map[uint64]uint64
 
 	//  stuff for setting the designator register
 	arithmeticExceptionEnable bool
@@ -26,12 +26,12 @@ type Executable struct {
 	execRegisterSet           bool
 	exec24BitIndexing         bool
 	operationTrapEnable       bool
-	processorPrivilege        uint
+	processorPrivilege        uint64
 	quarterWordMode           bool
-	startingAddress           uint
+	startingAddress           uint64
 }
 
-func (e *Executable) GetBanks() map[uint]*Bank {
+func (e *Executable) GetBanks() map[uint64]*Bank {
 	return e.banks
 }
 
@@ -39,15 +39,15 @@ func (e *Executable) GetBaseRegisterSelection() bool {
 	return e.baseRegisterSelection
 }
 
-func (e *Executable) GetInitiallyBasedBanks() map[uint]uint {
+func (e *Executable) GetInitiallyBasedBanks() map[uint64]uint64 {
 	return e.initiallyBasedBanks
 }
 
-func (e *Executable) GetProcessorPrivilege() uint {
+func (e *Executable) GetProcessorPrivilege() uint64 {
 	return e.processorPrivilege
 
 }
-func (e *Executable) GetStartingAddress() uint {
+func (e *Executable) GetStartingAddress() uint64 {
 	return e.startingAddress
 }
 
@@ -77,21 +77,21 @@ func (e *Executable) IsQuarterWordMode() bool {
 
 // LinkSimple links the given segments into a single bank, all accessLock allowed, ring/domain == 0.
 // the BDI for the bank will be 0_600004 (level 6, BDI 00004)
-func (e *Executable) LinkSimple(segments map[int]*Segment) {
+func (e *Executable) LinkSimple(segments map[uint64]*Segment, extendedMode bool) {
 	fmt.Printf("\nLink Simple...\n")
 
-	bdi := uint(0_600004)
-	e.banks = make(map[uint]*Bank)
-	e.initiallyBasedBanks = make(map[uint]uint)
+	bdi := uint64(0_600004)
+	e.banks = make(map[uint64]*Bank)
+	e.initiallyBasedBanks = make(map[uint64]uint64)
 
 	//	Create a list in ascending order, of the existing segment numbers
-	orderedSegmentNumbers := make([]int, 0)
+	orderedSegmentNumbers := make([]uint64, 0)
 	for segNum, _ := range segments {
 		ox := 0
 		done := false
 		for ox < len(orderedSegmentNumbers) && !done {
 			if segNum < orderedSegmentNumbers[ox] {
-				orderedSegmentNumbers = append([]int{segNum}, orderedSegmentNumbers...)
+				orderedSegmentNumbers = append([]uint64{segNum}, orderedSegmentNumbers...)
 				done = true
 			} else {
 				ox++
@@ -104,14 +104,14 @@ func (e *Executable) LinkSimple(segments map[int]*Segment) {
 
 	//	Find the offsets of all the segments relative to the start of the bank
 	//	key is the segment number, value is the offset
-	offsets := make(map[int]uint)
-	var offset uint
-	var bankLength uint
+	offsets := make(map[uint64]uint64)
+	var offset uint64
+	var bankLength uint64
 	for _, segmentNumber := range orderedSegmentNumbers {
 		segment := segments[segmentNumber]
 		offsets[segmentNumber] = offset
 		for _, codeBlock := range segment.generatedCode {
-			blockLen := uint(len(codeBlock.code))
+			blockLen := uint64(len(codeBlock.code))
 			offset += blockLen
 			bankLength += blockLen
 		}
@@ -123,7 +123,7 @@ func (e *Executable) LinkSimple(segments map[int]*Segment) {
 	}
 
 	bankCode := make([]uint64, bankLength)
-	lowerLimit := uint(01000)
+	lowerLimit := uint64(01000)
 
 	//	Resolve undefined references for the segments
 	resolved := make(map[string]uint64)
@@ -132,7 +132,7 @@ func (e *Executable) LinkSimple(segments map[int]*Segment) {
 			//	offset is from the start of the segment -
 			//  we need to also include the offset of the segment from the start of the bank,
 			//  and the lower limit (base address) of the bank.
-			resolved[symbol] = uint64(uint(offset) + offsets[segmentNumber] + lowerLimit)
+			resolved[symbol] = offset + offsets[segmentNumber] + lowerLimit
 		}
 	}
 
@@ -157,7 +157,7 @@ func (e *Executable) LinkSimple(segments map[int]*Segment) {
 		segOffset := offsets[segNumber]
 		for _, ref := range segment.references {
 			newValue := resolved[strings.ToUpper(ref.symbol)]
-			targetIndex := int(segOffset) + ref.offset
+			targetIndex := segOffset + ref.offset
 			baseValue := bankCode[targetIndex]
 			var err error
 			bankCode[targetIndex], err = addFractional(baseValue, newValue, ref.startingBit, ref.bitCount)
@@ -182,14 +182,18 @@ func (e *Executable) LinkSimple(segments map[int]*Segment) {
 		code:                bankCode,
 	}
 
-	e.initiallyBasedBanks[0] = bdi // the bank should be based on B0
-	e.startingAddress = 01000      // TODO pull this from .OPT command
+	if extendedMode {
+		e.initiallyBasedBanks[0] = bdi // the bank should be based on B0
+	} else {
+		e.initiallyBasedBanks[12] = bdi // the bank should be based on B12
+	}
+	e.startingAddress = 01000 // TODO pull this from .OPT command
 }
 
-func addFractional(baseValue uint64, addend2 uint64, startingBit int, bitCount int) (uint64, error) {
+func addFractional(baseValue uint64, addend2 uint64, startingBit uint64, bitCount uint64) (uint64, error) {
 	mask := uint64(1<<bitCount) - 1
 	shift := 36 - startingBit - bitCount
-	shiftedMask := uint64(mask << shift)
+	shiftedMask := mask << shift
 	shiftedNotMask := (^shiftedMask) & pkg.NegativeZero
 
 	addend1 := (baseValue & shiftedMask) >> shift

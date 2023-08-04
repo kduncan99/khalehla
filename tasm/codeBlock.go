@@ -9,16 +9,16 @@ import "fmt"
 
 type CodeBlock struct {
 	sourceSet     *SourceSet
-	lineNumber    int
+	lineNumber    uint64
 	sourceItem    *SourceItem
-	segmentNumber int
-	segmentOffset int
+	segmentNumber uint64
+	segmentOffset uint64
 	code          []uint64
 	references    []*Reference
 	diagnostics   *DiagnosticSet
 }
 
-func NewCodeBlock(sourceSet *SourceSet, lineNumber int, segmentNumber int, segmentOffset int) *CodeBlock {
+func NewCodeBlock(sourceSet *SourceSet, lineNumber uint64, segmentNumber uint64, segmentOffset uint64) *CodeBlock {
 	return &CodeBlock{
 		sourceSet:     sourceSet,
 		lineNumber:    lineNumber,

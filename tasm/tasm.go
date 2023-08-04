@@ -13,15 +13,15 @@ import (
 
 // TinyAssembler is a very tiny assembler which assists in unit tests
 type TinyAssembler struct {
-	currentSegmentNumber int
-	forms                map[string][]int
-	segments             map[int]*Segment
+	currentSegmentNumber uint64
+	forms                map[string][]uint64
+	segments             map[uint64]*Segment
 }
 
 func NewTinyAssembler() *TinyAssembler {
 	ta := &TinyAssembler{}
 	ta.currentSegmentNumber = 0
-	ta.forms = map[string][]int{
+	ta.forms = map[string][]uint64{
 		"W":        {36},
 		"HW":       {18, 18},
 		"TW":       {12, 12, 12},
@@ -31,21 +31,21 @@ func NewTinyAssembler() *TinyAssembler {
 		"FJAXHIBD": {6, 4, 4, 4, 1, 1, 4, 12},
 		"FJAXU":    {6, 4, 4, 4, 18},
 	}
-	ta.segments = make(map[int]*Segment)
+	ta.segments = make(map[uint64]*Segment)
 	ta.establishSegment(ta.currentSegmentNumber)
 	return ta
 }
 
-func (a *TinyAssembler) establishSegment(segmentNumber int) {
+func (a *TinyAssembler) establishSegment(segmentNumber uint64) {
 	_, ok := a.segments[segmentNumber]
 	if !ok {
 		a.segments[segmentNumber] = NewSegment()
 	}
 }
 
-func evaluate(expression string) (int64, []string, error) {
+func evaluate(expression string) (uint64, []string, error) {
 	p := parser.NewParser(expression)
-	var value int64
+	var value uint64
 	var references []string
 	wantOperator := false
 	wantTerm := true
@@ -139,14 +139,14 @@ func (a *TinyAssembler) processCommand(cb *CodeBlock) {
 	cb.diagnostics.NewError(cb.sourceSet, cb.lineNumber, "operator not recognized")
 }
 
-func (a *TinyAssembler) processDataGeneration(cb *CodeBlock, form []int) {
+func (a *TinyAssembler) processDataGeneration(cb *CodeBlock, form []uint64) {
 	if len(form) != len(cb.sourceItem.operands) {
 		cb.diagnostics.NewError(cb.sourceSet, cb.lineNumber, "Wrong number of operands for form")
 		return
 	}
 
-	bit := 0
-	compositeValue := uint64(0)
+	var bit uint64
+	var compositeValue uint64
 
 	for fx := 0; fx < len(form); fx++ {
 		bitCount := form[fx]
@@ -156,14 +156,14 @@ func (a *TinyAssembler) processDataGeneration(cb *CodeBlock, form []int) {
 			continue
 		}
 
-		mask := int64((1 << bitCount) - 1)
+		mask := uint64((1 << bitCount) - 1)
 		if iVal&mask != iVal {
 			cb.diagnostics.NewWarning(cb.sourceSet, cb.lineNumber, fmt.Sprintf("truncated value at bit %v", bit))
 			iVal &= mask
 		}
 
 		compositeValue <<= bitCount
-		compositeValue |= uint64(iVal)
+		compositeValue |= iVal
 
 		offset := a.segments[a.currentSegmentNumber].currentLength
 		for _, sym := range symbols {
@@ -219,8 +219,8 @@ func (a *TinyAssembler) processSegment(cb *CodeBlock) {
 	if segNum < 0 || segNum > 077 {
 		cb.diagnostics.NewError(cb.sourceSet, cb.lineNumber, "Invalid segment number")
 	} else {
-		a.establishSegment(int(segNum))
-		a.currentSegmentNumber = int(segNum)
+		a.establishSegment(uint64(segNum))
+		a.currentSegmentNumber = uint64(segNum)
 	}
 }
 
@@ -228,7 +228,7 @@ func (a *TinyAssembler) Assemble(source *SourceSet) {
 	fmt.Printf("\nAssembling %s...\n", source.name)
 	codeBlocks := make([]*CodeBlock, len(source.sourceItems))
 	for sx, item := range source.sourceItems {
-		lineNumber := sx + 1
+		lineNumber := uint64(sx + 1)
 
 		seg := a.segments[a.currentSegmentNumber]
 		offset := seg.currentLength
@@ -255,6 +255,6 @@ func (a *TinyAssembler) Assemble(source *SourceSet) {
 	}
 }
 
-func (a *TinyAssembler) GetSegments() map[int]*Segment {
+func (a *TinyAssembler) GetSegments() map[uint64]*Segment {
 	return a.segments
 }

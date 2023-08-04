@@ -5,42 +5,42 @@
 package ipEngine
 
 type ActiveBaseTableEntry struct {
-	bankLevel           uint // the top 3 bits of the traditional BDI
-	bankDescriptorIndex uint // only the bottom 15 bits of the traditional BDI
-	subsetSpecification uint
+	bankLevel           uint64 // the top 3 bits of the traditional L.BDI
+	bankDescriptorIndex uint64 // only the bottom 15 bits of the traditional L.BDI
+	subsetSpecification uint64
 }
 
-func (abte *ActiveBaseTableEntry) SetBankLevel(value uint) *ActiveBaseTableEntry {
+func (abte *ActiveBaseTableEntry) GetComposite() uint64 {
+	return (abte.bankLevel << 33) | (abte.bankDescriptorIndex << 18) | abte.subsetSpecification
+}
+
+func (abte *ActiveBaseTableEntry) SetComposite(value uint64) *ActiveBaseTableEntry {
+	return abte.SetBankLevel(value >> 33).SetBankDescriptorIndex(value >> 18).SetSubsetSpecification(value)
+}
+
+func (abte *ActiveBaseTableEntry) SetBankLevel(value uint64) *ActiveBaseTableEntry {
 	abte.bankLevel = value & 07
 	return abte
 }
 
-func (abte *ActiveBaseTableEntry) SetBankDescriptorIndex(value uint) *ActiveBaseTableEntry {
+func (abte *ActiveBaseTableEntry) SetBankDescriptorIndex(value uint64) *ActiveBaseTableEntry {
 	abte.bankDescriptorIndex = value & 077777
 	return abte
 }
 
-func (abte *ActiveBaseTableEntry) SetSubsetSpecification(value uint) *ActiveBaseTableEntry {
+func (abte *ActiveBaseTableEntry) SetSubsetSpecification(value uint64) *ActiveBaseTableEntry {
 	abte.subsetSpecification = value & 0777777
 	return abte
 }
 
-func (abte *ActiveBaseTableEntry) GetComposite() uint64 {
-	return (uint64(abte.bankLevel) << 33) | (uint64(abte.bankDescriptorIndex) << 18) | uint64(abte.subsetSpecification)
-}
-
-func (abte *ActiveBaseTableEntry) SetComposite(value uint64) *ActiveBaseTableEntry {
-	return abte.SetBankLevel(uint(value >> 33)).SetBankDescriptorIndex(uint(value >> 18)).SetSubsetSpecification(uint(value))
+func NewActiveBaseTableEntry(bankLevel uint64, bankDescriptorIndex uint64, subsetSpecification uint64) *ActiveBaseTableEntry {
+	abte := ActiveBaseTableEntry{}
+	abte.SetBankLevel(bankLevel).SetBankDescriptorIndex(bankDescriptorIndex).SetSubsetSpecification(subsetSpecification)
+	return &abte
 }
 
 func NewActiveBaseTableEntryFromComposite(value uint64) *ActiveBaseTableEntry {
 	abte := ActiveBaseTableEntry{}
 	abte.SetComposite(value)
-	return &abte
-}
-
-func NewActiveBaseTableEntryFromComponents(bankLevel uint, bankDescriptorIndex uint, subsetSpecification uint) *ActiveBaseTableEntry {
-	abte := ActiveBaseTableEntry{}
-	abte.SetBankLevel(bankLevel).SetBankDescriptorIndex(bankDescriptorIndex).SetSubsetSpecification(subsetSpecification)
 	return &abte
 }

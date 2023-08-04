@@ -7,12 +7,12 @@ package tasm
 
 type Reference struct {
 	symbol      string
-	startingBit int
-	bitCount    int
-	offset      int
+	startingBit uint64
+	bitCount    uint64
+	offset      uint64
 }
 
-func NewReference(symbol string, startingBit int, bitCount int, offset int) *Reference {
+func NewReference(symbol string, startingBit uint64, bitCount uint64, offset uint64) *Reference {
 	return &Reference{
 		symbol:      symbol,
 		startingBit: startingBit,

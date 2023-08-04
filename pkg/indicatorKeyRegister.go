@@ -7,7 +7,7 @@ package pkg
 type IndicatorKeyRegister struct {
 	//	In an ICS frame this contains interrupt status.
 	//	Ignored by UR instructionType
-	shortStatusField uint
+	shortStatusField InterruptShortStatus
 
 	//	True if there is a valid current instructionType in F0.
 	instructionInF0 bool
@@ -23,7 +23,7 @@ type IndicatorKeyRegister struct {
 	softwareBreak bool
 
 	//	In an ICS frame, this is the interrupt class number of the interrupt causing the entry
-	interruptClassField uint
+	interruptClassField InterruptClass
 
 	//	Current access key for the code being executed
 	accessKey *AccessKey
@@ -70,17 +70,17 @@ func (ikr *IndicatorKeyRegister) GetComposite() Word36 {
 	if ikr.softwareBreak {
 		value |= 0_000200_000000
 	}
-	value.SetS3(uint64(ikr.interruptClassField))
-	value.SetH2(uint64(ikr.accessKey.GetComposite()))
+	value.SetS3(uint64(ikr.GetInterruptClassField()))
+	value.SetH2(ikr.GetAccessKey().GetComposite())
 
 	return value
 }
 
-func (ikr *IndicatorKeyRegister) GetInterruptClassField() uint {
+func (ikr *IndicatorKeyRegister) GetInterruptClassField() InterruptClass {
 	return ikr.interruptClassField
 }
 
-func (ikr *IndicatorKeyRegister) GetShortStatusField() uint {
+func (ikr *IndicatorKeyRegister) GetShortStatusField() InterruptShortStatus {
 	return ikr.shortStatusField
 }
 
@@ -112,13 +112,13 @@ func (ikr *IndicatorKeyRegister) SetBreakpointRegisterMatchCondition(value bool)
 }
 
 func (ikr *IndicatorKeyRegister) SetComposite(value uint64) *IndicatorKeyRegister {
-	ikr.shortStatusField = uint(value>>30) & 077
+	ikr.shortStatusField = InterruptShortStatus((value >> 30) & 077)
 	ikr.instructionInF0 = value&0_004000_000000 != 0
 	ikr.executeRepeatedInstruction = value&0_002000_000000 != 0
 	ikr.breakpointRegisterMatchCondition = value&0_000400_000000 != 0
 	ikr.softwareBreak = value&0_000200_000000 != 0
-	ikr.interruptClassField = uint(value>>18) & 077
-	ikr.accessKey = NewAccessKeyFromComposite(uint(value & 0_777777))
+	ikr.interruptClassField = InterruptClass((value >> 18) & 077)
+	ikr.accessKey = NewAccessKeyFromComposite(value & 0_777777)
 
 	return ikr
 }
@@ -128,12 +128,12 @@ func (ikr *IndicatorKeyRegister) SetInstructionInF0(value bool) *IndicatorKeyReg
 	return ikr
 }
 
-func (ikr *IndicatorKeyRegister) SetInterruptClassField(value uint) *IndicatorKeyRegister {
+func (ikr *IndicatorKeyRegister) SetInterruptClassField(value InterruptClass) *IndicatorKeyRegister {
 	ikr.interruptClassField = value & 077
 	return ikr
 }
 
-func (ikr *IndicatorKeyRegister) SetShortStatusField(value uint) *IndicatorKeyRegister {
+func (ikr *IndicatorKeyRegister) SetShortStatusField(value InterruptShortStatus) *IndicatorKeyRegister {
 	ikr.shortStatusField = value & 077
 	return ikr
 }

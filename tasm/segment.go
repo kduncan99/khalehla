@@ -6,10 +6,10 @@
 package tasm
 
 type Segment struct {
-	currentLength int
+	currentLength uint64
 	generatedCode []*CodeBlock
 	references    []*Reference
-	labels        map[string]int
+	labels        map[string]uint64
 }
 
 func NewSegment() *Segment {
@@ -17,11 +17,11 @@ func NewSegment() *Segment {
 		currentLength: 0,
 		generatedCode: make([]*CodeBlock, 0),
 		references:    make([]*Reference, 0),
-		labels:        make(map[string]int),
+		labels:        make(map[string]uint64),
 	}
 }
 
 func (s *Segment) AppendCodeBlock(cb *CodeBlock) {
 	s.generatedCode = append(s.generatedCode, cb)
-	s.currentLength += len(cb.code)
+	s.currentLength += uint64(len(cb.code))
 }
