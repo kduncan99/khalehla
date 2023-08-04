@@ -4,14 +4,22 @@
 
 package ipEngine
 
+import "khalehla/tasm"
+
+var fIAR = "073"
 var fLA = "010"
 var fLD = "073"
+var fLR = "023"
 var fLX = "027"
 var fSA = "001"
 var fSD = "073"
 
+var jIAR = "017"
+
+var aIAR = "006"
+
 var jH1 = "002"
-var jH22 = "001"
+var jH2 = "001"
 var jQ1 = "007"
 var jQ2 = "004"
 var jQ3 = "006"
@@ -148,3 +156,7 @@ var grsr12 = "0114"
 var grsr13 = "0115"
 var grsr14 = "0116"
 var grsr15 = "0117"
+
+func IARSourceItem(label string, uField string) *tasm.SourceItem {
+	return tasm.NewSourceItem(label, "fjaxu", []string{fIAR, jIAR, aIAR, zero, uField})
+}

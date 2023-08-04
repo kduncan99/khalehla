@@ -267,6 +267,7 @@ var function073InterpreterBasic = FunctionTable{
 	indexBy: IndexByJ,
 	table: map[int]Interpreter{
 		015: &function07315InterpreterBasic,
+		017: &function07317InterpreterBasic,
 	},
 }
 
@@ -274,6 +275,7 @@ var function073InterpreterExtended = FunctionTable{
 	indexBy: IndexByJ,
 	table: map[int]Interpreter{
 		015: &function07315InterpreterExtended,
+		017: &function07317InterpreterExtended,
 	},
 }
 
@@ -290,6 +292,20 @@ var function07315InterpreterExtended = FunctionTable{
 	table: map[int]Interpreter{
 		014: &Instruction{mnemonic: "LD", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, mode: BOTH},
 		015: &Instruction{mnemonic: "SD", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, mode: BOTH},
+	},
+}
+
+var function07317InterpreterBasic = FunctionTable{
+	indexBy: IndexByA,
+	table: map[int]Interpreter{
+		006: &Instruction{mnemonic: "IAR", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, mode: BOTH},
+	},
+}
+
+var function07317InterpreterExtended = FunctionTable{
+	indexBy: IndexByA,
+	table: map[int]Interpreter{
+		006: &Instruction{mnemonic: "IAR", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, mode: BOTH},
 	},
 }
 

@@ -199,14 +199,20 @@ func (ute *UnitTestEngine) Run() error {
 
 	//	Reset GRS, clear interrupts and jump history
 	ute.engine.GetGeneralRegisterSet().Clear()
+	ute.engine.ClearStop()
 	ute.engine.ClearInterrupt()
-	//	TODO clear jump history
 
+	//	TODO clear jump history
 	//	Now Iterate until an interrupt is posted
-	for !ute.engine.HasPendingInterrupt() {
+	for !ute.engine.HasPendingInterrupt() && !ute.engine.IsStopped() {
 		ute.engine.doCycle()
 	}
 
-	fmt.Printf("Execution Interrupted\n")
+	if ute.engine.HasPendingInterrupt() {
+		fmt.Printf("Execution Interrupted\n")
+	} else {
+		fmt.Printf("Processor Stopped\n")
+	}
+
 	return nil
 }

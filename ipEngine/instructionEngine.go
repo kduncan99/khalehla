@@ -90,6 +90,7 @@ type InstructionEngine struct {
 	breakpointAddress  pkg.AbsoluteAddress
 	breakpointRegister BreakpointComparison
 
+	isStopped  bool
 	stopReason StopReason
 	stopDetail pkg.Word36
 }
@@ -126,6 +127,14 @@ func NewEngine(mainStorage *pkg.MainStorage) *InstructionEngine {
 	e.stopReason = NotStopped
 
 	return e
+}
+
+func (e *InstructionEngine) ClearInterrupt() {
+	e.pendingInterrupt = nil
+}
+
+func (e *InstructionEngine) ClearStop() {
+	e.isStopped = false
 }
 
 func (e *InstructionEngine) Dump() {
@@ -223,10 +232,6 @@ func (e *InstructionEngine) FindBasicModeBank(relativeAddress uint64, updateDB31
 	return 0
 }
 
-func (e *InstructionEngine) ClearInterrupt() {
-	e.pendingInterrupt = nil
-}
-
 // GetActiveBaseTableEntry retrieves a pointer to the ABET for the indicated base register 0 to 15
 func (e *InstructionEngine) GetActiveBaseTableEntry(index uint64) *ActiveBaseTableEntry {
 	return e.activeBaseTable[index]
@@ -299,6 +304,88 @@ func (e *InstructionEngine) GetGeneralRegisterSet() *GeneralRegisterSet {
 	return e.generalRegisterSet
 }
 
+// GetImmediateOperand retrieves an operand in the case where the u (and possibly h and i) fields
+// comprise the requested data ... e.g., for immediate operands.
+// Load the value indicated in F0 as follows:
+//
+//	For Processor Privilege 0,1
+//		value is 24 bits for DR.11 (exec 24bit indexing enabled) true, else 18 bits
+//	For Processor Privilege 2,3
+//		value is 24 bits for FO.i set, else 18 bits
+//
+// If F0.x is zero, the immediate value is taken from the h,i, and u fields (unsigned), and negative zero is eliminated.
+// For F0.x nonzero, the immediate value is the sum of the u field (unsigned) with the F0.x(mod) signed field.
+//
+//	For Extended Mode, with Processor Privilege 0,1 and DR.11 set, index modifiers are 24 bits;
+//		otherwise, they are 18 bits.
+//	For Basic Mode, index modifiers are always 18 bits.
+//
+// In either case, the value will be left alone for j-field=016, and sign-extended for j-field=017.
+func (e *InstructionEngine) GetImmediateOperand() (operand uint64, interrupt pkg.Interrupt) {
+	operand = 0
+	interrupt = nil
+
+	ci := e.activityStatePacket.GetCurrentInstruction()
+	dr := e.activityStatePacket.GetDesignatorRegister()
+
+	exec24Index := dr.IsExecutive24BitIndexingSet()
+	privilege := dr.GetProcessorPrivilege()
+	valueIs24Bits := ((privilege < 2) && exec24Index) || ((privilege > 1) && (ci.GetI() != 0))
+
+	if ci.GetX() == 0 {
+		//  No indexing (x-field is zero).  Value is derived from h, i, and u fields.
+		//  Get the value from h,i,u, and eliminate negative zero.
+		operand = ci.GetHIU()
+		if operand == 0777777 {
+			operand = 0
+		}
+
+		if (ci.GetJ() == 017) && ((operand & 0400000) != 0) {
+			operand |= 0_777777_000000
+		}
+	} else {
+		//  Value is taken only from the u field, and we eliminate negative zero at this point.
+		operand = ci.GetU()
+		if operand == 0177777 {
+			operand = 0
+		}
+
+		//  Add the contents of Xx(m), and do index register incrementation if appropriate.
+		xReg := e.GetExecOrUserXRegister(ci.GetX())
+
+		//  24-bit indexing?
+		if !dr.IsBasicModeEnabled() && (privilege < 2) && exec24Index {
+			//  Add the 24-bit modifier
+			operand = pkg.AddSimple(operand, xReg.GetXM24())
+			if ci.GetH() != 0 {
+				e.GetExecOrUserXRegister(ci.GetX()).IncrementModifier24()
+			}
+		} else {
+			//  Add the 18-bit modifier
+			operand = pkg.AddSimple(operand, xReg.GetXM())
+			if ci.GetH() != 0 {
+				e.GetExecOrUserXRegister(ci.GetX()).IncrementModifier()
+			}
+		}
+	}
+
+	//  Truncate the result to the proper size, then sign-extend if appropriate to do so.
+	extend := ci.GetJ() == 017
+	if valueIs24Bits {
+		operand &= 077_777777
+		if extend && (operand&040_000000) != 0 {
+			operand |= 0_777700_000000
+		}
+	} else {
+		operand &= 0_777777
+		if extend && (operand&0_400000) != 0 {
+			operand |= 0_777777_000000
+		}
+	}
+
+	return
+}
+
 // GetJumpOperand is similar to getImmediateOperand()
 // However the calculated U field is only ever 16 or 18 bits, and is never sign-extended.
 // Also, we do not rely upon j-field for anything, as that has no meaning for conditionalJump instructions.
@@ -357,7 +444,7 @@ func (e *InstructionEngine) GetOperand(
 	if allowImmediate {
 		//  j-field is U or XU? If so, get the value from the instruction itself (immediate addressing)
 		if jField >= 016 {
-			operand, interrupt = e.getImmediateOperand()
+			operand, interrupt = e.GetImmediateOperand()
 			complete = true
 			return
 		}
@@ -450,6 +537,10 @@ func (e *InstructionEngine) IsLoggingInterrupts() bool {
 	return e.logInterrupts
 }
 
+func (e *InstructionEngine) IsStopped() bool {
+	return e.isStopped
+}
+
 func (e *InstructionEngine) PopInterrupt() pkg.Interrupt {
 	i := e.pendingInterrupt
 	e.pendingInterrupt = nil
@@ -502,6 +593,8 @@ func (e *InstructionEngine) SetProgramCounter(counter uint64, preventIncrement b
 // This does not actually stop anything - it is up to whoever is managing the engine
 // to make some sense of this and do something appropriate.
 func (e *InstructionEngine) Stop(reason StopReason, detail pkg.Word36) {
+	fmt.Printf("Stopping Processor: Reason=%d, Detail=%012o\n", reason, detail)
+	e.isStopped = true
 	e.stopReason = reason
 	e.stopDetail = detail
 }
@@ -683,7 +776,6 @@ func (e *InstructionEngine) checkAccessibility(
 	writeFlag bool,
 	accessKey *pkg.AccessKey) pkg.Interrupt {
 
-	fmt.Printf("checkAccessibility fetch=%v read=%v write=%v key=%s\n", fetchFlag, readFlag, writeFlag, accessKey.GetString()) // TODO remove
 	perms := bReg.GetEffectivePermissions(accessKey)
 	if e.activityStatePacket.GetDesignatorRegister().IsBasicModeEnabled() && fetchFlag && !perms.CanEnter() {
 		ssf := uint(040)
@@ -711,7 +803,6 @@ func (e *InstructionEngine) checkAccessLimits(
 	writeFlag bool,
 	accessKey *pkg.AccessKey) pkg.Interrupt {
 
-	fmt.Printf("checkAccessLimits rel=%08o fetch=%v read=%v write=%v key=%s\n", relativeAddress, fetchFlag, readFlag, writeFlag, accessKey.GetString()) // TODO remove
 	i := e.checkAccessLimitsForAddress(bReg, relativeAddress, fetchFlag)
 	if i != nil {
 		return i
@@ -729,7 +820,6 @@ func (e *InstructionEngine) checkAccessLimitsForAddress(
 	relativeAddress uint64,
 	fetchFlag bool) pkg.Interrupt {
 
-	fmt.Printf("checkAccessLimitsForAddress rel=%08o fetch=%v\n", relativeAddress, fetchFlag) // TODO remove
 	// TODO if we try to execute something in GRS - we take ReferenceViolationInterruptClass, 01, 0, 0
 
 	if (relativeAddress < bReg.GetLowerLimitNormalized()) ||
@@ -752,7 +842,6 @@ func (e *InstructionEngine) checkAccessLimitsRange(
 	writeFlag bool,
 	accessKey *pkg.AccessKey) pkg.Interrupt {
 
-	fmt.Printf("checkAccessLimitsRange rel=%08o count=%d read=%v write=%v key=%s\n", relativeAddress, addressCount, readFlag, writeFlag, accessKey.GetString()) // TODO remove
 	if (uint64(relativeAddress) < bReg.GetLowerLimitNormalized()) ||
 		(uint64(relativeAddress+addressCount-1) > bReg.GetUpperLimitNormalized()) {
 		return pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationStorageLimits, false)
@@ -1065,88 +1154,6 @@ func (e *InstructionEngine) getEffectiveBaseRegisterIndex() uint {
 	} else {
 		return uint(e.activityStatePacket.GetCurrentInstruction().GetB())
 	}
-}
-
-// getImmediateOperand retrieves an operand in the case where the u (and possibly h and i) fields
-// comprise the requested data ... e.g., for immediate operands.
-// Load the value indicated in F0 as follows:
-//
-//	For Processor Privilege 0,1
-//		value is 24 bits for DR.11 (exec 24bit indexing enabled) true, else 18 bits
-//	For Processor Privilege 2,3
-//		value is 24 bits for FO.i set, else 18 bits
-//
-// If F0.x is zero, the immediate value is taken from the h,i, and u fields (unsigned), and negative zero is eliminated.
-// For F0.x nonzero, the immediate value is the sum of the u field (unsigned) with the F0.x(mod) signed field.
-//
-//	For Extended Mode, with Processor Privilege 0,1 and DR.11 set, index modifiers are 24 bits;
-//		otherwise, they are 18 bits.
-//	For Basic Mode, index modifiers are always 18 bits.
-//
-// In either case, the value will be left alone for j-field=016, and sign-extended for j-field=017.
-func (e *InstructionEngine) getImmediateOperand() (operand uint64, interrupt pkg.Interrupt) {
-	operand = 0
-	interrupt = nil
-
-	ci := e.activityStatePacket.GetCurrentInstruction()
-	dr := e.activityStatePacket.GetDesignatorRegister()
-
-	exec24Index := dr.IsExecutive24BitIndexingSet()
-	privilege := dr.GetProcessorPrivilege()
-	valueIs24Bits := ((privilege < 2) && exec24Index) || ((privilege > 1) && (ci.GetI() != 0))
-
-	if ci.GetX() == 0 {
-		//  No indexing (x-field is zero).  Value is derived from h, i, and u fields.
-		//  Get the value from h,i,u, and eliminate negative zero.
-		operand = ci.GetHIU()
-		if operand == 0777777 {
-			operand = 0
-		}
-
-		if (ci.GetJ() == 017) && ((operand & 0400000) != 0) {
-			operand |= 0_777777_000000
-		}
-	} else {
-		//  Value is taken only from the u field, and we eliminate negative zero at this point.
-		operand = ci.GetU()
-		if operand == 0177777 {
-			operand = 0
-		}
-
-		//  Add the contents of Xx(m), and do index register incrementation if appropriate.
-		xReg := e.GetExecOrUserXRegister(ci.GetX())
-
-		//  24-bit indexing?
-		if !dr.IsBasicModeEnabled() && (privilege < 2) && exec24Index {
-			//  Add the 24-bit modifier
-			operand = pkg.AddSimple(operand, xReg.GetXM24())
-			if ci.GetH() != 0 {
-				e.GetExecOrUserXRegister(ci.GetX()).IncrementModifier24()
-			}
-		} else {
-			//  Add the 18-bit modifier
-			operand = pkg.AddSimple(operand, xReg.GetXM())
-			if ci.GetH() != 0 {
-				e.GetExecOrUserXRegister(ci.GetX()).IncrementModifier()
-			}
-		}
-	}
-
-	//  Truncate the result to the proper size, then sign-extend if appropriate to do so.
-	extend := ci.GetJ() == 017
-	if valueIs24Bits {
-		operand &= 077_777777
-		if extend && (operand&040_000000) != 0 {
-			operand |= 0_777700_000000
-		}
-	} else {
-		operand &= 0_777777
-		if extend && (operand&0_400000) != 0 {
-			operand |= 0_777777_000000
-		}
-	}
-
-	return
 }
 
 func (e *InstructionEngine) incrementIndexRegisterInF0() {

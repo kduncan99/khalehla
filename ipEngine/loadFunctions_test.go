@@ -25,7 +25,7 @@ var laBasicMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "fjaxhiu", []string{fLA, jQ2, rA2, rX0, zero, zero, "a2value"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fLX, jU, rX4, rX0, "05"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fLA, jW, rA3, rX4, zero, zero, "data"}),
-	tasm.NewSourceItem("", "w", []string{"0"}), //	cause an illop interrupt
+	IARSourceItem("", "0"),
 }
 
 var laExtendedMode = []*tasm.SourceItem{
@@ -44,7 +44,25 @@ var laExtendedMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLA, jQ2, rA2, rX0, zero, zero, rB0, "a2value"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fLX, jU, rX4, rX0, "05"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLA, jW, rA3, rX4, zero, zero, rB0, "data"}),
-	tasm.NewSourceItem("", "w", []string{"0"}), //	cause an illop interrupt
+	IARSourceItem("", "0"),
+}
+
+var lrBasicMode = []*tasm.SourceItem{
+	tasm.NewSourceItem("", ".SEG", []string{"077"}),
+	tasm.NewSourceItem("r8value", "sw", []string{"01", "02", "03", "04", "05", "06"}),
+
+	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fLR, jXH2, rR8, rX0, "r8value"}),
+	IARSourceItem("", "0"),
+}
+
+var lrExtendedMode = []*tasm.SourceItem{
+	tasm.NewSourceItem("", ".SEG", []string{"077"}),
+	tasm.NewSourceItem("r4value", "sw", []string{"041", "02", "03", "04", "05", "06"}),
+
+	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	tasm.NewSourceItem("", "fjaxhibd", []string{fLR, jXH1, rR4, rX0, zero, zero, rB0, "r4value"}),
+	IARSourceItem("", "0"),
 }
 
 var lxBasicMode = []*tasm.SourceItem{
@@ -52,7 +70,7 @@ var lxBasicMode = []*tasm.SourceItem{
 
 	tasm.NewSourceItem("", ".SEG", []string{"000"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fLX, jU, rX1, rX0, "05"}),
-	tasm.NewSourceItem("", "w", []string{"0"}), //	cause an illop interrupt
+	IARSourceItem("", "0"),
 }
 
 var lxExtendedMode = []*tasm.SourceItem{
@@ -60,7 +78,7 @@ var lxExtendedMode = []*tasm.SourceItem{
 
 	tasm.NewSourceItem("", ".SEG", []string{"000"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fLX, jU, rX1, rX0, "05"}),
-	tasm.NewSourceItem("", "w", []string{"0"}), //	cause an illop interrupt
+	IARSourceItem("", "0"),
 }
 
 func Test_LA_Basic(t *testing.T) {
@@ -70,7 +88,6 @@ func Test_LA_Basic(t *testing.T) {
 
 	e := tasm.Executable{}
 	e.LinkSimple(a.GetSegments(), false)
-	e.Show()
 
 	ute := NewUnitTestExecutor()
 	err := ute.Load(&e)
@@ -117,7 +134,6 @@ func Test_LA_Extended(t *testing.T) {
 
 	e := tasm.Executable{}
 	e.LinkSimple(a.GetSegments(), true)
-	e.Show()
 
 	ute := NewUnitTestExecutor()
 	err := ute.Load(&e)
@@ -156,6 +172,59 @@ func Test_LA_Extended(t *testing.T) {
 	}
 }
 
+func Test_LR_Basic(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", lrBasicMode)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkSimple(a.GetSegments(), false)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(true)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	grs := ute.GetEngine().generalRegisterSet
+	res := grs.GetRegister(R8).GetW()
+	exp := uint64(040506)
+	if res != exp {
+		t.Fatalf("Register R8 is %012o, expected %012o", res, exp)
+	}
+}
+
+func Test_LR_Extended(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", lrExtendedMode)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkSimple(a.GetSegments(), true)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	grs := ute.GetEngine().generalRegisterSet
+	res := grs.GetRegister(R4).GetW()
+	exp := uint64(0_777777_410203)
+	if res != exp {
+		t.Fatalf("Register R4 is %012o, expected %012o", res, exp)
+	}
+}
+
 func Test_LX_Basic(t *testing.T) {
 	sourceSet := tasm.NewSourceSet("Test", lxBasicMode)
 	a := tasm.NewTinyAssembler()
@@ -163,7 +232,6 @@ func Test_LX_Basic(t *testing.T) {
 
 	e := tasm.Executable{}
 	e.LinkSimple(a.GetSegments(), false)
-	e.Show()
 
 	ute := NewUnitTestExecutor()
 	err := ute.Load(&e)
@@ -191,13 +259,11 @@ func Test_LX_Extended(t *testing.T) {
 	a.Assemble(sourceSet)
 
 	e := tasm.Executable{}
-	e.LinkSimple(a.GetSegments(), false)
-	e.Show()
+	e.LinkSimple(a.GetSegments(), true)
 
 	ute := NewUnitTestExecutor()
 	err := ute.Load(&e)
 	if err == nil {
-		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(true)
 		ute.GetEngine().GetDesignatorRegister().SetQuarterWordModeEnabled(true)
 		err = ute.Run()
 	}
