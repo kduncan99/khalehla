@@ -1181,6 +1181,7 @@ func (e *InstructionEngine) injectPartialWord(
 	case pkg.JFIELD_W:
 		return newValue
 	case pkg.JFIELD_H2:
+		return pkg.SetH2(originalValue, newValue)
 	case pkg.JFIELD_XH2:
 		return pkg.SetH2(originalValue, newValue)
 	case pkg.JFIELD_H1:

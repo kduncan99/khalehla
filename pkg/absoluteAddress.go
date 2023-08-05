@@ -4,6 +4,8 @@
 
 package pkg
 
+import "fmt"
+
 // AbsoluteAddress structs are defined architecturally as a composite value generally not exceeding 54 bits,
 //
 //	which allows the underlying hardware to determine the real-life location of a word in storage.
@@ -47,6 +49,10 @@ func (aa *AbsoluteAddress) GetOffset() uint64 {
 
 func (aa *AbsoluteAddress) GetSegment() uint64 {
 	return aa.segment
+}
+
+func (aa *AbsoluteAddress) GetString() string {
+	return fmt.Sprintf("%012o:%012o", aa.segment, aa.offset)
 }
 
 func (aa *AbsoluteAddress) SetComposite(value []uint64) *AbsoluteAddress {

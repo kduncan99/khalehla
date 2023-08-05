@@ -4,13 +4,19 @@
 
 package ipEngine
 
-import "khalehla/tasm"
+import (
+	"khalehla/pkg"
+	"khalehla/tasm"
+	"testing"
+)
 
 var fIAR = "073"
 var fLA = "010"
 var fLD = "073"
 var fLR = "023"
 var fLX = "027"
+var fLXI = "046"
+var fLXM = "026"
 var fSA = "001"
 var fSD = "073"
 
@@ -159,4 +165,38 @@ var grsr15 = "0117"
 
 func IARSourceItem(label string, uField string) *tasm.SourceItem {
 	return tasm.NewSourceItem(label, "fjaxu", []string{fIAR, jIAR, aIAR, zero, uField})
+}
+
+func checkMemory(t *testing.T, engine *InstructionEngine, addr *pkg.AbsoluteAddress, offset uint64, expected uint64) {
+	seg, ok := engine.mainStorage.GetSegment(addr.GetSegment())
+	if !ok {
+		t.Fatalf("Error:segment does not exist for address %s", addr.GetString())
+	}
+
+	if addr.GetOffset() >= uint64(len(seg)) {
+		t.Fatalf("Error:offset is out of range for address %s - segment size is %012o",
+			addr.GetString(), len(seg))
+	}
+
+	result := seg[addr.GetOffset()+offset]
+	if result.GetW() != expected {
+		t.Fatalf("Storage at %s+0%o is %012o, expected %012o", addr.GetString(), offset, result, expected)
+	}
+}
+
+func checkRegister(t *testing.T, engine *InstructionEngine, register uint64, expected uint64, name string) {
+	result := engine.generalRegisterSet.GetRegister(register)
+	if result.GetW() != expected {
+		t.Fatalf("Register %s is %012o, expected %012o", name, result, expected)
+	}
+}
+
+func checkStopped(t *testing.T, engine *InstructionEngine) {
+	if engine.HasPendingInterrupt() {
+		t.Fatalf("Engine has unexpected pending interrupt:%s", pkg.GetInterruptString(engine.PopInterrupt()))
+	}
+
+	if !engine.IsStopped() {
+		t.Fatalf("Expected engine to be stopped; it is not")
+	}
 }

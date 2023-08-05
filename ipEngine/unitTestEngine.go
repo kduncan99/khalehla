@@ -61,13 +61,13 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 		//	allocate a segment from storage and copy the bank to the segment
 		//  there are no fix-ups required; all our binaries are self-contained.
 
-		bdi := bank.GetBankDescriptorIndex()
+		lbdi := bank.GetBankDescriptorIndex()
 		bankSegIndex, err := ute.storage.Allocate(bank.GetCodeLength())
 		if err != nil {
 			return err
 		}
 		seg, _ := ute.storage.GetSegment(bankSegIndex)
-		segIndexMap[bdi] = bankSegIndex
+		segIndexMap[lbdi] = bankSegIndex
 
 		code := bank.GetCode()
 		for cx := 0; cx < len(code); cx++ {
@@ -75,16 +75,16 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 		}
 
 		bankAddress := pkg.NewAbsoluteAddress(bankSegIndex, 0)
-		ute.bankAddresses[bdi] = bankAddress
+		ute.bankAddresses[lbdi] = bankAddress
 
 		//	now build a bank descriptor for the bank.
 		//	if this is the first bank with its level, then we have to allocate space for a bdt for the level.
-		bdiLevel := bdi >> 15
-		bdiOffset := bdi & 077777
-		newBDTLen := (bdiOffset + 1) << 3
+		level := lbdi >> 15
+		bdi := lbdi & 077777
+		newBDTLen := (bdi + 1) * 8
 
 		//	For this algorithm, each BDT gets its own segment and thus is always at offset 0 of the segment
-		absAddr, ok := ute.bankDescriptorTableAddresses[bdiLevel]
+		absAddr, ok := ute.bankDescriptorTableAddresses[level]
 		var bdtSegment uint64
 		var bdTable []pkg.Word36
 		if ok {
@@ -95,6 +95,7 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 				if err != nil {
 					return err
 				}
+				bdTable, _ = ute.storage.GetSegment(bdtSegment)
 			}
 		} else {
 			bdtSegment, err = ute.storage.Allocate(newBDTLen)
@@ -104,11 +105,11 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 			bdTable, _ = ute.storage.GetSegment(bdtSegment)
 			absAddr = &pkg.AbsoluteAddress{}
 			absAddr.SetSegment(bdtSegment)
-			ute.bankDescriptorTableAddresses[bdiLevel] = absAddr
+			ute.bankDescriptorTableAddresses[level] = absAddr
 		}
 		bank.GetBankDescriptor().SetBaseAddress(bankAddress)
 
-		bdOffset := bdiOffset * 8
+		bdOffset := bdi * 8
 		bank.GetBankDescriptor().Serialize(bdTable[bdOffset : bdOffset+8])
 	}
 

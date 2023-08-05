@@ -83,24 +83,7 @@ func (e *Executable) LinkSimple(segments map[uint64]*Segment, extendedMode bool)
 	bdi := uint64(0_600004)
 	e.banks = make(map[uint64]*Bank)
 	e.initiallyBasedBanks = make(map[uint64]uint64)
-
-	//	Create a list in ascending order, of the existing segment numbers
-	orderedSegmentNumbers := make([]uint64, 0)
-	for segNum, _ := range segments {
-		ox := 0
-		done := false
-		for ox < len(orderedSegmentNumbers) && !done {
-			if segNum < orderedSegmentNumbers[ox] {
-				orderedSegmentNumbers = append([]uint64{segNum}, orderedSegmentNumbers...)
-				done = true
-			} else {
-				ox++
-			}
-		}
-		if !done {
-			orderedSegmentNumbers = append(orderedSegmentNumbers, segNum)
-		}
-	}
+	orderedSegmentNumbers := getOrderedSegmentNumbers(segments)
 
 	//	Find the offsets of all the segments relative to the start of the bank
 	//	key is the segment number, value is the offset
@@ -119,7 +102,7 @@ func (e *Executable) LinkSimple(segments map[uint64]*Segment, extendedMode bool)
 
 	fmt.Printf("  Segment Table:\n")
 	for segmentNumber, offset := range offsets {
-		fmt.Printf("    Seg %03o is at offset %08o\n", segmentNumber, offset)
+		fmt.Printf("    Seg %03o is in bank %06o at offset %08o\n", segmentNumber, bdi, offset)
 	}
 
 	bankCode := make([]uint64, bankLength)
@@ -136,7 +119,7 @@ func (e *Executable) LinkSimple(segments map[uint64]*Segment, extendedMode bool)
 		}
 	}
 
-	fmt.Printf("  References:\n")
+	fmt.Printf("  Label Values:\n")
 	for symbol, value := range resolved {
 		fmt.Printf("    %-12s: %012o\n", symbol, value)
 	}
@@ -190,6 +173,139 @@ func (e *Executable) LinkSimple(segments map[uint64]*Segment, extendedMode bool)
 	e.startingAddress = 01000 // TODO pull this from .OPT command
 }
 
+// LinkBankPerSegment creates individual banks, one per input segment.
+// The BDI will be 6010xx where xx is the segment number.
+//
+// For Extended Mode:
+// The banks for segments 0 through 15 will be initially based on B0 through B15.
+// This requires segment 0 to be the initial code bank.
+// By convention, segment 1 will be the RCS stack, and segments 2 through 15 will be data banks.
+// Segments do not have to be contiguous; you may have segments 0, 2, and 12, for example.
+//
+// For Basic Mode:
+// The banks for segments 0 through 3 will be initially based on B12 through B15.
+// The lower/upper limits for these banks will be set to avoid overlapping addresses, with B12 starting at 01000.
+// Thus, we expect the initial code address to be in segment 12, at 01000.
+// The lower/upper limits for non-initially-based banks will all be set to 01000.
+func (e *Executable) LinkBankPerSegment(segments map[uint64]*Segment, extendedMode bool) {
+	fmt.Printf("\nLink Bank-Per-Segment...\n")
+
+	e.banks = make(map[uint64]*Bank)
+	e.initiallyBasedBanks = make(map[uint64]uint64)
+	orderedSegmentNumbers := getOrderedSegmentNumbers(segments)
+
+	//  Create the bank descriptors here.
+	//  We have to do this in segment number order so that we can properly place basic mode banks
+	basicModeOffset := uint64(01000)
+	for _, segmentNumber := range orderedSegmentNumbers {
+		segment := segments[segmentNumber]
+		lbdi := 0601000 + segmentNumber
+		canEnter := (extendedMode && segmentNumber == 0) || !extendedMode
+		canWrite := (extendedMode && segmentNumber != 0) || !extendedMode
+		var lowerLimit uint64
+		if extendedMode && segmentNumber == 0 {
+			lowerLimit = 01000
+		} else {
+			lowerLimit = basicModeOffset
+			basicModeOffset += segment.currentLength
+		}
+
+		bd := pkg.NewExtendedModeBankDescriptor(
+			pkg.NewAccessLock(0, 0),
+			pkg.NewAccessPermissions(canEnter, true, canWrite),
+			pkg.NewAccessPermissions(canEnter, true, canWrite),
+			nil, // this has to be filled in when the bank is loaded
+			false,
+			lowerLimit,
+			lowerLimit+segment.currentLength,
+			0)
+
+		e.banks[lbdi] = &Bank{
+			bankDescriptor:      bd,
+			bankDescriptorIndex: lbdi,
+			code:                make([]uint64, segment.currentLength),
+		}
+
+		if (extendedMode && segmentNumber < 16) || (!extendedMode && (segmentNumber >= 12 && segmentNumber <= 15)) {
+			e.initiallyBasedBanks[segmentNumber] = lbdi
+		}
+	}
+
+	//	Resolve undefined references for the segments
+	resolved := make(map[string]uint64)
+	for segmentNumber, segment := range segments {
+		lbdi := 0601000 + segmentNumber
+		bank := e.banks[lbdi]
+		for symbol, offset := range segment.labels {
+			resolved[symbol] = offset + bank.bankDescriptor.GetLowerLimitNormalized()
+		}
+	}
+
+	fmt.Printf("  Label Values:\n")
+	for symbol, value := range resolved {
+		fmt.Printf("    %-12s: %012o\n", symbol, value)
+	}
+
+	fmt.Printf("  Bank Table:\n")
+	fmt.Printf("    L,BDI  Lower  Upper        Seg\n")
+	fmt.Printf("    ------ ------ ------------ ---\n")
+	for lbdi, bank := range e.banks {
+		fmt.Printf("    %06o %06o %012o %03o\n",
+			lbdi,
+			bank.bankDescriptor.GetLowerLimitNormalized(),
+			bank.bankDescriptor.GetUpperLimitNormalized(),
+			lbdi&0777)
+	}
+
+	//	Load code
+	for segmentNumber, segment := range segments {
+		lbdi := 0601000 + segmentNumber
+		bank := e.banks[lbdi]
+		cx := 0
+		for _, codeBlock := range segment.generatedCode {
+			for _, code := range codeBlock.code {
+				bank.code[cx] = code
+				cx++
+			}
+		}
+	}
+
+	//	Now resolve references
+	for segmentNumber, segment := range segments {
+		for _, ref := range segment.references {
+			//	L,BDI and bank descriptor for the bank in which the reference exists
+			lbdi := 0601000 + segmentNumber
+			bank := e.banks[lbdi]
+
+			newValue := resolved[strings.ToUpper(ref.symbol)]
+			baseValue := bank.code[ref.offset]
+			var err error
+			bank.code[ref.offset], err = addFractional(baseValue, newValue, ref.startingBit, ref.bitCount)
+			if err != nil {
+				fmt.Printf("E: BDI:%06o Offset:%012o: %s\n", lbdi, ref.offset, err.Error())
+			}
+		}
+	}
+
+	e.startingAddress = 01000
+}
+
+func (e *Executable) Dump() {
+	for _, bank := range e.banks {
+		bd := bank.GetBankDescriptor()
+		fmt.Printf("  Bank BDI:%06o  Access:%v  GAP %s  SAP %s  Lower:%012o\n",
+			bank.bankDescriptorIndex,
+			bd.GetAccessLock().GetString(),
+			bd.GetGeneralAccessPermissions().GetString(),
+			bd.GetSpecialAccessPermissions().GetString(),
+			bd.GetLowerLimitNormalized())
+		addr := bd.GetLowerLimitNormalized()
+		for cx := 0; cx < len(bank.code); cx++ {
+			fmt.Printf("    %08o: %012o\n", addr+uint64(cx), bank.code[cx])
+		}
+	}
+}
+
 func addFractional(baseValue uint64, addend2 uint64, startingBit uint64, bitCount uint64) (uint64, error) {
 	mask := uint64(1<<bitCount) - 1
 	shift := 36 - startingBit - bitCount
@@ -206,18 +322,24 @@ func addFractional(baseValue uint64, addend2 uint64, startingBit uint64, bitCoun
 	return (baseValue & shiftedNotMask) | (shiftedSum & shiftedMask), nil
 }
 
-func (e *Executable) Show() {
-	for _, bank := range e.banks {
-		bd := bank.GetBankDescriptor()
-		fmt.Printf("  Bank BDI:%06o  Access:%v  GAP %s  SAP %s  Lower:%012o\n",
-			bank.bankDescriptorIndex,
-			bd.GetAccessLock().GetString(),
-			bd.GetGeneralAccessPermissions().GetString(),
-			bd.GetSpecialAccessPermissions().GetString(),
-			bd.GetLowerLimitNormalized())
-		addr := bd.GetLowerLimitNormalized()
-		for cx := 0; cx < len(bank.code); cx++ {
-			fmt.Printf("    %08o: %012o\n", addr+uint64(cx), bank.code[cx])
+// getOrderedSegmentNumbers reates a list in ascending order, of the existing segment numbers
+func getOrderedSegmentNumbers(segments map[uint64]*Segment) []uint64 {
+	orderedSegmentNumbers := make([]uint64, 0)
+	for segNum, _ := range segments {
+		ox := 0
+		done := false
+		for ox < len(orderedSegmentNumbers) && !done {
+			if segNum < orderedSegmentNumbers[ox] {
+				orderedSegmentNumbers = append([]uint64{segNum}, orderedSegmentNumbers...)
+				done = true
+			} else {
+				ox++
+			}
+		}
+		if !done {
+			orderedSegmentNumbers = append(orderedSegmentNumbers, segNum)
 		}
 	}
+
+	return orderedSegmentNumbers
 }
