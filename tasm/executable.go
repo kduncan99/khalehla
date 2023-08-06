@@ -199,35 +199,39 @@ func (e *Executable) LinkBankPerSegment(segments map[uint64]*Segment, extendedMo
 	basicModeOffset := uint64(01000)
 	for _, segmentNumber := range orderedSegmentNumbers {
 		segment := segments[segmentNumber]
-		lbdi := 0601000 + segmentNumber
-		canEnter := (extendedMode && segmentNumber == 0) || !extendedMode
-		canWrite := (extendedMode && segmentNumber != 0) || !extendedMode
-		var lowerLimit uint64
-		if extendedMode && segmentNumber == 0 {
-			lowerLimit = 01000
-		} else {
-			lowerLimit = basicModeOffset
-			basicModeOffset += segment.currentLength
-		}
+		if segment.currentLength > 0 {
+			lbdi := 0601000 + segmentNumber
+			canEnter := (extendedMode && segmentNumber == 0) || !extendedMode
+			canWrite := (extendedMode && segmentNumber != 0) || !extendedMode
+			var lowerLimit uint64
+			if extendedMode && segmentNumber == 0 {
+				lowerLimit = 01000
+			} else if !extendedMode {
+				lowerLimit = basicModeOffset
+				basicModeOffset += segment.currentLength
+				if basicModeOffset&0777 > 0 {
+					basicModeOffset = (basicModeOffset | 0777) + 1
+				}
+			}
 
-		bd := pkg.NewExtendedModeBankDescriptor(
-			pkg.NewAccessLock(0, 0),
-			pkg.NewAccessPermissions(canEnter, true, canWrite),
-			pkg.NewAccessPermissions(canEnter, true, canWrite),
-			nil, // this has to be filled in when the bank is loaded
-			false,
-			lowerLimit,
-			lowerLimit+segment.currentLength,
-			0)
+			bd := pkg.NewExtendedModeBankDescriptor(
+				pkg.NewAccessLock(0, 0),
+				pkg.NewAccessPermissions(canEnter, true, canWrite),
+				pkg.NewAccessPermissions(canEnter, true, canWrite),
+				nil, // this has to be filled in when the bank is loaded
+				false,
+				lowerLimit,
+				lowerLimit+segment.currentLength,
+				0)
+			e.banks[lbdi] = &Bank{
+				bankDescriptor:      bd,
+				bankDescriptorIndex: lbdi,
+				code:                make([]uint64, segment.currentLength),
+			}
 
-		e.banks[lbdi] = &Bank{
-			bankDescriptor:      bd,
-			bankDescriptorIndex: lbdi,
-			code:                make([]uint64, segment.currentLength),
-		}
-
-		if (extendedMode && segmentNumber < 16) || (!extendedMode && (segmentNumber >= 12 && segmentNumber <= 15)) {
-			e.initiallyBasedBanks[segmentNumber] = lbdi
+			if (extendedMode && segmentNumber < 16) || (!extendedMode && (segmentNumber >= 12 && segmentNumber <= 15)) {
+				e.initiallyBasedBanks[segmentNumber] = lbdi
+			}
 		}
 	}
 

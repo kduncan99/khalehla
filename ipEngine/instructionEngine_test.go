@@ -124,7 +124,137 @@ func Test_PartialWordLoads_BasicQuarterWord(t *testing.T) {
 	checkRegister(t, engine, R9, 010, "R9")
 }
 
-//	TODO basic mode partial word testing, stores
+var partialWordStoresBasicThirdWord = []*tasm.SourceItem{
+	tasm.NewSourceItem("", ".SEG", []string{"13"}),
+	tasm.NewSourceItem("data1", "w", []string{"0444444444444"}),
+	tasm.NewSourceItem("data2", "w", []string{"0333333333333"}),
+	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
+	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
+	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
+	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
+	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
+	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
+	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
+	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
+	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
+
+	tasm.NewSourceItem("", ".SEG", []string{"12"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fLA, jW, rA0, zero, zero, zero, "data1"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fLXI, jU, rX1, zero, "1"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fLXM, jU, rX1, zero, "0"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fLA, jW, rA0, zero, zero, zero, "data1"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jW, rA0, rX1, "1", zero, "data2"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jH1, rA0, rX1, "1", zero, "data2"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jH2, rA0, rX1, "1", zero, "data2"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jXH1, rA0, rX1, "1", zero, "data2"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jXH2, rA0, rX1, "1", zero, "data2"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jT1, rA0, rX1, "1", zero, "data2"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jT2, rA0, rX1, "1", zero, "data2"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jT3, rA0, rX1, "1", zero, "data2"}),
+	IARSourceItem("", "0"),
+}
+
+func Test_PartialWordStores_BasicThirdWord(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", partialWordStoresBasicThirdWord)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkBankPerSegment(a.GetSegments(), false)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(true)
+		ute.GetEngine().GetDesignatorRegister().SetQuarterWordModeEnabled(false)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkStopped(t, engine)
+	dataBankAddr := e.GetBanks()[0601015].GetBankDescriptor().GetBaseAddress()
+	checkMemory(t, engine, dataBankAddr, 1, 0_444444_444444)
+	checkMemory(t, engine, dataBankAddr, 2, 0_444444_333333)
+	checkMemory(t, engine, dataBankAddr, 3, 0_333333_444444)
+	checkMemory(t, engine, dataBankAddr, 4, 0_444444_333333)
+	checkMemory(t, engine, dataBankAddr, 5, 0_333333_444444)
+	checkMemory(t, engine, dataBankAddr, 6, 0_4444_3333_3333)
+	checkMemory(t, engine, dataBankAddr, 7, 0_3333_4444_3333)
+	checkMemory(t, engine, dataBankAddr, 8, 0_3333_3333_4444)
+}
+
+var partialWordStoresBasicQuarterWord = []*tasm.SourceItem{
+	tasm.NewSourceItem("", ".SEG", []string{"13"}),
+	tasm.NewSourceItem("data1", "w", []string{"0444444444444"}),
+	tasm.NewSourceItem("data2", "w", []string{"0333333333333"}),
+	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
+	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
+	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
+	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
+	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
+	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
+	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
+	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
+	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
+
+	tasm.NewSourceItem("", ".SEG", []string{"12"}),
+	tasm.NewSourceItem("", "fjaxhibd", []string{fLA, jW, rA0, zero, zero, zero, "data1"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fLXI, jU, rX1, zero, "1"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fLXM, jU, rX1, zero, "0"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fLA, jW, rA0, zero, zero, zero, "data1"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jQ1, rA0, rX1, "1", zero, "data2"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jQ2, rA0, rX1, "1", zero, "data2"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jQ3, rA0, rX1, "1", zero, "data2"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jQ4, rA0, rX1, "1", zero, "data2"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jS1, rA0, rX1, "1", zero, "data2"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jS2, rA0, rX1, "1", zero, "data2"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jS3, rA0, rX1, "1", zero, "data2"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jS4, rA0, rX1, "1", zero, "data2"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jS5, rA0, rX1, "1", zero, "data2"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jS6, rA0, rX1, "1", zero, "data2"}),
+	IARSourceItem("", "0"),
+}
+
+func Test_PartialWordStores_BasicQuarterWord(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", partialWordStoresBasicQuarterWord)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkBankPerSegment(a.GetSegments(), false)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(true)
+		ute.GetEngine().GetDesignatorRegister().SetQuarterWordModeEnabled(true)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkStopped(t, engine)
+	dataBankAddr := e.GetBanks()[0601015].GetBankDescriptor().GetBaseAddress()
+	checkMemory(t, engine, dataBankAddr, 1, 0_444_333_333_333)
+	checkMemory(t, engine, dataBankAddr, 2, 0_333_444_333_333)
+	checkMemory(t, engine, dataBankAddr, 3, 0_333_333_444_333)
+	checkMemory(t, engine, dataBankAddr, 4, 0_333_333_333_444)
+	checkMemory(t, engine, dataBankAddr, 5, 0_443333_333333)
+	checkMemory(t, engine, dataBankAddr, 6, 0_334433_333333)
+	checkMemory(t, engine, dataBankAddr, 7, 0_333344_333333)
+	checkMemory(t, engine, dataBankAddr, 8, 0_333333_443333)
+	checkMemory(t, engine, dataBankAddr, 9, 0_333333_334433)
+	checkMemory(t, engine, dataBankAddr, 10, 0_333333_333344)
+}
+
+//	TODO basic mode GRS addressing
 
 //	TODO basic mode index register handling
 
@@ -374,6 +504,8 @@ func Test_PartialWordStores_ExtendedQuarterWord(t *testing.T) {
 	checkMemory(t, engine, dataBankAddr, 9, 0_333333_334433)
 	checkMemory(t, engine, dataBankAddr, 10, 0_333333_333344)
 }
+
+//	TODO extended mode GRS addressing
 
 //	TODO extended mode index register handling
 

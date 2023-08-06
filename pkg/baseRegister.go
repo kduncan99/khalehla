@@ -50,6 +50,13 @@ func (reg *BaseRegister) CheckAccessLimits(relativeAddress uint64, fetchFlag boo
 	}
 }
 
+// ConvertRelativeAddress converts a relative address to a new absolute address in the context of this base register
+func (reg *BaseRegister) ConvertRelativeAddress(relAddr uint64) *AbsoluteAddress {
+	actualOffset := relAddr - reg.lowerLimitNormalized
+	offset := reg.baseAddress.GetOffset() + actualOffset
+	return NewAbsoluteAddress(reg.baseAddress.GetSegment(), offset)
+}
+
 func (reg *BaseRegister) GetBaseAddress() *AbsoluteAddress {
 	return reg.baseAddress
 }

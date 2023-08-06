@@ -10,6 +10,9 @@ import (
 	"testing"
 )
 
+var fDL = "071"
+var fDLM = "071"
+var fDLN = "071"
 var fIAR = "073"
 var fLA = "010"
 var fLD = "073"
@@ -20,6 +23,9 @@ var fLXM = "026"
 var fSA = "001"
 var fSD = "073"
 
+var jDL = "013"
+var jDLM = "015"
+var jDLN = "014"
 var jIAR = "017"
 
 var aIAR = "006"
@@ -185,8 +191,8 @@ func checkMemory(t *testing.T, engine *InstructionEngine, addr *pkg.AbsoluteAddr
 }
 
 func checkRegister(t *testing.T, engine *InstructionEngine, register uint64, expected uint64, name string) {
-	result := engine.generalRegisterSet.GetRegister(register)
-	if result.GetW() != expected {
+	result := engine.generalRegisterSet.GetRegister(register).GetW()
+	if result != expected {
 		t.Fatalf("Register %s is %012o, expected %012o", name, result, expected)
 	}
 }

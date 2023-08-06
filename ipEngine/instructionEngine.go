@@ -15,7 +15,7 @@ type BreakpointComparison uint
 
 const (
 	BreakpointNone  BreakpointComparison = 0
-	BreakpointFetch BreakpointComparison = 1 << 0
+	BreakpointFetch BreakpointComparison = 1 << 0 //	TODO need to check for this, where appropriate
 	BreakpointRead  BreakpointComparison = 1 << 1
 	BreakpointWrite BreakpointComparison = 1 << 2
 )
@@ -242,6 +242,74 @@ func (e *InstructionEngine) GetBaseRegister(index uint64) *pkg.BaseRegister {
 	return e.baseRegisters[index]
 }
 
+// GetConsecutiveOperands retrieves one or more word values (for double- or multi-word transfer operations).
+// The assumption is that this call is made for a single iteration of an instruction.
+// Per doc 9.2, effective relative address (U) will be calculated only once; however, access checks must succeed
+// for all accesses.
+// We presume we are retrieving from TRS of from storage - i.e., NOT allowing immediate addressing.
+// Also, we presume that we are doing full-word transfers - not partial word.
+// grsCheck: if true, we should check U to see if it is a GRS location
+// count: number of consecutive words to be returned
+// forUpdate: if true, we perform access checks for read and for write; otherwise, only for read.
+// this is done for SYSC, which both reads and updates consecutive operands.
+// returns: true if completed with a slice of storage representing the words in question.
+// false and nil if not completed
+// false and nil and an interrupt to be posted by the caller if an interrupt was triggered
+func (e *InstructionEngine) GetConsecutiveOperands(
+	grsCheck bool,
+	count uint64,
+	forUpdate bool) (bool, []pkg.Word36, pkg.Interrupt) {
+
+	//  Get the relative address so we can do a grsCheck
+	relAddress := e.calculateRelativeAddressForGRSOrStorage()
+	e.incrementIndexRegisterInF0()
+
+	//  If this is a GRS reference - we do not need to look for containing banks or validate storage limits.
+	asp := e.activityStatePacket
+	dr := asp.GetDesignatorRegister()
+	if (grsCheck) &&
+		(dr.IsBasicModeEnabled() || (asp.GetCurrentInstruction().GetB() == 0)) &&
+		(relAddress < 0200) {
+
+		//  For multiple accesses, advancing beyond GRS 0177 wraps back to zero.
+		//  Do accessibility checks for each GRS access
+		grsIndex := relAddress
+		for ox := uint64(0); ox < count; ox++ {
+			if grsIndex == 0200 {
+				return false, nil, pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationGRS, false)
+			}
+
+			if !e.isGRSAccessAllowed(grsIndex, dr.GetProcessorPrivilege(), false) {
+				return false, nil, pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationReadAccess, false)
+			}
+
+			grsIndex++
+		}
+
+		return true, e.generalRegisterSet.GetConsecutiveRegisters(grsIndex, count), nil
+	}
+
+	//  Get base register and check storage and access limits
+	complete, brIndex, interrupt := e.findBaseRegisterIndex(relAddress, false)
+	if !complete {
+		return false, nil, nil
+	} else if interrupt != nil {
+		return false, nil, interrupt
+	}
+
+	bReg := e.baseRegisters[brIndex]
+	ikr := e.activityStatePacket.GetIndicatorKeyRegister()
+	i := e.checkAccessLimitsRange(bReg, relAddress, count, true, forUpdate, ikr.GetAccessKey())
+	if i != nil {
+		return false, nil, i
+	}
+
+	absAddr := bReg.ConvertRelativeAddress(relAddress)
+	e.checkBreakpointRange(BreakpointRead, absAddr, count) // TODO do something if we return true
+	slice, _ := e.mainStorage.GetSlice(absAddr.GetSegment(), absAddr.GetOffset(), count)
+	return true, slice, nil
+}
+
 func (e *InstructionEngine) GetCurrentInstruction() *pkg.InstructionWord {
 	return e.activityStatePacket.GetCurrentInstruction()
 }
@@ -305,7 +373,7 @@ func (e *InstructionEngine) GetGeneralRegisterSet() *GeneralRegisterSet {
 }
 
 // GetImmediateOperand retrieves an operand in the case where the u (and possibly h and i) fields
-// comprise the requested data ... e.g., for immediate operands.
+// comprise the requested data.  This is NOT for jump instructions, which have slightly different rules.
 // Load the value indicated in F0 as follows:
 //
 //	For Processor Privilege 0,1
@@ -443,7 +511,7 @@ func (e *InstructionEngine) GetOperand(
 	jField := uint(e.activityStatePacket.GetCurrentInstruction().GetJ())
 	if allowImmediate {
 		//  j-field is U or XU? If so, get the value from the instruction itself (immediate addressing)
-		if jField >= 016 {
+		if (jField == pkg.JFieldU) || (jField == pkg.JFieldXU) {
 			operand, interrupt = e.GetImmediateOperand()
 			complete = true
 			return
@@ -836,28 +904,50 @@ func (e *InstructionEngine) checkAccessLimitsForAddress(
 // If the check fails, we return an interrupt which the caller should post
 func (e *InstructionEngine) checkAccessLimitsRange(
 	bReg *pkg.BaseRegister,
-	relativeAddress uint,
-	addressCount uint,
+	relativeAddress uint64,
+	addressCount uint64,
 	readFlag bool,
 	writeFlag bool,
 	accessKey *pkg.AccessKey) pkg.Interrupt {
 
-	if (uint64(relativeAddress) < bReg.GetLowerLimitNormalized()) ||
-		(uint64(relativeAddress+addressCount-1) > bReg.GetUpperLimitNormalized()) {
+	if (relativeAddress < bReg.GetLowerLimitNormalized()) ||
+		((relativeAddress + addressCount - 1) > bReg.GetUpperLimitNormalized()) {
 		return pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationStorageLimits, false)
 	}
 
 	return e.checkAccessibility(bReg, false, readFlag, writeFlag, accessKey)
 }
 
-func (e *InstructionEngine) checkBreakpoint(comp BreakpointComparison, addr *pkg.AbsoluteAddress) {
+func (e *InstructionEngine) checkBreakpoint(comp BreakpointComparison, addr *pkg.AbsoluteAddress) bool {
 	//  TODO Per doc, 2.4.1.2 Breakpoint_Register - we need to halt if Halt Enable is set
 	//      which means Stop Right Now... how do we do that for all callers of this code?
 	if e.breakpointAddress.Equals(addr) {
-		if comp&e.breakpointRegister != 0 {
+		if (comp & e.breakpointRegister) != 0 {
 			e.activityStatePacket.GetIndicatorKeyRegister().SetBreakpointRegisterMatchCondition(true)
+			return true
 		}
 	}
+	return false
+}
+
+func (e *InstructionEngine) checkBreakpointRange(comp BreakpointComparison, addr *pkg.AbsoluteAddress, count uint64) bool {
+	//  TODO Per doc, 2.4.1.2 Breakpoint_Register - we need to halt if Halt Enable is set
+	//      which means Stop Right Now... how do we do that for all callers of this code?
+	if (e.breakpointAddress.GetSegment() == addr.GetSegment()) &&
+		(comp&e.breakpointRegister) != 0 {
+
+		bpktOffset := e.breakpointAddress.GetOffset()
+		addrOffset := addr.GetOffset()
+		for x := uint64(0); x < count; x++ {
+			if addrOffset == bpktOffset {
+				e.activityStatePacket.GetIndicatorKeyRegister().SetBreakpointRegisterMatchCondition(true)
+				return true
+			}
+			addrOffset++
+		}
+	}
+
+	return false
 }
 
 func (e *InstructionEngine) clearStorageLocks() {
@@ -950,49 +1040,49 @@ func (e *InstructionEngine) executeCurrentInstruction() {
 // from the given 36-bit source value.
 func (e *InstructionEngine) extractPartialWord(source uint64, partialWordIndicator uint, quarterWordMode bool) uint64 {
 	switch partialWordIndicator {
-	case pkg.JFIELD_W:
+	case pkg.JFieldW:
 		return pkg.GetW(source)
-	case pkg.JFIELD_H2:
+	case pkg.JFieldH2:
 		return pkg.GetH2(source)
-	case pkg.JFIELD_H1:
+	case pkg.JFieldH1:
 		return pkg.GetH1(source)
-	case pkg.JFIELD_XH2:
+	case pkg.JFieldXH2:
 		return pkg.GetXH2(source)
-	case pkg.JFIELD_XH1: // XH1 or Q2
+	case pkg.JFieldXH1: // XH1 or Q2
 		if quarterWordMode {
 			return pkg.GetQ2(source)
 		} else {
 			return pkg.GetXH1(source)
 		}
-	case pkg.JFIELD_T3: // T3 or Q4
+	case pkg.JFieldT3: // T3 or Q4
 		if quarterWordMode {
 			return pkg.GetQ4(source)
 		} else {
 			return pkg.GetXT3(source)
 		}
-	case pkg.JFIELD_T2: // T2 or Q3
+	case pkg.JFieldT2: // T2 or Q3
 		if quarterWordMode {
 			return pkg.GetQ3(source)
 		} else {
 			return pkg.GetXT2(source)
 		}
-	case pkg.JFIELD_T1: // T1 or Q1
+	case pkg.JFieldT1: // T1 or Q1
 		if quarterWordMode {
 			return pkg.GetQ1(source)
 		} else {
 			return pkg.GetXT1(source)
 		}
-	case pkg.JFIELD_S6:
+	case pkg.JFieldS6:
 		return pkg.GetS6(source)
-	case pkg.JFIELD_S5:
+	case pkg.JFieldS5:
 		return pkg.GetS5(source)
-	case pkg.JFIELD_S4:
+	case pkg.JFieldS4:
 		return pkg.GetS4(source)
-	case pkg.JFIELD_S3:
+	case pkg.JFieldS3:
 		return pkg.GetS3(source)
-	case pkg.JFIELD_S2:
+	case pkg.JFieldS2:
 		return pkg.GetS2(source)
-	case pkg.JFIELD_S1:
+	case pkg.JFieldS1:
 		return pkg.GetS1(source)
 	}
 
@@ -1178,49 +1268,49 @@ func (e *InstructionEngine) injectPartialWord(
 	quarterWordMode bool) uint64 {
 
 	switch jField {
-	case pkg.JFIELD_W:
+	case pkg.JFieldW:
 		return newValue
-	case pkg.JFIELD_H2:
+	case pkg.JFieldH2:
 		return pkg.SetH2(originalValue, newValue)
-	case pkg.JFIELD_XH2:
+	case pkg.JFieldXH2:
 		return pkg.SetH2(originalValue, newValue)
-	case pkg.JFIELD_H1:
+	case pkg.JFieldH1:
 		return pkg.SetH1(originalValue, newValue)
-	case pkg.JFIELD_XH1: // XH1 or Q2
+	case pkg.JFieldXH1: // XH1 or Q2
 		if quarterWordMode {
 			return pkg.SetQ2(originalValue, newValue)
 		} else {
 			return pkg.SetH1(originalValue, newValue)
 		}
-	case pkg.JFIELD_T3: // T3 or Q4
+	case pkg.JFieldT3: // T3 or Q4
 		if quarterWordMode {
 			return pkg.SetQ4(originalValue, newValue)
 		} else {
 			return pkg.SetT3(originalValue, newValue)
 		}
-	case pkg.JFIELD_T2: // T2 or Q3
+	case pkg.JFieldT2: // T2 or Q3
 		if quarterWordMode {
 			return pkg.SetQ3(originalValue, newValue)
 		} else {
 			return pkg.SetT2(originalValue, newValue)
 		}
-	case pkg.JFIELD_T1: // T1 or Q1
+	case pkg.JFieldT1: // T1 or Q1
 		if quarterWordMode {
 			return pkg.SetQ1(originalValue, newValue)
 		} else {
 			return pkg.SetT1(originalValue, newValue)
 		}
-	case pkg.JFIELD_S6:
+	case pkg.JFieldS6:
 		return pkg.SetS6(originalValue, newValue)
-	case pkg.JFIELD_S5:
+	case pkg.JFieldS5:
 		return pkg.SetS5(originalValue, newValue)
-	case pkg.JFIELD_S4:
+	case pkg.JFieldS4:
 		return pkg.SetS4(originalValue, newValue)
-	case pkg.JFIELD_S3:
+	case pkg.JFieldS3:
 		return pkg.SetS3(originalValue, newValue)
-	case pkg.JFIELD_S2:
+	case pkg.JFieldS2:
 		return pkg.SetS2(originalValue, newValue)
-	case pkg.JFIELD_S1:
+	case pkg.JFieldS1:
 		return pkg.SetS1(originalValue, newValue)
 	}
 

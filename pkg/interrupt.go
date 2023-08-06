@@ -10,76 +10,71 @@ type InterruptClass uint64
 type InterruptShortStatus uint64
 
 const (
-	HardwareDefaultInterruptClass InterruptClass = iota
-	HardwareCheckInterruptClass
-	DiagnosticInterruptClass
-	ReferenceViolationInterruptClass = iota + 5
-	AddressingExceptionInterruptClass
-	TerminalAddressingExceptionInterruptClass
-	RCSGenericStackUnderOverflowInterruptClass
-	SignalInterruptClass
-	TestAndSetInterruptClass
-	InvalidInstructionInterruptClass
-	PageExceptionInterruptClass
-	ArithmeticExceptionInterruptClass
-	DataExceptionInterruptClass
-	OperationTrapInterruptClass
-	BreakpointInterruptClass
-	QuantumTimerInterruptClass
-	PageZeroedInterruptClass = iota + 7
-	SoftwareBreakInterruptClass
-	JumpHistoryFullInterruptClass
-	DayClockInterruptClass = iota + 8
-	PerformanceMonitoringInterruptClass
-	IPLInterruptClass
-	UPIInitialInterruptClass
-	UPINormalInterruptClass
+	HardwareDefaultInterruptClass              InterruptClass = 0
+	HardwareCheckInterruptClass                InterruptClass = 1
+	ReferenceViolationInterruptClass           InterruptClass = 8
+	AddressingExceptionInterruptClass          InterruptClass = 9
+	TerminalAddressingExceptionInterruptClass  InterruptClass = 10
+	RCSGenericStackUnderOverflowInterruptClass InterruptClass = 11
+	SignalInterruptClass                       InterruptClass = 12
+	TestAndSetInterruptClass                   InterruptClass = 13
+	InvalidInstructionInterruptClass           InterruptClass = 14
+	ArithmeticExceptionInterruptClass          InterruptClass = 15
+	DataExceptionInterruptClass                InterruptClass = 17
+	OperationTrapInterruptClass                InterruptClass = 18
+	BreakpointInterruptClass                   InterruptClass = 19
+	QuantumTimerInterruptClass                 InterruptClass = 20
+	SoftwareBreakInterruptClass                InterruptClass = 24
+	JumpHistoryFullInterruptClass              InterruptClass = 25
+	DayClockInterruptClass                     InterruptClass = 27
+	IPLInterruptClass                          InterruptClass = 29
+	UPIInitialInterruptClass                   InterruptClass = 30
+	UPINormalInterruptClass                    InterruptClass = 31
 )
 
 const (
-	ReferenceViolationGRS           InterruptShortStatus = 00
-	ReferenceViolationStorageLimits                      = 01
-	ReferenceViolationReadAccess                         = 02
-	ReferenceViolationWriteAccess                        = 03
+	ReferenceViolationGRS           InterruptShortStatus = 0
+	ReferenceViolationStorageLimits InterruptShortStatus = 1
+	ReferenceViolationReadAccess    InterruptShortStatus = 2
+	ReferenceViolationWriteAccess   InterruptShortStatus = 3
 )
 
 const (
 	AddressingExceptionFatal                            InterruptShortStatus = 00
-	AddressingExceptionGateGBitSet                                           = 01
-	AddressingExceptionEnterAccessDenied                                     = 02
-	AddressingExceptionInvalidSourceLBDI                                     = 03
-	AddressingExceptionGateBankBoundaryViolation                             = 04
-	AddressingExceptionInvalidISValue                                        = 05
-	AddressingExceptionGOTOInhibit                                           = 06
-	AddressingExceptionGeneralQueuingViolation                               = 07
-	AddressingExceptionMaxCountEnq                                           = 010
-	AddressingExceptionIndirectGBitSet                                       = 011
-	AddressingExceptionInactiveQueuebDListEmpty                              = 013
-	AddressingExceptionUpdateInProgress                                      = 014
-	AddressingExceptionQueueBankRepositoryFull                               = 015
-	AddressingExceptionBDTypeInvalid                                         = 016
-	AddressingExceptionAccessDeniedPosternOrDataExpanse                      = 017
+	AddressingExceptionGateGBitSet                      InterruptShortStatus = 01
+	AddressingExceptionEnterAccessDenied                InterruptShortStatus = 02
+	AddressingExceptionInvalidSourceLBDI                InterruptShortStatus = 03
+	AddressingExceptionGateBankBoundaryViolation        InterruptShortStatus = 04
+	AddressingExceptionInvalidISValue                   InterruptShortStatus = 05
+	AddressingExceptionGOTOInhibit                      InterruptShortStatus = 06
+	AddressingExceptionGeneralQueuingViolation          InterruptShortStatus = 07
+	AddressingExceptionMaxCountEnq                      InterruptShortStatus = 010
+	AddressingExceptionIndirectGBitSet                  InterruptShortStatus = 011
+	AddressingExceptionInactiveQueuebDListEmpty         InterruptShortStatus = 013
+	AddressingExceptionUpdateInProgress                 InterruptShortStatus = 014
+	AddressingExceptionQueueBankRepositoryFull          InterruptShortStatus = 015
+	AddressingExceptionBDTypeInvalid                    InterruptShortStatus = 016
+	AddressingExceptionAccessDeniedPosternOrDataExpanse InterruptShortStatus = 017
 	//	There are others...
 )
 
 const (
 	RCSGenericStackOverflow  InterruptShortStatus = 00
-	RCSGenericStackUnderflow                      = 01
+	RCSGenericStackUnderflow InterruptShortStatus = 01
 )
 
 const (
 	InvalidInstructionBadFunctionCode  InterruptShortStatus = 00
-	InvalidInstructionX0Linkage                             = 00
-	InvalidInstructionLBUUsesB0OrB1                         = 00
-	InvalidInstructionLBUDUsesB0                            = 00
-	InvalidInstructionBadPP                                 = 01
-	InvalidInstructionEXRInvalidTarget                      = 03
+	InvalidInstructionX0Linkage        InterruptShortStatus = 00
+	InvalidInstructionLBUUsesB0OrB1    InterruptShortStatus = 00
+	InvalidInstructionLBUDUsesB0       InterruptShortStatus = 00
+	InvalidInstructionBadPP            InterruptShortStatus = 01
+	InvalidInstructionEXRInvalidTarget InterruptShortStatus = 03
 )
 
 var InterruptNames = map[InterruptClass]string{
 	HardwareDefaultInterruptClass:              "Hardware Default",
 	HardwareCheckInterruptClass:                "Hardware Check",
-	DiagnosticInterruptClass:                   "Diagnostic",
 	ReferenceViolationInterruptClass:           "Reference Violation",
 	AddressingExceptionInterruptClass:          "Addressing Exception",
 	TerminalAddressingExceptionInterruptClass:  "Terminal Addressing Exception",
@@ -87,17 +82,14 @@ var InterruptNames = map[InterruptClass]string{
 	SignalInterruptClass:                       "Signal",
 	TestAndSetInterruptClass:                   "Test And Set",
 	InvalidInstructionInterruptClass:           "Invalid Instruction",
-	PageExceptionInterruptClass:                "Page Exception",
 	ArithmeticExceptionInterruptClass:          "Arithmetic Exception",
 	DataExceptionInterruptClass:                "Data Exception",
 	OperationTrapInterruptClass:                "Operation Trap",
 	BreakpointInterruptClass:                   "Breakpoint",
 	QuantumTimerInterruptClass:                 "Quantum Timer",
-	PageZeroedInterruptClass:                   "Page Zeroed",
 	SoftwareBreakInterruptClass:                "Software Break",
 	JumpHistoryFullInterruptClass:              "Jump History Full",
 	DayClockInterruptClass:                     "DayClock",
-	PerformanceMonitoringInterruptClass:        "Performance Monitoring",
 	IPLInterruptClass:                          "IPL",
 	UPIInitialInterruptClass:                   "UPI Initial",
 	UPINormalInterruptClass:                    "UPI Normal",
@@ -150,8 +142,8 @@ func (i *ReferenceViolationInterrupt) IsDeferrable() bool {
 	return false
 }
 
-func NewReferenceViolationInterrupt(entryType uint, fetchOperation bool) *ReferenceViolationInterrupt {
-	ssf := InterruptShortStatus((entryType & 03) << 4)
+func NewReferenceViolationInterrupt(entryType InterruptShortStatus, fetchOperation bool) *ReferenceViolationInterrupt {
+	ssf := (entryType & 03) << 4
 	if fetchOperation {
 		ssf |= 01
 	}

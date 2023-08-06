@@ -157,6 +157,10 @@ func (grs *GeneralRegisterSet) GetRegister(regName uint64) *pkg.Word36 {
 	return &grs.registers[regName]
 }
 
+func (grs *GeneralRegisterSet) GetConsecutiveRegisters(firstRegName uint64, count uint64) []pkg.Word36 {
+	return grs.registers[firstRegName : firstRegName+count]
+}
+
 func (grs *GeneralRegisterSet) GetValueOfRegister(regName uint64) pkg.Word36 {
 	return grs.registers[regName]
 }

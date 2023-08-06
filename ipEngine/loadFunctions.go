@@ -4,14 +4,64 @@
 
 package ipEngine
 
-import "khalehla/pkg"
+import (
+	"khalehla/pkg"
+)
 
-//	TODO DoubleLoadAccumulator (DL)
-//	TODO DoubleLoadMagnitudeA (DLM)
-//	TODO DoubleLoadNegativeA (DLN)
+// DoubleLoadAccumulator (DL) loads the content of U and U+1, storing the values in Aa and Aa+1
+func DoubleLoadAccumulator(e *InstructionEngine) (bool, pkg.Interrupt) {
+	completed, operands, interrupt := e.GetConsecutiveOperands(true, 2, false)
+	if !completed || interrupt != nil {
+		return false, interrupt
+	}
+
+	ci := e.GetCurrentInstruction()
+	grsIndex := e.GetExecOrUserARegisterIndex(ci.GetA())
+	e.generalRegisterSet.SetRegisterValue(grsIndex, operands[0])
+	e.generalRegisterSet.SetRegisterValue(grsIndex+1, operands[1])
+
+	return true, nil
+}
+
+// DoubleLoadMagnitudeAccumulator (DL) loads the arithmetic magnitude of the content of U and U+1,
+// storing the values in Aa and Aa+1
+func DoubleLoadMagnitudeAccumulator(e *InstructionEngine) (bool, pkg.Interrupt) {
+	completed, operands, interrupt := e.GetConsecutiveOperands(true, 2, false)
+	if !completed || interrupt != nil {
+		return false, interrupt
+	}
+
+	ci := e.GetCurrentInstruction()
+	grsIndex := e.GetExecOrUserARegisterIndex(ci.GetA())
+	if operands[0].IsNegative() {
+		e.generalRegisterSet.SetRegisterValue(grsIndex, pkg.Word36(pkg.Not(operands[0].GetW())))
+		e.generalRegisterSet.SetRegisterValue(grsIndex+1, pkg.Word36(pkg.Not(operands[1].GetW())))
+	} else {
+		e.generalRegisterSet.SetRegisterValue(grsIndex, operands[0])
+		e.generalRegisterSet.SetRegisterValue(grsIndex+1, operands[1])
+	}
+
+	return true, nil
+}
+
+// DoubleLoadNegativeAccumulator (DL) loads the arithmetic negative of the content of U and U+1,
+// storing the values in Aa and Aa+1
+func DoubleLoadNegativeAccumulator(e *InstructionEngine) (bool, pkg.Interrupt) {
+	completed, operands, interrupt := e.GetConsecutiveOperands(true, 2, false)
+	if !completed || interrupt != nil {
+		return false, interrupt
+	}
+
+	ci := e.GetCurrentInstruction()
+	grsIndex := e.GetExecOrUserARegisterIndex(ci.GetA())
+	e.generalRegisterSet.SetRegisterValue(grsIndex, pkg.Word36(pkg.Not(operands[0].GetW())))
+	e.generalRegisterSet.SetRegisterValue(grsIndex+1, pkg.Word36(pkg.Not(operands[1].GetW())))
+
+	return true, nil
+}
 
 // LoadAccumulator (LA) loads the content of U under j-field control, and stores it in A(a)
-func LoadAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadAccumulator(e *InstructionEngine) (bool, pkg.Interrupt) {
 	completed, operand, interrupt := e.GetOperand(true, true, true, true)
 	if !completed || interrupt != nil {
 		return false, interrupt
@@ -25,7 +75,7 @@ func LoadAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interr
 //	TODO LoadAQuarterWord (LAQW)
 
 // LoadIndexRegister (LX) loads the content of U under j-field control, and stores it in X(a)
-func LoadIndexRegister(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadIndexRegister(e *InstructionEngine) (bool, pkg.Interrupt) {
 	completed, operand, interrupt := e.GetOperand(true, true, true, true)
 	if !completed || interrupt != nil {
 		return false, interrupt
@@ -37,7 +87,7 @@ func LoadIndexRegister(e *InstructionEngine) (completed bool, interrupt pkg.Inte
 }
 
 // LoadIndexRegisterModifier (LXM)
-func LoadIndexRegisterModifier(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadIndexRegisterModifier(e *InstructionEngine) (bool, pkg.Interrupt) {
 	completed, operand, interrupt := e.GetOperand(true, true, true, true)
 	if !completed || interrupt != nil {
 		return false, interrupt
@@ -49,7 +99,7 @@ func LoadIndexRegisterModifier(e *InstructionEngine) (completed bool, interrupt 
 }
 
 // LoadIndexRegisterLongModifier (LXLM)
-func LoadIndexRegisterLongModifier(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadIndexRegisterLongModifier(e *InstructionEngine) (bool, pkg.Interrupt) {
 	dr := e.activityStatePacket.GetDesignatorRegister()
 	if dr.IsBasicModeEnabled() && dr.GetProcessorPrivilege() > 0 {
 		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadPP)
@@ -66,7 +116,7 @@ func LoadIndexRegisterLongModifier(e *InstructionEngine) (completed bool, interr
 }
 
 // LoadIndexRegisterIncrement (LXI)
-func LoadIndexRegisterIncrement(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadIndexRegisterIncrement(e *InstructionEngine) (bool, pkg.Interrupt) {
 	completed, operand, interrupt := e.GetOperand(true, true, true, true)
 	if !completed || interrupt != nil {
 		return false, interrupt
@@ -78,7 +128,7 @@ func LoadIndexRegisterIncrement(e *InstructionEngine) (completed bool, interrupt
 }
 
 // LoadIndexRegisterShortIncrement (LXSI)
-func LoadIndexRegisterShortIncrement(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadIndexRegisterShortIncrement(e *InstructionEngine) (bool, pkg.Interrupt) {
 	completed, operand, interrupt := e.GetOperand(true, true, true, true)
 	if !completed || interrupt != nil {
 		return false, interrupt
@@ -90,7 +140,7 @@ func LoadIndexRegisterShortIncrement(e *InstructionEngine) (completed bool, inte
 }
 
 // LoadMagnitudeAccumulator (LMA)
-func LoadMagnitudeAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadMagnitudeAccumulator(e *InstructionEngine) (bool, pkg.Interrupt) {
 	completed, operand, interrupt := e.GetOperand(true, true, true, true)
 	if !completed || interrupt != nil {
 		return false, interrupt
@@ -105,7 +155,7 @@ func LoadMagnitudeAccumulator(e *InstructionEngine) (completed bool, interrupt p
 }
 
 // LoadNegativeAccumulator (LNA)
-func LoadNegativeAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadNegativeAccumulator(e *InstructionEngine) (bool, pkg.Interrupt) {
 	completed, operand, interrupt := e.GetOperand(true, true, true, true)
 	if !completed || interrupt != nil {
 		return false, interrupt
@@ -118,7 +168,7 @@ func LoadNegativeAccumulator(e *InstructionEngine) (completed bool, interrupt pk
 }
 
 // LoadNegativeMagnitudeAccumulator (LNMA)
-func LoadNegativeMagnitudeAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadNegativeMagnitudeAccumulator(e *InstructionEngine) (bool, pkg.Interrupt) {
 	completed, operand, interrupt := e.GetOperand(true, true, true, true)
 	if !completed || interrupt != nil {
 		return false, interrupt
@@ -133,7 +183,7 @@ func LoadNegativeMagnitudeAccumulator(e *InstructionEngine) (completed bool, int
 }
 
 // LoadRegister (LR) loads the content of U under j-field control, and stores it in R(a)
-func LoadRegister(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadRegister(e *InstructionEngine) (bool, pkg.Interrupt) {
 	completed, operand, interrupt := e.GetOperand(true, true, true, true)
 	if !completed || interrupt != nil {
 		return false, interrupt

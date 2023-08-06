@@ -103,23 +103,27 @@ func (i *Instruction) Interpret(iw *pkg.InstructionWord, basicMode bool, quarter
 	}
 
 	if basicMode {
-		if iw.GetI() > 0 {
-			str += "*"
+		if (iw.GetJ() == pkg.JFieldU) || (iw.GetJ() == pkg.JFieldXU) {
+			str += fmt.Sprintf("0%o", iw.GetHIU())
+		} else {
+			if iw.GetI() > 0 {
+				str += "*"
+			}
+			str += fmt.Sprintf("0%o", iw.GetU())
 		}
-		str += fmt.Sprintf("0%o", iw.GetU())
 	} else {
 		str += fmt.Sprintf("0%o", iw.GetD())
 	}
 
 	str += ","
 	if iw.GetX() > 0 {
-		if iw.GetH() > 0 {
+		if (iw.GetH() > 0) && (iw.GetJ() != pkg.JFieldU) && (iw.GetJ() != pkg.JFieldXU) {
 			str += "*"
 		}
 		str += fmt.Sprintf("X%d", iw.GetX())
 	}
 
-	if !basicMode {
+	if !basicMode { // TODO should not do this for certain extended mode instructions (e.g. jumps)
 		str += fmt.Sprintf(",B%d", iw.GetB())
 	}
 
