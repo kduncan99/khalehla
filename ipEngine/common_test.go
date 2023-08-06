@@ -10,12 +10,18 @@ import (
 	"testing"
 )
 
+// f, j, and a fields for the various instructions
 var fDL = "071"
 var fDLM = "071"
 var fDLN = "071"
+var fJ = "074"
+var fHLTJ = "074"
 var fIAR = "073"
 var fLA = "010"
 var fLD = "073"
+var fLMA = "012"
+var fLNA = "011"
+var fLNMA = "013"
 var fLR = "023"
 var fLX = "027"
 var fLXI = "046"
@@ -26,10 +32,17 @@ var fSD = "073"
 var jDL = "013"
 var jDLM = "015"
 var jDLN = "014"
+var jHLTJ = "015"
 var jIAR = "017"
+var jJBasic = "04"
+var jJExtended = "015"
 
+var aHLTJ = "05"
 var aIAR = "006"
+var aJBasic = "0"
+var aJExtended = "04"
 
+// partial word designators for j-field specification
 var jH1 = "002"
 var jH2 = "001"
 var jQ1 = "007"
@@ -51,6 +64,7 @@ var jXH2 = "003"
 var jXH1 = "004"
 var jXU = "017"
 
+// various register values for the a-field and b-field
 var rA0 = "0"
 var rA1 = "1"
 var rA2 = "2"
@@ -136,6 +150,7 @@ var grsx13 = "015"
 var grsx14 = "016"
 var grsx15 = "017"
 
+// GRS locations for registers
 var grsa0 = "014"
 var grsa1 = "015"
 var grsa2 = "016"
@@ -169,8 +184,16 @@ var grsr13 = "0115"
 var grsr14 = "0116"
 var grsr15 = "0117"
 
-func IARSourceItem(label string, uField string) *tasm.SourceItem {
+// iarSourceItem creates an instruction to perform an IAR - this is the preferred way to end a unit test
+func iarSourceItem(label string, uField string) *tasm.SourceItem {
 	return tasm.NewSourceItem(label, "fjaxu", []string{fIAR, jIAR, aIAR, zero, uField})
+}
+
+func checkProgramAddress(t *testing.T, engine *InstructionEngine, expectedAddress uint64) {
+	actual := engine.GetProgramAddressRegister().GetProgramCounter()
+	if actual != expectedAddress {
+		t.Fatalf("Error:Expected PAR.PC is %06o but we expected it to be %06o", actual, expectedAddress)
+	}
 }
 
 func checkMemory(t *testing.T, engine *InstructionEngine, addr *pkg.AbsoluteAddress, offset uint64, expected uint64) {

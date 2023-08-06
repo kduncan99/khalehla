@@ -593,6 +593,10 @@ func (e *InstructionEngine) GetProgramAddressRegister() *pkg.ProgramAddressRegis
 	return e.activityStatePacket.GetProgramAddressRegister()
 }
 
+func (e *InstructionEngine) GetStopReason() (StopReason, uint64) {
+	return e.stopReason, e.stopDetail.GetW()
+}
+
 func (e *InstructionEngine) HasPendingInterrupt() bool {
 	return e.pendingInterrupt != nil
 }

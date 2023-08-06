@@ -8,7 +8,7 @@ import (
 	"khalehla/pkg"
 )
 
-//	TODO DoubleStoreAccumulator (DSA)
+// TODO DoubleStoreAccumulator (DSA)
 
 // StoreAccumulator (SA) stores the value of A(a) in the location indicated by U under j-field control
 func StoreAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
@@ -27,7 +27,7 @@ func StoreASCIIZeroes(e *InstructionEngine) (completed bool, interrupt pkg.Inter
 	return e.StoreOperand(true, true, true, true, 0_060060_060060)
 }
 
-//	TODO StoreAQuarterWord (SAQW)
+// TODO StoreAQuarterWord (SAQW)
 
 // StoreFieldataSpaces (SFS) stores consecutive fieldata spaces in the location indicate by U under j-field control
 func StoreFieldataSpaces(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
@@ -46,8 +46,8 @@ func StoreIndexRegister(e *InstructionEngine) (completed bool, interrupt pkg.Int
 	return e.StoreOperand(true, true, true, true, value)
 }
 
-//	TODO StoreMagnitudeA (SMA)
-//	TODO StoreNegativeA (SNA)
+// TODO StoreMagnitudeA (SMA)
+// TODO StoreNegativeA (SNA)
 
 // StoreNegativeOne (SN1) stores a negative one in the location indicate by U under j-field control
 func StoreNegativeOne(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
@@ -71,7 +71,7 @@ func StoreRegister(e *InstructionEngine) (completed bool, interrupt pkg.Interrup
 	return e.StoreOperand(true, true, true, true, value)
 }
 
-//	TODO StoreRegisterSet (SRS)
+// TODO StoreRegisterSet (SRS)
 
 // StoreZero (SZ) stores a positive zero in the location indicate by U under j-field control
 func StoreZero(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
