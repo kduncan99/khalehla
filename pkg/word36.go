@@ -257,6 +257,14 @@ func IsNegative(value uint64) bool {
 	return (value & 0_400000_000000) != 0
 }
 
+func (w *Word36) IsPositive() bool {
+	return ((*w) & 0_400000_000000) == 0
+}
+
+func IsPositive(value uint64) bool {
+	return (value & 0_400000_000000) == 0
+}
+
 func (w *Word36) IsZero() bool {
 	return (*w == PositiveZero) || (*w == NegativeZero)
 }
@@ -403,6 +411,30 @@ func (w *Word36) SetT3(op uint64) *Word36 {
 
 func SetT3(orig uint64, new uint64) uint64 {
 	return (orig & 0_777777_770000) | (new & 0_7777)
+}
+
+func (w *Word36) ShiftLeftCircular(count uint64) {
+	*w = Word36(ShiftLeftCircular(uint64(*w), count))
+}
+
+func ShiftLeftCircular(orig uint64, count uint64) uint64 {
+	mod := count % 36
+	result := orig
+	if mod >= 18 {
+		result <<= 18
+		mod -= 18
+		result = (result & 0_777777_000000) | ((result & 0_777777_000000_000000) >> 36)
+	}
+
+	for mod > 0 {
+		result <<= 1
+		if result&01_000000_000000 > 0 {
+			result |= 01
+		}
+		mod -= 1
+	}
+
+	return result & NegativeZero
 }
 
 func (w *Word36) ToStringAsAscii() string {
