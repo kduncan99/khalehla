@@ -207,6 +207,11 @@ func (dr *DesignatorRegister) SetBasicModeEnabled(value bool) *DesignatorRegiste
 	return dr
 }
 
+func (dr *DesignatorRegister) SetCarry(value bool) *DesignatorRegister {
+	dr.carry = value
+	return dr
+}
+
 func (dr *DesignatorRegister) SetComposite(value uint64) *DesignatorRegister {
 	dr.activityLevelQueueMonitorEnabled = boolTable[value&01]
 	dr.faultHandlingInProgress = boolTable[(value>>6)&01]
@@ -233,8 +238,23 @@ func (dr *DesignatorRegister) SetComposite(value uint64) *DesignatorRegister {
 	return dr
 }
 
+func (dr *DesignatorRegister) SetCharacteristicOverflow(value bool) *DesignatorRegister {
+	dr.characteristicOverflow = value
+	return dr
+}
+
+func (dr *DesignatorRegister) SetCharacteristicUnderflow(value bool) *DesignatorRegister {
+	dr.characteristicUnderflow = value
+	return dr
+}
+
 func (dr *DesignatorRegister) SetDeferrableInterruptEnabled(value bool) *DesignatorRegister {
 	dr.deferrableInterruptEnabled = value
+	return dr
+}
+
+func (dr *DesignatorRegister) SetDivideCheck(value bool) *DesignatorRegister {
+	dr.divideCheck = value
 	return dr
 }
 
@@ -266,6 +286,11 @@ func (dr *DesignatorRegister) SetQuarterWordModeEnabled(value bool) *DesignatorR
 
 func (dr *DesignatorRegister) SetOperationTrapEnabled(value bool) *DesignatorRegister {
 	dr.operationTrapEnabled = value
+	return dr
+}
+
+func (dr *DesignatorRegister) SetOverflow(value bool) *DesignatorRegister {
+	dr.overflow = value
 	return dr
 }
 

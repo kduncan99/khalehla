@@ -71,17 +71,48 @@ var basicModeFunction7317Table = map[uint]func(engine *InstructionEngine) (compl
 // Basic Mode, F=074, table is indexed by the j field
 var basicModeFunction74Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
 	004: basicModeFunction7404Handler,
+	005: HaltKeysAndJump,
 	006: NoOperation,
+	014: basicModeFunction7414Handler,
 	015: basicModeFunction7415Handler,
+	016: JumpCarry,
+	017: JumpNoCarry,
 }
 
 // Basic Mode, F=074 J=04, table is indexed by the a field
 var basicModeFunction7404Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
 	000: Jump,
+	001: JumpKeys,
+	002: JumpKeys,
+	003: JumpKeys,
+	004: JumpKeys,
+	005: JumpKeys,
+	006: JumpKeys,
+	007: JumpKeys,
+	010: JumpKeys,
+	011: JumpKeys,
+	012: JumpKeys,
+	013: JumpKeys,
+	014: JumpKeys,
+	015: JumpKeys,
+	016: JumpKeys,
+	017: JumpKeys,
+}
+
+// Basic Mode, F=074 J=14, table is indexed by the a field
+var basicModeFunction7414Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
+	000: JumpOverflow,
+	001: JumpFloatingUnderflow,
+	002: JumpFloatingOverflow,
+	003: JumpDivideFault,
 }
 
 // Basic Mode, F=074 J=15, table is indexed by the a field
 var basicModeFunction7415Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
+	000: JumpNoOverflow,
+	001: JumpNoFloatingUnderflow,
+	002: JumpNoFloatingOverflow,
+	003: JumpNoDivideFault,
 	005: HaltJump,
 }
 
@@ -134,11 +165,26 @@ var extendedModeFunction7317Table = map[uint]func(engine *InstructionEngine) (co
 
 // Extended Mode, F=074, table is indexed by the j field
 var extendedModeFunction74Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
+	014: extendedModeFunction7414Handler,
 	015: extendedModeFunction7415Handler,
+}
+
+// Extended Mode, F=074 J=014, table is indexed by the a field
+var extendedModeFunction7414Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
+	000: JumpOverflow,
+	001: JumpFloatingUnderflow,
+	002: JumpFloatingOverflow,
+	003: JumpDivideFault,
+	004: JumpCarry,
+	005: JumpNoCarry,
 }
 
 // Extended Mode, F=074 J=015, table is indexed by the a field
 var extendedModeFunction7415Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
+	000: JumpNoOverflow,
+	001: JumpNoFloatingUnderflow,
+	002: JumpNoFloatingOverflow,
+	003: JumpNoDivideFault,
 	004: Jump,
 	005: HaltJump,
 }
@@ -207,6 +253,15 @@ func basicModeFunction74Handler(e *InstructionEngine) (completed bool, interrupt
 func basicModeFunction7404Handler(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	ci := e.GetCurrentInstruction()
 	if inst, found := basicModeFunction7404Table[uint(ci.GetA())]; found {
+		return inst(e)
+	} else {
+		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode)
+	}
+}
+
+func basicModeFunction7414Handler(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+	ci := e.GetCurrentInstruction()
+	if inst, found := basicModeFunction7414Table[uint(ci.GetA())]; found {
 		return inst(e)
 	} else {
 		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode)
@@ -309,6 +364,15 @@ func extendedModeFunction7317Handler(e *InstructionEngine) (completed bool, inte
 func extendedModeFunction74Handler(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	ci := e.GetCurrentInstruction()
 	if inst, found := extendedModeFunction74Table[uint(ci.GetJ())]; found {
+		return inst(e)
+	} else {
+		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode)
+	}
+}
+
+func extendedModeFunction7414Handler(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+	ci := e.GetCurrentInstruction()
+	if inst, found := extendedModeFunction7414Table[uint(ci.GetA())]; found {
 		return inst(e)
 	} else {
 		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode)

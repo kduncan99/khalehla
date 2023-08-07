@@ -26,6 +26,7 @@ const (
 const (
 	PartialWordDesignator JFieldUsage = iota
 	JFunctionDiscriminator
+	JUnused
 )
 
 const (
@@ -82,7 +83,6 @@ func (ft *FunctionTable) IsInstruction() bool {
 
 type Instruction struct {
 	mnemonic string
-	mode     Mode
 	aField   AFieldUsage
 	jField   JFieldUsage
 }
@@ -99,7 +99,7 @@ func (i *Instruction) Interpret(iw *pkg.InstructionWord, basicMode bool, quarter
 	}
 	str = fmt.Sprintf("%-10s", str)
 
-	if i.aField != AFunctionDiscriminator {
+	if i.aField != AFunctionDiscriminator && i.aField != AUnused {
 		str += fmt.Sprintf("%s%d", aFieldPrefix[i.aField], iw.GetA()) + ","
 	}
 
@@ -140,21 +140,21 @@ func (i *Instruction) IsInstruction() bool {
 var BasicFunctionTable = FunctionTable{
 	indexBy: IndexByF,
 	table: map[int]Interpreter{
-		001: &Instruction{mnemonic: "SA", aField: ARegister, mode: BOTH},
-		002: &Instruction{mnemonic: "SNA", aField: ARegister, mode: BOTH},
-		003: &Instruction{mnemonic: "SMA", aField: ARegister, mode: BOTH},
-		004: &Instruction{mnemonic: "SR", aField: RRegister, mode: BOTH},
+		001: &Instruction{mnemonic: "SA", aField: ARegister},
+		002: &Instruction{mnemonic: "SNA", aField: ARegister},
+		003: &Instruction{mnemonic: "SMA", aField: ARegister},
+		004: &Instruction{mnemonic: "SR", aField: RRegister},
 		005: &function005InterpreterBasic,
-		006: &Instruction{mnemonic: "SX", aField: XRegister, mode: BOTH},
+		006: &Instruction{mnemonic: "SX", aField: XRegister},
 		007: &function007InterpreterBasic,
-		010: &Instruction{mnemonic: "LA", aField: ARegister, mode: BOTH},
-		011: &Instruction{mnemonic: "LNA", aField: ARegister, mode: BOTH},
-		012: &Instruction{mnemonic: "LMA", aField: ARegister, mode: BOTH},
-		013: &Instruction{mnemonic: "LNMA", aField: ARegister, mode: BOTH},
-		023: &Instruction{mnemonic: "LR", aField: RRegister, mode: BOTH},
-		026: &Instruction{mnemonic: "LXM", aField: XRegister, mode: BOTH},
-		027: &Instruction{mnemonic: "LX", aField: XRegister, mode: BOTH},
-		046: &Instruction{mnemonic: "LXI", aField: XRegister, mode: BOTH},
+		010: &Instruction{mnemonic: "LA", aField: ARegister},
+		011: &Instruction{mnemonic: "LNA", aField: ARegister},
+		012: &Instruction{mnemonic: "LMA", aField: ARegister},
+		013: &Instruction{mnemonic: "LNMA", aField: ARegister},
+		023: &Instruction{mnemonic: "LR", aField: RRegister},
+		026: &Instruction{mnemonic: "LXM", aField: XRegister},
+		027: &Instruction{mnemonic: "LX", aField: XRegister},
+		046: &Instruction{mnemonic: "LXI", aField: XRegister},
 		071: &function071InterpreterBasic,
 		072: &function072InterpreterBasic,
 		073: &function073InterpreterBasic,
@@ -166,40 +166,40 @@ var BasicFunctionTable = FunctionTable{
 var function005InterpreterBasic = FunctionTable{
 	indexBy: IndexByA,
 	table: map[int]Interpreter{
-		000: &Instruction{mnemonic: "SZ", aField: AFunctionDiscriminator, mode: BOTH},
-		001: &Instruction{mnemonic: "SNZ", aField: AFunctionDiscriminator, mode: BOTH},
-		002: &Instruction{mnemonic: "SP1", aField: AFunctionDiscriminator, mode: BOTH},
-		003: &Instruction{mnemonic: "SN1", aField: AFunctionDiscriminator, mode: BOTH},
-		004: &Instruction{mnemonic: "SFS", aField: AFunctionDiscriminator, mode: BOTH},
-		005: &Instruction{mnemonic: "SFZ", aField: AFunctionDiscriminator, mode: BOTH},
-		006: &Instruction{mnemonic: "SAS", aField: AFunctionDiscriminator, mode: BOTH},
-		007: &Instruction{mnemonic: "SAZ", aField: AFunctionDiscriminator, mode: BOTH},
+		000: &Instruction{mnemonic: "SZ", aField: AFunctionDiscriminator},
+		001: &Instruction{mnemonic: "SNZ", aField: AFunctionDiscriminator},
+		002: &Instruction{mnemonic: "SP1", aField: AFunctionDiscriminator},
+		003: &Instruction{mnemonic: "SN1", aField: AFunctionDiscriminator},
+		004: &Instruction{mnemonic: "SFS", aField: AFunctionDiscriminator},
+		005: &Instruction{mnemonic: "SFZ", aField: AFunctionDiscriminator},
+		006: &Instruction{mnemonic: "SAS", aField: AFunctionDiscriminator},
+		007: &Instruction{mnemonic: "SAZ", aField: AFunctionDiscriminator},
 	},
 }
 
 var function007InterpreterBasic = FunctionTable{
 	indexBy: IndexByJ,
 	table: map[int]Interpreter{
-		004: &Instruction{mnemonic: "LAQW", aField: ARegister, jField: JFunctionDiscriminator, mode: BOTH},
-		005: &Instruction{mnemonic: "SAQW", aField: ARegister, jField: JFunctionDiscriminator, mode: BOTH},
+		004: &Instruction{mnemonic: "LAQW", aField: ARegister, jField: JFunctionDiscriminator},
+		005: &Instruction{mnemonic: "SAQW", aField: ARegister, jField: JFunctionDiscriminator},
 	},
 }
 
 var function071InterpreterBasic = FunctionTable{
 	indexBy: IndexByJ,
 	table: map[int]Interpreter{
-		012: &Instruction{mnemonic: "DS", aField: ARegister, jField: JFunctionDiscriminator, mode: BOTH},
-		013: &Instruction{mnemonic: "DL", aField: ARegister, jField: JFunctionDiscriminator, mode: BOTH},
-		014: &Instruction{mnemonic: "DLN", aField: ARegister, jField: JFunctionDiscriminator, mode: BOTH},
-		015: &Instruction{mnemonic: "DLM", aField: ARegister, jField: JFunctionDiscriminator, mode: BOTH},
+		012: &Instruction{mnemonic: "DS", aField: ARegister, jField: JFunctionDiscriminator},
+		013: &Instruction{mnemonic: "DL", aField: ARegister, jField: JFunctionDiscriminator},
+		014: &Instruction{mnemonic: "DLN", aField: ARegister, jField: JFunctionDiscriminator},
+		015: &Instruction{mnemonic: "DLM", aField: ARegister, jField: JFunctionDiscriminator},
 	},
 }
 
 var function072InterpreterBasic = FunctionTable{
 	indexBy: IndexByJ,
 	table: map[int]Interpreter{
-		016: &Instruction{mnemonic: "SRS", aField: ARegister, jField: JFunctionDiscriminator, mode: BOTH},
-		017: &Instruction{mnemonic: "LRS", aField: ARegister, jField: JFunctionDiscriminator, mode: BOTH},
+		016: &Instruction{mnemonic: "SRS", aField: ARegister, jField: JFunctionDiscriminator},
+		017: &Instruction{mnemonic: "LRS", aField: ARegister, jField: JFunctionDiscriminator},
 	},
 }
 
@@ -214,15 +214,15 @@ var function073InterpreterBasic = FunctionTable{
 var function07315InterpreterBasic = FunctionTable{
 	indexBy: IndexByA,
 	table: map[int]Interpreter{
-		014: &Instruction{mnemonic: "LD", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, mode: BOTH},
-		015: &Instruction{mnemonic: "SD", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, mode: BOTH},
+		014: &Instruction{mnemonic: "LD", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		015: &Instruction{mnemonic: "SD", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
 	},
 }
 
 var function07317InterpreterBasic = FunctionTable{
 	indexBy: IndexByA,
 	table: map[int]Interpreter{
-		006: &Instruction{mnemonic: "IAR", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, mode: BOTH},
+		006: &Instruction{mnemonic: "IAR", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
 	},
 }
 
@@ -230,29 +230,62 @@ var function074InterpreterBasic = FunctionTable{
 	indexBy: IndexByJ,
 	table: map[int]Interpreter{
 		004: &function07404InterpreterBasic,
-		006: &Instruction{mnemonic: "NOP", aField: AUnused, jField: JFunctionDiscriminator, mode: BASIC},
+		005: &Instruction{mnemonic: "HKJ", aField: AUnused, jField: JFunctionDiscriminator},
+		006: &Instruction{mnemonic: "NOP", aField: AUnused, jField: JFunctionDiscriminator},
+		014: &function07414InterpreterBasic,
 		015: &function07415InterpreterBasic,
+		016: &Instruction{mnemonic: "JC", aField: AFunctionDiscriminator, jField: JUnused},
+		017: &Instruction{mnemonic: "JNC", aField: AFunctionDiscriminator, jField: JUnused},
 	},
 }
 
 var function07404InterpreterBasic = FunctionTable{
 	indexBy: IndexByA,
 	table: map[int]Interpreter{
-		000: &Instruction{mnemonic: "J", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, mode: BASIC},
+		000: &Instruction{mnemonic: "J", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		001: &Instruction{mnemonic: "JK01", aField: AFunctionDiscriminator, jField: JUnused},
+		002: &Instruction{mnemonic: "JK02", aField: AFunctionDiscriminator, jField: JUnused},
+		003: &Instruction{mnemonic: "JK03", aField: AFunctionDiscriminator, jField: JUnused},
+		004: &Instruction{mnemonic: "JK04", aField: AFunctionDiscriminator, jField: JUnused},
+		005: &Instruction{mnemonic: "JK05", aField: AFunctionDiscriminator, jField: JUnused},
+		006: &Instruction{mnemonic: "JK06", aField: AFunctionDiscriminator, jField: JUnused},
+		007: &Instruction{mnemonic: "JK07", aField: AFunctionDiscriminator, jField: JUnused},
+		010: &Instruction{mnemonic: "JK10", aField: AFunctionDiscriminator, jField: JUnused},
+		011: &Instruction{mnemonic: "JK11", aField: AFunctionDiscriminator, jField: JUnused},
+		012: &Instruction{mnemonic: "JK12", aField: AFunctionDiscriminator, jField: JUnused},
+		013: &Instruction{mnemonic: "JK13", aField: AFunctionDiscriminator, jField: JUnused},
+		014: &Instruction{mnemonic: "JK14", aField: AFunctionDiscriminator, jField: JUnused},
+		015: &Instruction{mnemonic: "JK15", aField: AFunctionDiscriminator, jField: JUnused},
+		016: &Instruction{mnemonic: "JK16", aField: AFunctionDiscriminator, jField: JUnused},
+		017: &Instruction{mnemonic: "JK17", aField: AFunctionDiscriminator, jField: JUnused},
+	},
+}
+
+var function07414InterpreterBasic = FunctionTable{
+	indexBy: IndexByA,
+	table: map[int]Interpreter{
+		000: &Instruction{mnemonic: "JO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		001: &Instruction{mnemonic: "JFU", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		002: &Instruction{mnemonic: "JFO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		003: &Instruction{mnemonic: "JDF", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
 	},
 }
 
 var function07415InterpreterBasic = FunctionTable{
 	indexBy: IndexByA,
 	table: map[int]Interpreter{
-		005: &Instruction{mnemonic: "HLTJ", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, mode: BOTH},
+		000: &Instruction{mnemonic: "JNO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		001: &Instruction{mnemonic: "JNFU", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		002: &Instruction{mnemonic: "JNFO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		003: &Instruction{mnemonic: "JNDF", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		005: &Instruction{mnemonic: "HLTJ", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
 	},
 }
 
 var function075InterpreterBasic = FunctionTable{
 	indexBy: IndexByJ,
 	table: map[int]Interpreter{
-		013: &Instruction{mnemonic: "LXLM", aField: XRegister, jField: JFunctionDiscriminator, mode: BOTH},
+		013: &Instruction{mnemonic: "LXLM", aField: XRegister, jField: JFunctionDiscriminator},
 	},
 }
 
@@ -261,24 +294,24 @@ var function075InterpreterBasic = FunctionTable{
 var ExtendedFunctionTable = FunctionTable{
 	indexBy: IndexByF,
 	table: map[int]Interpreter{
-		001: &Instruction{mnemonic: "SA", aField: ARegister, mode: BOTH},
-		002: &Instruction{mnemonic: "SNA", aField: ARegister, mode: BOTH},
-		003: &Instruction{mnemonic: "SMA", aField: ARegister, mode: BOTH},
-		004: &Instruction{mnemonic: "SR", aField: RRegister, mode: BOTH},
+		001: &Instruction{mnemonic: "SA", aField: ARegister},
+		002: &Instruction{mnemonic: "SNA", aField: ARegister},
+		003: &Instruction{mnemonic: "SMA", aField: ARegister},
+		004: &Instruction{mnemonic: "SR", aField: RRegister},
 		005: &function005InterpreterExtended,
-		006: &Instruction{mnemonic: "SX", aField: XRegister, mode: BOTH},
+		006: &Instruction{mnemonic: "SX", aField: XRegister},
 		007: &function007InterpreterExtended,
-		010: &Instruction{mnemonic: "LA", aField: ARegister, mode: BOTH},
-		011: &Instruction{mnemonic: "LNA", aField: ARegister, mode: BOTH},
-		012: &Instruction{mnemonic: "LMA", aField: ARegister, mode: BOTH},
-		013: &Instruction{mnemonic: "LNMA", aField: ARegister, mode: BOTH},
-		023: &Instruction{mnemonic: "LR", aField: RRegister, mode: BOTH},
-		026: &Instruction{mnemonic: "LXM", aField: XRegister, mode: BOTH},
-		027: &Instruction{mnemonic: "LX", aField: XRegister, mode: BOTH},
-		046: &Instruction{mnemonic: "LXI", aField: XRegister, mode: BOTH},
-		051: &Instruction{mnemonic: "LXSI", aField: XRegister, mode: EXTENDED},
-		060: &Instruction{mnemonic: "LSBO", aField: XRegister, mode: EXTENDED},
-		061: &Instruction{mnemonic: "LSBL", aField: XRegister, mode: EXTENDED},
+		010: &Instruction{mnemonic: "LA", aField: ARegister},
+		011: &Instruction{mnemonic: "LNA", aField: ARegister},
+		012: &Instruction{mnemonic: "LMA", aField: ARegister},
+		013: &Instruction{mnemonic: "LNMA", aField: ARegister},
+		023: &Instruction{mnemonic: "LR", aField: RRegister},
+		026: &Instruction{mnemonic: "LXM", aField: XRegister},
+		027: &Instruction{mnemonic: "LX", aField: XRegister},
+		046: &Instruction{mnemonic: "LXI", aField: XRegister},
+		051: &Instruction{mnemonic: "LXSI", aField: XRegister},
+		060: &Instruction{mnemonic: "LSBO", aField: XRegister},
+		061: &Instruction{mnemonic: "LSBL", aField: XRegister},
 		071: &function071InterpreterExtended,
 		072: &function072InterpreterExtended,
 		073: &function073InterpreterExtended,
@@ -290,40 +323,40 @@ var ExtendedFunctionTable = FunctionTable{
 var function005InterpreterExtended = FunctionTable{
 	indexBy: IndexByA,
 	table: map[int]Interpreter{
-		000: &Instruction{mnemonic: "SZ", aField: AFunctionDiscriminator, mode: BOTH},
-		001: &Instruction{mnemonic: "SNZ", aField: AFunctionDiscriminator, mode: BOTH},
-		002: &Instruction{mnemonic: "SP1", aField: AFunctionDiscriminator, mode: BOTH},
-		003: &Instruction{mnemonic: "SN1", aField: AFunctionDiscriminator, mode: BOTH},
-		004: &Instruction{mnemonic: "SFS", aField: AFunctionDiscriminator, mode: BOTH},
-		005: &Instruction{mnemonic: "SFZ", aField: AFunctionDiscriminator, mode: BOTH},
-		006: &Instruction{mnemonic: "SAS", aField: AFunctionDiscriminator, mode: BOTH},
-		007: &Instruction{mnemonic: "SAZ", aField: AFunctionDiscriminator, mode: BOTH},
+		000: &Instruction{mnemonic: "SZ", aField: AFunctionDiscriminator},
+		001: &Instruction{mnemonic: "SNZ", aField: AFunctionDiscriminator},
+		002: &Instruction{mnemonic: "SP1", aField: AFunctionDiscriminator},
+		003: &Instruction{mnemonic: "SN1", aField: AFunctionDiscriminator},
+		004: &Instruction{mnemonic: "SFS", aField: AFunctionDiscriminator},
+		005: &Instruction{mnemonic: "SFZ", aField: AFunctionDiscriminator},
+		006: &Instruction{mnemonic: "SAS", aField: AFunctionDiscriminator},
+		007: &Instruction{mnemonic: "SAZ", aField: AFunctionDiscriminator},
 	},
 }
 
 var function007InterpreterExtended = FunctionTable{
 	indexBy: IndexByJ,
 	table: map[int]Interpreter{
-		004: &Instruction{mnemonic: "LAQW", aField: ARegister, jField: JFunctionDiscriminator, mode: BOTH},
-		005: &Instruction{mnemonic: "SAQW", aField: ARegister, jField: JFunctionDiscriminator, mode: BOTH},
+		004: &Instruction{mnemonic: "LAQW", aField: ARegister, jField: JFunctionDiscriminator},
+		005: &Instruction{mnemonic: "SAQW", aField: ARegister, jField: JFunctionDiscriminator},
 	},
 }
 
 var function071InterpreterExtended = FunctionTable{
 	indexBy: IndexByJ,
 	table: map[int]Interpreter{
-		012: &Instruction{mnemonic: "DS", aField: ARegister, jField: JFunctionDiscriminator, mode: BOTH},
-		013: &Instruction{mnemonic: "DL", aField: ARegister, jField: JFunctionDiscriminator, mode: BOTH},
-		014: &Instruction{mnemonic: "DLN", aField: ARegister, jField: JFunctionDiscriminator, mode: BOTH},
-		015: &Instruction{mnemonic: "DLM", aField: ARegister, jField: JFunctionDiscriminator, mode: BOTH},
+		012: &Instruction{mnemonic: "DS", aField: ARegister, jField: JFunctionDiscriminator},
+		013: &Instruction{mnemonic: "DL", aField: ARegister, jField: JFunctionDiscriminator},
+		014: &Instruction{mnemonic: "DLN", aField: ARegister, jField: JFunctionDiscriminator},
+		015: &Instruction{mnemonic: "DLM", aField: ARegister, jField: JFunctionDiscriminator},
 	},
 }
 
 var function072InterpreterExtended = FunctionTable{
 	indexBy: IndexByJ,
 	table: map[int]Interpreter{
-		016: &Instruction{mnemonic: "SRS", aField: ARegister, jField: JFunctionDiscriminator, mode: BOTH},
-		017: &Instruction{mnemonic: "LRS", aField: ARegister, jField: JFunctionDiscriminator, mode: BOTH},
+		016: &Instruction{mnemonic: "SRS", aField: ARegister, jField: JFunctionDiscriminator},
+		017: &Instruction{mnemonic: "LRS", aField: ARegister, jField: JFunctionDiscriminator},
 	},
 }
 
@@ -339,44 +372,61 @@ var function073InterpreterExtended = FunctionTable{
 var function07314InterpreterExtended = FunctionTable{
 	indexBy: IndexByA,
 	table: map[int]Interpreter{
-		000: &Instruction{mnemonic: "NOP", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, mode: EXTENDED},
+		000: &Instruction{mnemonic: "NOP", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
 	},
 }
 
 var function07315InterpreterExtended = FunctionTable{
 	indexBy: IndexByA,
 	table: map[int]Interpreter{
-		014: &Instruction{mnemonic: "LD", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, mode: BOTH},
-		015: &Instruction{mnemonic: "SD", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, mode: BOTH},
+		014: &Instruction{mnemonic: "LD", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		015: &Instruction{mnemonic: "SD", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
 	},
 }
 
 var function07317InterpreterExtended = FunctionTable{
 	indexBy: IndexByA,
 	table: map[int]Interpreter{
-		006: &Instruction{mnemonic: "IAR", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, mode: BOTH},
+		006: &Instruction{mnemonic: "IAR", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
 	},
 }
 
 var function074InterpreterExtended = FunctionTable{
 	indexBy: IndexByJ,
 	table: map[int]Interpreter{
+		014: &function07414InterpreterExtended,
 		015: &function07415InterpreterExtended,
+	},
+}
+
+var function07414InterpreterExtended = FunctionTable{
+	indexBy: IndexByA,
+	table: map[int]Interpreter{
+		000: &Instruction{mnemonic: "JO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		001: &Instruction{mnemonic: "JFU", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		002: &Instruction{mnemonic: "JFO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		003: &Instruction{mnemonic: "JDF", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		004: &Instruction{mnemonic: "JC", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		005: &Instruction{mnemonic: "JNC", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
 	},
 }
 
 var function07415InterpreterExtended = FunctionTable{
 	indexBy: IndexByA,
 	table: map[int]Interpreter{
-		004: &Instruction{mnemonic: "J", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, mode: EXTENDED},
-		005: &Instruction{mnemonic: "HLTJ", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, mode: BOTH},
+		000: &Instruction{mnemonic: "JNO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		001: &Instruction{mnemonic: "JNFU", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		002: &Instruction{mnemonic: "JNFO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		003: &Instruction{mnemonic: "JNDF", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		004: &Instruction{mnemonic: "J", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		005: &Instruction{mnemonic: "HLTJ", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
 	},
 }
 
 var function075InterpreterExtended = FunctionTable{
 	indexBy: IndexByJ,
 	table: map[int]Interpreter{
-		013: &Instruction{mnemonic: "LXLM", aField: XRegister, jField: JFunctionDiscriminator, mode: BOTH},
+		013: &Instruction{mnemonic: "LXLM", aField: XRegister, jField: JFunctionDiscriminator},
 	},
 }
 
