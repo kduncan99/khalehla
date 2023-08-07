@@ -11,14 +11,38 @@ import (
 // StoreLocationAndJump (SLJ) stores the relative address of the instruction incremented by one, in the location
 // specified by U, then loads the program counter with U+1.
 func StoreLocationAndJump(e *InstructionEngine) (bool, pkg.Interrupt) {
-	// TODO we need the final relative address of this instruction, which isn't currently in the engine...
+	value := e.relativeAddress + 1
+	if value > 0_777777 {
+		value = 0
+	}
+
+	e.StoreOperand(false, true, false, false, value)
+	_, operand, interrupt := e.GetJumpOperand(true)
+	if interrupt != nil {
+		return false, interrupt
+	}
+
+	e.SetProgramCounter(operand, false) // we need auto-increment to get us to the next instruction
 	return true, nil
 }
 
 // LoadModifierAndJump (LMJ) stores the incremented-by-one of the instruction's relative address into
 // the 18-bit modifier portion of Xa, then loads the program counter from the U field.
 func LoadModifierAndJump(e *InstructionEngine) (bool, pkg.Interrupt) {
-	// TODO we need the final relative address of this instruction, which isn't currently in the engine...
+	completed, operand, interrupt := e.GetJumpOperand(true)
+	if !completed || interrupt != nil {
+		return false, interrupt
+	}
+
+	ci := e.GetCurrentInstruction()
+	xReg := e.GetExecOrUserXRegister(ci.GetA())
+	value := e.relativeAddress + 1
+	if value > 0_777777 {
+		value = 0
+	}
+	xReg.SetXM(value)
+
+	e.SetProgramCounter(operand, true)
 	return true, nil
 }
 

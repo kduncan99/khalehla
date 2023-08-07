@@ -93,6 +93,8 @@ type InstructionEngine struct {
 	isStopped  bool
 	stopReason StopReason
 	stopDetail pkg.Word36
+
+	relativeAddress uint64 // certain instructions need to refer to this
 }
 
 // Order of base register selection for Basic Mode address resolution
@@ -801,7 +803,8 @@ func (e *InstructionEngine) calculateRelativeAddressForGRSOrStorage() uint64 {
 		}
 	}
 
-	return pkg.AddSimple(addend1, addend2)
+	e.relativeAddress = pkg.AddSimple(addend1, addend2)
+	return e.relativeAddress
 }
 
 // calculateRelativeAddressForJump calculates the raw relative address (the U) for the current instruction.
@@ -835,7 +838,8 @@ func (e *InstructionEngine) calculateRelativeAddressForJump() uint64 {
 		}
 	}
 
-	return pkg.AddSimple(addend1, addend2)
+	e.relativeAddress = pkg.AddSimple(addend1, addend2)
+	return e.relativeAddress
 }
 
 // checkAccessibility compares the given key to the lock for this base register, and determines whether
