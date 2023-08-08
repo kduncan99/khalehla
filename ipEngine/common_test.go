@@ -12,35 +12,41 @@ import (
 
 // f, j, and a fields for the various instructions
 const (
-	fDL   = "071"
-	fDLM  = "071"
-	fDLN  = "071"
-	fHKJ  = "074"
-	fHLTJ = "074"
-	fIAR  = "073"
-	fJ    = "074"
-	fJC   = "074"
-	fJDF  = "074"
-	fJFO  = "074"
-	fJFU  = "074"
-	fJK   = "074"
-	fJNC  = "074"
-	fJNDF = "074"
-	fJNFO = "074"
-	fJNFU = "074"
-	fJNO  = "074"
-	fJO   = "074"
-	fLA   = "010"
-	fLD   = "073"
-	fLMA  = "012"
-	fLNA  = "011"
-	fLNMA = "013"
-	fLR   = "023"
-	fLX   = "027"
-	fLXI  = "046"
-	fLXM  = "026"
-	fSA   = "001"
-	fSD   = "073"
+	fDL          = "071"
+	fDLM         = "071"
+	fDLN         = "071"
+	fHKJ         = "074"
+	fHLTJ        = "074"
+	fIAR         = "073"
+	fJ           = "074"
+	fJC          = "074"
+	fJDF         = "074"
+	fJFO         = "074"
+	fJFU         = "074"
+	fJK          = "074"
+	fJNC         = "074"
+	fJNDF        = "074"
+	fJNFO        = "074"
+	fJNFU        = "074"
+	fJNO         = "074"
+	fJNZ         = "074"
+	fJO          = "074"
+	fJZ          = "074"
+	fLA          = "010"
+	fLD          = "073"
+	fLMA         = "012"
+	fLMJ         = "074"
+	fLNA         = "011"
+	fLNMA        = "013"
+	fLR          = "023"
+	fLX          = "027"
+	fLXI         = "046"
+	fLXM         = "026"
+	fNOPBasic    = "074"
+	fNOPExtended = "073"
+	fSA          = "001"
+	fSD          = "073"
+	fSLJ         = "072"
 )
 
 const (
@@ -64,7 +70,13 @@ const (
 	jJNFO        = "015"
 	jJNFU        = "015"
 	jJNO         = "015"
+	jJNZ         = "001"
 	jJO          = "014"
+	jJZ          = "000"
+	jLMJ         = "013"
+	jNOPBasic    = "006"
+	jNOPExtended = "014"
+	jSLJ         = "001"
 )
 
 const (
@@ -84,6 +96,7 @@ const (
 	aJNFU        = "001"
 	aJNO         = "000"
 	aJO          = "000"
+	aNOP         = "000"
 )
 
 // partial word designators for j-field specification
@@ -281,6 +294,7 @@ func checkRegister(t *testing.T, engine *InstructionEngine, register uint64, exp
 	}
 }
 
+// TODO following is deprecated, use checkStoppedReason() instead, so we don't have to check the PAR.PC
 func checkStopped(t *testing.T, engine *InstructionEngine) {
 	if engine.HasPendingInterrupt() {
 		t.Fatalf("Engine has unexpected pending interrupt:%s", pkg.GetInterruptString(engine.PopInterrupt()))
@@ -288,5 +302,24 @@ func checkStopped(t *testing.T, engine *InstructionEngine) {
 
 	if !engine.IsStopped() {
 		t.Fatalf("Expected engine to be stopped; it is not")
+	}
+}
+
+func checkStoppedReason(t *testing.T, engine *InstructionEngine, reason StopReason, detail uint64) {
+	if engine.HasPendingInterrupt() {
+		t.Fatalf("Engine has unexpected pending interrupt:%s", pkg.GetInterruptString(engine.PopInterrupt()))
+	}
+
+	if !engine.IsStopped() {
+		t.Fatalf("Expected engine to be stopped; it is not")
+	}
+
+	actualReason, actualDetail := engine.GetStopReason()
+	if actualReason != reason {
+		t.Fatalf("Engine stopped for reason %d; expected reason %d", actualReason, reason)
+	}
+
+	if actualDetail != detail {
+		t.Fatalf("Engine stopped for detail %d; expected detail %d", actualDetail, detail)
 	}
 }

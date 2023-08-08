@@ -11,11 +11,7 @@ import (
 // StoreLocationAndJump (SLJ) stores the relative address of the instruction incremented by one, in the location
 // specified by U, then loads the program counter with U+1.
 func StoreLocationAndJump(e *InstructionEngine) (bool, pkg.Interrupt) {
-	value := e.relativeAddress + 1
-	if value > 0_777777 {
-		value = 0
-	}
-
+	value := (e.GetProgramAddressRegister().GetProgramCounter() + 1) & 0_777777
 	e.StoreOperand(false, true, false, false, value)
 	_, operand, interrupt := e.GetJumpOperand(true)
 	if interrupt != nil {
@@ -36,12 +32,7 @@ func LoadModifierAndJump(e *InstructionEngine) (bool, pkg.Interrupt) {
 
 	ci := e.GetCurrentInstruction()
 	xReg := e.GetExecOrUserXRegister(ci.GetA())
-	value := e.relativeAddress + 1
-	if value > 0_777777 {
-		value = 0
-	}
-	xReg.SetXM(value)
-
+	xReg.SetXM(e.GetProgramAddressRegister().GetProgramCounter() + 1)
 	e.SetProgramCounter(operand, true)
 	return true, nil
 }
@@ -109,8 +100,8 @@ func JumpZero(e *InstructionEngine) (bool, pkg.Interrupt) {
 	return true, nil
 }
 
-// DoublePrecisionJumpZero (DJZ) Loads the program counter from the U field *IF* Aa | Aa+1 is zero
-func DoublePrecisionJumpZero(e *InstructionEngine) (bool, pkg.Interrupt) {
+// DoubleJumpZero (DJZ) Loads the program counter from the U field *IF* Aa | Aa+1 is zero
+func DoubleJumpZero(e *InstructionEngine) (bool, pkg.Interrupt) {
 	aReg1 := e.GetExecOrUserARegister(e.GetCurrentInstruction().GetA()).GetW()
 	aReg2 := e.GetExecOrUserARegister(e.GetCurrentInstruction().GetA() + 1).GetW()
 

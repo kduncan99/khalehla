@@ -9,6 +9,125 @@ import (
 	"testing"
 )
 
+// Unconditional -------------------------------------------------------------------------------------------------------
+
+var lmjBasicMode = []*tasm.SourceItem{
+	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fNOPBasic, jNOPBasic, aNOP, zero, zero}),
+	tasm.NewSourceItem("", "fjaxu", []string{fNOPBasic, jNOPBasic, aNOP, zero, zero}),
+	tasm.NewSourceItem("", "fjaxu", []string{fNOPBasic, jNOPBasic, aNOP, zero, zero}),
+	tasm.NewSourceItem("", "fjaxu", []string{fLXM, jU, rX10, zero, "03"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fLX, jU, rX11, zero, "0"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fLMJ, jLMJ, rX11, rX10, zero, zero, "label"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fNOPBasic, jNOPBasic, aNOP, zero, zero}),
+	tasm.NewSourceItem("", "fjaxu", []string{fNOPBasic, jNOPBasic, aNOP, zero, zero}),
+	tasm.NewSourceItem("", "fjaxu", []string{fNOPBasic, jNOPBasic, aNOP, zero, zero}),
+	tasm.NewSourceItem("label", "fjaxu", []string{fNOPBasic, jNOPBasic, aNOP, zero, zero}),
+	iarSourceItem("", "1"),
+	iarSourceItem("", "2"),
+	iarSourceItem("target", "0"),
+}
+
+func Test_LMJ_Basic(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", lmjBasicMode)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkSimple(a.GetSegments(), false)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(true)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
+	checkRegister(t, engine, X11, 0_000000_01006, "X11")
+}
+
+var sljBasicMode = []*tasm.SourceItem{
+	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	tasm.NewSourceItem("", "fjaxhiu", []string{fSLJ, jSLJ, zero, zero, zero, zero, "target"}),
+	iarSourceItem("", "1"),
+	iarSourceItem("", "1"),
+	iarSourceItem("", "1"),
+	tasm.NewSourceItem("target", "w", []string{"0"}),
+	iarSourceItem("", "0"),
+}
+
+func Test_SLJ_Basic(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", sljBasicMode)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkSimple(a.GetSegments(), false)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(true)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
+	codeBankAddr := e.GetBanks()[0600004].GetBankDescriptor().GetBaseAddress()
+	checkMemory(t, engine, codeBankAddr, 04, 01001)
+}
+
+var lmjExtendedMode = []*tasm.SourceItem{
+	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fNOPExtended, jNOPExtended, aNOP, zero, zero}),
+	tasm.NewSourceItem("", "fjaxu", []string{fNOPExtended, jNOPExtended, aNOP, zero, zero}),
+	tasm.NewSourceItem("", "fjaxu", []string{fNOPExtended, jNOPExtended, aNOP, zero, zero}),
+	tasm.NewSourceItem("", "fjaxu", []string{fLXM, jU, rX10, zero, "03"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fLX, jU, rX11, zero, "0"}),
+	tasm.NewSourceItem("", "fjaxhibd", []string{fLMJ, jLMJ, rX11, rX10, zero, zero, rB0, "label"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fNOPExtended, jNOPExtended, aNOP, zero, zero}),
+	tasm.NewSourceItem("", "fjaxu", []string{fNOPExtended, jNOPExtended, aNOP, zero, zero}),
+	tasm.NewSourceItem("", "fjaxu", []string{fNOPExtended, jNOPExtended, aNOP, zero, zero}),
+	tasm.NewSourceItem("label", "fjaxu", []string{fNOPExtended, jNOPExtended, aNOP, zero, zero}),
+	iarSourceItem("", "1"),
+	iarSourceItem("", "2"),
+	iarSourceItem("target", "0"),
+}
+
+func Test_LMJ_Extended(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", lmjExtendedMode)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkSimple(a.GetSegments(), true)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(false)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
+	checkRegister(t, engine, X11, 0_000000_01006, "X11")
+}
+
 var jumpBasicMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("", ".SEG", []string{"000"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fJ, jJBasic, aJBasic, zero, "target"}),
@@ -168,6 +287,196 @@ func Test_HLTJ_Extended(t *testing.T) {
 
 	checkProgramAddress(t, engine, 01002)
 }
+
+// Conditional based on register ---------------------------------------------------------------------------------------
+
+var jumpZeroExtendedPosZero = []*tasm.SourceItem{
+	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fLA, jU, rA5, zero, "0"}),
+	tasm.NewSourceItem("", "fjaxhibd", []string{fJZ, jJZ, rA5, zero, zero, zero, rB0, "target"}),
+	iarSourceItem("", "1"),
+	iarSourceItem("target", "0"),
+}
+
+func Test_JZ_Extended_PosZero(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", jumpZeroExtendedPosZero)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkSimple(a.GetSegments(), true)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(false)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
+}
+
+var jumpZeroExtendedNegZero = []*tasm.SourceItem{
+	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fLA, jXU, rA5, zero, "0777777"}),
+	tasm.NewSourceItem("", "fjaxhibd", []string{fJZ, jJZ, rA5, zero, zero, zero, rB0, "target"}),
+	iarSourceItem("", "1"),
+	iarSourceItem("target", "0"),
+}
+
+func Test_JZ_Extended_NegZero(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", jumpZeroExtendedNegZero)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkSimple(a.GetSegments(), true)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(false)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
+}
+
+var jumpZeroExtendedNotZero = []*tasm.SourceItem{
+	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fLA, jU, rA5, zero, "01"}),
+	tasm.NewSourceItem("", "fjaxhibd", []string{fJZ, jJZ, rA5, zero, zero, zero, rB0, "target"}),
+	iarSourceItem("", "1"),
+	iarSourceItem("target", "0"),
+}
+
+func Test_JZ_Extended_NotZero(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", jumpZeroExtendedNotZero)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkSimple(a.GetSegments(), true)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(false)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 1)
+}
+
+var jumpNonZeroExtendedPosZero = []*tasm.SourceItem{
+	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fLA, jU, rA5, zero, "0"}),
+	tasm.NewSourceItem("", "fjaxhibd", []string{fJNZ, jJNZ, rA5, zero, zero, zero, rB0, "target"}),
+	iarSourceItem("", "1"),
+	iarSourceItem("target", "0"),
+}
+
+func Test_JNZ_Extended_PosZero(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", jumpNonZeroExtendedPosZero)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkSimple(a.GetSegments(), true)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(false)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 1)
+}
+
+var jumpNonZeroExtendedNegZero = []*tasm.SourceItem{
+	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fLA, jXU, rA5, zero, "0777777"}),
+	tasm.NewSourceItem("", "fjaxhibd", []string{fJNZ, jJNZ, rA5, zero, zero, zero, rB0, "target"}),
+	iarSourceItem("", "1"),
+	iarSourceItem("target", "0"),
+}
+
+func Test_JNZ_Extended_NegZero(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", jumpNonZeroExtendedNegZero)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkSimple(a.GetSegments(), true)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(false)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 1)
+}
+
+var jumpNonZeroExtendedNotZero = []*tasm.SourceItem{
+	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fLA, jU, rA5, zero, "01"}),
+	tasm.NewSourceItem("", "fjaxhibd", []string{fJNZ, jJNZ, rA5, zero, zero, zero, rB0, "target"}),
+	iarSourceItem("", "1"),
+	iarSourceItem("target", "0"),
+}
+
+func Test_JNZ_Extended_NotZero(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", jumpNonZeroExtendedNotZero)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkSimple(a.GetSegments(), true)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(false)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
+}
+
+// Conditional based on designator register bits -----------------------------------------------------------------------
 
 var jumpCarryBasic = []*tasm.SourceItem{
 	tasm.NewSourceItem("", ".SEG", []string{"000"}),

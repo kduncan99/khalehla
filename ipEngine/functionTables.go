@@ -26,7 +26,9 @@ var BasicModeFunctionTable = map[uint]func(*InstructionEngine) (completed bool, 
 	026: LoadIndexRegisterModifier,
 	027: LoadIndexRegister,
 	046: LoadIndexRegisterIncrement,
+	070: JumpGreaterAndDecrement,
 	071: basicModeFunction71Handler,
+	072: basicModeFunction72Handler,
 	073: basicModeFunction73Handler,
 	074: basicModeFunction74Handler,
 	075: basicModeFunction75Handler,
@@ -49,6 +51,14 @@ var basicModeFunction71Table = map[uint]func(engine *InstructionEngine) (complet
 	013: DoubleLoadAccumulator,
 	014: DoubleLoadNegativeAccumulator,
 	015: DoubleLoadMagnitudeAccumulator,
+	016: DoubleJumpZero,
+}
+
+// Basic Mode, F=072, table is indexed by the j field
+var basicModeFunction72Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
+	001: StoreLocationAndJump,
+	002: JumpPositiveAndShift,
+	003: JumpNegativeAndShift,
 }
 
 // Basic Mode, F=073, table is indexed by the j field
@@ -70,9 +80,17 @@ var basicModeFunction7317Table = map[uint]func(engine *InstructionEngine) (compl
 
 // Basic Mode, F=074, table is indexed by the j field
 var basicModeFunction74Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
+	000: JumpZero,
+	001: JumpNonZero,
+	002: JumpPositive,
+	003: JumpNegative,
 	004: basicModeFunction7404Handler,
 	005: HaltKeysAndJump,
 	006: NoOperation,
+	010: JumpNoLowBit,
+	011: JumpLowBit,
+	012: JumpModifierGreaterAndIncrement,
+	013: LoadModifierAndJump,
 	014: basicModeFunction7414Handler,
 	015: basicModeFunction7415Handler,
 	016: JumpCarry,
@@ -121,6 +139,31 @@ var basicModeFunction75Table = map[uint]func(engine *InstructionEngine) (complet
 	013: LoadIndexRegisterLongModifier,
 }
 
+//	--------------------------------------------------------------------------------------------------------------------
+
+// ExtendedModeFunctionTable functions indexed by the f field
+var ExtendedModeFunctionTable = map[uint]func(*InstructionEngine) (completed bool, interrupt pkg.Interrupt){
+	001: StoreAccumulator,
+	004: StoreRegister,
+	005: extendedModeFunction05Handler,
+	006: StoreIndexRegister,
+	010: LoadAccumulator,
+	011: LoadNegativeAccumulator,
+	012: LoadMagnitudeAccumulator,
+	013: LoadNegativeMagnitudeAccumulator,
+	023: LoadRegister,
+	026: LoadIndexRegisterModifier,
+	027: LoadIndexRegister,
+	046: LoadIndexRegisterIncrement,
+	051: LoadIndexRegisterShortIncrement,
+	070: JumpGreaterAndDecrement,
+	071: extendedModeFunction71Handler,
+	072: extendedModeFunction72Handler,
+	073: extendedModeFunction73Handler,
+	074: extendedModeFunction74Handler,
+	075: extendedModeFunction75Handler,
+}
+
 // Extended Mode, F=005, table is indexed by the a field (most of the time the j-field indicates partial-word)
 var extendedModeFunction05Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
 	000: StoreZero,
@@ -138,6 +181,13 @@ var extendedModeFunction71Table = map[uint]func(engine *InstructionEngine) (comp
 	013: DoubleLoadAccumulator,
 	014: DoubleLoadNegativeAccumulator,
 	015: DoubleLoadMagnitudeAccumulator,
+	016: DoubleJumpZero,
+}
+
+// Extended Mode, F=072, table is indexed by the j field
+var extendedModeFunction72Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
+	002: JumpPositiveAndShift,
+	003: JumpNegativeAndShift,
 }
 
 // Extended Mode, F=073, table is indexed by the j field
@@ -165,6 +215,14 @@ var extendedModeFunction7317Table = map[uint]func(engine *InstructionEngine) (co
 
 // Extended Mode, F=074, table is indexed by the j field
 var extendedModeFunction74Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
+	000: JumpZero,
+	001: JumpNonZero,
+	002: JumpPositive,
+	003: JumpNegative,
+	010: JumpNoLowBit,
+	011: JumpLowBit,
+	012: JumpModifierGreaterAndIncrement,
+	013: LoadModifierAndJump,
 	014: extendedModeFunction7414Handler,
 	015: extendedModeFunction7415Handler,
 }
@@ -208,6 +266,15 @@ func basicModeFunction05Handler(e *InstructionEngine) (completed bool, interrupt
 func basicModeFunction71Handler(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	ci := e.GetCurrentInstruction()
 	if inst, found := basicModeFunction71Table[uint(ci.GetJ())]; found {
+		return inst(e)
+	} else {
+		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode)
+	}
+}
+
+func basicModeFunction72Handler(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+	ci := e.GetCurrentInstruction()
+	if inst, found := basicModeFunction72Table[uint(ci.GetJ())]; found {
 		return inst(e)
 	} else {
 		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode)
@@ -286,26 +353,7 @@ func basicModeFunction75Handler(e *InstructionEngine) (completed bool, interrupt
 	}
 }
 
-// ExtendedModeFunctionTable functions indexed by the f field
-var ExtendedModeFunctionTable = map[uint]func(*InstructionEngine) (completed bool, interrupt pkg.Interrupt){
-	001: StoreAccumulator,
-	004: StoreRegister,
-	005: extendedModeFunction05Handler,
-	006: StoreIndexRegister,
-	010: LoadAccumulator,
-	011: LoadNegativeAccumulator,
-	012: LoadMagnitudeAccumulator,
-	013: LoadNegativeMagnitudeAccumulator,
-	023: LoadRegister,
-	026: LoadIndexRegisterModifier,
-	027: LoadIndexRegister,
-	046: LoadIndexRegisterIncrement,
-	051: LoadIndexRegisterShortIncrement,
-	071: extendedModeFunction71Handler,
-	073: extendedModeFunction73Handler,
-	074: extendedModeFunction74Handler,
-	075: extendedModeFunction75Handler,
-}
+//	--------------------------------------------------------------------------------------------------------------------
 
 func extendedModeFunction05Handler(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	ci := e.GetCurrentInstruction()
@@ -319,6 +367,15 @@ func extendedModeFunction05Handler(e *InstructionEngine) (completed bool, interr
 func extendedModeFunction71Handler(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	ci := e.GetCurrentInstruction()
 	if inst, found := extendedModeFunction71Table[uint(ci.GetJ())]; found {
+		return inst(e)
+	} else {
+		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode)
+	}
+}
+
+func extendedModeFunction72Handler(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+	ci := e.GetCurrentInstruction()
+	if inst, found := extendedModeFunction72Table[uint(ci.GetJ())]; found {
 		return inst(e)
 	} else {
 		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode)
