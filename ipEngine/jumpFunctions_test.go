@@ -531,7 +531,47 @@ func Test_JNZ_Extended_NotZero(t *testing.T) {
 	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 }
 
-//	TODO JP, JN
+var jumpPosNegExtended = []*tasm.SourceItem{
+	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fLA, jU, rA10, zero, "0"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fJP, jJP, rA10, zero, "target1"}),
+	iarSourceItem("bad1", "1"),
+	tasm.NewSourceItem("target1", "fjaxu", []string{fJN, jJN, rA10, zero, "bad2"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fNOPExtended, jNOPExtended, zero, zero, zero}),
+
+	tasm.NewSourceItem("", "fjaxu", []string{fLA, jXU, rA10, zero, "0444444"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fJP, jJP, rA10, zero, "bad3"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fJN, jJN, rA10, zero, "end"}),
+
+	iarSourceItem("bad4", "4"),
+	iarSourceItem("bad2", "2"),
+	iarSourceItem("bad3", "3"),
+	iarSourceItem("end", "0"),
+}
+
+func Test_JP_JN_Extended(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", jumpPosNegExtended)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkSimple(a.GetSegments(), true)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(false)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
+}
+
 //	TODO JPS, JNS
 //	TODO JB, JNB
 //	TODO JGD, JMGI
