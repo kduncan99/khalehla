@@ -12,6 +12,7 @@ import (
 
 // f, j, and a fields for the various instructions
 const (
+	fDJZ         = "071"
 	fDL          = "071"
 	fDLM         = "071"
 	fDLN         = "071"
@@ -50,6 +51,7 @@ const (
 )
 
 const (
+	jDJZ         = "016"
 	jDL          = "013"
 	jDLM         = "015"
 	jDLN         = "014"

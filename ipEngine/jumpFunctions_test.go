@@ -383,6 +383,61 @@ func Test_JZ_Extended_NotZero(t *testing.T) {
 	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 1)
 }
 
+var doubleJumpZeroExtendedMode = []*tasm.SourceItem{
+	tasm.NewSourceItem("", ".SEG", []string{"003"}),
+	tasm.NewSourceItem("posZero", "w", []string{"0"}),
+	tasm.NewSourceItem("", "w", []string{"0"}),
+	tasm.NewSourceItem("negZero", "w", []string{"0777777777777"}),
+	tasm.NewSourceItem("", "w", []string{"0777777777777"}),
+	tasm.NewSourceItem("notZero1", "w", []string{"0"}),
+	tasm.NewSourceItem("", "w", []string{"011"}),
+	tasm.NewSourceItem("notZero2", "w", []string{"0777777777777"}),
+	tasm.NewSourceItem("", "w", []string{"0"}),
+
+	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	tasm.NewSourceItem("", "fjaxhibd", []string{fDL, jDL, rA0, zero, zero, zero, rB3, "posZero"}),
+	tasm.NewSourceItem("", "fjaxhibd", []string{fDJZ, jDJZ, rA0, zero, zero, zero, rB0, "target1"}),
+	iarSourceItem("", "1"),
+
+	tasm.NewSourceItem("target1", "fjaxhibd", []string{fDL, jDL, rA2, zero, zero, zero, rB3, "negZero"}),
+	tasm.NewSourceItem("", "fjaxhibd", []string{fDJZ, jDJZ, rA2, zero, zero, zero, rB0, "target2"}),
+	iarSourceItem("", "2"),
+
+	tasm.NewSourceItem("target2", "fjaxhibd", []string{fDL, jDL, rA4, zero, zero, zero, rB3, "notZero1"}),
+	tasm.NewSourceItem("", "fjaxhibd", []string{fDJZ, jDJZ, rA4, zero, zero, zero, rB0, "bad3"}),
+
+	tasm.NewSourceItem("target3", "fjaxhibd", []string{fDL, jDL, rA6, zero, zero, zero, rB3, "notZero2"}),
+	tasm.NewSourceItem("", "fjaxhibd", []string{fDJZ, jDJZ, rA6, zero, zero, zero, rB0, "bad4"}),
+	tasm.NewSourceItem("", "fjaxu", []string{fJ, jJExtended, aJExtended, zero, "end"}),
+
+	iarSourceItem("bad3", "3"),
+	iarSourceItem("bad4", "4"),
+	iarSourceItem("end", "0"),
+}
+
+func Test_DJZ_Extended_PosZero(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", doubleJumpZeroExtendedMode)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkBankPerSegment(a.GetSegments(), true)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(false)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
+}
+
 var jumpNonZeroExtendedPosZero = []*tasm.SourceItem{
 	tasm.NewSourceItem("", ".SEG", []string{"000"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fLA, jU, rA5, zero, "0"}),
@@ -475,6 +530,11 @@ func Test_JNZ_Extended_NotZero(t *testing.T) {
 	engine := ute.GetEngine()
 	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 }
+
+//	TODO JP, JN
+//	TODO JPS, JNS
+//	TODO JB, JNB
+//	TODO JGD, JMGI
 
 // Conditional based on designator register bits -----------------------------------------------------------------------
 

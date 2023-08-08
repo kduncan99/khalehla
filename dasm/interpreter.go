@@ -84,13 +84,16 @@ func (ft *FunctionTable) IsInstruction() bool {
 }
 
 type Instruction struct {
-	mnemonic string
-	aField   AFieldUsage
-	jField   JFieldUsage
+	mnemonic  string
+	aField    AFieldUsage
+	jField    JFieldUsage
+	uIs18Bits bool
 }
 
 func (i *Instruction) Interpret(iw *pkg.InstructionWord, basicMode bool, quarterWordMode bool) (string, bool) {
 	str := i.mnemonic
+	var immediate bool
+
 	if i.jField == JPartialWordDesignator {
 		str += ","
 		if quarterWordMode {
@@ -98,6 +101,7 @@ func (i *Instruction) Interpret(iw *pkg.InstructionWord, basicMode bool, quarter
 		} else {
 			str += jFieldThirdWord[iw.GetJ()]
 		}
+		immediate = (iw.GetX() == 0) && ((iw.GetJ() == pkg.JFieldU) || (iw.GetJ() == pkg.JFieldXU))
 	}
 	str = fmt.Sprintf("%-10s", str)
 
@@ -106,7 +110,7 @@ func (i *Instruction) Interpret(iw *pkg.InstructionWord, basicMode bool, quarter
 	}
 
 	if basicMode {
-		if (iw.GetJ() == pkg.JFieldU) || (iw.GetJ() == pkg.JFieldXU) {
+		if immediate {
 			str += fmt.Sprintf("0%o", iw.GetHIU())
 		} else {
 			if iw.GetI() > 0 {
@@ -114,22 +118,30 @@ func (i *Instruction) Interpret(iw *pkg.InstructionWord, basicMode bool, quarter
 			}
 			str += fmt.Sprintf("0%o", iw.GetU())
 		}
-	} else {
-		str += fmt.Sprintf("0%o", iw.GetD())
+	} else /* !basicMode */ {
+		if immediate {
+			str += fmt.Sprintf("0%o", iw.GetHIU())
+		} else {
+			str += fmt.Sprintf("0%o", iw.GetD())
+		}
 	}
 
 	str += ","
 	if iw.GetX() > 0 {
-		if (iw.GetH() > 0) && (iw.GetJ() != pkg.JFieldU) && (iw.GetJ() != pkg.JFieldXU) {
+		if (iw.GetH() > 0) && !immediate {
 			str += "*"
 		}
 		str += fmt.Sprintf("X%d", iw.GetX())
 	}
 
-	if !basicMode { // TODO should not do this for certain extended mode instructions (e.g. jumps)
+	if !basicMode && !i.uIs18Bits && !immediate {
 		str += fmt.Sprintf(",B%d", iw.GetB())
 	}
 
+	lastX := len(str) - 1
+	if str[lastX:lastX+1] == "," {
+		str = str[0:lastX]
+	}
 	return str, true
 }
 
@@ -157,7 +169,7 @@ var BasicFunctionTable = FunctionTable{
 		026: &Instruction{mnemonic: "LXM", aField: XRegister},
 		027: &Instruction{mnemonic: "LX", aField: XRegister},
 		046: &Instruction{mnemonic: "LXI", aField: XRegister},
-		070: &Instruction{mnemonic: "JGD", aField: AGRSComponent, jField: JGRSComponent},
+		070: &Instruction{mnemonic: "JGD", aField: AGRSComponent, jField: JGRSComponent, uIs18Bits: true},
 		071: &function071InterpreterBasic,
 		072: &function072InterpreterBasic,
 		073: &function073InterpreterBasic,
@@ -195,6 +207,7 @@ var function071InterpreterBasic = FunctionTable{
 		013: &Instruction{mnemonic: "DL", aField: ARegister, jField: JFunctionDiscriminator},
 		014: &Instruction{mnemonic: "DLN", aField: ARegister, jField: JFunctionDiscriminator},
 		015: &Instruction{mnemonic: "DLM", aField: ARegister, jField: JFunctionDiscriminator},
+		016: &Instruction{mnemonic: "DJZ", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
 	},
 }
 
@@ -202,8 +215,8 @@ var function072InterpreterBasic = FunctionTable{
 	indexBy: IndexByJ,
 	table: map[int]Interpreter{
 		001: &Instruction{mnemonic: "SLJ", aField: AUnused, jField: JFunctionDiscriminator},
-		002: &Instruction{mnemonic: "JPS", aField: ARegister, jField: JFunctionDiscriminator},
-		003: &Instruction{mnemonic: "JNS", aField: ARegister, jField: JFunctionDiscriminator},
+		002: &Instruction{mnemonic: "JPS", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
+		003: &Instruction{mnemonic: "JNS", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
 		016: &Instruction{mnemonic: "SRS", aField: ARegister, jField: JFunctionDiscriminator},
 		017: &Instruction{mnemonic: "LRS", aField: ARegister, jField: JFunctionDiscriminator},
 	},
@@ -235,64 +248,64 @@ var function07317InterpreterBasic = FunctionTable{
 var function074InterpreterBasic = FunctionTable{
 	indexBy: IndexByJ,
 	table: map[int]Interpreter{
-		000: &Instruction{mnemonic: "JZ", aField: ARegister, jField: JFunctionDiscriminator},
-		001: &Instruction{mnemonic: "JNZ", aField: ARegister, jField: JFunctionDiscriminator},
-		002: &Instruction{mnemonic: "JP", aField: ARegister, jField: JFunctionDiscriminator},
-		003: &Instruction{mnemonic: "JN", aField: ARegister, jField: JFunctionDiscriminator},
+		000: &Instruction{mnemonic: "JZ", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
+		001: &Instruction{mnemonic: "JNZ", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
+		002: &Instruction{mnemonic: "JP", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
+		003: &Instruction{mnemonic: "JN", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
 		004: &function07404InterpreterBasic,
-		005: &Instruction{mnemonic: "HKJ", aField: AUnused, jField: JFunctionDiscriminator},
+		005: &Instruction{mnemonic: "HKJ", aField: AUnused, jField: JFunctionDiscriminator, uIs18Bits: true},
 		006: &Instruction{mnemonic: "NOP", aField: AUnused, jField: JFunctionDiscriminator},
-		010: &Instruction{mnemonic: "JNLB", aField: ARegister, jField: JFunctionDiscriminator},
-		011: &Instruction{mnemonic: "JLB", aField: ARegister, jField: JFunctionDiscriminator},
-		012: &Instruction{mnemonic: "JMGI", aField: ARegister, jField: JFunctionDiscriminator},
-		013: &Instruction{mnemonic: "LMJ", aField: XRegister, jField: JFunctionDiscriminator},
+		010: &Instruction{mnemonic: "JNLB", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
+		011: &Instruction{mnemonic: "JLB", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
+		012: &Instruction{mnemonic: "JMGI", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
+		013: &Instruction{mnemonic: "LMJ", aField: XRegister, jField: JFunctionDiscriminator, uIs18Bits: true},
 		014: &function07414InterpreterBasic,
 		015: &function07415InterpreterBasic,
-		016: &Instruction{mnemonic: "JC", aField: AFunctionDiscriminator, jField: JUnused},
-		017: &Instruction{mnemonic: "JNC", aField: AFunctionDiscriminator, jField: JUnused},
+		016: &Instruction{mnemonic: "JC", aField: AFunctionDiscriminator, jField: JUnused, uIs18Bits: true},
+		017: &Instruction{mnemonic: "JNC", aField: AFunctionDiscriminator, jField: JUnused, uIs18Bits: true},
 	},
 }
 
 var function07404InterpreterBasic = FunctionTable{
 	indexBy: IndexByA,
 	table: map[int]Interpreter{
-		000: &Instruction{mnemonic: "J", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
-		001: &Instruction{mnemonic: "JK01", aField: AFunctionDiscriminator, jField: JUnused},
-		002: &Instruction{mnemonic: "JK02", aField: AFunctionDiscriminator, jField: JUnused},
-		003: &Instruction{mnemonic: "JK03", aField: AFunctionDiscriminator, jField: JUnused},
-		004: &Instruction{mnemonic: "JK04", aField: AFunctionDiscriminator, jField: JUnused},
-		005: &Instruction{mnemonic: "JK05", aField: AFunctionDiscriminator, jField: JUnused},
-		006: &Instruction{mnemonic: "JK06", aField: AFunctionDiscriminator, jField: JUnused},
-		007: &Instruction{mnemonic: "JK07", aField: AFunctionDiscriminator, jField: JUnused},
-		010: &Instruction{mnemonic: "JK10", aField: AFunctionDiscriminator, jField: JUnused},
-		011: &Instruction{mnemonic: "JK11", aField: AFunctionDiscriminator, jField: JUnused},
-		012: &Instruction{mnemonic: "JK12", aField: AFunctionDiscriminator, jField: JUnused},
-		013: &Instruction{mnemonic: "JK13", aField: AFunctionDiscriminator, jField: JUnused},
-		014: &Instruction{mnemonic: "JK14", aField: AFunctionDiscriminator, jField: JUnused},
-		015: &Instruction{mnemonic: "JK15", aField: AFunctionDiscriminator, jField: JUnused},
-		016: &Instruction{mnemonic: "JK16", aField: AFunctionDiscriminator, jField: JUnused},
-		017: &Instruction{mnemonic: "JK17", aField: AFunctionDiscriminator, jField: JUnused},
+		000: &Instruction{mnemonic: "J", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
+		001: &Instruction{mnemonic: "JK01", aField: AFunctionDiscriminator, jField: JUnused, uIs18Bits: true},
+		002: &Instruction{mnemonic: "JK02", aField: AFunctionDiscriminator, jField: JUnused, uIs18Bits: true},
+		003: &Instruction{mnemonic: "JK03", aField: AFunctionDiscriminator, jField: JUnused, uIs18Bits: true},
+		004: &Instruction{mnemonic: "JK04", aField: AFunctionDiscriminator, jField: JUnused, uIs18Bits: true},
+		005: &Instruction{mnemonic: "JK05", aField: AFunctionDiscriminator, jField: JUnused, uIs18Bits: true},
+		006: &Instruction{mnemonic: "JK06", aField: AFunctionDiscriminator, jField: JUnused, uIs18Bits: true},
+		007: &Instruction{mnemonic: "JK07", aField: AFunctionDiscriminator, jField: JUnused, uIs18Bits: true},
+		010: &Instruction{mnemonic: "JK10", aField: AFunctionDiscriminator, jField: JUnused, uIs18Bits: true},
+		011: &Instruction{mnemonic: "JK11", aField: AFunctionDiscriminator, jField: JUnused, uIs18Bits: true},
+		012: &Instruction{mnemonic: "JK12", aField: AFunctionDiscriminator, jField: JUnused, uIs18Bits: true},
+		013: &Instruction{mnemonic: "JK13", aField: AFunctionDiscriminator, jField: JUnused, uIs18Bits: true},
+		014: &Instruction{mnemonic: "JK14", aField: AFunctionDiscriminator, jField: JUnused, uIs18Bits: true},
+		015: &Instruction{mnemonic: "JK15", aField: AFunctionDiscriminator, jField: JUnused, uIs18Bits: true},
+		016: &Instruction{mnemonic: "JK16", aField: AFunctionDiscriminator, jField: JUnused, uIs18Bits: true},
+		017: &Instruction{mnemonic: "JK17", aField: AFunctionDiscriminator, jField: JUnused, uIs18Bits: true},
 	},
 }
 
 var function07414InterpreterBasic = FunctionTable{
 	indexBy: IndexByA,
 	table: map[int]Interpreter{
-		000: &Instruction{mnemonic: "JO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
-		001: &Instruction{mnemonic: "JFU", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
-		002: &Instruction{mnemonic: "JFO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
-		003: &Instruction{mnemonic: "JDF", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		000: &Instruction{mnemonic: "JO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
+		001: &Instruction{mnemonic: "JFU", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
+		002: &Instruction{mnemonic: "JFO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
+		003: &Instruction{mnemonic: "JDF", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
 	},
 }
 
 var function07415InterpreterBasic = FunctionTable{
 	indexBy: IndexByA,
 	table: map[int]Interpreter{
-		000: &Instruction{mnemonic: "JNO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
-		001: &Instruction{mnemonic: "JNFU", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
-		002: &Instruction{mnemonic: "JNFO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
-		003: &Instruction{mnemonic: "JNDF", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
-		005: &Instruction{mnemonic: "HLTJ", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		000: &Instruction{mnemonic: "JNO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
+		001: &Instruction{mnemonic: "JNFU", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
+		002: &Instruction{mnemonic: "JNFO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
+		003: &Instruction{mnemonic: "JNDF", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
+		005: &Instruction{mnemonic: "HLTJ", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
 	},
 }
 
@@ -326,7 +339,7 @@ var ExtendedFunctionTable = FunctionTable{
 		051: &Instruction{mnemonic: "LXSI", aField: XRegister},
 		060: &Instruction{mnemonic: "LSBO", aField: XRegister},
 		061: &Instruction{mnemonic: "LSBL", aField: XRegister},
-		070: &Instruction{mnemonic: "JGD", aField: AGRSComponent, jField: JGRSComponent},
+		070: &Instruction{mnemonic: "JGD", aField: AGRSComponent, jField: JGRSComponent, uIs18Bits: true},
 		071: &function071InterpreterExtended,
 		072: &function072InterpreterExtended,
 		073: &function073InterpreterExtended,
@@ -364,17 +377,17 @@ var function071InterpreterExtended = FunctionTable{
 		013: &Instruction{mnemonic: "DL", aField: ARegister, jField: JFunctionDiscriminator},
 		014: &Instruction{mnemonic: "DLN", aField: ARegister, jField: JFunctionDiscriminator},
 		015: &Instruction{mnemonic: "DLM", aField: ARegister, jField: JFunctionDiscriminator},
-		016: &Instruction{mnemonic: "DJZ", aField: ARegister, jField: JFunctionDiscriminator},
+		016: &Instruction{mnemonic: "DJZ", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
 	},
 }
 
 var function072InterpreterExtended = FunctionTable{
 	indexBy: IndexByJ,
 	table: map[int]Interpreter{
-		002: &Instruction{mnemonic: "JPS", aField: ARegister, jField: JFunctionDiscriminator},
-		003: &Instruction{mnemonic: "JNS", aField: ARegister, jField: JFunctionDiscriminator},
-		016: &Instruction{mnemonic: "SRS", aField: ARegister, jField: JFunctionDiscriminator},
-		017: &Instruction{mnemonic: "LRS", aField: ARegister, jField: JFunctionDiscriminator},
+		002: &Instruction{mnemonic: "JPS", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
+		003: &Instruction{mnemonic: "JNS", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
+		016: &Instruction{mnemonic: "SRS", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
+		017: &Instruction{mnemonic: "LRS", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
 	},
 }
 
@@ -412,14 +425,14 @@ var function07317InterpreterExtended = FunctionTable{
 var function074InterpreterExtended = FunctionTable{
 	indexBy: IndexByJ,
 	table: map[int]Interpreter{
-		000: &Instruction{mnemonic: "JZ", aField: ARegister, jField: JFunctionDiscriminator},
-		001: &Instruction{mnemonic: "JNZ", aField: ARegister, jField: JFunctionDiscriminator},
-		002: &Instruction{mnemonic: "JP", aField: ARegister, jField: JFunctionDiscriminator},
-		003: &Instruction{mnemonic: "JN", aField: ARegister, jField: JFunctionDiscriminator},
-		010: &Instruction{mnemonic: "JNLB", aField: ARegister, jField: JFunctionDiscriminator},
-		011: &Instruction{mnemonic: "JLB", aField: ARegister, jField: JFunctionDiscriminator},
-		012: &Instruction{mnemonic: "JMGI", aField: ARegister, jField: JFunctionDiscriminator},
-		013: &Instruction{mnemonic: "LMJ", aField: XRegister, jField: JFunctionDiscriminator},
+		000: &Instruction{mnemonic: "JZ", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
+		001: &Instruction{mnemonic: "JNZ", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
+		002: &Instruction{mnemonic: "JP", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
+		003: &Instruction{mnemonic: "JN", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
+		010: &Instruction{mnemonic: "JNLB", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
+		011: &Instruction{mnemonic: "JLB", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
+		012: &Instruction{mnemonic: "JMGI", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
+		013: &Instruction{mnemonic: "LMJ", aField: XRegister, jField: JFunctionDiscriminator, uIs18Bits: true},
 		014: &function07414InterpreterExtended,
 		015: &function07415InterpreterExtended,
 	},
@@ -428,24 +441,24 @@ var function074InterpreterExtended = FunctionTable{
 var function07414InterpreterExtended = FunctionTable{
 	indexBy: IndexByA,
 	table: map[int]Interpreter{
-		000: &Instruction{mnemonic: "JO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
-		001: &Instruction{mnemonic: "JFU", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
-		002: &Instruction{mnemonic: "JFO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
-		003: &Instruction{mnemonic: "JDF", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
-		004: &Instruction{mnemonic: "JC", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
-		005: &Instruction{mnemonic: "JNC", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		000: &Instruction{mnemonic: "JO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
+		001: &Instruction{mnemonic: "JFU", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
+		002: &Instruction{mnemonic: "JFO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
+		003: &Instruction{mnemonic: "JDF", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
+		004: &Instruction{mnemonic: "JC", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
+		005: &Instruction{mnemonic: "JNC", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
 	},
 }
 
 var function07415InterpreterExtended = FunctionTable{
 	indexBy: IndexByA,
 	table: map[int]Interpreter{
-		000: &Instruction{mnemonic: "JNO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
-		001: &Instruction{mnemonic: "JNFU", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
-		002: &Instruction{mnemonic: "JNFO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
-		003: &Instruction{mnemonic: "JNDF", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
-		004: &Instruction{mnemonic: "J", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
-		005: &Instruction{mnemonic: "HLTJ", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		000: &Instruction{mnemonic: "JNO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
+		001: &Instruction{mnemonic: "JNFU", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
+		002: &Instruction{mnemonic: "JNFO", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
+		003: &Instruction{mnemonic: "JNDF", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
+		004: &Instruction{mnemonic: "J", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
+		005: &Instruction{mnemonic: "HLTJ", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true},
 	},
 }
 
