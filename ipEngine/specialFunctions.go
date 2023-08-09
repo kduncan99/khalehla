@@ -12,6 +12,5 @@ import "khalehla/pkg"
 
 // NoOperation (NOP) evaluates the HIU field, but takes no other action (it does x-register incrementation)
 func NoOperation(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	completed, _, interrupt = e.GetJumpOperand(false)
-	return
+	return e.IgnoreOperand()
 }

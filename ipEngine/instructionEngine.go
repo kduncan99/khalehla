@@ -511,6 +511,15 @@ func (e *InstructionEngine) GetOperand(
 	allowImmediate bool,
 	allowPartial bool) (complete bool, operand uint64, interrupt pkg.Interrupt) {
 
+	// TODO There may be some trouble in the implemented code. Note these...
+	// Basic_Mode Immediate_Operands, F0.x = 0, any PP: The F0.i (along with the F0.h) is used as an
+	// extension of the F0.u.
+	// All other Basic_Mode instructions, PP > 1: The F0.i = 1 indicates Indirect_Addressing (see 4.4.6.4)
+	// Architecturally_Undefined: If in Basic_Mode, PP < 2 (except Immediate_Operands, F0.x = 0)
+	// and the F0.i = 1 produces undefined results.
+	// Also note that jumps and shifts, pp>1, .i bit indicates indirect addressing
+	// Finally, indirect addressing cannot apply to GRS locations, ever.
+
 	complete = true
 	operand = 0
 	interrupt = nil
@@ -607,6 +616,48 @@ func (e *InstructionEngine) GetStopReason() (StopReason, uint64) {
 
 func (e *InstructionEngine) HasPendingInterrupt() bool {
 	return e.pendingInterrupt != nil
+}
+
+// IgnoreOperand is specifically for the NOP instruction.
+// We go through the process of developing U, but we do not retrieve the operand therefrom.
+// This means that we do no access checks except in the case of checking for read access during
+// indirect address resolution.
+func (e *InstructionEngine) IgnoreOperand() (complete bool, interrupt pkg.Interrupt) {
+	complete = true
+	interrupt = nil
+
+	relAddress := e.calculateRelativeAddressForGRSOrStorage()
+
+	asp := e.activityStatePacket
+	ci := asp.GetCurrentInstruction()
+	dReg := asp.GetDesignatorRegister()
+	basicMode := dReg.IsBasicModeEnabled()
+	pPriv := dReg.GetProcessorPrivilege()
+
+	var baseRegisterIndex uint
+	if !basicMode {
+		baseRegisterIndex = uint(ci.GetB())
+		if (pPriv < 2) && (ci.GetI() != 0) {
+			baseRegisterIndex += 16
+		}
+	}
+
+	//  GRS checking - we go to the GRS is the relative address is < 0200
+	if (basicMode || (baseRegisterIndex == 0)) && (relAddress < 0200) {
+		e.incrementIndexRegisterInF0()
+		return
+	}
+
+	//  Loading from storage.  Do so, then (maybe) honor partial word handling.
+	if basicMode {
+		complete, baseRegisterIndex, interrupt = e.findBaseRegisterIndex(relAddress, false)
+		if !complete || interrupt != nil {
+			return
+		}
+	}
+
+	e.incrementIndexRegisterInF0()
+	return
 }
 
 func (e *InstructionEngine) IsLoggingInstructions() bool {

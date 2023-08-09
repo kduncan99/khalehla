@@ -54,6 +54,9 @@ const (
 	fSA          = "001"
 	fSD          = "073"
 	fSLJ         = "072"
+	fTEP         = "044"
+	fTLEM        = "047"
+	fTOP         = "045"
 )
 
 const (

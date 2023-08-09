@@ -20,6 +20,22 @@ const PositiveZero = 0
 const NegativeOne = 0_777777_777776
 const NegativeZero = 0_777777_777777
 
+func (w *Word36) CountBits() uint64 {
+	return CountBits(w.GetW())
+}
+
+func CountBits(value uint64) uint64 {
+	v := value & NegativeZero
+	var count uint64
+	for v > 0 {
+		if v&01 == 01 {
+			count++
+		}
+		v >>= 1
+	}
+	return count
+}
+
 func (w *Word36) EliminateNegativeZero() *Word36 {
 	if *w == NegativeZero {
 		*w = 0
