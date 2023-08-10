@@ -16,6 +16,89 @@ func AddSimple(operand1 uint64, operand2 uint64) uint64 {
 	}
 }
 
+// And calculates the logical AND of two 36-bit values
+func And(operand1 uint64, operand2 uint64) uint64 {
+	return (operand1 & operand2) & NegativeZero
+}
+
+// Compare indicates whether operand1 is less than, equal to, or greater than operand2.
+// the result negative if less than, zero if equal, or positive if greater than.
+// For our purposes, negative zero is less than (and thus, not equal to) positive zero.
+func Compare(operand1 uint64, operand2 uint64) int {
+	if operand1 == operand2 {
+		return 0
+	}
+
+	pos1 := IsPositive(operand1)
+	pos2 := IsPositive(operand2)
+	if pos1 && pos2 {
+		if operand1 < operand2 {
+			return -1
+		} else {
+			return 1
+		}
+	} else if !pos1 && !pos2 {
+		if operand1 > operand2 {
+			return -1
+		} else {
+			return 1
+		}
+	} else if pos1 {
+		return 1
+	} else {
+		return -1
+	}
+}
+
+// CompareDouble indicates whether operand1 is less than, equal to, or greater than operand2.
+// the result negative if less than, zero if equal, or positive if greater than.
+// For our purposes, negative zero is less than (and thus, not equal to) positive zero.
+// both operands consist of a 72-bit value, stored as two consecutive 36-bit values wrapped
+// in uint64's.
+func CompareDouble(operand1 []uint64, operand2 []uint64) int {
+	if (operand1[0] == operand2[0]) && (operand1[1] == operand2[1]) {
+		return 0
+	}
+
+	pos1 := IsPositive(operand1[0])
+	pos2 := IsPositive(operand2[0])
+	if pos1 != pos2 {
+		if pos1 {
+			return 1
+		} else {
+			return -1
+		}
+	} else if pos1 {
+		if operand1[0] > operand2[0] {
+			return 1
+		} else if operand1[0] < operand2[0] {
+			return -1
+		} else {
+			if operand1[1] > operand2[1] {
+				return 1
+			} else if operand1[1] < operand2[1] {
+				return -1
+			} else {
+				return 0
+			}
+		}
+	} else {
+		if operand1[0] > operand2[0] {
+			return -1
+		} else if operand1[0] < operand2[0] {
+			return 1
+		} else {
+			if operand1[1] > operand2[1] {
+				return -1
+			} else if operand1[1] < operand2[1] {
+				return 1
+			} else {
+				return 0
+			}
+		}
+	}
+}
+
 // GetOnesComplement takes a standard twos-complement value and converts it to a
 // 36-bit ones-complement value packed in a uint64.
 func GetOnesComplement(operand uint64) uint64 {
@@ -63,7 +146,53 @@ func GetTwosComplement(operand uint64) uint64 {
 	}
 }
 
+func IsNegative(value uint64) bool {
+	return (value & 0_400000_000000) != 0
+}
+
+func IsPositive(value uint64) bool {
+	return (value & 0_400000_000000) == 0
+}
+
+func IsZero(operand uint64) bool {
+	return operand == PositiveZero || operand == NegativeZero
+}
+
+func IsZeroDouble(operand []uint64) bool {
+	return IsZero(operand[0]) && operand[0] == operand[1]
+}
+
+// Magnitude returns the absolute value of the given operand
+func Magnitude(operand uint64) uint64 {
+	if IsPositive(operand) {
+		return operand
+	} else {
+		return Not(operand)
+	}
+}
+
+// MagnitudeDouble returns the absolute value of the given 72-bit operand
+func MagnitudeDouble(operand uint64) uint64 {
+	if IsPositive(operand) {
+		return operand
+	} else {
+		return Not(operand)
+	}
+}
+
 // Negate returns the additive inverse of a given 36-bit signed value packed into a uint64
 func Negate(operand uint64) uint64 {
 	return operand ^ NegativeZero
+}
+
+func Not(op uint64) uint64 {
+	return (op ^ NegativeZero) & NegativeZero
+}
+
+func Or(lhs uint64, rhs uint64) uint64 {
+	return (lhs | rhs) & NegativeZero
+}
+
+func Xor(lhs uint64, rhs uint64) uint64 {
+	return (lhs ^ rhs) & NegativeZero
 }

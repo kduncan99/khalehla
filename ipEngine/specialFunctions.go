@@ -10,7 +10,7 @@ import "khalehla/pkg"
 //	TODO Execute (EX)
 //	TODO ExecuteRepeated (EXR)
 
-// NoOperation (NOP) evaluates the HIU field, but takes no other action (it does x-register incrementation)
+// NoOperation (NOP) evaluates the HIU field, but takes no other action (it does do x-register incrementation)
 func NoOperation(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	return e.IgnoreOperand()
 }

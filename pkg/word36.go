@@ -269,24 +269,12 @@ func (w *Word36) IsNegative() bool {
 	return ((*w) & 0_400000_000000) != 0
 }
 
-func IsNegative(value uint64) bool {
-	return (value & 0_400000_000000) != 0
-}
-
 func (w *Word36) IsPositive() bool {
 	return ((*w) & 0_400000_000000) == 0
 }
 
-func IsPositive(value uint64) bool {
-	return (value & 0_400000_000000) == 0
-}
-
 func (w *Word36) IsZero() bool {
-	return (*w == PositiveZero) || (*w == NegativeZero)
-}
-
-func IsZero(value uint64) bool {
-	return (value == PositiveZero) || (value == NegativeZero)
+	return IsZero(uint64(*w))
 }
 
 func (w *Word36) SetW(op uint64) *Word36 {
@@ -487,32 +475,16 @@ func (w *Word36) And(op uint64) {
 	*w &= Word36(op & 0777777777777)
 }
 
-func And(lhs uint64, rhs uint64) uint64 {
-	return lhs & rhs & NegativeZero
-}
-
 func (w *Word36) Not() {
 	*w ^= 0777777777777
-}
-
-func Not(op uint64) uint64 {
-	return (op ^ NegativeZero) & NegativeZero
 }
 
 func (w *Word36) Or(op uint64) {
 	*w |= Word36(op & 0777777777777)
 }
 
-func Or(lhs uint64, rhs uint64) uint64 {
-	return (lhs | rhs) & NegativeZero
-}
-
 func (w *Word36) Xor(op uint64) {
 	*w ^= Word36(op & 0777777777777)
-}
-
-func Xor(lhs uint64, rhs uint64) uint64 {
-	return (lhs ^ rhs) & NegativeZero
 }
 
 func FromStringToAsciiWords(inp string, buffer []Word36) {

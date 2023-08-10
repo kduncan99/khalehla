@@ -85,6 +85,9 @@ type InstructionEngine struct {
 	//	and we should not increment it for the next instruction
 	preventPCUpdate bool
 
+	//	If true, we do not perform index incrementation (such as when F.x is nonzero)
+	preventIndexIncrement bool
+
 	mutex sync.Mutex
 
 	breakpointAddress  pkg.AbsoluteAddress
