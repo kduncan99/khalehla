@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"khalehla/dasm"
 	"khalehla/pkg"
-	"sync"
 )
 
 type BreakpointComparison uint
@@ -18,6 +17,16 @@ const (
 	BreakpointFetch BreakpointComparison = 1 << 0 //	TODO need to check for this, where appropriate
 	BreakpointRead  BreakpointComparison = 1 << 1
 	BreakpointWrite BreakpointComparison = 1 << 2
+)
+
+type InstructionPoint uint
+
+const (
+	BetweenInstructions InstructionPoint = 0 //	an instruction is not in F0, previous instruction has completed.
+	ResolvingAddress    InstructionPoint = 1 //	we have not yet begun processing the instruction in F0,
+	//		or we are still resolving indirect addressing for an operand.
+	MidInstruction InstructionPoint = 2 //  we are processing an instruction and have reached a mid-instruction
+	//		interrupt point (e.g., for EXR)
 )
 
 type StopReason uint
@@ -54,8 +63,49 @@ const RCSIndexRegister = EX0
 const JumpHistoryTableThreshold = 120 //	Raise interrupt when this many entries exist
 const JumpHistoryTableSize = 128      //	Size of the table
 
-var storageLocks = map[uint64]*InstructionEngine{}
-var storageLocksMutex sync.Mutex
+/*
+	TODO implement this, and also put the storage lock table in a separate struct
+
+4.9.4.1 Storage_Lock
+For data protection and activity synchronization, a set of instructions, which potentially perform both a read and write
+operation, are executed under Storage_Lock. Under Storage_Lock, the data word at the instruction operand address cannot
+be accessed by another processor from the time the word is read to the time it is written (in some cases a write may not
+occur; see the individual instruction descriptions). It is model_dependent whether access is denied only when the other
+processor is executing one of the Storage_Lock instructions or when the other processor is executing any instruction.
+
+As a general rule, attempts at data protection and activity synchronization using instructions not performed under
+Storage_Lock are not guaranteed to produce the desired results. (An example of a valid exception to this rule is
+software lock := 0 (for example, S1 of a Test and Set cell) by a nonlocking write unlocks the software_lock but is not a
+barrier for subsequent read instructions). To protect the order of read-after-write when unlocking a software_lock,
+semaphores, including software_locks, that are “set” via Storage_Lock instructions, can only be properly “cleared” with
+Storage_Lock instructions, and Test and Set software-locks can also be cleared by the Unlock instruction. Care must be
+taken to ensure that software-locking conventions consider all aspects of the architectural requirements of locking
+listed in this subsection and in the descriptions of the locking instructions listed below. Because several of the
+Storage_Lock instructions produce Architecturally_Undefined results when the operand address U  0200 and because a
+processor’s GRS cannot be accessed by other processors, storage operands are expected to be used for data protection and
+activity synchronization.
+
+The instructions executed under Storage_Lock are:
+– Increment by One (INC; see 6.3.23)
+– Increment by Two (INC2; see 6.3.24)
+– Decrement by One (DEC; see 6.3.25)
+– Decrement by Two (DEC2; see 6.3.26)
+– Eliminate Negative Zero (ENZ; see 6.3.27)
+– Test and Set (TS; see 6.7.37)
+– Test and Set and Skip (TSS; see 6.7.38)
+– Test and Clear and Skip (TCS; see 6.7.39)
+– Conditional Replace (CR; see 6.7.40)
+– Dequeue (DEQ; see 6.17.3)
+– Dequeue or Wait (DEQW; see 6.17.4)
+– Enqueue (ENQ; see 6.17.1)
+– Enqueue to Front (ENQF; see 6.17.2)
+– Deposit Queue Bank (DEPOSITQB; see 6.17.5)
+– Withdraw Queue Bank (WITHDRAWQB; see 6.17.6)
+
+The Storage_Lock is released by hardware upon detection of a hardware fault.
+*/
+// var storageLocks = map[uint64]*InstructionEngine{}
+// var storageLocksMutex sync.Mutex
 
 // InstructionEngine implements the basic functionality required to execute 36-bit code.
 // It does not handle any actual hardware considerations such as interrupts, etc.
@@ -65,37 +115,38 @@ var storageLocksMutex sync.Mutex
 type InstructionEngine struct {
 	mainStorage *pkg.MainStorage // must be set externally
 
-	activeBaseTable     [16]*ActiveBaseTableEntry //	[0] is unused
-	activityStatePacket *pkg.ActivityStatePacket
-	baseRegisters       [32]*pkg.BaseRegister
-	generalRegisterSet  *GeneralRegisterSet
+	activeBaseTable        [16]*ActiveBaseTableEntry // [0] is unused
+	activityStatePacket    *pkg.ActivityStatePacket
+	baseRegisters          [32]*pkg.BaseRegister
+	fetchBaseRegisterIndex uint // only applies to basic mode - if 0, it is not valid; otherwise it is 12:15
+	generalRegisterSet     *GeneralRegisterSet
 
 	//	If not nil, describes an interrupt which needs to be handled as soon as possible
-	pendingInterrupt pkg.Interrupt
+	pendingInterrupts *InterruptStack
 
 	//	See 2.4.2
 	//	Should this be saved off somewhere during an interrupt?
-	jumpHistory                 [JumpHistoryTableThreshold]pkg.Word36
-	jumpHistoryIndex            int
-	jumpHistoryThresholdReached bool
-	logInstructions             bool
-	logInterrupts               bool
+	// TODO should be a separate struct and funcs for handling the jump history table
+	// jumpHistory                 [JumpHistoryTableThreshold]pkg.Word36
+	// jumpHistoryIndex            int
+	// jumpHistoryThresholdReached bool
+	logInstructions bool
+	logInterrupts   bool
 
-	//	If true, the current (or most recent) instructionType has set the PAR.PC the way it wants,
+	//	If true, the current (or most recent) instruction has set the PAR.PC the way it wants,
 	//	and we should not increment it for the next instruction
 	preventPCUpdate bool
 
-	//	If true, we do not perform index incrementation (such as when F.x is nonzero)
-	preventIndexIncrement bool
+	breakpointAddress *pkg.AbsoluteAddress
+	breakpointHalt    bool
+	breakpointFetch   bool
+	breakpointRead    bool
+	breakpointWrite   bool
 
-	mutex sync.Mutex
-
-	breakpointAddress  pkg.AbsoluteAddress
-	breakpointRegister BreakpointComparison
-
-	isStopped  bool
-	stopReason StopReason
-	stopDetail pkg.Word36
+	isStopped        bool
+	stopReason       StopReason
+	stopDetail       pkg.Word36
+	instructionPoint InstructionPoint
 }
 
 // Order of base register selection for Basic Mode address resolution
@@ -117,23 +168,40 @@ var baseRegisterCandidates = map[bool][]uint{
 func NewEngine(mainStorage *pkg.MainStorage) *InstructionEngine {
 	e := &InstructionEngine{}
 	e.mainStorage = mainStorage
-	for ax := 0; ax < 16; ax++ {
-		e.activeBaseTable[ax] = NewActiveBaseTableEntryFromComposite(0)
-	}
-	for bx := 0; bx < 32; bx++ {
-		e.baseRegisters[bx] = pkg.NewVoidBaseRegister()
-	}
-
-	e.generalRegisterSet = NewGeneralRegisterSet()
-	e.activityStatePacket = pkg.NewActivityStatePacket()
-	e.breakpointRegister = BreakpointNone
-	e.stopReason = NotStopped
-
+	e.Clear()
 	return e
 }
 
-func (e *InstructionEngine) ClearInterrupt() {
-	e.pendingInterrupt = nil
+func (e *InstructionEngine) Clear() {
+	e.pendingInterrupts = NewInterruptStack()
+
+	for ax := 0; ax < 16; ax++ {
+		e.activeBaseTable[ax] = NewActiveBaseTableEntryFromComposite(0)
+	}
+
+	for bx := 0; bx < 32; bx++ {
+		e.baseRegisters[bx] = pkg.NewVoidBaseRegister()
+	}
+	e.fetchBaseRegisterIndex = 0
+
+	e.generalRegisterSet = NewGeneralRegisterSet()
+	e.activityStatePacket = pkg.NewActivityStatePacket()
+	e.breakpointAddress = nil
+	e.breakpointHalt = false
+	e.breakpointFetch = false
+	e.breakpointRead = false
+	e.breakpointWrite = false
+
+	e.isStopped = true
+	e.stopReason = NotStopped
+	e.stopDetail = 0
+
+	e.preventPCUpdate = false
+	e.instructionPoint = BetweenInstructions
+}
+
+func (e *InstructionEngine) ClearAllInterrupts() {
+	e.pendingInterrupts.Clear()
 }
 
 func (e *InstructionEngine) ClearStop() {
@@ -143,8 +211,12 @@ func (e *InstructionEngine) ClearStop() {
 func (e *InstructionEngine) Dump() {
 	fmt.Printf("Instruction Engine Dump ---------------------------------------------------------------------\n")
 
-	if e.HasPendingInterrupt() && e.IsLoggingInterrupts() {
-		fmt.Printf("Pending Interrupt: %s\n", pkg.GetInterruptString(e.pendingInterrupt))
+	pendingInterrupts := e.pendingInterrupts.PopAll()
+	if len(pendingInterrupts) > 0 {
+		fmt.Printf("  Pending Interrupts:\n")
+		for ix := 0; ix < len(pendingInterrupts); ix++ {
+			fmt.Printf("    %s\n", pkg.GetInterruptString(pendingInterrupts[ix]))
+		}
 	}
 
 	var f0String string
@@ -209,11 +281,9 @@ func (e *InstructionEngine) Dump() {
 
 // FindBasicModeBank takes a relative address and determines which (if any) of the basic mode banks
 // currently based on BDR12-15 is to be selected for that address.
-// Set updatedDB31 true if you want the code to update designator register Bit31 in the event we cross
-// primary/secondary bank pairs.
 // Returns the bank descriptor index (from 12 to 15) for the proper bank descriptor.
 // Returns zero if the address is not within any of the based bank limits.
-func (e *InstructionEngine) FindBasicModeBank(relativeAddress uint64, updateDB31 bool) uint {
+func (e *InstructionEngine) FindBasicModeBank(relativeAddress uint64) uint {
 	db31 := e.activityStatePacket.GetDesignatorRegister().GetBasicModeBaseRegisterSelection()
 	for tx := 0; tx < 4; tx++ {
 		//  See IP PRM 4.4.5 - select the base register from the selection table.
@@ -223,11 +293,6 @@ func (e *InstructionEngine) FindBasicModeBank(relativeAddress uint64, updateDB31
 		brIndex := baseRegisterCandidates[db31][tx]
 		bReg := e.baseRegisters[brIndex]
 		if e.isWithinLimits(bReg, relativeAddress) {
-			if updateDB31 && (tx >= 2) {
-				//  address is found in a secondary bank, so we need to flip DB31
-				e.activityStatePacket.GetDesignatorRegister().SetBasicModeBaseRegisterSelection(!db31)
-			}
-
 			return brIndex
 		}
 	}
@@ -255,20 +320,20 @@ func (e *InstructionEngine) GetBaseRegister(index uint64) *pkg.BaseRegister {
 // count: number of consecutive words to be returned
 // forUpdate: if true, we perform access checks for read and for write; otherwise, only for read.
 // this is done for SYSC, which both reads and updates consecutive operands.
-// returns: true if completed with a slice of storage representing the words in question.
-// false and nil if not completed
-// false and nil and an interrupt to be posted by the caller if an interrupt was triggered
-func (e *InstructionEngine) GetConsecutiveOperands(
-	grsCheck bool,
-	count uint64,
-	forUpdate bool) (complete bool, operands []pkg.Word36, interrupt pkg.Interrupt) {
-
-	complete = true
+// Returns requested operands or an interrupt which should be posted.
+// Returns complete == false if we are in the middle of resolving addresses.
+func (e *InstructionEngine) GetConsecutiveOperands(grsCheck bool, count uint64, forUpdate bool) (operands []pkg.Word36, complete bool, interrupt pkg.Interrupt) {
 	operands = nil
+	complete = true
 	interrupt = nil
 
 	//  Get the relative address so we can do a grsCheck
-	relAddress := e.calculateRelativeAddressForGRSOrStorage()
+	var relAddr uint64
+	relAddr, complete, interrupt = e.resolveRelativeAddress(false)
+	if !complete || interrupt != nil {
+		return
+	}
+
 	e.incrementIndexRegisterInF0()
 
 	//  If this is a GRS reference - we do not need to look for containing banks or validate storage limits.
@@ -276,11 +341,11 @@ func (e *InstructionEngine) GetConsecutiveOperands(
 	dr := asp.GetDesignatorRegister()
 	if (grsCheck) &&
 		(dr.IsBasicModeEnabled() || (asp.GetCurrentInstruction().GetB() == 0)) &&
-		(relAddress < 0200) {
+		(relAddr < 0200) {
 
-		//  For multiple accesses, advancing beyond GRS 0177 wraps back to zero.
-		//  Do accessibility checks for each GRS access
-		grsIndex := relAddress
+		//  For multiple accesses, advancing beyond GRS 0177 throws a limits violation
+		//  Do accessibility check for each GRS access
+		grsIndex := relAddr
 		for ox := uint64(0); ox < count; ox++ {
 			if grsIndex == 0200 {
 				interrupt = pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationGRS, false)
@@ -300,20 +365,26 @@ func (e *InstructionEngine) GetConsecutiveOperands(
 	}
 
 	//  Get base register and check storage and access limits
-	complete, brIndex, interrupt := e.findBaseRegisterIndex(relAddress, false)
-	if !complete || interrupt != nil {
+	var brIndex uint
+	brIndex, interrupt = e.findBaseRegisterIndex(relAddr)
+	if interrupt != nil {
 		return
 	}
 
 	bReg := e.baseRegisters[brIndex]
 	ikr := e.activityStatePacket.GetIndicatorKeyRegister()
-	interrupt = e.checkAccessLimitsRange(bReg, relAddress, count, true, forUpdate, ikr.GetAccessKey())
+	interrupt = e.checkAccessLimitsRange(bReg, relAddr, count, true, forUpdate, ikr.GetAccessKey())
 	if interrupt != nil {
 		return
 	}
 
-	absAddr := bReg.ConvertRelativeAddress(relAddress)
-	e.checkBreakpointRange(BreakpointRead, absAddr, count) // TODO do something if we return true
+	var found bool
+	absAddr := bReg.ConvertRelativeAddress(relAddr)
+	found, interrupt = e.checkBreakpointRange(BreakpointRead, absAddr, count)
+	if found {
+		return
+	}
+
 	operands, _ = e.mainStorage.GetSlice(absAddr.GetSegment(), absAddr.GetOffset(), count)
 	return
 }
@@ -426,23 +497,17 @@ func (e *InstructionEngine) GetImmediateOperand() (operand uint64, interrupt pkg
 			operand = 0
 		}
 
-		//  Add the contents of Xx(m), and do index register incrementation if appropriate.
-		xReg := e.GetExecOrUserXRegister(ci.GetX())
-
-		//  24-bit indexing?
-		if !dr.IsBasicModeEnabled() && (privilege < 2) && exec24Index {
-			//  Add the 24-bit modifier
-			operand = pkg.AddSimple(operand, xReg.GetXM24())
-			if ci.GetH() != 0 {
-				e.GetExecOrUserXRegister(ci.GetX()).IncrementModifier24()
-			}
-		} else {
-			//  Add the 18-bit modifier
-			operand = pkg.AddSimple(operand, xReg.GetXM())
-			if ci.GetH() != 0 {
-				e.GetExecOrUserXRegister(ci.GetX()).IncrementModifier()
+		//  Add the contents of Xx(m) if F0.x is non-zero
+		if ci.GetX() != 0 {
+			xReg := e.GetExecOrUserXRegister(ci.GetX())
+			if !dr.IsBasicModeEnabled() && (privilege < 2) && exec24Index {
+				operand = pkg.AddSimple(operand, xReg.GetXM24())
+			} else {
+				operand = pkg.AddSimple(operand, xReg.GetXM())
 			}
 		}
+
+		e.incrementIndexRegisterInF0()
 	}
 
 	//  Truncate the result to the proper size, then sign-extend if appropriate to do so.
@@ -462,34 +527,32 @@ func (e *InstructionEngine) GetImmediateOperand() (operand uint64, interrupt pkg
 	return
 }
 
+func (e *InstructionEngine) GetInstructionPoint() InstructionPoint {
+	return e.instructionPoint
+}
+
 // GetJumpOperand is similar to getImmediateOperand()
 // However the calculated U field is only ever 16 or 18 bits, and is never sign-extended.
 // Also, we do not rely upon j-field for anything, as that has no meaning for conditionalJump instructions.
-//
-// updateDesignatorRegister:
-//
-//	if true and if we are in basic mode, we update the basic mode bank selection bit
-//	in the designator register if necessary
-//
-// returns complete==true and jump operand value if complete and successful
-// returns Interrupt if an interrupt needs to be raised - caller should post the interrupt
-// returns complete==false if an address is not fully resolved (basic mode indirect address only)
-func (e *InstructionEngine) GetJumpOperand(
-	updateDesignatorRegister bool) (complete bool, operand uint64, interrupt pkg.Interrupt) {
-
-	complete = true
-	interrupt = nil
-	operand = e.calculateRelativeAddressForJump()
-
-	//  The following bit is how we deal with indirect addressing for basic mode.
-	//  If we are doing that, it will update the U portion of the current instruction with new address information,
-	//  then throw UnresolvedAddressException which will eventually route us back through here again, but this
-	//  time with new address info (in reladdress), and we keep doing this until we're not doing indirect addressing.
-	asp := e.activityStatePacket
-	if asp.GetDesignatorRegister().IsBasicModeEnabled() && (asp.GetCurrentInstruction().GetI() != 0) {
-		complete, _, interrupt = e.findBaseRegisterIndex(operand, updateDesignatorRegister)
-	} else {
-		e.incrementIndexRegisterInF0()
+// in the designator register if necessary
+// Returns requested operand or an interrupt which should be posted.
+// Returns flip31==true if designator register bit 31 should be flipped if/when the jump is actually taken.
+// Returns complete == false if we are in the middle of resolving addresses.
+func (e *InstructionEngine) GetJumpOperand() (operand uint64, flip31 bool, completed bool, interrupt pkg.Interrupt) {
+	flip31 = false
+	operand, completed, interrupt = e.resolveRelativeAddress(true)
+	if completed && interrupt == nil {
+		dr := e.GetDesignatorRegister()
+		if dr.IsBasicModeEnabled() {
+			var brx uint
+			brx, interrupt = e.findBaseRegisterIndexBasicMode(operand)
+			// base register paris are ordered according LSB... the pair B12/B14 have the bit clear,
+			// while the pair B13/B15 have the bit set. It can be shown that two base register indices with
+			// matching LSBs are in the same pair, while having differing values indicates they are in opposite
+			// pairs. If we can show that the current fetch base register is in the opposite pair to the
+			// base register developed for the jump operand, then we can say that DB31 needs to be flipped.
+			flip31 = (e.fetchBaseRegisterIndex % 01) != (brx % 01)
+		}
 	}
 
 	return
@@ -499,111 +562,98 @@ func (e *InstructionEngine) GetJumpOperand(
 // and partial word access. Instructions which use the j-field as part of the function code will likely set
 // allowImmediate and allowPartial false.
 //
-// grsDestination: true if we are going to put this value into a GRS location
+// grsDest: true if we are going to put this value into a GRS location
 // grsCheck: true if we should consider GRS for addresses < 0200 for our source
-// allowImmediate: true if we should allow immediate addressing
+// allowImm: true if we should allow immediate addressing
 // allowPartial: true if we should do partial word transfers (presuming we are not in a GRS address)
-//
-// returns complete == true and the operand value is successful
-// returns complete == false if address resolution is unfinished (such as can happen in Basic Mode with
-// indirect addressing). In this case, caller should call back again after checking for any pending interrupts.
-// returns an Interrupt if any interrupt needs to be raised - caller should post the interrupt
+// Returns requested operand or an interrupt which should be posted.
+// Returns complete == false if we are in the middle of resolving addresses.
 func (e *InstructionEngine) GetOperand(
-	grsDestination bool,
+	grsDest bool,
 	grsCheck bool,
-	allowImmediate bool,
-	allowPartial bool) (complete bool, operand uint64, interrupt pkg.Interrupt) {
+	allowImm bool,
+	allowPartial bool) (operand uint64, completed bool, interrupt pkg.Interrupt) {
 
-	// TODO There may be some trouble in the implemented code. Note these...
-	// Basic_Mode Immediate_Operands, F0.x = 0, any PP: The F0.i (along with the F0.h) is used as an
-	// extension of the F0.u.
-	// All other Basic_Mode instructions, PP > 1: The F0.i = 1 indicates Indirect_Addressing (see 4.4.6.4)
-	// Architecturally_Undefined: If in Basic_Mode, PP < 2 (except Immediate_Operands, F0.x = 0)
-	// and the F0.i = 1 produces undefined results.
-	// Also note that jumps and shifts, pp>1, .i bit indicates indirect addressing
-	// Finally, indirect addressing cannot apply to GRS locations, ever.
-
-	complete = true
 	operand = 0
+	completed = true
 	interrupt = nil
 
+	// immediate operand?
 	jField := uint(e.activityStatePacket.GetCurrentInstruction().GetJ())
-	if allowImmediate {
-		//  j-field is U or XU? If so, get the value from the instruction itself (immediate addressing)
-		if (jField == pkg.JFieldU) || (jField == pkg.JFieldXU) {
-			operand, interrupt = e.GetImmediateOperand()
-			return
-		}
+	if allowImm && ((jField == pkg.JFieldU) || (jField == pkg.JFieldXU)) {
+		operand, interrupt = e.GetImmediateOperand()
+		return
 	}
 
-	relAddress := e.calculateRelativeAddressForGRSOrStorage()
+	// get relative address and handle indirect addressing
+	var relAddr uint64
+	relAddr, completed, interrupt = e.resolveRelativeAddress(false)
+	if !completed || interrupt != nil {
+		return
+	}
 
 	asp := e.activityStatePacket
 	ci := asp.GetCurrentInstruction()
 	dReg := asp.GetDesignatorRegister()
 	basicMode := dReg.IsBasicModeEnabled()
-	pPriv := dReg.GetProcessorPrivilege()
+	privilege := dReg.GetProcessorPrivilege()
 	grs := e.generalRegisterSet
 
-	var baseRegisterIndex uint
+	// using exec base registers?
+	var brx uint
 	if !basicMode {
-		baseRegisterIndex = uint(ci.GetB())
-		if (pPriv < 2) && (ci.GetI() != 0) {
-			baseRegisterIndex += 16
+		brx = uint(ci.GetB())
+		if (privilege < 2) && (ci.GetI() != 0) {
+			brx += 16
 		}
 	}
 
-	//  Loading from GRS?  If so, go get the value.
-	//  If grsDestination is true, get the full value. Otherwise, honor j-field for partial-word transfer.
-	//  See hardware guide section 4.3.2 - any GRS-to-GRS transfer is full-word, regardless of j-field.
-	if (grsCheck) && (basicMode || (baseRegisterIndex == 0)) && (relAddress < 0200) {
-		e.incrementIndexRegisterInF0()
+	e.incrementIndexRegisterInF0()
 
+	//  Loading from GRS?  If so, go get the value.
+	//  If grsDest is true, get the full value. Otherwise, honor j-field for partial-word transfer.
+	//  (Any GRS-to-GRS transfer is full-word, regardless of j-field)
+	if (grsCheck) && (basicMode || (brx == 0)) && (relAddr < 0200) {
 		//  First, do accessibility checks
-		if e.isGRSAccessAllowed(relAddress, pPriv, false) {
+		if e.isGRSAccessAllowed(relAddr, privilege, false) {
 			interrupt = pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationReadAccess, true)
-			complete = false
 			return
 		}
 
 		//  If we are GRS or not allowing partial word transfers, do a full word.
 		//  Otherwise, honor partial word transferring.
-		if grsDestination || !allowPartial {
-			operand = grs.GetRegister(relAddress).GetW()
+		if grsDest || !allowPartial {
+			operand = grs.GetRegister(relAddr).GetW()
 		} else {
 			qWordMode := dReg.IsQuarterWordModeEnabled()
-			operand = e.extractPartialWord(grs.GetRegister(relAddress).GetW(), jField, qWordMode)
-			complete = false
+			operand = e.extractPartialWord(grs.GetRegister(relAddr).GetW(), jField, qWordMode)
+		}
+	} else {
+		//  Loading from storage.  Do so, then (maybe) honor partial word handling.
+		if basicMode {
+			brx, interrupt = e.findBaseRegisterIndex(relAddr)
+			if interrupt != nil {
+				return
+			}
+		}
+
+		baseRegister := e.baseRegisters[brx]
+		key := asp.GetIndicatorKeyRegister().GetAccessKey()
+		interrupt = e.checkAccessLimitsAndAccessibility(basicMode, brx, relAddr, false, true, false, key)
+		if interrupt != nil {
 			return
 		}
-	}
 
-	//  Loading from storage.  Do so, then (maybe) honor partial word handling.
-	if basicMode {
-		complete, baseRegisterIndex, interrupt = e.findBaseRegisterIndex(relAddress, false)
-		if !complete || interrupt != nil {
-			return
+		var absAddress pkg.AbsoluteAddress
+		e.getAbsoluteAddress(baseRegister, relAddr, &absAddress)
+		e.checkBreakpoint(BreakpointRead, &absAddress)
+
+		readOffset := relAddr - baseRegister.GetLowerLimitNormalized()
+		operand = baseRegister.GetStorage()[readOffset].GetW()
+		if allowPartial {
+			qWordMode := dReg.IsQuarterWordModeEnabled()
+			operand = e.extractPartialWord(operand, jField, qWordMode)
 		}
-	}
-
-	baseRegister := e.baseRegisters[baseRegisterIndex]
-	interrupt = e.checkAccessLimits(baseRegister, relAddress, false, true, false, asp.GetIndicatorKeyRegister().GetAccessKey())
-	if interrupt != nil {
-		complete = false
-		return
-	}
-
-	e.incrementIndexRegisterInF0()
-
-	var absAddress pkg.AbsoluteAddress
-	e.getAbsoluteAddress(baseRegister, relAddress, &absAddress)
-	e.checkBreakpoint(BreakpointRead, &absAddress)
-
-	readOffset := relAddress - baseRegister.GetLowerLimitNormalized()
-	operand = baseRegister.GetStorage()[readOffset].GetW()
-	if allowPartial {
-		qWordMode := dReg.IsQuarterWordModeEnabled()
-		operand = e.extractPartialWord(operand, jField, qWordMode)
 	}
 
 	return
@@ -618,48 +668,45 @@ func (e *InstructionEngine) GetStopReason() (StopReason, uint64) {
 }
 
 func (e *InstructionEngine) HasPendingInterrupt() bool {
-	return e.pendingInterrupt != nil
+	return !e.pendingInterrupts.IsClear()
 }
 
-// IgnoreOperand is specifically for the NOP instruction.
-// We go through the process of developing U, but we do not retrieve the operand therefrom.
-// This means that we do no access checks except in the case of checking for read access during
-// indirect address resolution.
+// IgnoreOperand is specifically for the NOP instruction.  We go through the process of developing U,
+// but we do not retrieve the operand therefrom. This means that we do no access checks except in the case of checking
+// for read access during indirect address resolution.
+// Returns complete == false if we are in the middle of resolving addresses,
+// or an interrupt if we fail some sort of limits or access checking.
 func (e *InstructionEngine) IgnoreOperand() (complete bool, interrupt pkg.Interrupt) {
-	complete = true
-	interrupt = nil
-
-	relAddress := e.calculateRelativeAddressForGRSOrStorage()
+	var relAddr uint64
+	relAddr, complete, interrupt = e.resolveRelativeAddress(false)
+	if !complete || interrupt != nil {
+		return
+	}
 
 	asp := e.activityStatePacket
 	ci := asp.GetCurrentInstruction()
 	dReg := asp.GetDesignatorRegister()
 	basicMode := dReg.IsBasicModeEnabled()
-	pPriv := dReg.GetProcessorPrivilege()
+	privilege := dReg.GetProcessorPrivilege()
 
-	var baseRegisterIndex uint
+	var brx uint
 	if !basicMode {
-		baseRegisterIndex = uint(ci.GetB())
-		if (pPriv < 2) && (ci.GetI() != 0) {
-			baseRegisterIndex += 16
+		brx = uint(ci.GetB())
+		if (privilege < 2) && (ci.GetI() != 0) {
+			brx += 16
 		}
 	}
 
-	//  GRS checking - we go to the GRS is the relative address is < 0200
-	if (basicMode || (baseRegisterIndex == 0)) && (relAddress < 0200) {
-		e.incrementIndexRegisterInF0()
-		return
-	}
-
-	//  Loading from storage.  Do so, then (maybe) honor partial word handling.
-	if basicMode {
-		complete, baseRegisterIndex, interrupt = e.findBaseRegisterIndex(relAddress, false)
-		if !complete || interrupt != nil {
+	if relAddr > 0177 || (!basicMode && brx > 0) {
+		// we do the following simply for access checks - not necessary for GRS locations
+		brx, interrupt = e.findBaseRegisterIndex(relAddr)
+		if interrupt != nil {
 			return
 		}
+		key := asp.GetIndicatorKeyRegister().GetAccessKey()
+		interrupt = e.checkAccessLimitsAndAccessibility(basicMode, brx, relAddr, false, false, false, key)
 	}
 
-	e.incrementIndexRegisterInF0()
 	return
 }
 
@@ -675,21 +722,11 @@ func (e *InstructionEngine) IsStopped() bool {
 	return e.isStopped
 }
 
-func (e *InstructionEngine) PopInterrupt() pkg.Interrupt {
-	i := e.pendingInterrupt
-	e.pendingInterrupt = nil
-	return i
-}
-
 // PostInterrupt posts a new interrupt, provided that no higher-priority interrupt is already pending.
+// Interrupts are posted top-down, in order of priority.
+// Synchronous interrupts of a lower priority than the new interrupt are discarded.
 func (e *InstructionEngine) PostInterrupt(i pkg.Interrupt) {
-	if e.pendingInterrupt == nil || i.GetClass() < e.pendingInterrupt.GetClass() {
-		if e.IsLoggingInterrupts() {
-			fmt.Printf("Posting Interrupt: %s\n", pkg.GetInterruptString(i))
-		}
-
-		e.pendingInterrupt = i
-	}
+	e.pendingInterrupts.Post(i)
 }
 
 // SetBaseRegister sets the base register identified by brIndex (0 to 15) to the given register
@@ -717,6 +754,10 @@ func (e *InstructionEngine) SetLogInterrupts(flag bool) {
 	e.logInterrupts = flag
 }
 
+func (e *InstructionEngine) SetInstructionPoint(value InstructionPoint) {
+	e.instructionPoint = value
+}
+
 // SetProgramCounter sets the program counter in the PAR as well as the preventPCUpdate (aka prevent increment) flag
 func (e *InstructionEngine) SetProgramCounter(counter uint64, preventIncrement bool) {
 	e.activityStatePacket.GetProgramAddressRegister().SetProgramCounter(counter)
@@ -740,41 +781,48 @@ func (e *InstructionEngine) Stop(reason StopReason, detail pkg.Word36) {
 // checkImmediate: true if we should consider j-fields 016 and 017 as immediate addressing (and throw away the operand)
 // allowPartial: true if we should allow partial-word transfers (subject to GRS-GRS transfers)
 // operand: value to be stored
-//
-// returns complete==true indicates the operation is complete - if false, address resolution is unfinished and the
-// caller should try again
-// returns an interrupt if anything goes wrong, which the caller should post
-func (e *InstructionEngine) StoreOperand(grsSource bool, grsCheck bool, checkImmediate bool, allowPartial bool, operand uint64) (complete bool, interrupt pkg.Interrupt) {
-	complete = false
+// Returns complete == false if we are in the middle of resolving addresses, or an interrupt if one needs to be posted.
+func (e *InstructionEngine) StoreOperand(
+	grsSource bool,
+	grsCheck bool,
+	checkImmediate bool,
+	allowPartial bool,
+	operand uint64) (complete bool, interrupt pkg.Interrupt) {
+
+	complete = true
 	interrupt = nil
 
-	//  If we allow immediate addressing mode and j-field is U or XU... we do nothing.
+	//  If we allow immediate addressing mode and j-field is U or XU... we do mostly nothing.
 	ci := e.activityStatePacket.GetCurrentInstruction()
-
 	jField := uint(ci.GetJ())
 	if (checkImmediate) && (jField >= 016) {
-		complete = true
+		e.incrementIndexRegisterInF0()
 		return
 	}
 
-	dr := e.activityStatePacket.GetDesignatorRegister()
-	relAddress := e.calculateRelativeAddressForGRSOrStorage()
-	basicMode := dr.IsBasicModeEnabled()
-	pPriv := dr.GetProcessorPrivilege()
+	var relAddr uint64
+	relAddr, complete, interrupt = e.resolveRelativeAddress(false)
+	if !complete || interrupt != nil {
+		return
+	}
 
-	var baseRegisterIndex uint
+	e.incrementIndexRegisterInF0()
+
+	dr := e.activityStatePacket.GetDesignatorRegister()
+	basicMode := dr.IsBasicModeEnabled()
+	privilege := dr.GetProcessorPrivilege()
+
+	var brx uint
 	if !basicMode {
-		baseRegisterIndex = uint(ci.GetB())
-		if (pPriv < 2) && (ci.GetI() != 0) {
-			baseRegisterIndex += 16
+		brx = uint(ci.GetB())
+		if (privilege < 2) && (ci.GetI() != 0) {
+			brx += 16
 		}
 	}
 
-	if (grsCheck) && (basicMode || (baseRegisterIndex == 0)) && (relAddress < 0200) {
-		e.incrementIndexRegisterInF0()
-
-		//  First, do accessibility checks
-		if !e.isGRSAccessAllowed(relAddress, pPriv, true) {
+	if (grsCheck) && (basicMode || (brx == 0)) && (relAddr < 0200) {
+		// We're storing into the GRS... First, do accessibility checks
+		if !e.isGRSAccessAllowed(relAddr, privilege, true) {
 			interrupt = pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationWriteAccess, false)
 			return
 		}
@@ -783,122 +831,47 @@ func (e *InstructionEngine) StoreOperand(grsSource bool, grsCheck bool, checkImm
 		//  Otherwise, honor partial word transfer.
 		if !grsSource && allowPartial {
 			qWordMode := dr.IsQuarterWordModeEnabled()
-			originalValue := e.generalRegisterSet.GetRegister(relAddress).GetW()
+			originalValue := e.generalRegisterSet.GetRegister(relAddr).GetW()
 			newValue := e.injectPartialWord(originalValue, operand, jField, qWordMode)
-			e.generalRegisterSet.GetRegister(relAddress).SetW(newValue)
+			e.generalRegisterSet.GetRegister(relAddr).SetW(newValue)
 		} else {
-			e.generalRegisterSet.GetRegister(relAddress).SetW(operand)
+			e.generalRegisterSet.GetRegister(relAddr).SetW(operand)
+		}
+	} else {
+		//  This is going to be a storage thing...
+		if basicMode {
+			brx, interrupt = e.findBaseRegisterIndexBasicMode(relAddr)
+			if interrupt != nil {
+				return
+			}
 		}
 
-		complete = true
-		return
-	}
-
-	//  This is going to be a storage thing...
-	if basicMode {
-		complete, baseRegisterIndex, interrupt = e.findBaseRegisterIndex(relAddress, false)
-		if !complete || (interrupt != nil) {
+		bReg := e.baseRegisters[brx]
+		ikr := e.activityStatePacket.GetIndicatorKeyRegister()
+		interrupt = e.checkAccessLimitsAndAccessibility(basicMode, brx, relAddr, false, false, true, ikr.GetAccessKey())
+		if interrupt != nil {
 			return
 		}
+
+		var absAddr pkg.AbsoluteAddress
+		e.getAbsoluteAddress(bReg, relAddr, &absAddr)
+		e.checkBreakpoint(BreakpointWrite, &absAddr)
+
+		offset := relAddr - bReg.GetLowerLimitNormalized()
+		if allowPartial {
+			qWordMode := dr.IsQuarterWordModeEnabled()
+			originalValue := bReg.GetStorage()[offset].GetW()
+			newValue := e.injectPartialWord(originalValue, operand, jField, qWordMode)
+			bReg.GetStorage()[offset].SetW(newValue)
+		} else {
+			bReg.GetStorage()[offset].SetW(operand)
+		}
 	}
 
-	bReg := e.baseRegisters[baseRegisterIndex]
-	ikr := e.activityStatePacket.GetIndicatorKeyRegister()
-	interrupt = e.checkAccessLimits(bReg, relAddress, false, false, true, ikr.GetAccessKey())
-	if interrupt != nil {
-		return
-	}
-
-	e.incrementIndexRegisterInF0()
-
-	var absAddr pkg.AbsoluteAddress
-	e.getAbsoluteAddress(bReg, relAddress, &absAddr)
-	e.checkBreakpoint(BreakpointWrite, &absAddr)
-
-	offset := relAddress - bReg.GetLowerLimitNormalized()
-	if allowPartial {
-		qWordMode := dr.IsQuarterWordModeEnabled()
-		originalValue := bReg.GetStorage()[offset].GetW()
-		newValue := e.injectPartialWord(originalValue, operand, jField, qWordMode)
-		bReg.GetStorage()[offset].SetW(newValue)
-	} else {
-		bReg.GetStorage()[offset].SetW(operand)
-	}
-
-	complete = true
 	return
 }
 
 //	Internal stuffs ----------------------------------------------------------------------------------------------------
-
-// calculateRelativeAddressForGRSOrStorage calculates the raw relative address (the U) for the current instruction.
-// Does NOT increment any x registers, even if their content contributes to the result.
-// Returns the relative address for the current instruction
-func (e *InstructionEngine) calculateRelativeAddressForGRSOrStorage() uint64 {
-	ci := e.activityStatePacket.GetCurrentInstruction()
-	dr := e.activityStatePacket.GetDesignatorRegister()
-
-	var xReg *IndexRegister
-	xx := ci.GetX()
-	if xx != 0 {
-		xReg = e.GetExecOrUserXRegister(xx)
-	}
-
-	var addend1 uint64
-	var addend2 uint64
-	if dr.IsBasicModeEnabled() {
-		addend1 = ci.GetU()
-		if xReg != nil {
-			addend2 = xReg.GetSignedXM()
-		}
-	} else {
-		addend1 = ci.GetD()
-		if xReg != nil {
-			if dr.IsExecutive24BitIndexingSet() && dr.GetProcessorPrivilege() < 2 {
-				//  Exec 24-bit indexing is requested
-				addend2 = xReg.GetSignedXM24()
-			} else {
-				addend2 = xReg.GetSignedXM()
-			}
-		}
-	}
-
-	return pkg.AddSimple(addend1, addend2)
-}
-
-// calculateRelativeAddressForJump calculates the raw relative address (the U) for the current instruction.
-// Does NOT increment any x registers, even if their content contributes to the result.
-// returns the relative address for the current instruction
-func (e *InstructionEngine) calculateRelativeAddressForJump() uint64 {
-	ci := e.activityStatePacket.GetCurrentInstruction()
-	dr := e.activityStatePacket.GetDesignatorRegister()
-
-	var xReg *IndexRegister
-	xx := ci.GetX()
-	if xx != 0 {
-		xReg = e.GetExecOrUserXRegister(xx)
-	}
-
-	addend1 := ci.GetU()
-	var addend2 uint64
-	if dr.IsBasicModeEnabled() {
-		if xReg != nil {
-			addend2 = xReg.GetSignedXM()
-		}
-	} else {
-		addend1 = ci.GetU()
-		if xReg != nil {
-			if dr.IsExecutive24BitIndexingSet() && dr.GetProcessorPrivilege() < 2 {
-				//  Exec 24-bit indexing is requested
-				addend2 = xReg.GetSignedXM24()
-			} else {
-				addend2 = xReg.GetSignedXM()
-			}
-		}
-	}
-
-	return pkg.AddSimple(addend1, addend2)
-}
 
 // checkAccessibility compares the given key to the lock for this base register, and determines whether
 // the requested access (fetch, read, and/or write) are allowed.
@@ -926,18 +899,20 @@ func (e *InstructionEngine) checkAccessibility(
 	return nil
 }
 
-// checkAccessLimits checks the accessibility of a given relative address in the bank described by this
+// checkAccessLimitsAndAccessibility checks the accessibility of a given relative address in the bank described by this
 // base register for the given flags, using the given key.
 // If the check fails, we return an interrupt which the caller should post
-func (e *InstructionEngine) checkAccessLimits(
-	bReg *pkg.BaseRegister,
+func (e *InstructionEngine) checkAccessLimitsAndAccessibility(
+	basicMode bool,
+	baseRegisterIndex uint,
 	relativeAddress uint64,
 	fetchFlag bool,
 	readFlag bool,
 	writeFlag bool,
 	accessKey *pkg.AccessKey) pkg.Interrupt {
 
-	i := e.checkAccessLimitsForAddress(bReg, relativeAddress, fetchFlag)
+	bReg := e.baseRegisters[baseRegisterIndex]
+	i := e.checkAccessLimitsForAddress(basicMode, baseRegisterIndex, relativeAddress, fetchFlag)
 	if i != nil {
 		return i
 	}
@@ -950,12 +925,20 @@ func (e *InstructionEngine) checkAccessLimits(
 // described by this base register. We only need the fetch flag for posting an interrupt.
 // If the check fails, we return an interrupt which the caller should post
 func (e *InstructionEngine) checkAccessLimitsForAddress(
-	bReg *pkg.BaseRegister,
+	basicMode bool,
+	baseRegisterIndex uint,
 	relativeAddress uint64,
-	fetchFlag bool) pkg.Interrupt {
+	fetchFlag bool) (interrupt pkg.Interrupt) {
 
-	// TODO if we try to execute something in GRS - we take ReferenceViolationInterruptClass, 01, 0, 0
+	interrupt = nil
+	if fetchFlag && relativeAddress < 0200 {
+		if basicMode || baseRegisterIndex == 0 {
+			interrupt = pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationStorageLimits, true)
+			return
+		}
+	}
 
+	bReg := e.baseRegisters[baseRegisterIndex]
 	if (relativeAddress < bReg.GetLowerLimitNormalized()) ||
 		(relativeAddress > bReg.GetUpperLimitNormalized()) {
 		return pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationStorageLimits, fetchFlag)
@@ -984,89 +967,100 @@ func (e *InstructionEngine) checkAccessLimitsRange(
 	return e.checkAccessibility(bReg, false, readFlag, writeFlag, accessKey)
 }
 
-func (e *InstructionEngine) checkBreakpoint(comp BreakpointComparison, addr *pkg.AbsoluteAddress) bool {
-	//  TODO Per doc, 2.4.1.2 Breakpoint_Register - we need to halt if Halt Enable is set
-	//      which means Stop Right Now... how do we do that for all callers of this code?
-	if e.breakpointAddress.Equals(addr) {
-		if (comp & e.breakpointRegister) != 0 {
+func (e *InstructionEngine) checkBreakpoint(comparison BreakpointComparison, absAddr *pkg.AbsoluteAddress) (found bool, interrupt pkg.Interrupt) {
+	found = false
+	interrupt = nil
+
+	if e.breakpointAddress.Equals(absAddr) {
+		if (comparison == BreakpointFetch && e.breakpointFetch) ||
+			(comparison == BreakpointRead && e.breakpointRead) ||
+			(comparison == BreakpointWrite && e.breakpointWrite) {
+
 			e.activityStatePacket.GetIndicatorKeyRegister().SetBreakpointRegisterMatchCondition(true)
-			return true
-		}
-	}
-	return false
-}
-
-func (e *InstructionEngine) checkBreakpointRange(comp BreakpointComparison, addr *pkg.AbsoluteAddress, count uint64) bool {
-	//  TODO Per doc, 2.4.1.2 Breakpoint_Register - we need to halt if Halt Enable is set
-	//      which means Stop Right Now... how do we do that for all callers of this code?
-	if (e.breakpointAddress.GetSegment() == addr.GetSegment()) &&
-		(comp&e.breakpointRegister) != 0 {
-
-		bpktOffset := e.breakpointAddress.GetOffset()
-		addrOffset := addr.GetOffset()
-		for x := uint64(0); x < count; x++ {
-			if addrOffset == bpktOffset {
-				e.activityStatePacket.GetIndicatorKeyRegister().SetBreakpointRegisterMatchCondition(true)
-				return true
+			found = true
+			if e.breakpointHalt {
+				e.Stop(BreakpointStop, 0)
+			} else {
+				interrupt = pkg.NewBreakpointInterrupt()
 			}
-			addrOffset++
 		}
-	}
-
-	return false
-}
-
-func (e *InstructionEngine) clearStorageLocks() {
-	storageLocksMutex.Lock()
-	for key, value := range storageLocks {
-		if value == e {
-			delete(storageLocks, key)
-		}
-	}
-	storageLocksMutex.Unlock()
-}
-
-// createJumpHistoryTableENtry puts a new entry into the jump history table.
-//
-//	If we cross the interrupt threshold, set the threshold-reached flag
-func (e *InstructionEngine) createJumpHistoryTableEntry(absoluteAddress pkg.Word36) {
-	e.jumpHistory[e.jumpHistoryIndex] = absoluteAddress
-
-	if e.jumpHistoryIndex > JumpHistoryTableThreshold {
-		e.jumpHistoryThresholdReached = true
-	}
-
-	e.jumpHistoryIndex++
-	if e.jumpHistoryIndex == JumpHistoryTableSize {
-		e.jumpHistoryIndex = 0
-	}
-}
-
-// doCycle executes one cycle (which may or may not correspond to one instruction
-// do not invoke if there is a non-deferrable interrupt pending
-func (e *InstructionEngine) doCycle() {
-	//	Are we continuing an interrupted instructionType?
-	// See 5.1.3
-	//	INF EXRF Action on User Return from interrupt
-	//   0   0   Fetch and execute the instructionType addressed by PAR.
-	//   1   0   Obtain the instructionType from F0 (rather than using PAR).
-	//   1   1   EXR mid-execution. Enter normal EXR logic at the point where the target instructionType has
-	//             just been fetched (but not decoded), using F0 as the target instructionType.
-	// Note: In the special case where EXR is itself the target of an EX instructionType, mid-execution state will have
-	// EXRF clear until the first interrupt point after the EXR instructionType has been fetched.
-
-	// TODO have we handled all the cases above?
-	if e.activityStatePacket.GetIndicatorKeyRegister().IsInstructionInF0() {
-		e.executeCurrentInstruction()
-		return
-	}
-
-	//	Fetch an instructionType and execute it
-	if e.fetchInstructionWord() {
-		e.executeCurrentInstruction()
 	}
 
 	return
+}
+
+func (e *InstructionEngine) checkBreakpointRange(
+	comparison BreakpointComparison,
+	absAddr *pkg.AbsoluteAddress,
+	count uint64) (found bool, interrupt pkg.Interrupt) {
+
+	found = false
+	interrupt = nil
+
+	if e.breakpointAddress.GetSegment() == absAddr.GetSegment() {
+		if (comparison == BreakpointFetch && e.breakpointFetch) ||
+			(comparison == BreakpointRead && e.breakpointRead) ||
+			(comparison == BreakpointWrite && e.breakpointWrite) {
+
+			brkOffset := e.breakpointAddress.GetOffset()
+			addrOffset := absAddr.GetOffset()
+			for x := uint64(0); x < count; x++ {
+				if addrOffset == brkOffset {
+					e.activityStatePacket.GetIndicatorKeyRegister().SetBreakpointRegisterMatchCondition(true)
+					found = true
+					if e.breakpointHalt {
+						e.Stop(BreakpointStop, 0)
+					} else {
+						interrupt = pkg.NewBreakpointInterrupt()
+					}
+					return
+				}
+				addrOffset++
+			}
+		}
+	}
+
+	return
+}
+
+func (e *InstructionEngine) clearStorageLocks() {
+	//	TODO
+	// storageLocksMutex.Lock()
+	// for key, value := range storageLocks {
+	// 	if value == e {
+	// 		delete(storageLocks, key)
+	// 	}
+	// }
+	// storageLocksMutex.Unlock()
+}
+
+// doCycle executes one cycle
+// caller should disposition any pending interrupts before invoking this...
+// since the engine is not specifically hardware (could be an executor for a native mode OS),
+// we don't actually know how to handle the interrupts.
+func (e *InstructionEngine) doCycle() {
+	if !e.activityStatePacket.GetIndicatorKeyRegister().IsInstructionInF0() {
+		// If we manage to fetch an instruction, then we transition to resolving address...
+		// this is so that invoking code can handle any interrupts which can be handled at any
+		// interrupt point.
+		// If we do NOT fetch an instruction, then we are between instructions.
+		// There is an interrupt posted ('cause we failed), and the invoker needs to know
+		// that it can handle any interrupts which can be handled between instructions
+		// (which is essentially all of them).
+		if e.fetchInstructionWord() {
+			e.SetInstructionPoint(ResolvingAddress)
+		} else {
+			e.SetInstructionPoint(BetweenInstructions)
+		}
+	} else {
+		// There is already an instruction in F0.
+		// We might be still resolving its address, or maybe we've not started that yet
+		// (although the flag for resolving addresses would still be set), or maybe
+		// we have finished resolving the address, and had been interrupted during an
+		// interrupt-able instruction (such as EXR), in which case midInstruction flag is set.
+		// We don't care - we just execute the instruction as it is stored in F0.
+		e.executeCurrentInstruction()
+	}
 }
 
 func (e *InstructionEngine) executeCurrentInstruction() {
@@ -1085,20 +1079,37 @@ func (e *InstructionEngine) executeCurrentInstruction() {
 	ci := e.activityStatePacket.GetCurrentInstruction()
 
 	e.preventPCUpdate = false
+
+	// Find the instruction handler for the instruction
 	fTable := FunctionTable[dr.IsBasicModeEnabled()]
-	if inst, found := fTable[uint(ci.GetF())]; found {
-		completed, interrupt := inst(e)
-		if interrupt != nil {
-			e.PostInterrupt(interrupt)
-		} else if completed {
-			e.clearStorageLocks()
-			e.activityStatePacket.GetIndicatorKeyRegister().SetInstructionInF0(false)
-			if !e.preventPCUpdate {
-				e.activityStatePacket.GetProgramAddressRegister().IncrementProgramCounter()
-			}
-		}
-	} else {
+	inst, found := fTable[uint(ci.GetF())]
+	if !found {
+		// illegal instruction - post an interrupt, then note that we are between instructions.
 		e.PostInterrupt(pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode))
+		e.SetInstructionPoint(BetweenInstructions)
+		return
+	}
+
+	// Execute the instruction - if it throws an interrupt, don't change any of the instruction flags...
+	// the interrupt handler will want to know where we were in the process of handling the instruction.
+	// TODO note that this requires those flags to be cleared at some point, probably at the request of
+	//  the invoker.
+	completed, interrupt := inst(e)
+	if interrupt != nil {
+		e.PostInterrupt(interrupt)
+		return
+	}
+
+	// If the instruction did not complete, then we are either still resolving the address or we are at a
+	// mid-instruction point for something like EXR. Just return to the invoker so it can check for interrupts.
+	if completed {
+		e.SetInstructionPoint(BetweenInstructions)
+	} else {
+		e.clearStorageLocks()
+		e.activityStatePacket.GetIndicatorKeyRegister().SetInstructionInF0(false)
+		if !e.preventPCUpdate {
+			e.activityStatePacket.GetProgramAddressRegister().IncrementProgramCounter()
+		}
 	}
 }
 
@@ -1165,13 +1176,19 @@ func (e *InstructionEngine) fetchInstructionWord() bool {
 
 	var bReg *pkg.BaseRegister
 	if basicMode {
-		brIndex := e.FindBasicModeBank(programCounter, true)
-		if brIndex == 0 {
-			e.PostInterrupt(pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationStorageLimits, false))
-			return false
+		// If we don't know the index of the current basic mode instruction bank,
+		// find it and set DB31 accordingly.
+		if e.fetchBaseRegisterIndex == 0 {
+			brx := e.FindBasicModeBank(programCounter)
+			if brx == 0 {
+				e.PostInterrupt(pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationStorageLimits, false))
+				return false
+			}
+
+			e.GetDesignatorRegister().SetBasicModeBaseRegisterSelection(brx == 13 || brx == 15)
 		}
 
-		bReg = e.baseRegisters[brIndex]
+		bReg = e.baseRegisters[e.fetchBaseRegisterIndex]
 		if !e.isReadAllowed(bReg) {
 			e.PostInterrupt(pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationStorageLimits, false))
 			return false
@@ -1179,7 +1196,7 @@ func (e *InstructionEngine) fetchInstructionWord() bool {
 	} else {
 		bReg = e.baseRegisters[0]
 		ikr := e.activityStatePacket.GetIndicatorKeyRegister()
-		intp := e.checkAccessLimits(bReg, programCounter, true, false, false, ikr.GetAccessKey())
+		intp := e.checkAccessLimitsAndAccessibility(basicMode, 0, programCounter, true, false, false, ikr.GetAccessKey())
 		if intp != nil {
 			e.PostInterrupt(intp)
 			return false
@@ -1229,6 +1246,36 @@ func (e *InstructionEngine) findBankDescriptor(bankLevel uint64, bankDescriptorI
 	return bd, true
 }
 
+// findBaseRegisterIndexBasicMode locates the index of the base register which represents the bank which contains
+// the given relative address for basic mode. Does appropriate limits checking.
+// relAddr: relative address to be considered (basic mode only)
+func (e *InstructionEngine) findBaseRegisterIndexBasicMode(relAddr uint64) (baseRegisterIndex uint, interrupt pkg.Interrupt) {
+	interrupt = nil
+
+	baseRegisterIndex = e.FindBasicModeBank(relAddr)
+	if baseRegisterIndex == 0 {
+		interrupt = pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationStorageLimits, false)
+	}
+
+	return
+}
+
+// findBaseRegisterIndex checks the execution mode and returns the base register which should be used for any
+// operand fetch or store, given the current F0 and other processor states.
+// relAddr: only relevant for basic mode
+func (e *InstructionEngine) findBaseRegisterIndex(relAddr uint64) (baseRegisterIndex uint, interrupt pkg.Interrupt) {
+	baseRegisterIndex = 0
+	interrupt = nil
+
+	if e.GetDesignatorRegister().IsBasicModeEnabled() {
+		baseRegisterIndex, interrupt = e.findBaseRegisterIndexBasicMode(relAddr)
+	} else {
+		baseRegisterIndex = e.getEffectiveBaseRegisterIndex()
+	}
+
+	return
+}
+
 // getAbsoluteAddress converts a relative address to an absolute address.
 // The AbsoluteAddress is passed as a reference so that we can avoid leaving little structs all over the heap.
 func (e *InstructionEngine) getAbsoluteAddress(baseRegister *pkg.BaseRegister, relativeAddress uint64, addr *pkg.AbsoluteAddress) {
@@ -1237,77 +1284,9 @@ func (e *InstructionEngine) getAbsoluteAddress(baseRegister *pkg.BaseRegister, r
 	addr.SetOffset(baseRegister.GetBaseAddress().GetOffset() + actualOffset)
 }
 
-// findBaseRegisterIndex locates the index of the base register which represents the bank which contains the given
-// relative address. Does appropriate limits checking.  Delegates to the appropriate basic or extended mode implementation.
-//
-// relativeAddress: relative address to be considered
-// updateDesignatorRegister: if true and if we are in basic mode, we update the basic mode bank selection bit in the designator register if necessary
-//
-// Returns complete==true and the base register index if successful
-//
-// Returns complete==false if address resolution is unfinished (such as can happen in Basic Mode with Indirect Addressing).
-// In this case, caller should call back here again after checking for any pending interrupts.
-//
-// Returns an interrupt if any interrupt needs to be raised. In this case, the instruction is incomplete and should
-// be retried if appropriate. Caller should post the interrupt.
-func (e *InstructionEngine) findBaseRegisterIndex(
-	relativeAddress uint64,
-	updateDesignatorRegister bool) (complete bool, index uint, interrupt pkg.Interrupt) {
-
-	complete = false
-	index = 0
-	interrupt = nil
-
-	dr := e.activityStatePacket.GetDesignatorRegister()
-	if dr.IsBasicModeEnabled() {
-		//  Find the bank containing the current offset.
-		//  We don't need to check for storage limits, since this is done for us by findBasicModeBank() in terms of
-		//  returning a zero.
-		brIndex := e.FindBasicModeBank(relativeAddress, updateDesignatorRegister)
-		if brIndex == 0 {
-			interrupt = pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationStorageLimits, false)
-			return
-		}
-
-		//  Are we doing indirect addressing?
-		ci := e.activityStatePacket.GetCurrentInstruction()
-		if ci.GetI() != 0 {
-			//  Increment the X register (if any) indicated by F0 (if H bit is set, of course)
-			e.incrementIndexRegisterInF0()
-			bReg := e.baseRegisters[brIndex]
-
-			//  Ensure we can read from the selected bank
-			if !e.isReadAllowed(bReg) {
-				interrupt = pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationReadAccess, false)
-				return
-			}
-
-			ikr := e.activityStatePacket.GetIndicatorKeyRegister()
-			interrupt = e.checkAccessLimits(bReg, relativeAddress, false, true, false, ikr.GetAccessKey())
-			if interrupt != nil {
-				return
-			}
-
-			//  Get xhiu fields from the referenced word, and place them into _currentInstruction,
-			//  then return false so the caller knows we're not done here.
-			wx := relativeAddress - bReg.GetLowerLimitNormalized()
-			e.activityStatePacket.GetCurrentInstruction().SetXHIU(bReg.GetStorage()[wx].GetW())
-			return
-		}
-
-		//  We're at our final destination
-		index = brIndex
-	} else {
-		index = e.getEffectiveBaseRegisterIndex()
-	}
-
-	complete = true
-	return
-}
-
+// getEffectiveBaseRegisterIndex determines (for extended mode only) the effective base register to use,
+// based on the current processor privilege and the values in F0.B and possibly F0.I.
 func (e *InstructionEngine) getEffectiveBaseRegisterIndex() uint {
-	//  If PP < 2, we use the i-bit and the b-field to select the base registers from B0 to B31.
-	//  For PP >= 2, we only use the b-field, to select base registers from B0 to B15 (See IP PRM 4.3.7).
 	if e.activityStatePacket.GetDesignatorRegister().GetProcessorPrivilege() < 2 {
 		return uint(e.activityStatePacket.GetCurrentInstruction().GetIB())
 	} else {
@@ -1315,15 +1294,17 @@ func (e *InstructionEngine) getEffectiveBaseRegisterIndex() uint {
 	}
 }
 
+// incrementIndexRegisterInF0 checks the instruction and current modes to determine whether register Xx
+// should be incremented, and if so it performs the appropriate incrementation.
 func (e *InstructionEngine) incrementIndexRegisterInF0() {
-	ci := e.activityStatePacket.GetCurrentInstruction()
-	if (ci.GetX() != 0) && (ci.GetH() != 0) {
-		iReg := e.GetExecOrUserXRegister(ci.GetX())
-		dReg := e.activityStatePacket.GetDesignatorRegister()
-		if !dReg.IsBasicModeEnabled() && dReg.IsExecutive24BitIndexingSet() && (dReg.GetProcessorPrivilege() < 2) {
-			iReg.IncrementModifier24()
+	ci := e.GetCurrentInstruction()
+	if ci.GetX() > 0 && ci.GetH() > 0 {
+		xReg := e.GetExecOrUserXRegister(ci.GetX())
+		dr := e.GetDesignatorRegister()
+		if !dr.IsBasicModeEnabled() && (dr.GetProcessorPrivilege() < 2) && dr.IsExecutive24BitIndexingSet() {
+			xReg.IncrementModifier24()
 		} else {
-			iReg.IncrementModifier()
+			xReg.IncrementModifier()
 		}
 	}
 }
@@ -1409,4 +1390,84 @@ func (e *InstructionEngine) isWithinLimits(bReg *pkg.BaseRegister, offset uint64
 	return !bReg.IsVoid() &&
 		(offset >= bReg.GetLowerLimitNormalized()) &&
 		(offset <= bReg.GetUpperLimitNormalized())
+}
+
+// resolveRelativeAddress reads the instruction in F0, and in conjunction with the current ASP environment,
+// develops the relative address as a function of the unsigned 16-bit U or the 12-bit D field,
+// added with the signed modifier portion of the index register indicated by F0.x (presuming that field is not zero).
+// useU: for Extended Mode Jump instructions which use the entire U (or HIU) fields for the relative address.
+// Basic mode always uses the u field.
+// If we handle an iteration of indirect addressing, we return with complete == false
+// If, during an iteration of indirect addressing we hit an access or limits check we return with interrupt == the
+// appropriate interrupt.
+// Otherwise, we return with complete==true, interrupt == nil, and the relative address in relAddr
+func (e *InstructionEngine) resolveRelativeAddress(useU bool) (relAddr uint64, complete bool, interrupt pkg.Interrupt) {
+	relAddr = 0
+	complete = false
+	interrupt = nil
+
+	e.SetInstructionPoint(ResolvingAddress)
+
+	ci := e.activityStatePacket.GetCurrentInstruction()
+	dr := e.activityStatePacket.GetDesignatorRegister()
+
+	var base uint64
+	if dr.IsBasicModeEnabled() || useU {
+		base = ci.GetU()
+	} else {
+		base = ci.GetD()
+	}
+
+	x := ci.GetX()
+	var addend uint64
+	if x != 0 {
+		xReg := e.GetExecOrUserXRegister(x)
+		if dr.IsExecutive24BitIndexingSet() && dr.GetProcessorPrivilege() < 2 {
+			addend = xReg.GetSignedXM24()
+		} else {
+			addend = xReg.GetSignedXM()
+		}
+	}
+
+	relAddr = pkg.AddSimple(base, addend)
+
+	basicMode := dr.IsBasicModeEnabled()
+	if ci.GetI() != 0 && basicMode && dr.GetProcessorPrivilege() > 1 {
+		//	indirect addressing specified
+
+		var brx uint
+		brx, interrupt = e.findBaseRegisterIndex(relAddr)
+		if interrupt != nil {
+			return
+		}
+
+		bReg := e.baseRegisters[brx]
+		key := e.activityStatePacket.GetIndicatorKeyRegister().GetAccessKey()
+		interrupt = e.checkAccessLimitsAndAccessibility(basicMode, brx, relAddr, true, false, false, key)
+		if interrupt != nil {
+			return
+		}
+
+		var absAddr pkg.AbsoluteAddress
+		e.getAbsoluteAddress(bReg, relAddr, &absAddr)
+
+		var found bool
+		found, interrupt = e.checkBreakpoint(BreakpointRead, &absAddr)
+		if found {
+			// the processor has been stopped - immediately stop
+			return
+		}
+
+		var word *pkg.Word36
+		word, interrupt = e.mainStorage.GetWordFromAddress(&absAddr)
+		if interrupt != nil {
+			return
+		}
+
+		e.GetCurrentInstruction().SetXHIU(word.GetW())
+		return
+	}
+
+	e.SetInstructionPoint(MidInstruction)
+	return
 }

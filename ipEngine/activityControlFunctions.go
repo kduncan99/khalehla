@@ -14,7 +14,7 @@ func LoadDesignatorRegister(e *InstructionEngine) (completed bool, interrupt pkg
 		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadPP)
 	}
 
-	completed, operand, interrupt := e.GetOperand(true, true, false, false)
+	operand, completed, interrupt := e.GetOperand(true, true, false, false)
 	if !completed || interrupt != nil {
 		return false, interrupt
 	}

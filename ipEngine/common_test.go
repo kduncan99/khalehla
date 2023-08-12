@@ -288,9 +288,9 @@ func checkProgramAddress(t *testing.T, engine *InstructionEngine, expectedAddres
 }
 
 func checkMemory(t *testing.T, engine *InstructionEngine, addr *pkg.AbsoluteAddress, offset uint64, expected uint64) {
-	seg, ok := engine.mainStorage.GetSegment(addr.GetSegment())
-	if !ok {
-		t.Fatalf("Error:segment does not exist for address %s", addr.GetString())
+	seg, interrupt := engine.mainStorage.GetSegment(addr.GetSegment())
+	if interrupt != nil {
+		t.Fatalf("Error:%s", pkg.GetInterruptString(interrupt))
 	}
 
 	if addr.GetOffset() >= uint64(len(seg)) {
@@ -314,7 +314,7 @@ func checkRegister(t *testing.T, engine *InstructionEngine, register uint64, exp
 // TODO following is deprecated, use checkStoppedReason() instead, so we don't have to check the PAR.PC
 func checkStopped(t *testing.T, engine *InstructionEngine) {
 	if engine.HasPendingInterrupt() {
-		t.Fatalf("Engine has unexpected pending interrupt:%s", pkg.GetInterruptString(engine.PopInterrupt()))
+		t.Fatalf("Engine has unexpected pending interrupts")
 	}
 
 	if !engine.IsStopped() {
@@ -324,7 +324,7 @@ func checkStopped(t *testing.T, engine *InstructionEngine) {
 
 func checkStoppedReason(t *testing.T, engine *InstructionEngine, reason StopReason, detail uint64) {
 	if engine.HasPendingInterrupt() {
-		t.Fatalf("Engine has unexpected pending interrupt:%s", pkg.GetInterruptString(engine.PopInterrupt()))
+		t.Fatalf("Engine has unexpected pending interrupts")
 	}
 
 	if !engine.IsStopped() {

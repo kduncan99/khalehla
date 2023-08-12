@@ -44,6 +44,9 @@ type BankManipulator struct {
 	returnControlStackFrame   *ReturnControlStackFrame
 }
 
+//	TODO at some point, we should consider returning interrupts instead of posting them,
+//   allowing the invoking code to post them instead - since we do that everywhere else...
+
 // step1 does a sanity check for a couple of instructions
 //
 //	returns true if it completed successfully, else false indicating that an interrupt has been posted
@@ -444,9 +447,9 @@ func step9(bm *BankManipulator) bool {
 	//	Gate is found at the source offset from the start of the gate bank.
 	//	Create gate struct and load it from the packet at the offset.
 	gateAddr := bm.sourceBankDescriptor.GetBaseAddress()
-	buffer, ok := bm.engine.mainStorage.GetSlice(gateAddr.GetSegment(), gateAddr.GetOffset(), 8)
-	if !ok {
-		bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionFatal, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
+	buffer, interrupt := bm.engine.mainStorage.GetSlice(gateAddr.GetSegment(), gateAddr.GetOffset(), 8)
+	if interrupt != nil {
+		bm.engine.PostInterrupt(interrupt)
 		return false
 	}
 	bm.gate = NewGateFromStorage(buffer)
@@ -482,6 +485,8 @@ func step9(bm *BankManipulator) bool {
 	bm.targetBankLevel = bm.gate.targetLevel
 	bm.targetBankDescriptorIndex = bm.gate.targetBDI
 	bm.targetBankOffset = bm.gate.targetOffset
+
+	var ok bool
 	bm.targetBankDescriptor, ok = bm.engine.findBankDescriptor(bm.targetBankLevel, bm.targetBankDescriptorIndex)
 	if !ok {
 		bm.engine.PostInterrupt(pkg.NewAddressingExceptionInterrupt(pkg.AddressingExceptionFatal, bm.sourceBankLevel, bm.sourceBankDescriptorIndex))
@@ -878,26 +883,26 @@ func step19(bm *BankManipulator) bool {
 		bm.engine.baseRegisters[bm.baseRegisterIndex].MakeVoid()
 	} else if bm.isLoadInstruction && (bm.targetBankOffset != 0) {
 		//  we have sub-setting info (in targetBankOffset) -- set up a real Base Register with sub-setting.
-		storage, _ := bm.engine.mainStorage.GetBlock(bm.targetBankDescriptor.GetBaseAddress().GetSegment())
+		seg, _ := bm.engine.mainStorage.GetSegment(bm.targetBankDescriptor.GetBaseAddress().GetSegment())
 		bm.engine.baseRegisters[bm.baseRegisterIndex].
-			FromBankDescriptorWithSubsetting(bm.targetBankDescriptor, bm.targetBankOffset, storage)
+			FromBankDescriptorWithSubsetting(bm.targetBankDescriptor, bm.targetBankOffset, seg)
 	} else {
 		//  A normal non-sub-setting base register - make it so.
-		storage, _ := bm.engine.mainStorage.GetBlock(bm.targetBankDescriptor.GetBaseAddress().GetSegment())
-		bm.engine.baseRegisters[bm.baseRegisterIndex].FromBankDescriptor(bm.targetBankDescriptor, storage)
+		seg, _ := bm.engine.mainStorage.GetSegment(bm.targetBankDescriptor.GetBaseAddress().GetSegment())
+		bm.engine.baseRegisters[bm.baseRegisterIndex].FromBankDescriptor(bm.targetBankDescriptor, seg)
 	}
 
 	bm.nextStep++
 	return true
 }
 
-// step20 toggles DB31 on transfers to basic mode
+// step20 ensures DB31 gets set properly on transfers to basic mode
 //
 //	returns true if it completed successfully, else false indicating that an interrupt has been posted
 //	and processing should be discontinued.
 func step20(bm *BankManipulator) bool {
 	if (bm.transferMode == BasicToBasicTransfer) || (bm.transferMode == ExtendedToBasicTransfer) {
-		bm.engine.FindBasicModeBank(bm.targetBankOffset, true)
+		bm.engine.fetchBaseRegisterIndex = 0
 	}
 
 	bm.nextStep++

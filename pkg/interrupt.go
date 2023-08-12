@@ -8,6 +8,8 @@ import "fmt"
 
 type InterruptClass uint64
 type InterruptShortStatus uint64
+type InterruptSync uint64
+type InterruptPoint uint64
 
 const (
 	HardwareDefaultInterruptClass              InterruptClass = 0
@@ -50,7 +52,7 @@ const (
 	AddressingExceptionGeneralQueuingViolation          InterruptShortStatus = 07
 	AddressingExceptionMaxCountEnq                      InterruptShortStatus = 010
 	AddressingExceptionIndirectGBitSet                  InterruptShortStatus = 011
-	AddressingExceptionInactiveQueuebDListEmpty         InterruptShortStatus = 013
+	AddressingExceptionInactiveQueueDListEmpty          InterruptShortStatus = 013
 	AddressingExceptionUpdateInProgress                 InterruptShortStatus = 014
 	AddressingExceptionQueueBankRepositoryFull          InterruptShortStatus = 015
 	AddressingExceptionBDTypeInvalid                    InterruptShortStatus = 016
@@ -70,6 +72,19 @@ const (
 	InvalidInstructionLBUDUsesB0       InterruptShortStatus = 00
 	InvalidInstructionBadPP            InterruptShortStatus = 01
 	InvalidInstructionEXRInvalidTarget InterruptShortStatus = 03
+)
+
+const (
+	InterruptBetweenInstruction InterruptPoint = 0
+	InterruptMidExecution       InterruptPoint = 1
+	InterruptIndirectExecute    InterruptPoint = 2
+)
+
+const (
+	InterruptSynchronous  InterruptSync = 0
+	InterruptAsynchronous InterruptSync = 1
+	InterruptBroadcast    InterruptSync = 2
+	InterruptPended       InterruptSync = 3
 )
 
 var InterruptNames = map[InterruptClass]string{
@@ -97,10 +112,59 @@ var InterruptNames = map[InterruptClass]string{
 
 type Interrupt interface {
 	GetClass() InterruptClass
+	GetInterruptPoint() InterruptPoint
 	GetShortStatusField() InterruptShortStatus
 	GetStatusWord0() Word36
 	GetStatusWord1() Word36
+	GetSynchrony() InterruptSync
 	IsDeferrable() bool
+	IsFault() bool
+}
+
+// Class 1 Hardware Check ----------------------------------------------------------------------------------------------
+
+type HardwareCheckInterrupt struct {
+	absoluteAddress AbsoluteAddress
+}
+
+func (i *HardwareCheckInterrupt) GetClass() InterruptClass {
+	return HardwareCheckInterruptClass
+}
+
+func (i *HardwareCheckInterrupt) GetInterruptPoint() InterruptPoint {
+	return InterruptMidExecution
+}
+
+func (i *HardwareCheckInterrupt) GetShortStatusField() InterruptShortStatus {
+	return 0
+}
+
+func (i *HardwareCheckInterrupt) GetStatusWord0() Word36 {
+	isw0 := i.absoluteAddress.GetComposite()[0]
+	isw0 &= 0_001777_777777 // clear RA, RI, and Res
+	return Word36(isw0)
+}
+
+func (i *HardwareCheckInterrupt) GetStatusWord1() Word36 {
+	return Word36(i.absoluteAddress.GetComposite()[1])
+}
+
+func (i *HardwareCheckInterrupt) GetSynchrony() InterruptSync {
+	return InterruptSynchronous
+}
+
+func (i *HardwareCheckInterrupt) IsDeferrable() bool {
+	return false
+}
+
+func (i *HardwareCheckInterrupt) IsFault() bool {
+	return true
+}
+
+func NewHardwareCheckInterrupt(absAddr *AbsoluteAddress) *HardwareCheckInterrupt {
+	return &HardwareCheckInterrupt{
+		absoluteAddress: *absAddr,
+	}
 }
 
 // Class 8 Reference Violation -----------------------------------------------------------------------------------------
@@ -126,6 +190,10 @@ func (i *ReferenceViolationInterrupt) GetClass() InterruptClass {
 	return ReferenceViolationInterruptClass
 }
 
+func (i *ReferenceViolationInterrupt) GetInterruptPoint() InterruptPoint {
+	return InterruptMidExecution
+}
+
 func (i *ReferenceViolationInterrupt) GetShortStatusField() InterruptShortStatus {
 	return i.shortStatusField
 }
@@ -138,8 +206,16 @@ func (i *ReferenceViolationInterrupt) GetStatusWord1() Word36 {
 	return 0
 }
 
+func (i *ReferenceViolationInterrupt) GetSynchrony() InterruptSync {
+	return InterruptSynchronous
+}
+
 func (i *ReferenceViolationInterrupt) IsDeferrable() bool {
 	return false
+}
+
+func (i *ReferenceViolationInterrupt) IsFault() bool {
+	return true
 }
 
 func NewReferenceViolationInterrupt(entryType InterruptShortStatus, fetchOperation bool) *ReferenceViolationInterrupt {
@@ -152,7 +228,7 @@ func NewReferenceViolationInterrupt(entryType InterruptShortStatus, fetchOperati
 	}
 }
 
-// Class 8 Addressing Exception ----------------------------------------------------------------------------------------
+// Class 9 Addressing Exception ----------------------------------------------------------------------------------------
 
 // ssf values:
 //	000 Fatal addressing exception
@@ -177,6 +253,10 @@ func (i *AddressingExceptionInterrupt) GetClass() InterruptClass {
 	return AddressingExceptionInterruptClass
 }
 
+func (i *AddressingExceptionInterrupt) GetInterruptPoint() InterruptPoint {
+	return InterruptIndirectExecute
+}
+
 func (i *AddressingExceptionInterrupt) GetShortStatusField() InterruptShortStatus {
 	return i.shortStatusField
 }
@@ -189,8 +269,16 @@ func (i *AddressingExceptionInterrupt) GetStatusWord1() Word36 {
 	return i.interruptStatusWord1
 }
 
+func (i *AddressingExceptionInterrupt) GetSynchrony() InterruptSync {
+	return InterruptSynchronous
+}
+
 func (i *AddressingExceptionInterrupt) IsDeferrable() bool {
 	return false
+}
+
+func (i *AddressingExceptionInterrupt) IsFault() bool {
+	return true
 }
 
 func NewAddressingExceptionInterrupt(
@@ -230,6 +318,10 @@ func (i *RCSGenericStackUnderOverflowInterrupt) GetClass() InterruptClass {
 	return RCSGenericStackUnderOverflowInterruptClass
 }
 
+func (i *RCSGenericStackUnderOverflowInterrupt) GetInterruptPoint() InterruptPoint {
+	return InterruptIndirectExecute
+}
+
 func (i *RCSGenericStackUnderOverflowInterrupt) GetShortStatusField() InterruptShortStatus {
 	return i.shortStatusField
 }
@@ -242,8 +334,16 @@ func (i *RCSGenericStackUnderOverflowInterrupt) GetStatusWord1() Word36 {
 	return 0
 }
 
+func (i *RCSGenericStackUnderOverflowInterrupt) GetSynchrony() InterruptSync {
+	return InterruptSynchronous
+}
+
 func (i *RCSGenericStackUnderOverflowInterrupt) IsDeferrable() bool {
 	return false
+}
+
+func (i *RCSGenericStackUnderOverflowInterrupt) IsFault() bool {
+	return true
 }
 
 func NewRCSGenericStackUnderOverflowInterrupt(
@@ -278,6 +378,10 @@ func (i *InvalidInstructionInterrupt) GetClass() InterruptClass {
 	return InvalidInstructionInterruptClass
 }
 
+func (i *InvalidInstructionInterrupt) GetInterruptPoint() InterruptPoint {
+	return InterruptIndirectExecute
+}
+
 func (i *InvalidInstructionInterrupt) GetShortStatusField() InterruptShortStatus {
 	return i.shortStatusField
 }
@@ -290,8 +394,16 @@ func (i *InvalidInstructionInterrupt) GetStatusWord1() Word36 {
 	return 0
 }
 
+func (i *InvalidInstructionInterrupt) GetSynchrony() InterruptSync {
+	return InterruptSynchronous
+}
+
 func (i *InvalidInstructionInterrupt) IsDeferrable() bool {
 	return false
+}
+
+func (i *InvalidInstructionInterrupt) IsFault() bool {
+	return true
 }
 
 func NewInvalidInstructionInterrupt(shortStatusField InterruptShortStatus) *InvalidInstructionInterrupt {
@@ -307,4 +419,44 @@ func GetInterruptString(i Interrupt) string {
 		i.GetShortStatusField(),
 		i.GetStatusWord0(),
 		i.GetStatusWord1())
+}
+
+// Class 19 Breakpoint -------------------------------------------------------------------------------------------------
+
+type BreakpointInterrupt struct{}
+
+func (i *BreakpointInterrupt) GetClass() InterruptClass {
+	return BreakpointInterruptClass
+}
+
+func (i *BreakpointInterrupt) GetInterruptPoint() InterruptPoint {
+	return InterruptBetweenInstruction
+}
+
+func (i *BreakpointInterrupt) GetShortStatusField() InterruptShortStatus {
+	return 0
+}
+
+func (i *BreakpointInterrupt) GetStatusWord0() Word36 {
+	return Word36(0)
+}
+
+func (i *BreakpointInterrupt) GetStatusWord1() Word36 {
+	return Word36(0)
+}
+
+func (i *BreakpointInterrupt) GetSynchrony() InterruptSync {
+	return InterruptPended
+}
+
+func (i *BreakpointInterrupt) IsDeferrable() bool {
+	return true
+}
+
+func (i *BreakpointInterrupt) IsFault() bool {
+	return false
+}
+
+func NewBreakpointInterrupt() *BreakpointInterrupt {
+	return &BreakpointInterrupt{}
 }

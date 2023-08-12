@@ -80,9 +80,28 @@ func (p *InstructionProcessor) Stop() bool {
 
 //	Internal stuffs ----------------------------------------------------------------------------------------------------
 
-func (p *InstructionProcessor) handleInterrupt() {
-	i := p.engine.pendingInterrupt
-	p.engine.pendingInterrupt = nil
+func (p *InstructionProcessor) handleInterrupt(i pkg.Interrupt) {
+	//	TODO if we are posting a fault interrupt, back up machine state for the following:
+	//  PAR
+	//  Indicator/Key_Register
+	//  The requirements for the Quantum_Timer are described in 2.2.4
+	//  Designator_Register except:
+	// – Architecturally_Undefined: The state of DB31 is undefined for all Reference_Violation interrupts caused by a Basic_Mode Jump_to_Address out of limits.
+	// – Architecturally_Undefined: DB21, DB22 and DB23 are undefined for Arithmetic_Exception interrupts, and backed up for all other interrupts.
+	// – Architecturally_Undefined: DB18 and DB19 are undefined for fault interrupts or mid-execution interrupts on instructions that modify DB18 and DB19.
+	//  Xx (and Xa for BT), if index incrementation is specified
+	//  Register operands (GRS location(s) specified by the instruction F0.a (F0.ja for JGD))
+	//  User or Executive R1 for EXR, BT, BIML, BICL, BIMT, BAO, and the Search and Masked Search instructions. Note: for the case where R1 = 1 with an EXR target, hardware may optionally have INF = 1 and EXRF = 0 in which case save R1 = 0.
+	//  Xs and Xd for BIML (see 6.12.6) and BIMT (see 6.12.4); X1 and X2 for BICL (see 6.12.5)
+	//  GRS loaded by ACEL need not be backed up. GRS loaded by LRS need not be backed up with
+	// the exception of Aa and Xx
+	//  For transfers and Base_Register load instructions (except Load Addressing Environment; see 6.19.7), all Base_Registers
+	//  For transfer instructions, Executive X0 and, if a Gate is processed, R0 and R1
+	//  For transfer and Base_Register load instructions, User X0 and the data in the RCS frame need
+	// not be backed up, but the ABT must remain unchanged from the beginning of the instruction
+	//  Except as noted above, when an instruction is to load any GRS register and a fault condition is detected on the corresponding source word, the GRS register to be loaded must remain unaltered. Any GRS register written where the corresponding source word causes no fault condition may remain loaded (including any partial-word writes done from valid source words)
+	//  Instruction operands (whether GRS or storage operands; see 4.4.2.5 and 4.4.2.6) never need to be backed up, although a model may choose to do so
+	//  A Jump_History entry must not be made for an uncompleted instruction.
 
 	// TODO If the Reset Indicator is set and this is a non-initial exigent (non-deferrable) interrupt,
 	//   then error halt and set an SCF readable “register” to indicate that a Reset failure occurred.
@@ -95,7 +114,7 @@ func (p *InstructionProcessor) handleInterrupt() {
 	}
 
 	if p.engine.IsLoggingInterrupts() {
-		fmt.Printf("--{%s}\n", pkg.GetInterruptString(p.engine.pendingInterrupt))
+		fmt.Printf("--{%s}\n", pkg.GetInterruptString(i))
 	}
 
 	asp := p.engine.activityStatePacket
@@ -146,7 +165,7 @@ func (p *InstructionProcessor) handleInterrupt() {
 		icsSlice[ix] = 0
 	}
 
-	p.engine.createJumpHistoryTableEntry(asp.GetProgramAddressRegister().GetComposite())
+	// TODO	p.engine.createJumpHistoryTableEntry(asp.GetProgramAddressRegister().GetComposite())
 	NewBankManipulatorForInterrupt(p.engine, i).process()
 }
 
@@ -167,20 +186,30 @@ func (p *InstructionProcessor) isWithinLimits(bReg *pkg.BaseRegister, offset uin
 // run is the coroutine which drives the engine
 func (p *InstructionProcessor) run() {
 	for !p.terminate {
-		//	Is there a pending interrupt?
-		// Are deferrable interrupts allowed?  If not, ignore the interrupt
-		if p.engine.pendingInterrupt != nil {
-			if !p.engine.pendingInterrupt.IsDeferrable() ||
-				p.engine.activityStatePacket.GetDesignatorRegister().IsDeferrableInterruptEnabled() {
 
-				p.handleInterrupt()
-				//	do not clear pending interrupt here - the interrupt handler may have posted an interrupt
-				continue
+		// TODO
+		//	Are we continuing an interrupted instruction?
+		// See 5.1.3
+		//	INF EXRF Action on User Return from interrupt
+		//   0   0   Fetch and execute the instruction addressed by PAR.
+		//   1   0   Obtain the instruction from F0 (rather than using PAR).
+		//   1   1   EXR mid-execution. Enter normal EXR logic at the point where the target instruction has
+		//             just been fetched (but not decoded), using F0 as the target instruction.
+		// Note: In the special case where EXR is itself the target of an EX instructionT, mid-execution state will have
+		// EXRF clear until the first interrupt point after the EXR instruction has been fetched.
+
+		if !p.engine.pendingInterrupts.IsClear() {
+			midExec := p.engine.GetInstructionPoint() == MidInstruction
+			resolving := p.engine.GetInstructionPoint() == ResolvingAddress
+			deferred := !p.engine.GetDesignatorRegister().IsDeferrableInterruptEnabled()
+			i := p.engine.pendingInterrupts.Pop(midExec, resolving, deferred)
+			if i != nil {
+				p.handleInterrupt(i)
 			}
+		} else {
+			// It's okay to do an engine cycle
+			p.engine.doCycle()
 		}
-
-		// It's okay to do an engine cycle
-		p.engine.doCycle()
 	}
 
 	p.engine.clearStorageLocks()

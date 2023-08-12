@@ -10,7 +10,8 @@ import (
 
 // DoubleLoadAccumulator (DL) loads the content of U and U+1, storing the values in Aa and Aa+1
 func DoubleLoadAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	completed, operands, interrupt := e.GetConsecutiveOperands(true, 2, false)
+	var operands []pkg.Word36
+	operands, completed, interrupt = e.GetConsecutiveOperands(true, 2, false)
 	if !completed || interrupt != nil {
 		return
 	}
@@ -26,7 +27,8 @@ func DoubleLoadAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.
 // DoubleLoadMagnitudeAccumulator (DL) loads the arithmetic magnitude of the content of U and U+1,
 // storing the values in Aa and Aa+1
 func DoubleLoadMagnitudeAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	completed, operands, interrupt := e.GetConsecutiveOperands(true, 2, false)
+	var operands []pkg.Word36
+	operands, completed, interrupt = e.GetConsecutiveOperands(true, 2, false)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		grsIndex := e.GetExecOrUserARegisterIndex(ci.GetA())
@@ -45,7 +47,8 @@ func DoubleLoadMagnitudeAccumulator(e *InstructionEngine) (completed bool, inter
 // DoubleLoadNegativeAccumulator (DL) loads the arithmetic negative of the content of U and U+1,
 // storing the values in Aa and Aa+1
 func DoubleLoadNegativeAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	completed, operands, interrupt := e.GetConsecutiveOperands(true, 2, false)
+	var operands []pkg.Word36
+	operands, completed, interrupt = e.GetConsecutiveOperands(true, 2, false)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		grsIndex := e.GetExecOrUserARegisterIndex(ci.GetA())
@@ -58,7 +61,8 @@ func DoubleLoadNegativeAccumulator(e *InstructionEngine) (completed bool, interr
 
 // LoadAccumulator (LA) loads the content of U under j-field control, and stores it in A(a)
 func LoadAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	completed, operand, interrupt := e.GetOperand(true, true, true, true)
+	var operand uint64
+	operand, completed, interrupt = e.GetOperand(true, true, true, true)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		e.GetExecOrUserARegister(ci.GetA()).SetW(operand)
@@ -71,7 +75,8 @@ func LoadAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interr
 
 // LoadIndexRegister (LX) loads the content of U under j-field control, and stores it in X(a)
 func LoadIndexRegister(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	completed, operand, interrupt := e.GetOperand(true, true, true, true)
+	var operand uint64
+	operand, completed, interrupt = e.GetOperand(true, true, true, true)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		e.GetExecOrUserXRegister(ci.GetA()).SetW(operand)
@@ -82,7 +87,8 @@ func LoadIndexRegister(e *InstructionEngine) (completed bool, interrupt pkg.Inte
 
 // LoadIndexRegisterModifier (LXM)
 func LoadIndexRegisterModifier(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	completed, operand, interrupt := e.GetOperand(true, true, true, true)
+	var operand uint64
+	operand, completed, interrupt = e.GetOperand(true, true, true, true)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		e.GetExecOrUserXRegister(ci.GetA()).SetXM(operand)
@@ -100,7 +106,8 @@ func LoadIndexRegisterLongModifier(e *InstructionEngine) (completed bool, interr
 		return
 	}
 
-	completed, operand, interrupt := e.GetOperand(true, true, false, false)
+	var operand uint64
+	operand, completed, interrupt = e.GetOperand(true, true, false, false)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		e.GetExecOrUserXRegister(ci.GetA()).SetXM24(operand)
@@ -111,7 +118,8 @@ func LoadIndexRegisterLongModifier(e *InstructionEngine) (completed bool, interr
 
 // LoadIndexRegisterIncrement (LXI)
 func LoadIndexRegisterIncrement(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	completed, operand, interrupt := e.GetOperand(true, true, true, true)
+	var operand uint64
+	operand, completed, interrupt = e.GetOperand(true, true, true, true)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		e.GetExecOrUserXRegister(ci.GetA()).SetXI(operand)
@@ -122,7 +130,8 @@ func LoadIndexRegisterIncrement(e *InstructionEngine) (completed bool, interrupt
 
 // LoadIndexRegisterShortIncrement (LXSI)
 func LoadIndexRegisterShortIncrement(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	completed, operand, interrupt := e.GetOperand(true, true, true, true)
+	var operand uint64
+	operand, completed, interrupt = e.GetOperand(true, true, true, true)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		e.GetExecOrUserXRegister(ci.GetA()).SetXI12(operand)
@@ -133,7 +142,8 @@ func LoadIndexRegisterShortIncrement(e *InstructionEngine) (completed bool, inte
 
 // LoadMagnitudeAccumulator (LMA)
 func LoadMagnitudeAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	completed, operand, interrupt := e.GetOperand(true, true, true, true)
+	var operand uint64
+	operand, completed, interrupt = e.GetOperand(true, true, true, true)
 	if completed && interrupt == nil {
 		if pkg.IsNegative(operand) {
 			operand ^= pkg.NegativeZero
@@ -147,7 +157,8 @@ func LoadMagnitudeAccumulator(e *InstructionEngine) (completed bool, interrupt p
 
 // LoadNegativeAccumulator (LNA)
 func LoadNegativeAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	completed, operand, interrupt := e.GetOperand(true, true, true, true)
+	var operand uint64
+	operand, completed, interrupt = e.GetOperand(true, true, true, true)
 	if completed && interrupt == nil {
 		operand ^= pkg.NegativeZero
 		ci := e.GetCurrentInstruction()
@@ -159,7 +170,8 @@ func LoadNegativeAccumulator(e *InstructionEngine) (completed bool, interrupt pk
 
 // LoadNegativeMagnitudeAccumulator (LNMA)
 func LoadNegativeMagnitudeAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	completed, operand, interrupt := e.GetOperand(true, true, true, true)
+	var operand uint64
+	operand, completed, interrupt = e.GetOperand(true, true, true, true)
 	if completed && interrupt == nil {
 		if !pkg.IsNegative(operand) {
 			operand ^= pkg.NegativeZero
@@ -173,7 +185,8 @@ func LoadNegativeMagnitudeAccumulator(e *InstructionEngine) (completed bool, int
 
 // LoadRegister (LR) loads the content of U under j-field control, and stores it in R(a)
 func LoadRegister(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	completed, operand, interrupt := e.GetOperand(true, true, true, true)
+	var operand uint64
+	operand, completed, interrupt = e.GetOperand(true, true, true, true)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		e.GetExecOrUserRRegister(ci.GetA()).SetW(operand)

@@ -67,57 +67,87 @@ func (ms *MainStorage) Dump() {
 	}
 }
 
-func (ms *MainStorage) GetBlock(segment uint64) ([]Word36, bool) {
-	sli, ok := ms.segmentMap[segment]
-	return sli, ok
-}
-
-func (ms *MainStorage) GetSegment(segment uint64) ([]Word36, bool) {
-	sli, ok := ms.segmentMap[segment]
+func (ms *MainStorage) GetSegment(segmentIndex uint64) (segment []Word36, interrupt Interrupt) {
+	var ok bool
+	segment, ok = ms.segmentMap[segmentIndex]
 	if !ok {
-		return nil, false
-	} else {
-		return sli, true
+		interrupt = NewHardwareCheckInterrupt(NewAbsoluteAddress(segmentIndex, 0))
 	}
+
+	return
 }
 
-func (ms *MainStorage) GetSlice(segment uint64, offset uint64, length uint64) ([]Word36, bool) {
-	sli, ok := ms.segmentMap[segment]
+func (ms *MainStorage) GetSlice(segmentIndex uint64, offset uint64, length uint64) (slice []Word36, interrupt Interrupt) {
+	segment, ok := ms.segmentMap[segmentIndex]
 	if !ok {
-		return nil, false
-	} else {
-		return sli[offset : offset+length], true
+		interrupt = NewHardwareCheckInterrupt(NewAbsoluteAddress(segmentIndex, offset))
+		return
 	}
+
+	if offset+length >= uint64(len(segment)) {
+		interrupt = NewHardwareCheckInterrupt(NewAbsoluteAddress(segmentIndex, offset))
+		return
+	}
+
+	slice = segment[offset : offset+length]
+	return
 }
 
-func (ms *MainStorage) GetSliceFromAddress(addr *AbsoluteAddress, length uint64) ([]Word36, bool) {
-	return ms.GetSlice(addr.GetSegment(), addr.GetOffset(), length)
+func (ms *MainStorage) GetSliceFromAddress(absAddr *AbsoluteAddress, length uint64) (slice []Word36, interrupt Interrupt) {
+	return ms.GetSlice(absAddr.GetSegment(), absAddr.GetOffset(), length)
 }
 
-func (ms *MainStorage) Release(segment uint64) bool {
-	_, ok := ms.segmentMap[segment]
+var zero = Word36(0)
+
+func (ms *MainStorage) GetWordFromAddress(absAddr *AbsoluteAddress) (word *Word36, interrupt Interrupt) {
+	word = &zero
+	interrupt = nil
+
+	var segment []Word36
+	segment, interrupt = ms.GetSegment(absAddr.GetSegment())
+	if interrupt == nil {
+		return
+	}
+
+	offset := absAddr.GetOffset()
+	if offset >= uint64(len(segment)) {
+		interrupt = NewHardwareCheckInterrupt(absAddr)
+		return
+	}
+
+	word = &segment[offset]
+	return
+}
+
+func (ms *MainStorage) Release(segmentIndex uint64) (interrupt Interrupt) {
+	_, ok := ms.segmentMap[segmentIndex]
 	if ok {
-		delete(ms.segmentMap, segment)
-		ms.freeSegmentIndices = append(ms.freeSegmentIndices, segment)
+		delete(ms.segmentMap, segmentIndex)
+		ms.freeSegmentIndices = append(ms.freeSegmentIndices, segmentIndex)
+	} else {
+		interrupt = NewHardwareCheckInterrupt(NewAbsoluteAddress(segmentIndex, 0))
 	}
-	return ok
+
+	return
 }
 
-func (ms *MainStorage) Resize(segment uint64, length uint64) error {
-	slice, ok := ms.segmentMap[segment]
+func (ms *MainStorage) Resize(segmentIndex uint64, length uint64) (interrupt Interrupt) {
+	slice, ok := ms.segmentMap[segmentIndex]
 	if !ok {
-		return fmt.Errorf("no such segment has been allocated")
-	} else {
-		if length > uint64(len(slice)) {
-			extension := make([]Word36, length-uint64(len(slice)))
-			ms.segmentMap[segment] = append(slice, extension...)
-		} else if length < uint64(len(slice)) {
-			dst := make([]Word36, length)
-			copy(dst, slice)
-			ms.segmentMap[segment] = dst
-		}
-		return nil
+		interrupt = NewHardwareCheckInterrupt(NewAbsoluteAddress(segmentIndex, 0))
+		return
 	}
+
+	if length > uint64(len(slice)) {
+		extension := make([]Word36, length-uint64(len(slice)))
+		ms.segmentMap[segmentIndex] = append(slice, extension...)
+	} else if length < uint64(len(slice)) {
+		dst := make([]Word36, length)
+		copy(dst, slice)
+		ms.segmentMap[segmentIndex] = dst
+	}
+
+	return
 }
 
 func NewMainStorage(maxIndices uint64) *MainStorage {

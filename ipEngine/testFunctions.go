@@ -12,7 +12,7 @@ func TestEvenParity(e *InstructionEngine) (completed bool, interrupt pkg.Interru
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		if pkg.CountBits(operand)&01 == 0 {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
@@ -29,7 +29,7 @@ func TestOddParity(e *InstructionEngine) (completed bool, interrupt pkg.Interrup
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		if pkg.CountBits(operand)&01 != 0 {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
@@ -83,7 +83,7 @@ func TestLessThanOrEqualToModifier(e *InstructionEngine) (completed bool, interr
 
 	//	Now develop U.
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if !completed || interrupt != nil {
 		return
 	}
@@ -111,7 +111,7 @@ func TestLessThanOrEqualToModifier(e *InstructionEngine) (completed bool, interr
 func TestNoOperation(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	completed = true
 	interrupt = nil
-	completed, _, interrupt = e.GetOperand(false, true, true, true)
+	_, completed, interrupt = e.GetOperand(false, true, true, true)
 	return
 }
 
@@ -121,7 +121,7 @@ func TestGreaterThanZero(e *InstructionEngine) (completed bool, interrupt pkg.In
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		if operand != pkg.PositiveZero && pkg.IsPositive(operand) {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
@@ -138,7 +138,7 @@ func TestPositiveZero(e *InstructionEngine) (completed bool, interrupt pkg.Inter
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		if operand == pkg.PositiveZero {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
@@ -155,7 +155,7 @@ func TestPositive(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		if pkg.IsPositive(operand) {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
@@ -172,7 +172,7 @@ func TestMinusZero(e *InstructionEngine) (completed bool, interrupt pkg.Interrup
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		if operand == pkg.NegativeZero {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
@@ -190,7 +190,7 @@ func TestMinusZeroOrGreaterThanZero(e *InstructionEngine) (completed bool, inter
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		if operand == pkg.NegativeZero ||
 			(operand != pkg.PositiveZero && pkg.IsPositive(operand)) {
@@ -208,7 +208,7 @@ func TestZero(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		if pkg.IsZero(operand) {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
@@ -225,7 +225,7 @@ func TestNotLessThanZero(e *InstructionEngine) (completed bool, interrupt pkg.In
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		if pkg.IsPositive(operand) && operand != pkg.PositiveZero {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
@@ -242,7 +242,7 @@ func TestLessThanZero(e *InstructionEngine) (completed bool, interrupt pkg.Inter
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		if pkg.IsNegative(operand) && operand != pkg.NegativeZero {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
@@ -259,7 +259,7 @@ func TestNonZero(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt)
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		if !pkg.IsZero(operand) {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
@@ -276,7 +276,7 @@ func TestPositiveZeroOrLessThanZero(e *InstructionEngine) (completed bool, inter
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		if (operand == pkg.PositiveZero) ||
 			(pkg.IsNegative(operand) && operand != pkg.NegativeZero) {
@@ -294,7 +294,7 @@ func TestNotMinusZero(e *InstructionEngine) (completed bool, interrupt pkg.Inter
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		if operand != pkg.NegativeZero {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
@@ -311,7 +311,7 @@ func TestNegative(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		if !pkg.IsNegative(operand) {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
@@ -328,7 +328,7 @@ func TestNotPositiveZero(e *InstructionEngine) (completed bool, interrupt pkg.In
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		if operand != pkg.PositiveZero {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
@@ -345,7 +345,7 @@ func TestNotGreaterThanZero(e *InstructionEngine) (completed bool, interrupt pkg
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		if pkg.IsNegative(operand) || operand == pkg.PositiveZero {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
@@ -361,7 +361,7 @@ func TestAndAlwaysSkip(e *InstructionEngine) (completed bool, interrupt pkg.Inte
 	completed = true
 	interrupt = nil
 
-	completed, _, interrupt = e.GetOperand(false, true, true, true)
+	_, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		pc := e.GetProgramAddressRegister().GetProgramCounter()
 		e.SetProgramCounter(pc+2, true)
@@ -377,7 +377,7 @@ func TestEqual(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		aValue := e.GetExecOrUserARegister(ci.GetA()).GetW()
@@ -397,7 +397,7 @@ func DoubleTestEqual(e *InstructionEngine) (completed bool, interrupt pkg.Interr
 	interrupt = nil
 
 	var operands []pkg.Word36
-	completed, operands, interrupt = e.GetConsecutiveOperands(true, 2, false)
+	operands, completed, interrupt = e.GetConsecutiveOperands(true, 2, false)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		ax := e.GetExecOrUserARegisterIndex(ci.GetA())
@@ -418,7 +418,7 @@ func TestNotEqual(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		aValue := e.GetExecOrUserARegister(ci.GetA()).GetW()
@@ -438,7 +438,7 @@ func TestLessThanOrEqual(e *InstructionEngine) (completed bool, interrupt pkg.In
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		aValue := e.GetExecOrUserARegister(ci.GetA()).GetW()
@@ -458,7 +458,7 @@ func TestGreater(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt)
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		aValue := e.GetExecOrUserARegister(ci.GetA()).GetW()
@@ -477,7 +477,7 @@ func TestGreaterMagnitude(e *InstructionEngine) (completed bool, interrupt pkg.I
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		aValue := e.GetExecOrUserARegister(ci.GetA()).GetW()
@@ -497,7 +497,7 @@ func DoubleTestGreaterMagnitude(e *InstructionEngine) (completed bool, interrupt
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		aValue := e.GetExecOrUserARegister(ci.GetA()).GetW()
@@ -516,7 +516,7 @@ func TestWithinRange(e *InstructionEngine) (completed bool, interrupt pkg.Interr
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		ax := e.GetExecOrUserARegisterIndex(ci.GetA())
@@ -539,7 +539,7 @@ func TestNotWithinRange(e *InstructionEngine) (completed bool, interrupt pkg.Int
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		ax := e.GetExecOrUserARegisterIndex(ci.GetA())
@@ -561,7 +561,7 @@ func MaskedTestEqual(e *InstructionEngine) (completed bool, interrupt pkg.Interr
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, false, false)
+	operand, completed, interrupt = e.GetOperand(false, true, false, false)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		aValue := e.GetExecOrUserARegister(ci.GetA()).GetW()
@@ -581,7 +581,7 @@ func MaskedTestNotEqual(e *InstructionEngine) (completed bool, interrupt pkg.Int
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, false, false)
+	operand, completed, interrupt = e.GetOperand(false, true, false, false)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		aValue := e.GetExecOrUserARegister(ci.GetA()).GetW()
@@ -602,7 +602,7 @@ func MaskedTestLessThanOrEqual(e *InstructionEngine) (completed bool, interrupt 
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, false, false)
+	operand, completed, interrupt = e.GetOperand(false, true, false, false)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		aValue := e.GetExecOrUserARegister(ci.GetA()).GetW()
@@ -623,7 +623,7 @@ func MaskedTestGreater(e *InstructionEngine) (completed bool, interrupt pkg.Inte
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, false, false)
+	operand, completed, interrupt = e.GetOperand(false, true, false, false)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		aValue := e.GetExecOrUserARegister(ci.GetA()).GetW()
@@ -644,7 +644,7 @@ func MaskedTestWithinRange(e *InstructionEngine) (completed bool, interrupt pkg.
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		ax := e.GetExecOrUserARegisterIndex(ci.GetA())
@@ -670,7 +670,7 @@ func MaskedTestNotWithinRange(e *InstructionEngine) (completed bool, interrupt p
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, true, true)
+	operand, completed, interrupt = e.GetOperand(false, true, true, true)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		ax := e.GetExecOrUserARegisterIndex(ci.GetA())
@@ -698,7 +698,7 @@ func MaskedAlphanumericTestLessThanOrEqual(e *InstructionEngine) (completed bool
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, false, false)
+	operand, completed, interrupt = e.GetOperand(false, true, false, false)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		aValue := e.GetExecOrUserARegister(ci.GetA()).GetW()
@@ -721,7 +721,7 @@ func MaskedAlphanumericTestGreater(e *InstructionEngine) (completed bool, interr
 	interrupt = nil
 
 	var operand uint64
-	completed, operand, interrupt = e.GetOperand(false, true, false, false)
+	operand, completed, interrupt = e.GetOperand(false, true, false, false)
 	if completed && interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		aValue := e.GetExecOrUserARegister(ci.GetA()).GetW()
@@ -735,10 +735,7 @@ func MaskedAlphanumericTestGreater(e *InstructionEngine) (completed bool, interr
 	return
 }
 
-//		TODO Test and Set (TS)
-//		Note - 6.7.37 says index incrementation does not occur when we throw interrupt 13.
-//	 How can we accomplish this in the light of multiple iterations of indirect addressing?
-//	 And NOTE - this applies to any hardware fault interrupt, not just 13.
+// TestAndSet (TS)
 func TestAndSet(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	completed = true
 	interrupt = nil
@@ -748,7 +745,7 @@ func TestAndSet(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) 
 	return
 }
 
-// TODO Test and Set and Skip (TSS)
+// TestAndSetAndSkip (TSS)
 func TestAndSetAndSkip(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	completed = true
 	interrupt = nil
@@ -758,7 +755,7 @@ func TestAndSetAndSkip(e *InstructionEngine) (completed bool, interrupt pkg.Inte
 	return
 }
 
-// TODO Test and Clear and Skip (TCS)
+// TestAndClearAndSkip (TCS)
 func TestAndClearAndSkip(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	completed = true
 	interrupt = nil
@@ -768,7 +765,7 @@ func TestAndClearAndSkip(e *InstructionEngine) (completed bool, interrupt pkg.In
 	return
 }
 
-// TODO Conditional Replace
+// ConditionalReplace (CR)
 func ConditionalReplace(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	completed = true
 	interrupt = nil
@@ -778,7 +775,7 @@ func ConditionalReplace(e *InstructionEngine) (completed bool, interrupt pkg.Int
 	return
 }
 
-// TODO Unlock (UNLK)
+// Unlock (UNLK)
 func Unlock(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	completed = true
 	interrupt = nil

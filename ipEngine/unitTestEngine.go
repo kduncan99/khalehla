@@ -91,9 +91,9 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 			bdtSegment := absAddr.GetSegment()
 			bdTable, _ = ute.storage.GetSegment(bdtSegment)
 			if uint64(len(bdTable)) < newBDTLen {
-				err := ute.storage.Resize(bdtSegment, newBDTLen)
-				if err != nil {
-					return err
+				interrupt := ute.storage.Resize(bdtSegment, newBDTLen)
+				if interrupt != nil {
+					return fmt.Errorf("interrupt:%s\n", pkg.GetInterruptString(interrupt))
 				}
 				bdTable, _ = ute.storage.GetSegment(bdtSegment)
 			}
@@ -201,7 +201,7 @@ func (ute *UnitTestEngine) Run() error {
 	//	Reset GRS, clear interrupts and jump history
 	ute.engine.GetGeneralRegisterSet().Clear()
 	ute.engine.ClearStop()
-	ute.engine.ClearInterrupt()
+	ute.engine.ClearAllInterrupts()
 
 	//	TODO clear jump history
 	//	Now Iterate until an interrupt is posted
