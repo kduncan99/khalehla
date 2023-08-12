@@ -688,7 +688,7 @@ func step13(bm *BankManipulator) bool {
 	if bm.isLXJInstruction && (bm.transferMode == BasicToBasicTransfer) {
 		parPCNext := bm.engine.activityStatePacket.GetProgramAddressRegister().GetProgramCounter() + 1
 		value := pkg.TranslateToBasicMode(bm.priorBankLevel, bm.priorBankDescriptorIndex, parPCNext).GetComposite()
-		value |= pkg.Word36(bm.baseRegisterIndex) << 33
+		value |= bm.baseRegisterIndex << 33
 		bm.engine.SetExecOrUserXRegister(bm.lxjXRegisterIndex, IndexRegister(value))
 	} else if (bm.instructionType == CALLInstruction) && (bm.transferMode == ExtendedToBasicTransfer) {
 		bm.engine.SetExecOrUserXRegister(11, 2<<30)

@@ -464,3 +464,43 @@ func (i *BreakpointInterrupt) IsFault() bool {
 func NewBreakpointInterrupt() *BreakpointInterrupt {
 	return &BreakpointInterrupt{}
 }
+
+// Class 25 JumpHistoryFull --------------------------------------------------------------------------------------------
+
+type JumpHistoryFullInterrupt struct{}
+
+func (i *JumpHistoryFullInterrupt) GetClass() InterruptClass {
+	return JumpHistoryFullInterruptClass
+}
+
+func (i *JumpHistoryFullInterrupt) GetInterruptPoint() InterruptPoint {
+	return InterruptBetweenInstruction
+}
+
+func (i *JumpHistoryFullInterrupt) GetShortStatusField() InterruptShortStatus {
+	return 0
+}
+
+func (i *JumpHistoryFullInterrupt) GetStatusWord0() Word36 {
+	return Word36(0)
+}
+
+func (i *JumpHistoryFullInterrupt) GetStatusWord1() Word36 {
+	return Word36(0)
+}
+
+func (i *JumpHistoryFullInterrupt) GetSynchrony() InterruptSync {
+	return InterruptAsynchronous
+}
+
+func (i *JumpHistoryFullInterrupt) IsDeferrable() bool {
+	return true
+}
+
+func (i *JumpHistoryFullInterrupt) IsFault() bool {
+	return false
+}
+
+func NewJumpHistoryFullInterrupt() *JumpHistoryFullInterrupt {
+	return &JumpHistoryFullInterrupt{}
+}

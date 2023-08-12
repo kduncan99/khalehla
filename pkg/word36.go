@@ -590,3 +590,108 @@ func UnpackWord36(source []byte, destination []Word36) {
 		dx += 1
 	}
 }
+
+// ExtractPartialWord pulls the partial word indicated by the partialWordIndicator and the quarterWordMode flag
+// from the given 36-bit source value.
+func ExtractPartialWord(source uint64, partialWordIndicator uint, quarterWordMode bool) uint64 {
+	switch partialWordIndicator {
+	case JFieldW:
+		return GetW(source)
+	case JFieldH2:
+		return GetH2(source)
+	case JFieldH1:
+		return GetH1(source)
+	case JFieldXH2:
+		return GetXH2(source)
+	case JFieldXH1: // XH1 or Q2
+		if quarterWordMode {
+			return GetQ2(source)
+		} else {
+			return GetXH1(source)
+		}
+	case JFieldT3: // T3 or Q4
+		if quarterWordMode {
+			return GetQ4(source)
+		} else {
+			return GetXT3(source)
+		}
+	case JFieldT2: // T2 or Q3
+		if quarterWordMode {
+			return GetQ3(source)
+		} else {
+			return GetXT2(source)
+		}
+	case JFieldT1: // T1 or Q1
+		if quarterWordMode {
+			return GetQ1(source)
+		} else {
+			return GetXT1(source)
+		}
+	case JFieldS6:
+		return GetS6(source)
+	case JFieldS5:
+		return GetS5(source)
+	case JFieldS4:
+		return GetS4(source)
+	case JFieldS3:
+		return GetS3(source)
+	case JFieldS2:
+		return GetS2(source)
+	case JFieldS1:
+		return GetS1(source)
+	}
+
+	return source
+}
+
+// InjectPartialWord creates a value comprised of an original value and a new value inserted there-in under j-field control.
+func InjectPartialWord(originalValue uint64, newValue uint64, jField uint, quarterWordMode bool) uint64 {
+	switch jField {
+	case JFieldW:
+		return newValue
+	case JFieldH2:
+		return SetH2(originalValue, newValue)
+	case JFieldXH2:
+		return SetH2(originalValue, newValue)
+	case JFieldH1:
+		return SetH1(originalValue, newValue)
+	case JFieldXH1: // XH1 or Q2
+		if quarterWordMode {
+			return SetQ2(originalValue, newValue)
+		} else {
+			return SetH1(originalValue, newValue)
+		}
+	case JFieldT3: // T3 or Q4
+		if quarterWordMode {
+			return SetQ4(originalValue, newValue)
+		} else {
+			return SetT3(originalValue, newValue)
+		}
+	case JFieldT2: // T2 or Q3
+		if quarterWordMode {
+			return SetQ3(originalValue, newValue)
+		} else {
+			return SetT2(originalValue, newValue)
+		}
+	case JFieldT1: // T1 or Q1
+		if quarterWordMode {
+			return SetQ1(originalValue, newValue)
+		} else {
+			return SetT1(originalValue, newValue)
+		}
+	case JFieldS6:
+		return SetS6(originalValue, newValue)
+	case JFieldS5:
+		return SetS5(originalValue, newValue)
+	case JFieldS4:
+		return SetS4(originalValue, newValue)
+	case JFieldS3:
+		return SetS3(originalValue, newValue)
+	case JFieldS2:
+		return SetS2(originalValue, newValue)
+	case JFieldS1:
+		return SetS1(originalValue, newValue)
+	}
+
+	return originalValue
+}

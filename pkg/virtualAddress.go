@@ -6,8 +6,9 @@ package pkg
 
 type VirtualAddress interface {
 	GetBankDescriptorIndex() uint64
-	GetComposite() Word36
+	GetComposite() uint64
 	GetOffset() uint64
+	SetComposite(uint64)
 }
 
 type BasicModeVirtualAddress struct {
@@ -17,16 +18,16 @@ type BasicModeVirtualAddress struct {
 	offset              uint64 //	offset from start of bank
 }
 
-func (addr *BasicModeVirtualAddress) GetComposite() Word36 {
-	var value Word36
+func (addr *BasicModeVirtualAddress) GetComposite() uint64 {
+	var value uint64
 	if addr.execFlag {
 		value |= 0_400000_000000
 	}
 	if addr.levelFlag {
 		value |= 0_040000_000000
 	}
-	value |= Word36(addr.bankDescriptorIndex) << 18
-	value |= Word36(addr.offset)
+	value |= addr.bankDescriptorIndex << 18
+	value |= addr.offset
 	return value
 }
 
@@ -44,6 +45,13 @@ func (addr *BasicModeVirtualAddress) GetBankDescriptorIndex() uint64 {
 
 func (addr *BasicModeVirtualAddress) GetOffset() uint64 {
 	return addr.offset
+}
+
+func (addr *BasicModeVirtualAddress) SetComposite(value uint64) {
+	addr.execFlag = value&0_400000_000000 != 0
+	addr.levelFlag = value&0_040000_000000 != 0
+	addr.bankDescriptorIndex = (value >> 18) & 07777
+	addr.offset = value & 0_777777
 }
 
 func (addr *BasicModeVirtualAddress) SetExecFlag(value bool) *BasicModeVirtualAddress {
@@ -110,10 +118,10 @@ type ExtendedModeVirtualAddress struct {
 	offset              uint64 //	offset from start of bank
 }
 
-func (addr *ExtendedModeVirtualAddress) GetComposite() Word36 {
-	value := Word36(addr.level) << 33
-	value |= Word36(addr.bankDescriptorIndex) << 18
-	value |= Word36(addr.offset)
+func (addr *ExtendedModeVirtualAddress) GetComposite() uint64 {
+	value := addr.level << 33
+	value |= addr.bankDescriptorIndex << 18
+	value |= addr.offset
 	return value
 }
 
@@ -127,6 +135,12 @@ func (addr *ExtendedModeVirtualAddress) GetBankDescriptorIndex() uint64 {
 
 func (addr *ExtendedModeVirtualAddress) GetOffset() uint64 {
 	return addr.offset
+}
+
+func (addr *ExtendedModeVirtualAddress) SetComposite(value uint64) {
+	addr.level = (value >> 33) & 07
+	addr.bankDescriptorIndex = (value >> 18) & 077777
+	addr.offset = value & 0_777777
 }
 
 func (addr *ExtendedModeVirtualAddress) SetLevel(value uint64) *ExtendedModeVirtualAddress {

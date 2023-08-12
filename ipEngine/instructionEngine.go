@@ -123,13 +123,8 @@ type InstructionEngine struct {
 
 	//	If not nil, describes an interrupt which needs to be handled as soon as possible
 	pendingInterrupts *InterruptStack
+	jumpHistory       *JumpHistory
 
-	//	See 2.4.2
-	//	Should this be saved off somewhere during an interrupt?
-	// TODO should be a separate struct and funcs for handling the jump history table
-	// jumpHistory                 [JumpHistoryTableThreshold]pkg.Word36
-	// jumpHistoryIndex            int
-	// jumpHistoryThresholdReached bool
 	logInstructions bool
 	logInterrupts   bool
 
@@ -174,6 +169,7 @@ func NewEngine(mainStorage *pkg.MainStorage) *InstructionEngine {
 
 func (e *InstructionEngine) Clear() {
 	e.pendingInterrupts = NewInterruptStack()
+	e.jumpHistory = NewJumpHistory()
 
 	for ax := 0; ax < 16; ax++ {
 		e.activeBaseTable[ax] = NewActiveBaseTableEntryFromComposite(0)
@@ -528,6 +524,11 @@ func (e *InstructionEngine) GetInstructionPoint() InstructionPoint {
 	return e.instructionPoint
 }
 
+// GetJumpHistory retrieves all cached jump history entries, and clears the history
+func (e *InstructionEngine) GetJumpHistory() []pkg.VirtualAddress {
+	return e.jumpHistory.GetEntries()
+}
+
 // GetJumpOperand is similar to getImmediateOperand()
 // However the calculated U field is only ever 16 or 18 bits, and is never sign-extended.
 // Also, we do not rely upon j-field for anything, as that has no meaning for conditionalJump instructions.
@@ -623,7 +624,7 @@ func (e *InstructionEngine) GetOperand(
 			operand = grs.GetRegister(relAddr).GetW()
 		} else {
 			qWordMode := dReg.IsQuarterWordModeEnabled()
-			operand = e.extractPartialWord(grs.GetRegister(relAddr).GetW(), jField, qWordMode)
+			operand = pkg.ExtractPartialWord(grs.GetRegister(relAddr).GetW(), jField, qWordMode)
 		}
 	} else {
 		//  Loading from storage.  Do so, then (maybe) honor partial word handling.
@@ -634,7 +635,7 @@ func (e *InstructionEngine) GetOperand(
 			}
 		}
 
-		baseRegister := e.baseRegisters[brx]
+		bReg := e.baseRegisters[brx]
 		key := asp.GetIndicatorKeyRegister().GetAccessKey()
 		interrupt = e.checkAccessLimitsAndAccessibility(basicMode, brx, relAddr, false, true, false, key)
 		if interrupt != nil {
@@ -642,14 +643,14 @@ func (e *InstructionEngine) GetOperand(
 		}
 
 		var absAddress pkg.AbsoluteAddress
-		e.getAbsoluteAddress(baseRegister, relAddr, &absAddress)
+		bReg.PopulateAbsoluteAddress(relAddr, &absAddress)
 		e.checkBreakpoint(BreakpointRead, &absAddress)
 
-		readOffset := relAddr - baseRegister.GetLowerLimitNormalized()
-		operand = baseRegister.GetStorage()[readOffset].GetW()
+		readOffset := relAddr - bReg.GetLowerLimitNormalized()
+		operand = bReg.GetStorage()[readOffset].GetW()
 		if allowPartial {
 			qWordMode := dReg.IsQuarterWordModeEnabled()
-			operand = e.extractPartialWord(operand, jField, qWordMode)
+			operand = pkg.ExtractPartialWord(operand, jField, qWordMode)
 		}
 	}
 
@@ -830,7 +831,7 @@ func (e *InstructionEngine) StoreOperand(
 		if !grsSource && allowPartial {
 			qWordMode := dr.IsQuarterWordModeEnabled()
 			originalValue := e.generalRegisterSet.GetRegister(relAddr).GetW()
-			newValue := e.injectPartialWord(originalValue, operand, jField, qWordMode)
+			newValue := pkg.InjectPartialWord(originalValue, operand, jField, qWordMode)
 			e.generalRegisterSet.GetRegister(relAddr).SetW(newValue)
 		} else {
 			e.generalRegisterSet.GetRegister(relAddr).SetW(operand)
@@ -852,14 +853,14 @@ func (e *InstructionEngine) StoreOperand(
 		}
 
 		var absAddr pkg.AbsoluteAddress
-		e.getAbsoluteAddress(bReg, relAddr, &absAddr)
+		bReg.PopulateAbsoluteAddress(relAddr, &absAddr)
 		e.checkBreakpoint(BreakpointWrite, &absAddr)
 
 		offset := relAddr - bReg.GetLowerLimitNormalized()
 		if allowPartial {
 			qWordMode := dr.IsQuarterWordModeEnabled()
 			originalValue := bReg.GetStorage()[offset].GetW()
-			newValue := e.injectPartialWord(originalValue, operand, jField, qWordMode)
+			newValue := pkg.InjectPartialWord(originalValue, operand, jField, qWordMode)
 			bReg.GetStorage()[offset].SetW(newValue)
 		} else {
 			bReg.GetStorage()[offset].SetW(operand)
@@ -1032,6 +1033,13 @@ func (e *InstructionEngine) clearStorageLocks() {
 	// storageLocksMutex.Unlock()
 }
 
+func (e *InstructionEngine) createJumpHistoryEntry(address pkg.VirtualAddress) {
+	interrupt := e.jumpHistory.StoreEntry(address)
+	if interrupt != nil {
+		e.PostInterrupt(interrupt)
+	}
+}
+
 // doCycle executes one cycle
 // caller should disposition any pending interrupts before invoking this...
 // since the engine is not specifically hardware (could be an executor for a native mode OS),
@@ -1082,8 +1090,6 @@ func (e *InstructionEngine) executeCurrentInstruction() {
 	fTable := FunctionTable[dr.IsBasicModeEnabled()]
 	inst, found := fTable[uint(ci.GetF())]
 	if !found {
-		ci := e.GetCurrentInstruction()                                                                                                     // TODO remove
-		fmt.Printf("======>%02o %02o %02o %02o %o %o %016o\n", ci.GetF(), ci.GetJ(), ci.GetA(), ci.GetX(), ci.GetH(), ci.GetI(), ci.GetU()) // TODO remove
 		// illegal instruction - post an interrupt, then note that we are between instructions.
 		e.PostInterrupt(pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode))
 		e.SetInstructionPoint(BetweenInstructions)
@@ -1109,59 +1115,6 @@ func (e *InstructionEngine) executeCurrentInstruction() {
 			e.activityStatePacket.GetProgramAddressRegister().IncrementProgramCounter()
 		}
 	}
-}
-
-// extractPartialWord pulls the partial word indicated by the partialWordIndicator and the quarterWordMode flag
-// from the given 36-bit source value.
-func (e *InstructionEngine) extractPartialWord(source uint64, partialWordIndicator uint, quarterWordMode bool) uint64 {
-	switch partialWordIndicator {
-	case pkg.JFieldW:
-		return pkg.GetW(source)
-	case pkg.JFieldH2:
-		return pkg.GetH2(source)
-	case pkg.JFieldH1:
-		return pkg.GetH1(source)
-	case pkg.JFieldXH2:
-		return pkg.GetXH2(source)
-	case pkg.JFieldXH1: // XH1 or Q2
-		if quarterWordMode {
-			return pkg.GetQ2(source)
-		} else {
-			return pkg.GetXH1(source)
-		}
-	case pkg.JFieldT3: // T3 or Q4
-		if quarterWordMode {
-			return pkg.GetQ4(source)
-		} else {
-			return pkg.GetXT3(source)
-		}
-	case pkg.JFieldT2: // T2 or Q3
-		if quarterWordMode {
-			return pkg.GetQ3(source)
-		} else {
-			return pkg.GetXT2(source)
-		}
-	case pkg.JFieldT1: // T1 or Q1
-		if quarterWordMode {
-			return pkg.GetQ1(source)
-		} else {
-			return pkg.GetXT1(source)
-		}
-	case pkg.JFieldS6:
-		return pkg.GetS6(source)
-	case pkg.JFieldS5:
-		return pkg.GetS5(source)
-	case pkg.JFieldS4:
-		return pkg.GetS4(source)
-	case pkg.JFieldS3:
-		return pkg.GetS3(source)
-	case pkg.JFieldS2:
-		return pkg.GetS2(source)
-	case pkg.JFieldS1:
-		return pkg.GetS1(source)
-	}
-
-	return source
 }
 
 // fetchInstructionWord retrieves the next instruction word from the appropriate bank.
@@ -1275,14 +1228,6 @@ func (e *InstructionEngine) findBaseRegisterIndex(relAddr uint64) (baseRegisterI
 	return
 }
 
-// getAbsoluteAddress converts a relative address to an absolute address.
-// The AbsoluteAddress is passed as a reference so that we can avoid leaving little structs all over the heap.
-func (e *InstructionEngine) getAbsoluteAddress(baseRegister *pkg.BaseRegister, relativeAddress uint64, addr *pkg.AbsoluteAddress) {
-	addr.SetSegment(baseRegister.GetBaseAddress().GetSegment())
-	actualOffset := relativeAddress - baseRegister.GetLowerLimitNormalized()
-	addr.SetOffset(baseRegister.GetBaseAddress().GetOffset() + actualOffset)
-}
-
 // getEffectiveBaseRegisterIndex determines (for extended mode only) the effective base register to use,
 // based on the current processor privilege and the values in F0.B and possibly F0.I.
 func (e *InstructionEngine) getEffectiveBaseRegisterIndex() uint {
@@ -1306,64 +1251,6 @@ func (e *InstructionEngine) incrementIndexRegisterInF0() {
 			xReg.IncrementModifier()
 		}
 	}
-}
-
-// injectPartialWord creates a value which is comprised of an original value, with a new value inserted there-in
-// under j-field control.
-func (e *InstructionEngine) injectPartialWord(
-	originalValue uint64,
-	newValue uint64,
-	jField uint,
-	quarterWordMode bool) uint64 {
-
-	switch jField {
-	case pkg.JFieldW:
-		return newValue
-	case pkg.JFieldH2:
-		return pkg.SetH2(originalValue, newValue)
-	case pkg.JFieldXH2:
-		return pkg.SetH2(originalValue, newValue)
-	case pkg.JFieldH1:
-		return pkg.SetH1(originalValue, newValue)
-	case pkg.JFieldXH1: // XH1 or Q2
-		if quarterWordMode {
-			return pkg.SetQ2(originalValue, newValue)
-		} else {
-			return pkg.SetH1(originalValue, newValue)
-		}
-	case pkg.JFieldT3: // T3 or Q4
-		if quarterWordMode {
-			return pkg.SetQ4(originalValue, newValue)
-		} else {
-			return pkg.SetT3(originalValue, newValue)
-		}
-	case pkg.JFieldT2: // T2 or Q3
-		if quarterWordMode {
-			return pkg.SetQ3(originalValue, newValue)
-		} else {
-			return pkg.SetT2(originalValue, newValue)
-		}
-	case pkg.JFieldT1: // T1 or Q1
-		if quarterWordMode {
-			return pkg.SetQ1(originalValue, newValue)
-		} else {
-			return pkg.SetT1(originalValue, newValue)
-		}
-	case pkg.JFieldS6:
-		return pkg.SetS6(originalValue, newValue)
-	case pkg.JFieldS5:
-		return pkg.SetS5(originalValue, newValue)
-	case pkg.JFieldS4:
-		return pkg.SetS4(originalValue, newValue)
-	case pkg.JFieldS3:
-		return pkg.SetS3(originalValue, newValue)
-	case pkg.JFieldS2:
-		return pkg.SetS2(originalValue, newValue)
-	case pkg.JFieldS1:
-		return pkg.SetS1(originalValue, newValue)
-	}
-
-	return originalValue
 }
 
 func (e *InstructionEngine) isGRSAccessAllowed(registerIndex uint64, processorPrivilege uint64, writeAccess bool) bool {
@@ -1447,7 +1334,7 @@ func (e *InstructionEngine) resolveRelativeAddress(useU bool) (relAddr uint64, c
 		}
 
 		var absAddr pkg.AbsoluteAddress
-		e.getAbsoluteAddress(bReg, relAddr, &absAddr)
+		bReg.PopulateAbsoluteAddress(relAddr, &absAddr)
 
 		var found bool
 		found, interrupt = e.checkBreakpoint(BreakpointRead, &absAddr)

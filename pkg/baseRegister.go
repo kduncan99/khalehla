@@ -57,6 +57,14 @@ func (reg *BaseRegister) ConvertRelativeAddress(relAddr uint64) *AbsoluteAddress
 	return NewAbsoluteAddress(reg.baseAddress.GetSegment(), offset)
 }
 
+// PopulateAbsoluteAddress converts a relative address to an absolute address.
+// The AbsoluteAddress is passed as a reference so that we can avoid leaving little structs all over the heap.
+func (reg *BaseRegister) PopulateAbsoluteAddress(relativeAddress uint64, addr *AbsoluteAddress) {
+	addr.SetSegment(reg.GetBaseAddress().GetSegment())
+	actualOffset := relativeAddress - reg.GetLowerLimitNormalized()
+	addr.SetOffset(reg.GetBaseAddress().GetOffset() + actualOffset)
+}
+
 func (reg *BaseRegister) GetBaseAddress() *AbsoluteAddress {
 	return reg.baseAddress
 }
