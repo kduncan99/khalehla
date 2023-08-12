@@ -5,8 +5,8 @@
 package ipEngine
 
 type ActiveBaseTableEntry struct {
-	bankLevel           uint64 // the top 3 bits of the traditional L.BDI
-	bankDescriptorIndex uint64 // only the bottom 15 bits of the traditional L.BDI
+	bankLevel           uint64 // the top 3 bits of the extended mode L.BDI
+	bankDescriptorIndex uint64 // only the bottom 15 bits of the extended mode L.BDI
 	subsetSpecification uint64
 }
 

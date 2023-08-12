@@ -21,7 +21,7 @@ type JumpHistory struct {
 func (jh *JumpHistory) Clear() {
 	jh.stackIndex = 0
 	jh.overflow = false
-	jh.stack = make([]pkg.VirtualAddress, 0)
+	jh.stack = make([]pkg.VirtualAddress, JumpHistoryStackSize)
 }
 
 func (jh *JumpHistory) GetEntries() (result []pkg.VirtualAddress) {

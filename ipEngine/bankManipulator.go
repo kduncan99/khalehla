@@ -902,7 +902,7 @@ func step19(bm *BankManipulator) bool {
 //	and processing should be discontinued.
 func step20(bm *BankManipulator) bool {
 	if (bm.transferMode == BasicToBasicTransfer) || (bm.transferMode == ExtendedToBasicTransfer) {
-		bm.engine.fetchBaseRegisterIndex = 0
+		bm.engine.baseRegisterIndexForFetch = 0
 	}
 
 	bm.nextStep++

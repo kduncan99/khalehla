@@ -13,20 +13,17 @@ import (
 type BreakpointComparison uint
 
 const (
-	BreakpointNone  BreakpointComparison = 0
-	BreakpointFetch BreakpointComparison = 1 << 0 //	TODO need to check for this, where appropriate
-	BreakpointRead  BreakpointComparison = 1 << 1
-	BreakpointWrite BreakpointComparison = 1 << 2
+	BreakpointFetch BreakpointComparison = 1
+	BreakpointRead  BreakpointComparison = 2
+	BreakpointWrite BreakpointComparison = 3
 )
 
 type InstructionPoint uint
 
 const (
-	BetweenInstructions InstructionPoint = 0 //	an instruction is not in F0, previous instruction has completed.
-	ResolvingAddress    InstructionPoint = 1 //	we have not yet begun processing the instruction in F0,
-	//		or we are still resolving indirect addressing for an operand.
-	MidInstruction InstructionPoint = 2 //  we are processing an instruction and have reached a mid-instruction
-	//		interrupt point (e.g., for EXR)
+	BetweenInstructions InstructionPoint = 1 //	an instruction is not in F0, previous instruction has completed.
+	ResolvingAddress    InstructionPoint = 2 //	we have not yet begun processing the instruction in F0, or we are still resolving indirect addressing for an operand.
+	MidInstruction      InstructionPoint = 3 //  we are processing an instruction and have reached a mid-instruction interrupt point (e.g., for EXR).
 )
 
 type StopReason uint
@@ -115,11 +112,11 @@ The Storage_Lock is released by hardware upon detection of a hardware fault.
 type InstructionEngine struct {
 	mainStorage *pkg.MainStorage // must be set externally
 
-	activeBaseTable        [16]*ActiveBaseTableEntry // [0] is unused
-	activityStatePacket    *pkg.ActivityStatePacket
-	baseRegisters          [32]*pkg.BaseRegister
-	fetchBaseRegisterIndex uint // only applies to basic mode - if 0, it is not valid; otherwise it is 12:15
-	generalRegisterSet     *GeneralRegisterSet
+	activeBaseTable           [16]*ActiveBaseTableEntry // [0] is unused
+	activityStatePacket       *pkg.ActivityStatePacket
+	baseRegisters             [32]*pkg.BaseRegister
+	baseRegisterIndexForFetch uint // only applies to basic mode - if 0, it is not valid; otherwise it is 12:15
+	generalRegisterSet        *GeneralRegisterSet
 
 	//	If not nil, describes an interrupt which needs to be handled as soon as possible
 	pendingInterrupts *InterruptStack
@@ -178,7 +175,7 @@ func (e *InstructionEngine) Clear() {
 	for bx := 0; bx < 32; bx++ {
 		e.baseRegisters[bx] = pkg.NewVoidBaseRegister()
 	}
-	e.fetchBaseRegisterIndex = 0
+	e.baseRegisterIndexForFetch = 0
 
 	e.generalRegisterSet = NewGeneralRegisterSet()
 	e.activityStatePacket = pkg.NewActivityStatePacket()
@@ -549,7 +546,7 @@ func (e *InstructionEngine) GetJumpOperand() (operand uint64, flip31 bool, compl
 			// matching LSBs are in the same pair, while having differing values indicates they are in opposite
 			// pairs. If we can show that the current fetch base register is in the opposite pair to the
 			// base register developed for the jump operand, then we can say that DB31 needs to be flipped.
-			flip31 = (e.fetchBaseRegisterIndex % 01) != (brx % 01)
+			flip31 = (e.baseRegisterIndexForFetch % 01) != (brx % 01)
 		}
 	}
 
@@ -726,6 +723,7 @@ func (e *InstructionEngine) IsStopped() bool {
 func (e *InstructionEngine) PostInterrupt(i pkg.Interrupt) {
 	fmt.Printf("===Posting %s\n", pkg.GetInterruptString(i)) // TODO remove
 	e.pendingInterrupts.Post(i)
+	e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 }
 
 // SetBaseRegister sets the base register identified by brIndex (0 to 15) to the given register
@@ -1098,7 +1096,6 @@ func (e *InstructionEngine) executeCurrentInstruction() {
 
 	// Execute the instruction - if it throws an interrupt, don't change any of the instruction flags...
 	// the interrupt handler will want to know where we were in the process of handling the instruction.
-	// TODO note that this requires those flags to be cleared at some point, probably at the request of the invoker.
 	completed, interrupt := inst(e)
 	if interrupt != nil {
 		e.PostInterrupt(interrupt)
@@ -1129,18 +1126,18 @@ func (e *InstructionEngine) fetchInstructionWord() bool {
 	if basicMode {
 		// If we don't know the index of the current basic mode instruction bank,
 		// find it and set DB31 accordingly.
-		if e.fetchBaseRegisterIndex == 0 {
+		if e.baseRegisterIndexForFetch == 0 {
 			brx := e.FindBasicModeBank(programCounter)
 			if brx == 0 {
 				e.PostInterrupt(pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationStorageLimits, false))
 				return false
 			}
 
-			e.fetchBaseRegisterIndex = brx
+			e.baseRegisterIndexForFetch = brx
 			e.GetDesignatorRegister().SetBasicModeBaseRegisterSelection(brx == 13 || brx == 15)
 		}
 
-		bReg = e.baseRegisters[e.fetchBaseRegisterIndex]
+		bReg = e.baseRegisters[e.baseRegisterIndexForFetch]
 		if !e.isReadAllowed(bReg) {
 			e.PostInterrupt(pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationStorageLimits, false))
 			return false
@@ -1226,6 +1223,23 @@ func (e *InstructionEngine) findBaseRegisterIndex(relAddr uint64) (baseRegisterI
 	}
 
 	return
+}
+
+func (e *InstructionEngine) getCurrentVirtualAddress() pkg.VirtualAddress {
+	dr := e.GetDesignatorRegister()
+	if dr.IsBasicModeEnabled() {
+		brx := e.baseRegisterIndexForFetch
+		if brx == 0 {
+			brx, _ = e.findBaseRegisterIndexBasicMode(e.GetProgramAddressRegister().GetProgramCounter())
+		}
+
+		abte := e.activeBaseTable[brx]
+		return pkg.TranslateToBasicMode(abte.bankLevel, abte.bankDescriptorIndex, abte.subsetSpecification)
+	} else {
+		brx := e.getEffectiveBaseRegisterIndex()
+		abte := e.activeBaseTable[brx]
+		return pkg.NewExtendedModeVirtualAddress(abte.bankLevel, abte.bankDescriptorIndex, abte.subsetSpecification)
+	}
 }
 
 // getEffectiveBaseRegisterIndex determines (for extended mode only) the effective base register to use,
