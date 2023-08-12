@@ -211,12 +211,9 @@ func (e *InstructionEngine) ClearStop() {
 func (e *InstructionEngine) Dump() {
 	fmt.Printf("Instruction Engine Dump ---------------------------------------------------------------------\n")
 
-	pendingInterrupts := e.pendingInterrupts.PopAll()
-	if len(pendingInterrupts) > 0 {
+	if !e.pendingInterrupts.IsClear() {
 		fmt.Printf("  Pending Interrupts:\n")
-		for ix := 0; ix < len(pendingInterrupts); ix++ {
-			fmt.Printf("    %s\n", pkg.GetInterruptString(pendingInterrupts[ix]))
-		}
+		e.pendingInterrupts.Dump()
 	}
 
 	var f0String string
@@ -726,6 +723,7 @@ func (e *InstructionEngine) IsStopped() bool {
 // Interrupts are posted top-down, in order of priority.
 // Synchronous interrupts of a lower priority than the new interrupt are discarded.
 func (e *InstructionEngine) PostInterrupt(i pkg.Interrupt) {
+	fmt.Printf("===Posting %s\n", pkg.GetInterruptString(i)) // TODO remove
 	e.pendingInterrupts.Post(i)
 }
 
@@ -971,7 +969,7 @@ func (e *InstructionEngine) checkBreakpoint(comparison BreakpointComparison, abs
 	found = false
 	interrupt = nil
 
-	if e.breakpointAddress.Equals(absAddr) {
+	if e.breakpointAddress != nil && e.breakpointAddress.Equals(absAddr) {
 		if (comparison == BreakpointFetch && e.breakpointFetch) ||
 			(comparison == BreakpointRead && e.breakpointRead) ||
 			(comparison == BreakpointWrite && e.breakpointWrite) {
@@ -997,7 +995,7 @@ func (e *InstructionEngine) checkBreakpointRange(
 	found = false
 	interrupt = nil
 
-	if e.breakpointAddress.GetSegment() == absAddr.GetSegment() {
+	if e.breakpointAddress != nil && e.breakpointAddress.GetSegment() == absAddr.GetSegment() {
 		if (comparison == BreakpointFetch && e.breakpointFetch) ||
 			(comparison == BreakpointRead && e.breakpointRead) ||
 			(comparison == BreakpointWrite && e.breakpointWrite) {
@@ -1084,6 +1082,8 @@ func (e *InstructionEngine) executeCurrentInstruction() {
 	fTable := FunctionTable[dr.IsBasicModeEnabled()]
 	inst, found := fTable[uint(ci.GetF())]
 	if !found {
+		ci := e.GetCurrentInstruction()                                                                                                     // TODO remove
+		fmt.Printf("======>%02o %02o %02o %02o %o %o %016o\n", ci.GetF(), ci.GetJ(), ci.GetA(), ci.GetX(), ci.GetH(), ci.GetI(), ci.GetU()) // TODO remove
 		// illegal instruction - post an interrupt, then note that we are between instructions.
 		e.PostInterrupt(pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode))
 		e.SetInstructionPoint(BetweenInstructions)
@@ -1092,8 +1092,7 @@ func (e *InstructionEngine) executeCurrentInstruction() {
 
 	// Execute the instruction - if it throws an interrupt, don't change any of the instruction flags...
 	// the interrupt handler will want to know where we were in the process of handling the instruction.
-	// TODO note that this requires those flags to be cleared at some point, probably at the request of
-	//  the invoker.
+	// TODO note that this requires those flags to be cleared at some point, probably at the request of the invoker.
 	completed, interrupt := inst(e)
 	if interrupt != nil {
 		e.PostInterrupt(interrupt)
@@ -1104,7 +1103,6 @@ func (e *InstructionEngine) executeCurrentInstruction() {
 	// mid-instruction point for something like EXR. Just return to the invoker so it can check for interrupts.
 	if completed {
 		e.SetInstructionPoint(BetweenInstructions)
-	} else {
 		e.clearStorageLocks()
 		e.activityStatePacket.GetIndicatorKeyRegister().SetInstructionInF0(false)
 		if !e.preventPCUpdate {
@@ -1185,6 +1183,7 @@ func (e *InstructionEngine) fetchInstructionWord() bool {
 				return false
 			}
 
+			e.fetchBaseRegisterIndex = brx
 			e.GetDesignatorRegister().SetBasicModeBaseRegisterSelection(brx == 13 || brx == 15)
 		}
 
@@ -1434,7 +1433,6 @@ func (e *InstructionEngine) resolveRelativeAddress(useU bool) (relAddr uint64, c
 	basicMode := dr.IsBasicModeEnabled()
 	if ci.GetI() != 0 && basicMode && dr.GetProcessorPrivilege() > 1 {
 		//	indirect addressing specified
-
 		var brx uint
 		brx, interrupt = e.findBaseRegisterIndex(relAddr)
 		if interrupt != nil {
@@ -1469,5 +1467,6 @@ func (e *InstructionEngine) resolveRelativeAddress(useU bool) (relAddr uint64, c
 	}
 
 	e.SetInstructionPoint(MidInstruction)
+	complete = true
 	return
 }

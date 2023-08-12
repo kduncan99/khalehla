@@ -314,29 +314,35 @@ func checkRegister(t *testing.T, engine *InstructionEngine, register uint64, exp
 // TODO following is deprecated, use checkStoppedReason() instead, so we don't have to check the PAR.PC
 func checkStopped(t *testing.T, engine *InstructionEngine) {
 	if engine.HasPendingInterrupt() {
+		engine.Dump()
 		t.Fatalf("Engine has unexpected pending interrupts")
 	}
 
 	if !engine.IsStopped() {
+		engine.Dump()
 		t.Fatalf("Expected engine to be stopped; it is not")
 	}
 }
 
 func checkStoppedReason(t *testing.T, engine *InstructionEngine, reason StopReason, detail uint64) {
 	if engine.HasPendingInterrupt() {
+		engine.Dump()
 		t.Fatalf("Engine has unexpected pending interrupts")
 	}
 
 	if !engine.IsStopped() {
+		engine.Dump()
 		t.Fatalf("Expected engine to be stopped; it is not")
 	}
 
 	actualReason, actualDetail := engine.GetStopReason()
 	if actualReason != reason {
+		engine.Dump()
 		t.Fatalf("Engine stopped for reason %d; expected reason %d", actualReason, reason)
 	}
 
 	if actualDetail != detail {
+		engine.Dump()
 		t.Fatalf("Engine stopped for detail %d; expected detail %d", actualDetail, detail)
 	}
 }

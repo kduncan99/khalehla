@@ -430,6 +430,7 @@ func Test_DL_Basic(t *testing.T) {
 	err := ute.Load(&e)
 	if err == nil {
 		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(true)
+		ute.GetEngine().GetDesignatorRegister().SetProcessorPrivilege(2)
 		err = ute.Run()
 	}
 
@@ -438,7 +439,7 @@ func Test_DL_Basic(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	//	don't check stopped - we execute at PP=2 and expect to get Invalid Interrupt on IAR instruction
 	checkRegister(t, engine, A4, 0_100200_300400, "A4")
 	checkRegister(t, engine, A5, 0_500600_700777, "A5")
 	checkRegister(t, engine, A0, 0_100200_300400, "A0")

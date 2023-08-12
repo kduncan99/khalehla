@@ -84,7 +84,7 @@ func (ms *MainStorage) GetSlice(segmentIndex uint64, offset uint64, length uint6
 		return
 	}
 
-	if offset+length >= uint64(len(segment)) {
+	if offset+length > uint64(len(segment)) {
 		interrupt = NewHardwareCheckInterrupt(NewAbsoluteAddress(segmentIndex, offset))
 		return
 	}
@@ -105,7 +105,7 @@ func (ms *MainStorage) GetWordFromAddress(absAddr *AbsoluteAddress) (word *Word3
 
 	var segment []Word36
 	segment, interrupt = ms.GetSegment(absAddr.GetSegment())
-	if interrupt == nil {
+	if interrupt != nil {
 		return
 	}
 

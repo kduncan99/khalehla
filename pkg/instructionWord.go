@@ -50,6 +50,10 @@ func (iw *InstructionWord) GetD() uint64 {
 	return uint64(*iw) & 07777
 }
 
+func (iw *InstructionWord) GetW() uint64 {
+	return uint64(*iw)
+}
+
 func (iw *InstructionWord) SetXHIU(value uint64) {
 	res := uint64(*iw) & 0_777760_000000
 	res |= value & 017_777777

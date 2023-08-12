@@ -148,14 +148,20 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 		index := bdi & 077777
 		bdAddr := ute.bankDescriptorTableAddresses[level]
 		bdOffset := index * 8
-		bdSlice, _ := ute.storage.GetSlice(bdAddr.GetSegment(), bdAddr.GetOffset()+bdOffset, 8)
+		bdSlice, interrupt := ute.storage.GetSlice(bdAddr.GetSegment(), bdAddr.GetOffset()+bdOffset, 8)
+		if interrupt != nil {
+			return fmt.Errorf("interrupt:%s", pkg.GetInterruptString(interrupt))
+		}
 
 		//	Create an in-memory bank descriptor based on the bd in memory,
 		//	then we're ready to create the bank register.
 		bd := pkg.NewBankDescriptorFromStorage(bdSlice)
 
 		bankAddr := bd.GetBaseAddress()
-		bankSlice, _ := ute.storage.GetSegment(bankAddr.GetSegment())
+		bankSlice, interrupt := ute.storage.GetSegment(bankAddr.GetSegment())
+		if interrupt != nil {
+			return fmt.Errorf("interrupt:%s", pkg.GetInterruptString(interrupt))
+		}
 
 		br := pkg.NewBaseRegisterFromBankDescriptor(bd, bankSlice)
 		ute.engine.SetBaseRegister(brx, br)
@@ -204,6 +210,7 @@ func (ute *UnitTestEngine) Run() error {
 	ute.engine.ClearAllInterrupts()
 
 	//	TODO clear jump history
+
 	//	Now Iterate until an interrupt is posted
 	for !ute.engine.HasPendingInterrupt() && !ute.engine.IsStopped() {
 		ute.engine.doCycle()

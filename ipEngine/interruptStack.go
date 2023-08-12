@@ -4,7 +4,10 @@
 
 package ipEngine
 
-import "khalehla/pkg"
+import (
+	"fmt"
+	"khalehla/pkg"
+)
 
 type InterruptStack struct {
 	stack []pkg.Interrupt
@@ -19,6 +22,12 @@ func NewInterruptStack() *InterruptStack {
 // Clear removes all interrupts from the stack
 func (is *InterruptStack) Clear() {
 	is.stack = make([]pkg.Interrupt, 0)
+}
+
+func (is *InterruptStack) Dump() {
+	for ix := 0; ix < len(is.stack); ix++ {
+		fmt.Printf("    %s\n", pkg.GetInterruptString(is.stack[ix]))
+	}
 }
 
 // IsClear returns true if there are no interrupts on the stack

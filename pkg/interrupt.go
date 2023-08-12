@@ -413,12 +413,16 @@ func NewInvalidInstructionInterrupt(shortStatusField InterruptShortStatus) *Inva
 }
 
 func GetInterruptString(i Interrupt) string {
-	return fmt.Sprintf("%s(%03o) SSF:%03o ISW0=%012o ISW1=%012o",
-		InterruptNames[i.GetClass()],
-		i.GetClass(),
-		i.GetShortStatusField(),
-		i.GetStatusWord0(),
-		i.GetStatusWord1())
+	if i == nil {
+		return "<nil>"
+	} else {
+		return fmt.Sprintf("%s(%03o) SSF:%03o ISW0=%012o ISW1=%012o",
+			InterruptNames[i.GetClass()],
+			i.GetClass(),
+			i.GetShortStatusField(),
+			i.GetStatusWord0(),
+			i.GetStatusWord1())
+	}
 }
 
 // Class 19 Breakpoint -------------------------------------------------------------------------------------------------
