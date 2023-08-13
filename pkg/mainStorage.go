@@ -6,16 +6,23 @@ package pkg
 
 import (
 	"fmt"
+	"sync"
 )
+
+type MainStorageClient interface{}
 
 type MainStorage struct {
 	segmentMap         map[uint64][]Word36
 	freeSegmentIndices []uint64
 	maxIndices         uint64
+	mutex              sync.Mutex
 }
 
 // Allocate obtains a storage segment of the indicated type, returning the index of the segment
 func (ms *MainStorage) Allocate(length uint64) (uint64, error) {
+	ms.mutex.Lock()
+	defer ms.mutex.Unlock()
+
 	if uint64(len(ms.segmentMap)) == ms.maxIndices {
 		return 0, fmt.Errorf("main storage segment table is full")
 	}
@@ -34,11 +41,17 @@ func (ms *MainStorage) Allocate(length uint64) (uint64, error) {
 }
 
 func (ms *MainStorage) Clear() {
+	ms.mutex.Lock()
+	defer ms.mutex.Unlock()
+
 	ms.freeSegmentIndices = make([]uint64, 0)
 	ms.segmentMap = make(map[uint64][]Word36)
 }
 
 func (ms *MainStorage) Dump() {
+	ms.mutex.Lock()
+	defer ms.mutex.Unlock()
+
 	fmt.Printf("Main Storage Dump ----------------------\n")
 
 	fmt.Printf("  Free Segments:\n")
@@ -68,6 +81,9 @@ func (ms *MainStorage) Dump() {
 }
 
 func (ms *MainStorage) GetSegment(segmentIndex uint64) (segment []Word36, interrupt Interrupt) {
+	ms.mutex.Lock()
+	defer ms.mutex.Unlock()
+
 	var ok bool
 	segment, ok = ms.segmentMap[segmentIndex]
 	if !ok {
@@ -78,6 +94,9 @@ func (ms *MainStorage) GetSegment(segmentIndex uint64) (segment []Word36, interr
 }
 
 func (ms *MainStorage) GetSlice(segmentIndex uint64, offset uint64, length uint64) (slice []Word36, interrupt Interrupt) {
+	ms.mutex.Lock()
+	defer ms.mutex.Unlock()
+
 	segment, ok := ms.segmentMap[segmentIndex]
 	if !ok {
 		interrupt = NewHardwareCheckInterrupt(NewAbsoluteAddress(segmentIndex, offset))
@@ -100,6 +119,9 @@ func (ms *MainStorage) GetSliceFromAddress(absAddr *AbsoluteAddress, length uint
 var zero = Word36(0)
 
 func (ms *MainStorage) GetWordFromAddress(absAddr *AbsoluteAddress) (word *Word36, interrupt Interrupt) {
+	ms.mutex.Lock()
+	defer ms.mutex.Unlock()
+
 	word = &zero
 	interrupt = nil
 
@@ -120,6 +142,9 @@ func (ms *MainStorage) GetWordFromAddress(absAddr *AbsoluteAddress) (word *Word3
 }
 
 func (ms *MainStorage) Release(segmentIndex uint64) (interrupt Interrupt) {
+	ms.mutex.Lock()
+	defer ms.mutex.Unlock()
+
 	_, ok := ms.segmentMap[segmentIndex]
 	if ok {
 		delete(ms.segmentMap, segmentIndex)
@@ -132,6 +157,9 @@ func (ms *MainStorage) Release(segmentIndex uint64) (interrupt Interrupt) {
 }
 
 func (ms *MainStorage) Resize(segmentIndex uint64, length uint64) (interrupt Interrupt) {
+	ms.mutex.Lock()
+	defer ms.mutex.Unlock()
+
 	slice, ok := ms.segmentMap[segmentIndex]
 	if !ok {
 		interrupt = NewHardwareCheckInterrupt(NewAbsoluteAddress(segmentIndex, 0))

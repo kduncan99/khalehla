@@ -57,9 +57,6 @@ const ICSIndexRegister = EX1
 const RCSBaseRegister = 25
 const RCSIndexRegister = EX0
 
-const JumpHistoryTableThreshold = 120 //	Raise interrupt when this many entries exist
-const JumpHistoryTableSize = 128      //	Size of the table
-
 /*
 	TODO implement this, and also put the storage lock table in a separate struct
 
@@ -78,7 +75,7 @@ semaphores, including software_locks, that are “set” via Storage_Lock instru
 Storage_Lock instructions, and Test and Set software-locks can also be cleared by the Unlock instruction. Care must be
 taken to ensure that software-locking conventions consider all aspects of the architectural requirements of locking
 listed in this subsection and in the descriptions of the locking instructions listed below. Because several of the
-Storage_Lock instructions produce Architecturally_Undefined results when the operand address U  0200 and because a
+Storage_Lock instructions produce Architecturally_Undefined results when the operand address U < 0200 and because a
 processor’s GRS cannot be accessed by other processors, storage operands are expected to be used for data protection and
 activity synchronization.
 
