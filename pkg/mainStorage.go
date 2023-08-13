@@ -80,17 +80,19 @@ func (ms *MainStorage) Dump() {
 	}
 }
 
-func (ms *MainStorage) GetSegment(segmentIndex uint64) (segment []Word36, interrupt Interrupt) {
-	ms.mutex.Lock()
-	defer ms.mutex.Unlock()
-
+func (ms *MainStorage) getSegmentWorker(segmentIndex uint64) (segment []Word36, interrupt Interrupt) {
 	var ok bool
 	segment, ok = ms.segmentMap[segmentIndex]
 	if !ok {
 		interrupt = NewHardwareCheckInterrupt(NewAbsoluteAddress(segmentIndex, 0))
 	}
-
 	return
+}
+
+func (ms *MainStorage) GetSegment(segmentIndex uint64) (segment []Word36, interrupt Interrupt) {
+	ms.mutex.Lock()
+	defer ms.mutex.Unlock()
+	return ms.getSegmentWorker(segmentIndex)
 }
 
 func (ms *MainStorage) GetSlice(segmentIndex uint64, offset uint64, length uint64) (slice []Word36, interrupt Interrupt) {
@@ -126,7 +128,7 @@ func (ms *MainStorage) GetWordFromAddress(absAddr *AbsoluteAddress) (word *Word3
 	interrupt = nil
 
 	var segment []Word36
-	segment, interrupt = ms.GetSegment(absAddr.GetSegment())
+	segment, interrupt = ms.getSegmentWorker(absAddr.GetSegment())
 	if interrupt != nil {
 		return
 	}
@@ -183,6 +185,7 @@ func NewMainStorage(maxIndices uint64) *MainStorage {
 		segmentMap:         make(map[uint64][]Word36),
 		freeSegmentIndices: make([]uint64, 0),
 		maxIndices:         maxIndices,
+		mutex:              sync.Mutex{},
 	}
 	return &ms
 }

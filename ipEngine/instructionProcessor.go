@@ -24,9 +24,9 @@ type InstructionProcessor struct {
 
 //	external stuffs ----------------------------------------------------------------------------------------------------
 
-func NewInstructionProcessor(mainStorage *pkg.MainStorage) *InstructionProcessor {
+func NewInstructionProcessor(name string, mainStorage *pkg.MainStorage, storageLocks *StorageLocks) *InstructionProcessor {
 	return &InstructionProcessor{
-		engine: NewEngine(mainStorage),
+		engine: NewEngine(name, mainStorage, storageLocks),
 	}
 }
 

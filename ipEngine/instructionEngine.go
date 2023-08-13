@@ -57,57 +57,15 @@ const ICSIndexRegister = EX1
 const RCSBaseRegister = 25
 const RCSIndexRegister = EX0
 
-/*
-	TODO implement this, and also put the storage lock table in a separate struct
-
-4.9.4.1 Storage_Lock
-For data protection and activity synchronization, a set of instructions, which potentially perform both a read and write
-operation, are executed under Storage_Lock. Under Storage_Lock, the data word at the instruction operand address cannot
-be accessed by another processor from the time the word is read to the time it is written (in some cases a write may not
-occur; see the individual instruction descriptions). It is model_dependent whether access is denied only when the other
-processor is executing one of the Storage_Lock instructions or when the other processor is executing any instruction.
-
-As a general rule, attempts at data protection and activity synchronization using instructions not performed under
-Storage_Lock are not guaranteed to produce the desired results. (An example of a valid exception to this rule is
-software lock := 0 (for example, S1 of a Test and Set cell) by a nonlocking write unlocks the software_lock but is not a
-barrier for subsequent read instructions). To protect the order of read-after-write when unlocking a software_lock,
-semaphores, including software_locks, that are “set” via Storage_Lock instructions, can only be properly “cleared” with
-Storage_Lock instructions, and Test and Set software-locks can also be cleared by the Unlock instruction. Care must be
-taken to ensure that software-locking conventions consider all aspects of the architectural requirements of locking
-listed in this subsection and in the descriptions of the locking instructions listed below. Because several of the
-Storage_Lock instructions produce Architecturally_Undefined results when the operand address U < 0200 and because a
-processor’s GRS cannot be accessed by other processors, storage operands are expected to be used for data protection and
-activity synchronization.
-
-The instructions executed under Storage_Lock are:
-– Increment by One (INC; see 6.3.23)
-– Increment by Two (INC2; see 6.3.24)
-– Decrement by One (DEC; see 6.3.25)
-– Decrement by Two (DEC2; see 6.3.26)
-– Eliminate Negative Zero (ENZ; see 6.3.27)
-– Test and Set (TS; see 6.7.37)
-– Test and Set and Skip (TSS; see 6.7.38)
-– Test and Clear and Skip (TCS; see 6.7.39)
-– Conditional Replace (CR; see 6.7.40)
-– Dequeue (DEQ; see 6.17.3)
-– Dequeue or Wait (DEQW; see 6.17.4)
-– Enqueue (ENQ; see 6.17.1)
-– Enqueue to Front (ENQF; see 6.17.2)
-– Deposit Queue Bank (DEPOSITQB; see 6.17.5)
-– Withdraw Queue Bank (WITHDRAWQB; see 6.17.6)
-
-The Storage_Lock is released by hardware upon detection of a hardware fault.
-*/
-// var storageLocks = map[uint64]*InstructionEngine{}
-// var storageLocksMutex sync.Mutex
-
 // InstructionEngine implements the basic functionality required to execute 36-bit code.
 // It does not handle any actual hardware considerations such as interrupts, etc.
 // It does track stop reasons, as there are certain generic processes that require this ability
 // whether we are emulating hardware or an operating system with hardware.
 // It must be wrapped by additional code which does this, either as an IP emulator or an OS emulator.
 type InstructionEngine struct {
-	mainStorage *pkg.MainStorage // must be set externally
+	name         string           // unique name of this engine - must be set externally
+	mainStorage  *pkg.MainStorage // must be set externally
+	storageLocks *StorageLocks    // must be set externally
 
 	activeBaseTable           [16]*ActiveBaseTableEntry // [0] is unused
 	activityStatePacket       *pkg.ActivityStatePacket
@@ -154,9 +112,11 @@ var baseRegisterCandidates = map[bool][]uint{
 
 //	external stuffs ----------------------------------------------------------------------------------------------------
 
-func NewEngine(mainStorage *pkg.MainStorage) *InstructionEngine {
+func NewEngine(name string, mainStorage *pkg.MainStorage, storageLocks *StorageLocks) *InstructionEngine {
 	e := &InstructionEngine{}
+	e.name = name
 	e.mainStorage = mainStorage
+	e.storageLocks = storageLocks
 	e.Clear()
 	return e
 }
@@ -199,7 +159,7 @@ func (e *InstructionEngine) ClearStop() {
 }
 
 func (e *InstructionEngine) Dump() {
-	fmt.Printf("Instruction Engine Dump ---------------------------------------------------------------------\n")
+	fmt.Printf("Instruction Engine Dump for %s ---------------------------------------------------------------------\n", e.name)
 
 	if !e.pendingInterrupts.IsClear() {
 		fmt.Printf("  Pending Interrupts:\n")
@@ -264,6 +224,9 @@ func (e *InstructionEngine) Dump() {
 				br.IsLargeSize())
 		}
 	}
+
+	fmt.Printf("  Storage Locks:\n")
+	e.storageLocks.Dump()
 }
 
 // FindBasicModeBank takes a relative address and determines which (if any) of the basic mode banks
@@ -659,6 +622,10 @@ func (e *InstructionEngine) GetStopReason() (StopReason, uint64) {
 	return e.stopReason, e.stopDetail.GetW()
 }
 
+func (e *InstructionEngine) GetStorageLockClientName() string {
+	return e.name
+}
+
 func (e *InstructionEngine) HasPendingInterrupt() bool {
 	return !e.pendingInterrupts.IsClear()
 }
@@ -1018,14 +985,7 @@ func (e *InstructionEngine) checkBreakpointRange(
 }
 
 func (e *InstructionEngine) clearStorageLocks() {
-	//	TODO
-	// storageLocksMutex.Lock()
-	// for key, value := range storageLocks {
-	// 	if value == e {
-	// 		delete(storageLocks, key)
-	// 	}
-	// }
-	// storageLocksMutex.Unlock()
+	e.storageLocks.ReleaseAll(e)
 }
 
 func (e *InstructionEngine) createJumpHistoryEntry(address pkg.VirtualAddress) {

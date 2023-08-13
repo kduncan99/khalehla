@@ -114,7 +114,7 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 	}
 
 	//	Set up base registers
-	ute.engine = NewEngine(ute.storage)
+	ute.engine = NewEngine("IPTEST", ute.storage, NewStorageLocks())
 	for brx := uint64(0); brx < 16; brx++ {
 		ute.engine.SetBaseRegister(brx, pkg.NewVoidBaseRegister())
 	}
