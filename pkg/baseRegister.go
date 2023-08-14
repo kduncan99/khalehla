@@ -5,129 +5,67 @@
 package pkg
 
 type BaseRegister struct {
-	//	ring and domain for the bank described by this base register
-	accessLock *AccessLock
-
-	//	physical location of the described bank
-	baseAddress *AbsoluteAddress
-
-	//	ERW permissions for access by a key of lower privilege
-	generalAccessPermissions *AccessPermissions
-
-	//	ERW permissions for access by a key of equal or greater privilege
-	specialAccessPermissions *AccessPermissions
-
-	//	If true, area does not exceed 2^24 bytes - if false, area does not exceed 2^18 bytes
-	largeSizeFlag bool
-
-	//	Relative address, lower limit - 24 bits significant
-	//	Corresponds to the first word/value in the storage subset
-	//	one-word-granularity normalized form of the lower limit,
-	//	accounting for the large size flag
-	lowerLimitNormalized uint64
-
-	//	Relative address, upper limit - 24 bits significant
-	//	One-word-granularity normalized form of the upper limit,
-	//	accounting for the large size flag
-	upperLimitNormalized uint64
-
-	//	If true, this is a void bank (no storage)
-	voidFlag bool
-
-	//	slice representing the storage for this bank
-	storage []Word36
+	storage        []Word36        // slice representing the storage for this bank - nil for void bank
+	bankDescriptor *BankDescriptor // reference to BankDescriptor for this base register - nil for void bank
+	subsetting     uint64          // offset from start of real bank
 }
 
 // CheckAccessLimits verifies that the given relative address is within the limits defined
 // by the lower and upper normalized limits.
 // If successful, return nil - otherwise, returns an interrupt to be posted
-func (reg *BaseRegister) CheckAccessLimits(relativeAddress uint64, fetchFlag bool) Interrupt {
-	if (relativeAddress < reg.lowerLimitNormalized) ||
-		(relativeAddress > reg.upperLimitNormalized) {
-		return NewReferenceViolationInterrupt(ReferenceViolationStorageLimits, fetchFlag)
+func (reg *BaseRegister) CheckAccessLimits(relativeAddress uint64, fetchFlag bool) (interrupt Interrupt) {
+	interrupt = nil
+	if reg.bankDescriptor == nil {
+		interrupt = NewReferenceViolationInterrupt(ReferenceViolationStorageLimits, fetchFlag)
 	} else {
-		return nil
+		if (relativeAddress < reg.bankDescriptor.GetLowerLimitNormalized()) ||
+			(relativeAddress > reg.bankDescriptor.GetUpperLimitNormalized()) {
+			interrupt = NewReferenceViolationInterrupt(ReferenceViolationStorageLimits, fetchFlag)
+		}
 	}
+	return
 }
 
 // ConvertRelativeAddress converts a relative address to a new absolute address in the context of this base register
-func (reg *BaseRegister) ConvertRelativeAddress(relAddr uint64) *AbsoluteAddress {
-	actualOffset := relAddr - reg.lowerLimitNormalized
-	offset := reg.baseAddress.GetOffset() + actualOffset
-	return NewAbsoluteAddress(reg.baseAddress.GetSegment(), offset)
-}
+// TODO obsolete?
+// func (reg *BaseRegister) ConvertRelativeAddress(relAddr uint64) *AbsoluteAddress {
+// 	actualOffset := relAddr - reg.lowerLimitNormalized
+// 	offset := reg.GetBaseAddress().GetOffset() + actualOffset
+// 	return NewAbsoluteAddress(reg.GetBaseAddress().GetSegment(), offset)
+// }
 
-// PopulateAbsoluteAddress converts a relative address to an absolute address.
-// The AbsoluteAddress is passed as a reference so that we can avoid leaving little structs all over the heap.
-func (reg *BaseRegister) PopulateAbsoluteAddress(relativeAddress uint64, addr *AbsoluteAddress) {
-	addr.SetSegment(reg.GetBaseAddress().GetSegment())
-	actualOffset := relativeAddress - reg.GetLowerLimitNormalized()
-	addr.SetOffset(reg.GetBaseAddress().GetOffset() + actualOffset)
-}
-
-func (reg *BaseRegister) GetBaseAddress() *AbsoluteAddress {
-	return reg.baseAddress
+func (reg *BaseRegister) GetBankDescriptor() *BankDescriptor {
+	return reg.bankDescriptor
 }
 
 // GetEffectivePermissions returns either special or general access permissions, depending upon the
 // combination of the lock for this base register, and the given key.
 func (reg *BaseRegister) GetEffectivePermissions(key *AccessKey) *AccessPermissions {
-	return reg.accessLock.GetEffectivePermissions(key, reg.specialAccessPermissions, reg.generalAccessPermissions)
-}
-
-// GetLowerLimitAdjusted returns the real lower limit shifted according to the size flag
-func (reg *BaseRegister) GetLowerLimitAdjusted() uint64 {
-	if reg.largeSizeFlag {
-		return reg.lowerLimitNormalized >> 15
-	} else {
-		return reg.lowerLimitNormalized >> 9
-	}
-}
-
-// GetLowerLimitNormalized returns the real upper limit for the bank
-func (reg *BaseRegister) GetLowerLimitNormalized() uint64 {
-	return reg.lowerLimitNormalized
+	lock := reg.bankDescriptor.GetAccessLock()
+	spec := reg.bankDescriptor.GetSpecialAccessPermissions()
+	gen := reg.bankDescriptor.GetGeneralAccessPermissions()
+	return lock.GetEffectivePermissions(key, spec, gen)
 }
 
 func (reg *BaseRegister) GetStorage() []Word36 {
 	return reg.storage
 }
 
-// GetUpperLimitAdjusted returns the real upper limit shifted according to the size flag
-func (reg *BaseRegister) GetUpperLimitAdjusted() uint64 {
-	if reg.largeSizeFlag {
-		return reg.upperLimitNormalized >> 6
-	} else {
-		return reg.upperLimitNormalized
-	}
-}
-
-// GetUpperLimitNormalized returns the real upper limit for the bank
-func (reg *BaseRegister) GetUpperLimitNormalized() uint64 {
-	return reg.upperLimitNormalized
-}
-
-func (reg *BaseRegister) IsLargeSize() bool {
-	return reg.largeSizeFlag
+func (reg *BaseRegister) GetSubsetting() uint64 {
+	return reg.subsetting
 }
 
 func (reg *BaseRegister) IsVoid() bool {
-	return reg.voidFlag
+	return reg.bankDescriptor == nil
 }
 
 // FromBankDescriptor loads the fields of a BaseRegister struct based on the contents of the
 // given bank descriptor, and the given storage slice.
 // Needs to be a method so we can avoid alloc/dealloc lots of these things.
-func (reg *BaseRegister) FromBankDescriptor(bd *BankDescriptor, storage []Word36) {
-	reg.accessLock = bd.GetAccessLock()
-	reg.baseAddress = bd.GetBaseAddress()
-	reg.generalAccessPermissions = bd.GetGeneralAccessPermissions()
-	reg.specialAccessPermissions = bd.GetSpecialAccessPermissions()
-	reg.largeSizeFlag = bd.IsLargeBank()
-	reg.lowerLimitNormalized = bd.GetLowerLimitNormalized()
-	reg.upperLimitNormalized = bd.GetUpperLimitNormalized()
-	reg.voidFlag = false
+func (reg *BaseRegister) FromBankDescriptor(bankDescriptor *BankDescriptor, storage []Word36) {
+	reg.bankDescriptor = bankDescriptor
 	reg.storage = storage
+	reg.subsetting = 0
 }
 
 // FromBankDescriptorWithSubsetting loads the fields of a base register from the given bank descriptor,
@@ -139,40 +77,24 @@ func (reg *BaseRegister) FromBankDescriptor(bd *BankDescriptor, storage []Word36
 // the base address in the bank register, along with the limits, in this fashion.
 // Needs to be a method so we can avoid alloc/dealloc lots of these things.
 func (reg *BaseRegister) FromBankDescriptorWithSubsetting(bd *BankDescriptor, offset uint64, storage []Word36) {
-	reg.accessLock = bd.GetAccessLock()
-	reg.baseAddress = bd.GetBaseAddress()
-	reg.generalAccessPermissions =
-		NewAccessPermissions(false,
-			bd.GetGeneralAccessPermissions().CanRead(),
-			bd.GetGeneralAccessPermissions().CanWrite())
-	reg.specialAccessPermissions =
-		NewAccessPermissions(false,
-			bd.GetSpecialAccessPermissions().CanRead(),
-			bd.GetSpecialAccessPermissions().CanWrite())
-	reg.largeSizeFlag = bd.IsLargeBank()
-
-	reg.lowerLimitNormalized = 0
-	bdLowerNorm := bd.GetLowerLimitNormalized()
-	if bdLowerNorm > offset {
-		reg.lowerLimitNormalized = bdLowerNorm - offset
-	}
-
-	reg.upperLimitNormalized = bd.GetUpperLimitNormalized() - offset
-	reg.voidFlag = (reg.upperLimitNormalized < 0) || (reg.lowerLimitNormalized > reg.upperLimitNormalized)
+	reg.bankDescriptor = bd
 	reg.storage = storage
+	reg.subsetting = offset
 }
 
 func (reg *BaseRegister) MakeVoid() {
-	reg.accessLock.SetDomain(0).SetRing(0)
-	reg.baseAddress.SetSegment(0).SetOffset(0)
-	reg.generalAccessPermissions.Clear()
-	reg.specialAccessPermissions.Clear()
-	reg.largeSizeFlag = false
-	reg.lowerLimitNormalized = 0
-	reg.upperLimitNormalized = 0
-	reg.voidFlag = true
+	reg.bankDescriptor = nil
 	reg.storage = nil
+	reg.subsetting = 0
 }
+
+// PopulateAbsoluteAddress converts a relative address to an absolute address.
+// The AbsoluteAddress is passed as a reference so that we can avoid leaving little structs all over the heap.
+// func (reg *BaseRegister) PopulateAbsoluteAddress(relativeAddress uint64, addr *AbsoluteAddress) {
+// 	addr.SetSegment(reg.GetBaseAddress().GetSegment())
+// 	actualOffset := relativeAddress - reg.GetLowerLimitNormalized()
+// 	addr.SetOffset(reg.GetBaseAddress().GetOffset() + actualOffset)
+// }
 
 // NewBaseRegisterFromBankDescriptor is a convenience wrapper for the method above
 func NewBaseRegisterFromBankDescriptor(bd *BankDescriptor, storage []Word36) *BaseRegister {
@@ -181,66 +103,73 @@ func NewBaseRegisterFromBankDescriptor(bd *BankDescriptor, storage []Word36) *Ba
 	return &br
 }
 
+// NewBaseRegisterFromBankDescriptorWithSubsetting is a convenience wrapper for the method above
+func NewBaseRegisterFromBankDescriptorWithSubsetting(bd *BankDescriptor, offset uint64, storage []Word36) *BaseRegister {
+	br := BaseRegister{}
+	br.FromBankDescriptorWithSubsetting(bd, offset, storage)
+	return &br
+}
+
 // NewBaseRegisterFromBuffer produces a struct given the 4-word slice buffer,
 // and given a slice which represents the content of the bank.
-func NewBaseRegisterFromBuffer(buffer []Word36, storage []Word36) *BaseRegister {
-	sizeFlag := buffer[0]&0_000004_000000 != 0
-	llNormal := uint64(buffer[1] >> 27)
-	ulNormal := uint64(buffer[1] & 0777777)
-	if sizeFlag {
-		llNormal <<= 15
-	} else {
-		llNormal <<= 9
-		ulNormal <<= 6
-	}
-
-	reg := BaseRegister{
-		accessLock:  NewAccessLock((buffer[0].GetW()>>16)&03, buffer[0].GetW()&0xFFFF),
-		baseAddress: NewAbsoluteAddress(0, 0).SetCompositeFromWord36(buffer[2:4]),
-		generalAccessPermissions: NewAccessPermissions(
-			false,
-			buffer[0]&0_200000_000000 != 0,
-			buffer[0]&0_100000_000000 != 0),
-		specialAccessPermissions: NewAccessPermissions(
-			false,
-			buffer[0]&0_020000_000000 != 0,
-			buffer[0]&0_020000_000000 != 0),
-		largeSizeFlag:        sizeFlag,
-		lowerLimitNormalized: llNormal,
-		upperLimitNormalized: ulNormal,
-		voidFlag:             buffer[0]&0_000200_000000 != 0,
-		storage:              storage,
-	}
-
-	return &reg
-}
+// func NewBaseRegisterFromBuffer(buffer []Word36, storage []Word36) *BaseRegister {
+// 	sizeFlag := buffer[0]&0_000004_000000 != 0
+// 	llNormal := uint64(buffer[1] >> 27)
+// 	ulNormal := uint64(buffer[1] & 0777777)
+// 	if sizeFlag {
+// 		llNormal <<= 15
+// 	} else {
+// 		llNormal <<= 9
+// 		ulNormal <<= 6
+// 	}
+//
+// 	reg := BaseRegister{
+// 		accessLock:  NewAccessLock((buffer[0].GetW()>>16)&03, buffer[0].GetW()&0xFFFF),
+// 		baseAddress: NewAbsoluteAddress(0, 0).SetCompositeFromWord36(buffer[2:4]),
+// 		generalAccessPermissions: NewAccessPermissions(
+// 			false,
+// 			buffer[0]&0_200000_000000 != 0,
+// 			buffer[0]&0_100000_000000 != 0),
+// 		specialAccessPermissions: NewAccessPermissions(
+// 			false,
+// 			buffer[0]&0_020000_000000 != 0,
+// 			buffer[0]&0_020000_000000 != 0),
+// 		largeSizeFlag:        sizeFlag,
+// 		lowerLimitNormalized: llNormal,
+// 		upperLimitNormalized: ulNormal,
+// 		voidFlag:             buffer[0]&0_000200_000000 != 0,
+// 		storage:              storage,
+// 	}
+//
+// 	return &reg
+// }
 
 func NewVoidBaseRegister() *BaseRegister {
-	reg := BaseRegister{
-		voidFlag: true,
-	}
+	reg := BaseRegister{}
+	reg.MakeVoid()
 	return &reg
 }
 
-func NewBaseRegister(
-	baseAddr *AbsoluteAddress,
-	lock *AccessLock,
-	gap *AccessPermissions,
-	sap *AccessPermissions,
-	lowerNormal uint64,
-	upperNormal uint64,
-	largeSize bool,
-	storage []Word36) *BaseRegister {
-
-	return &BaseRegister{
-		baseAddress:              baseAddr,
-		accessLock:               lock,
-		generalAccessPermissions: gap,
-		specialAccessPermissions: sap,
-		lowerLimitNormalized:     lowerNormal,
-		upperLimitNormalized:     upperNormal,
-		largeSizeFlag:            largeSize,
-		voidFlag:                 false,
-		storage:                  storage,
-	}
-}
+// TODO obsolete
+// func NewBaseRegister(
+// 	baseAddr *AbsoluteAddress,
+// 	lock *AccessLock,
+// 	gap *AccessPermissions,
+// 	sap *AccessPermissions,
+// 	lowerNormal uint64,
+// 	upperNormal uint64,
+// 	largeSize bool,
+// 	storage []Word36) *BaseRegister {
+//
+// 	return &BaseRegister{
+// 		baseAddress:              baseAddr,
+// 		accessLock:               lock,
+// 		generalAccessPermissions: gap,
+// 		specialAccessPermissions: sap,
+// 		lowerLimitNormalized:     lowerNormal,
+// 		upperLimitNormalized:     upperNormal,
+// 		largeSizeFlag:            largeSize,
+// 		voidFlag:                 false,
+// 		storage:                  storage,
+// 	}
+// }

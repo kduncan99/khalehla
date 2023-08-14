@@ -16,6 +16,12 @@ var AllAccessPermissions = AccessPermissions{
 	canWrite: true,
 }
 
+var NoAccessPermissions = AccessPermissions{
+	canEnter: false,
+	canRead:  false,
+	canWrite: false,
+}
+
 func (perm *AccessPermissions) Clear() {
 	perm.canEnter = false
 	perm.canRead = false

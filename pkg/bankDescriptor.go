@@ -67,6 +67,10 @@ func (bd *BankDescriptor) GetIndirectLevelAndBDI() uint64 {
 	return bd.indirectLevelAndBDI
 }
 
+func (bd *BankDescriptor) GetLowerLimit() uint64 {
+	return bd.lowerLimit
+}
+
 func (bd *BankDescriptor) GetLowerLimitNormalized() uint64 {
 	if bd.largeBankSize {
 		return bd.lowerLimit << 15
@@ -77,6 +81,10 @@ func (bd *BankDescriptor) GetLowerLimitNormalized() uint64 {
 
 func (bd *BankDescriptor) GetSpecialAccessPermissions() *AccessPermissions {
 	return bd.specialAccessPermissions
+}
+
+func (bd *BankDescriptor) GetUpperLimit() uint64 {
+	return bd.upperLimit
 }
 
 func (bd *BankDescriptor) GetUpperLimitNormalized() uint64 {
@@ -100,7 +108,8 @@ func (bd *BankDescriptor) SetBaseAddress(baseAddress *AbsoluteAddress) *BankDesc
 	return bd
 }
 
-func NewExtendedModeBankDescriptor(
+func NewBankDescriptor(
+	basicMode bool,
 	lock *AccessLock,
 	general *AccessPermissions,
 	special *AccessPermissions,
@@ -111,7 +120,13 @@ func NewExtendedModeBankDescriptor(
 	displacement uint64) *BankDescriptor {
 
 	bd := &BankDescriptor{}
-	bd.bankType = ExtendedModeBankDescriptor
+
+	if basicMode {
+		bd.bankType = BasicModeBankDescriptor
+	} else {
+		bd.bankType = ExtendedModeBankDescriptor
+	}
+
 	bd.generalAccessPermissions = general
 	bd.specialAccessPermissions = special
 	bd.generalFault = false

@@ -121,6 +121,19 @@ type Interrupt interface {
 	IsFault() bool
 }
 
+func GetInterruptString(i Interrupt) string {
+	if i == nil {
+		return "<nil>"
+	} else {
+		return fmt.Sprintf("%s(%03o) SSF:%03o ISW0=%012o ISW1=%012o",
+			InterruptNames[i.GetClass()],
+			i.GetClass(),
+			i.GetShortStatusField(),
+			i.GetStatusWord0(),
+			i.GetStatusWord1())
+	}
+}
+
 // Class 1 Hardware Check ----------------------------------------------------------------------------------------------
 
 type HardwareCheckInterrupt struct {
@@ -358,6 +371,57 @@ func NewRCSGenericStackUnderOverflowInterrupt(
 	}
 }
 
+// Class 13 Test and Set -----------------------------------------------------------------------------------------------
+
+// Format of ISW0 is
+// Bits0-5:    Base Register Index
+// Bits6-11:   Reserved
+// Bits12-35:  Relative Address
+
+type TestAndSetInterrupt struct {
+	baseRegisterIndex uint
+	relativeAddress   uint64
+}
+
+func (i *TestAndSetInterrupt) GetClass() InterruptClass {
+	return TestAndSetInterruptClass
+}
+
+func (i *TestAndSetInterrupt) GetInterruptPoint() InterruptPoint {
+	return InterruptIndirectExecute
+}
+
+func (i *TestAndSetInterrupt) GetShortStatusField() InterruptShortStatus {
+	return 0
+}
+
+func (i *TestAndSetInterrupt) GetStatusWord0() Word36 {
+	return Word36((uint64(i.baseRegisterIndex&077) << 30) | (i.relativeAddress & 0_000077_777777))
+}
+
+func (i *TestAndSetInterrupt) GetStatusWord1() Word36 {
+	return 0
+}
+
+func (i *TestAndSetInterrupt) GetSynchrony() InterruptSync {
+	return InterruptSynchronous
+}
+
+func (i *TestAndSetInterrupt) IsDeferrable() bool {
+	return false
+}
+
+func (i *TestAndSetInterrupt) IsFault() bool {
+	return true
+}
+
+func NewTestAndSetInterrupt(baseRegisterIndex uint, relativeAddress uint64) *TestAndSetInterrupt {
+	return &TestAndSetInterrupt{
+		baseRegisterIndex: baseRegisterIndex,
+		relativeAddress:   relativeAddress,
+	}
+}
+
 // Class 14 Invalid Instruction ----------------------------------------------------------------------------------------
 
 // ssf values:
@@ -409,19 +473,6 @@ func (i *InvalidInstructionInterrupt) IsFault() bool {
 func NewInvalidInstructionInterrupt(shortStatusField InterruptShortStatus) *InvalidInstructionInterrupt {
 	return &InvalidInstructionInterrupt{
 		shortStatusField: shortStatusField,
-	}
-}
-
-func GetInterruptString(i Interrupt) string {
-	if i == nil {
-		return "<nil>"
-	} else {
-		return fmt.Sprintf("%s(%03o) SSF:%03o ISW0=%012o ISW1=%012o",
-			InterruptNames[i.GetClass()],
-			i.GetClass(),
-			i.GetShortStatusField(),
-			i.GetStatusWord0(),
-			i.GetStatusWord1())
 	}
 }
 

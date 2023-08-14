@@ -140,8 +140,8 @@ func (p *InstructionProcessor) handleInterrupt(i pkg.Interrupt) {
 	stackOffset := icsXReg.GetXM()
 	stackFrameSize := icsXReg.GetXI()
 	stackFrameLimit := stackOffset + stackFrameSize
-	if (stackFrameLimit-1 > br[ICSBaseRegister].GetUpperLimitNormalized()) ||
-		(stackOffset < br[ICSBaseRegister].GetLowerLimitNormalized()) {
+	if (stackFrameLimit-1 > br[ICSBaseRegister].GetBankDescriptor().GetUpperLimitNormalized()) ||
+		(stackOffset < br[ICSBaseRegister].GetBankDescriptor().GetLowerLimitNormalized()) {
 		p.engine.Stop(ICSOverflowStop, 0)
 		return
 	}
@@ -179,8 +179,8 @@ func (p *InstructionProcessor) isReadAllowed(bReg *pkg.BaseRegister) bool {
 //	returning true if the offset is within those constraints, else false
 func (p *InstructionProcessor) isWithinLimits(bReg *pkg.BaseRegister, offset uint64) bool {
 	return !bReg.IsVoid() &&
-		(offset >= bReg.GetLowerLimitNormalized()) &&
-		(offset <= bReg.GetUpperLimitNormalized())
+		(offset >= bReg.GetBankDescriptor().GetLowerLimitNormalized()) &&
+		(offset <= bReg.GetBankDescriptor().GetUpperLimitNormalized())
 }
 
 // run is the coroutine which drives the engine

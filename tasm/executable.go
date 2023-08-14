@@ -150,7 +150,8 @@ func (e *Executable) LinkSimple(segments map[uint64]*Segment, extendedMode bool)
 		}
 	}
 
-	bd := pkg.NewExtendedModeBankDescriptor(
+	bd := pkg.NewBankDescriptor(
+		false,
 		pkg.NewAccessLock(0, 0),
 		pkg.NewAccessPermissions(true, true, true),
 		pkg.NewAccessPermissions(true, true, true),
@@ -214,7 +215,8 @@ func (e *Executable) LinkBankPerSegment(segments map[uint64]*Segment, extendedMo
 				}
 			}
 
-			bd := pkg.NewExtendedModeBankDescriptor(
+			bd := pkg.NewBankDescriptor(
+				false,
 				pkg.NewAccessLock(0, 0),
 				pkg.NewAccessPermissions(canEnter, true, canWrite),
 				pkg.NewAccessPermissions(canEnter, true, canWrite),

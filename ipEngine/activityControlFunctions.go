@@ -14,13 +14,12 @@ func LoadDesignatorRegister(e *InstructionEngine) (completed bool, interrupt pkg
 		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadPP)
 	}
 
-	operand, completed, interrupt := e.GetOperand(true, true, false, false)
-	if !completed || interrupt != nil {
-		return false, interrupt
+	result := e.GetOperand(true, true, false, false, false)
+	if result.complete && result.interrupt == nil {
+		e.activityStatePacket.GetDesignatorRegister().SetComposite(result.operand)
 	}
 
-	e.activityStatePacket.GetDesignatorRegister().SetComposite(operand)
-	return true, nil
+	return result.complete, result.interrupt
 }
 
 // StoreDesignatorRegister (SD) stores the content of the DR to the address specified by U
@@ -28,6 +27,7 @@ func StoreDesignatorRegister(e *InstructionEngine) (completed bool, interrupt pk
 	if e.activityStatePacket.GetDesignatorRegister().GetProcessorPrivilege() > 1 {
 		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadPP)
 	}
+
 	op := e.activityStatePacket.GetDesignatorRegister().GetComposite()
 	return e.StoreOperand(false, true, false, false, op)
 }

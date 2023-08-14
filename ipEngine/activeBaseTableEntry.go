@@ -4,6 +4,8 @@
 
 package ipEngine
 
+import "fmt"
+
 type ActiveBaseTableEntry struct {
 	bankLevel           uint64 // the top 3 bits of the extended mode L.BDI
 	bankDescriptorIndex uint64 // only the bottom 15 bits of the extended mode L.BDI
@@ -12,6 +14,14 @@ type ActiveBaseTableEntry struct {
 
 func (abte *ActiveBaseTableEntry) GetComposite() uint64 {
 	return (abte.bankLevel << 33) | (abte.bankDescriptorIndex << 18) | abte.subsetSpecification
+}
+
+func (abte *ActiveBaseTableEntry) GetString() string {
+	return fmt.Sprintf(
+		"level=%0o bdi=%05o subset=%06o",
+		abte.bankLevel,
+		abte.bankDescriptorIndex,
+		abte.subsetSpecification)
 }
 
 func (abte *ActiveBaseTableEntry) SetComposite(value uint64) *ActiveBaseTableEntry {

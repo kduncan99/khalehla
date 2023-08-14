@@ -165,14 +165,14 @@ func step3(bm *BankManipulator) bool {
 		}
 
 		rcsXReg := bm.engine.GetExecOrUserXRegister(RCSIndexRegister)
-		if rcsXReg.GetXM() > rcsBReg.GetUpperLimitNormalized() {
+		if rcsXReg.GetXM() > rcsBReg.GetBankDescriptor().GetUpperLimitNormalized() {
 			i := pkg.NewRCSGenericStackUnderOverflowInterrupt(pkg.RCSGenericStackUnderflow, RCSIndexRegister, rcsXReg.GetXM())
 			bm.engine.PostInterrupt(i)
 			return false
 		}
 
 		framePointer := rcsXReg.GetXM()
-		offset := framePointer - rcsBReg.GetLowerLimitNormalized()
+		offset := framePointer - rcsBReg.GetBankDescriptor().GetLowerLimitNormalized()
 		frame := rcsBReg.GetStorage()[offset : offset+2]
 		bm.returnControlStackFrame = NewReturnControlStackFrameFromBuffer(frame)
 		rcsXReg.SetXM(framePointer + 2)
@@ -621,7 +621,7 @@ func step12(bm *BankManipulator) bool {
 
 		rcsXReg := (*IndexRegister)(bm.engine.generalRegisterSet.GetRegister(RCSIndexRegister))
 		framePointer := uint64(rcsXReg.GetXM()) - 2
-		if framePointer < rcsBReg.GetLowerLimitNormalized() {
+		if framePointer < rcsBReg.GetBankDescriptor().GetLowerLimitNormalized() {
 			bm.engine.PostInterrupt(pkg.NewRCSGenericStackUnderOverflowInterrupt(pkg.RCSGenericStackOverflow, RCSBaseRegister, framePointer))
 			return false
 		}
@@ -657,7 +657,7 @@ func step12(bm *BankManipulator) bool {
 			bm.engine.activityStatePacket.GetDesignatorRegister(),
 			bm.engine.activityStatePacket.GetIndicatorKeyRegister().GetAccessKey())
 
-		offset := framePointer - rcsBReg.GetLowerLimitNormalized()
+		offset := framePointer - rcsBReg.GetBankDescriptor().GetLowerLimitNormalized()
 		buffer := rcsBReg.GetStorage()[offset : offset+2]
 		rcsFrame.WriteToBuffer(buffer)
 

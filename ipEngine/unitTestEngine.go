@@ -125,15 +125,10 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 	for level, address := range ute.bankDescriptorTableAddresses {
 		table, _ := ute.storage.GetSegment(address.GetSegment())
 		brx := level + 16
-		br := pkg.NewBaseRegister(
-			address,
-			pkg.NewAccessLock(0, 0),
-			pkg.NewAccessPermissions(false, true, false),
-			pkg.NewAccessPermissions(false, true, false),
-			0,
-			0,
-			false,
-			table)
+		lock := pkg.NewAccessLock(0, 0)
+		perms := pkg.NewAccessPermissions(false, true, false)
+		bd := pkg.NewBankDescriptor(false, lock, perms, perms, address, false, 0, 0, 0)
+		br := pkg.NewBaseRegisterFromBankDescriptor(bd, table)
 
 		ute.engine.SetBaseRegister(brx, br)
 		fmt.Printf("    Set B%d -> BDT for level %d\n", brx, level)
@@ -208,8 +203,7 @@ func (ute *UnitTestEngine) Run() error {
 	ute.engine.GetGeneralRegisterSet().Clear()
 	ute.engine.ClearStop()
 	ute.engine.ClearAllInterrupts()
-
-	//	TODO clear jump history
+	ute.engine.ClearJumpHistory()
 
 	//	Now Iterate until an interrupt is posted
 	for !ute.engine.HasPendingInterrupt() && !ute.engine.IsStopped() {
