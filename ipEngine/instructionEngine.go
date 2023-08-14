@@ -18,6 +18,9 @@ const (
 	BreakpointWrite BreakpointComparison = 3
 )
 
+//	TODO need to revisit breakpoint detection- I think we are supposed to detect it, but not let it
+//   impede the completion of the instruction - which would be a bit of a change to how we do stuffs...
+
 type InstructionPoint uint
 
 const (
@@ -154,6 +157,20 @@ var baseRegisterCandidates = map[bool][]uint{
 	false: baseRegisterCandidatesFalse,
 	true:  baseRegisterCandidatesTrue,
 }
+
+// TODO NOTE THIS: we need to deal with this eventually...
+//  For iterative instructions, U is recalculated for every iteration of the Repeat_Count_Register (R1).
+//  While U is recalculated for each iteration of R1, the determination for U < 0200 is made only for
+//  the initial address of an iterative operand. Some instructions have both source and destination
+//  operands; the determination for U < 0200 is made once for the initial address of the iterativ
+//  source operand and once for the initial address of the iterative destination operand. The iterative
+//  instructions are:
+//  • Block Transfer (BT; see 6.12.1)
+//  • Block Add Octets (BAO; see 6.3.28)
+//  • All search instructions (see 6.6)
+//  • For Execute Repeated (EXR; see 6.27.2), the formation of the instruction operand of the target instruction is iterative.
+//  Architecturally_Undefined: Operation is undefined if a subsequent address of the iterative
+//  operand is on the other side of the GRS/Storage boundary from the initial address.
 
 //	external stuffs ----------------------------------------------------------------------------------------------------
 
@@ -380,22 +397,15 @@ func (e *InstructionEngine) GetConsecutiveOperands(grsCheck bool, count uint64, 
 		return
 	}
 
-	var found bool
 	result.sourceVirtualAddress, result.sourceAbsoluteAddress, result.interrupt =
 		e.translateAddress(result.sourceBaseRegisterIndex, result.sourceRelativeAddress)
 	if result.interrupt != nil {
 		return
 	}
 
-	found, result.interrupt = e.checkBreakpointRange(BreakpointRead, result.sourceAbsoluteAddress, count)
-	if found || result.interrupt != nil {
-		return
-	}
-
 	result.source, result.interrupt = e.mainStorage.GetSliceFromAddress(result.sourceAbsoluteAddress, count)
-	fmt.Printf("%s\n", result.GetString()) // TODO remove
-	e.Dump()
-	e.mainStorage.Dump()
+
+	_, result.interrupt = e.checkBreakpointRange(BreakpointRead, result.sourceAbsoluteAddress, count)
 	return
 }
 
@@ -570,6 +580,7 @@ func (e *InstructionEngine) GetJumpOperand() (operand uint64, flip31 bool, compl
 		}
 	}
 
+	//	TODO Need to check breakpoint
 	return
 }
 
@@ -607,7 +618,6 @@ func (e *InstructionEngine) GetOperand(
 	}
 
 	asp := e.activityStatePacket
-	ci := asp.GetCurrentInstruction()
 	dReg := asp.GetDesignatorRegister()
 	basicMode := dReg.IsBasicModeEnabled()
 	privilege := dReg.GetProcessorPrivilege()
@@ -615,10 +625,7 @@ func (e *InstructionEngine) GetOperand(
 
 	// using exec base registers?
 	if !basicMode {
-		result.sourceBaseRegisterIndex = uint(ci.GetB())
-		if (privilege < 2) && (ci.GetI() != 0) {
-			result.sourceBaseRegisterIndex += 16
-		}
+		result.sourceBaseRegisterIndex = e.getEffectiveBaseRegisterIndex()
 	}
 
 	e.incrementIndexRegisterInF0()
@@ -663,12 +670,6 @@ func (e *InstructionEngine) GetOperand(
 			return
 		}
 
-		var found bool
-		found, result.interrupt = e.checkBreakpoint(BreakpointRead, result.sourceAbsoluteAddress)
-		if found || result.interrupt != nil {
-			return
-		}
-
 		if lockStorage {
 			e.storageLocks.Lock(result.sourceVirtualAddress, e)
 		}
@@ -681,6 +682,8 @@ func (e *InstructionEngine) GetOperand(
 		} else {
 			result.operand = result.source.GetW()
 		}
+
+		_, result.interrupt = e.checkBreakpoint(BreakpointRead, result.sourceAbsoluteAddress)
 	}
 
 	return
@@ -715,17 +718,12 @@ func (e *InstructionEngine) IgnoreOperand() (complete bool, interrupt pkg.Interr
 	}
 
 	asp := e.activityStatePacket
-	ci := asp.GetCurrentInstruction()
 	dReg := asp.GetDesignatorRegister()
 	basicMode := dReg.IsBasicModeEnabled()
-	privilege := dReg.GetProcessorPrivilege()
 
 	var brx uint
 	if !basicMode {
-		brx = uint(ci.GetB())
-		if (privilege < 2) && (ci.GetI() != 0) {
-			brx += 16
-		}
+		brx = e.getEffectiveBaseRegisterIndex()
 	}
 
 	if relAddr > 0177 || (!basicMode && brx > 0) {
@@ -767,16 +765,16 @@ func (e *InstructionEngine) SetBaseRegister(brIndex uint64, register *pkg.BaseRe
 	e.baseRegisters[brIndex] = register
 }
 
-func (e *InstructionEngine) SetExecOrUserARegister(regIndex uint64, value pkg.Word36) {
+func (e *InstructionEngine) SetExecOrUserARegister(regIndex uint64, value uint64) {
 	e.generalRegisterSet.SetRegisterValue(e.GetExecOrUserARegisterIndex(regIndex), value)
 }
 
-func (e *InstructionEngine) SetExecOrUserRRegister(regIndex uint64, value pkg.Word36) {
+func (e *InstructionEngine) SetExecOrUserRRegister(regIndex uint64, value uint64) {
 	e.generalRegisterSet.SetRegisterValue(e.GetExecOrUserRRegisterIndex(regIndex), value)
 }
 
-func (e *InstructionEngine) SetExecOrUserXRegister(regIndex uint64, value IndexRegister) {
-	e.generalRegisterSet.SetRegisterValue(e.GetExecOrUserXRegisterIndex(regIndex), pkg.Word36(value))
+func (e *InstructionEngine) SetExecOrUserXRegister(regIndex uint64, value uint64) {
+	e.generalRegisterSet.SetRegisterValue(e.GetExecOrUserXRegisterIndex(regIndex), value)
 }
 
 func (e *InstructionEngine) SetLogInstructions(flag bool) {
@@ -805,6 +803,92 @@ func (e *InstructionEngine) Stop(reason StopReason, detail pkg.Word36) {
 	e.isStopped = true
 	e.stopReason = reason
 	e.stopDetail = detail
+}
+
+// StoreConsecutiveOperands handles the general case of storing operands either to consecutive locations
+// in storage or in the GRS.
+//
+// grsCheck: true if relative addresses < 0200 should be considered GRS locations
+// operands: values to be stored
+// grsWrap:  true indicates that, if the grs index exceeds 0177, that it will wrap to 0 instead of resulting
+// in a potential reference violation.
+// Returns complete == false if we are in the middle of resolving addresses, or an interrupt if one needs to be posted.
+func (e *InstructionEngine) StoreConsecutiveOperands(
+	grsCheck bool,
+	operands []uint64) (complete bool, interrupt pkg.Interrupt) {
+
+	complete = true
+	interrupt = nil
+
+	count := uint64(len(operands))
+	var relAddr uint64
+	relAddr, complete, interrupt = e.resolveRelativeAddress(false)
+	if !complete || interrupt != nil {
+		return
+	}
+
+	e.incrementIndexRegisterInF0()
+
+	dr := e.activityStatePacket.GetDesignatorRegister()
+	basicMode := dr.IsBasicModeEnabled()
+
+	var brx uint
+	if !basicMode {
+		brx = e.getEffectiveBaseRegisterIndex()
+	}
+
+	if (grsCheck) && (basicMode || (brx == 0)) && (relAddr < 0200) {
+		grsIndex := relAddr
+		for ox := uint64(0); ox < count; ox++ {
+			if grsIndex == 0200 {
+				interrupt = pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationGRS, false)
+				return
+			}
+
+			if !e.isGRSAccessAllowed(grsIndex, dr.GetProcessorPrivilege(), true) {
+				interrupt = pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationReadAccess, false)
+				return
+			}
+
+			e.generalRegisterSet.SetRegisterValue(relAddr, operands[ox])
+			grsIndex++
+		}
+	} else {
+		//  This is going to be a storage thing...
+		//  Get base register and check storage and access limits
+		var brx uint
+		brx, interrupt = e.findBaseRegisterIndex(relAddr)
+		if interrupt != nil {
+			return
+		}
+
+		bReg := e.baseRegisters[brx]
+		ikr := e.activityStatePacket.GetIndicatorKeyRegister()
+		interrupt = e.checkAccessLimitsRange(bReg, relAddr, count, false, true, ikr.GetAccessKey())
+		if interrupt != nil {
+			return
+		}
+
+		var absAddr *pkg.AbsoluteAddress
+		_, absAddr, interrupt = e.translateAddress(brx, relAddr)
+		if interrupt != nil {
+			return
+		}
+
+		var dest []pkg.Word36
+		dest, interrupt = e.mainStorage.GetSliceFromAddress(absAddr, count)
+		if interrupt != nil {
+			return
+		}
+
+		for dx := uint64(0); dx < count; dx++ {
+			dest[dx].SetW(operands[dx])
+		}
+
+		_, interrupt = e.checkBreakpointRange(BreakpointWrite, absAddr, count)
+	}
+
+	return
 }
 
 // StoreOperand handles the general case of storing an operand either to storage or to a GRS location
@@ -847,10 +931,7 @@ func (e *InstructionEngine) StoreOperand(
 
 	var brx uint
 	if !basicMode {
-		brx = uint(ci.GetB())
-		if (privilege < 2) && (ci.GetI() != 0) {
-			brx += 16
-		}
+		brx = e.getEffectiveBaseRegisterIndex()
 	}
 
 	if (grsCheck) && (basicMode || (brx == 0)) && (relAddr < 0200) {
@@ -1392,7 +1473,7 @@ func (e *InstructionEngine) resolveRelativeAddress(useU bool) (relAddr uint64, c
 
 		var found bool
 		found, interrupt = e.checkBreakpoint(BreakpointRead, absAddr)
-		if found {
+		if found || interrupt != nil {
 			// TODO the processor has been stopped - immediately stop
 			return
 		}

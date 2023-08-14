@@ -15,6 +15,8 @@ var FunctionTable = map[bool]map[uint]func(*InstructionEngine) (completed bool, 
 // BasicModeFunctionTable functions indexed by the f field
 var BasicModeFunctionTable = map[uint]func(*InstructionEngine) (completed bool, interrupt pkg.Interrupt){
 	001: StoreAccumulator,
+	002: StoreNegativeA,
+	003: StoreMagnitudeA,
 	004: StoreRegister,
 	005: basicModeFunction05Handler,
 	006: StoreIndexRegister,
@@ -63,10 +65,12 @@ var basicModeFunction05Table = map[uint]func(engine *InstructionEngine) (complet
 // Basic Mode, F=007, table is indexed by the j field
 var basicModeFunction07Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
 	004: LoadAQuarterWord,
+	005: StoreAQuarterWord,
 }
 
 // Basic Mode, F=071, table is indexed by the j field
 var basicModeFunction71Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
+	012: DoubleStoreAccumulator,
 	013: DoubleLoadAccumulator,
 	014: DoubleLoadNegativeAccumulator,
 	015: DoubleLoadMagnitudeAccumulator,
@@ -79,6 +83,7 @@ var basicModeFunction72Table = map[uint]func(engine *InstructionEngine) (complet
 	001: StoreLocationAndJump,
 	002: JumpPositiveAndShift,
 	003: JumpNegativeAndShift,
+	016: StoreRegisterSet,
 	017: LoadRegisterSet,
 }
 
@@ -169,6 +174,8 @@ var basicModeFunction75Table = map[uint]func(engine *InstructionEngine) (complet
 // ExtendedModeFunctionTable functions indexed by the f field
 var ExtendedModeFunctionTable = map[uint]func(*InstructionEngine) (completed bool, interrupt pkg.Interrupt){
 	001: StoreAccumulator,
+	002: StoreNegativeA,
+	003: StoreMagnitudeA,
 	004: StoreRegister,
 	005: extendedModeFunction05Handler,
 	006: StoreIndexRegister,
@@ -218,6 +225,7 @@ var extendedModeFunction05Table = map[uint]func(engine *InstructionEngine) (comp
 // Extended Mode, F=007, table is indexed by the j field
 var extendedModeFunction07Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
 	004: LoadAQuarterWord,
+	005: StoreAQuarterWord,
 }
 
 // Extended Mode, F=033, table is indexed by the j field
@@ -256,6 +264,7 @@ var extendedModeFunction71Table = map[uint]func(engine *InstructionEngine) (comp
 	005: MaskedTestNotWithinRange,
 	006: MaskedAlphanumericTestLessThanOrEqual,
 	007: MaskedAlphanumericTestGreater,
+	012: DoubleStoreAccumulator,
 	013: DoubleLoadAccumulator,
 	014: DoubleLoadNegativeAccumulator,
 	015: DoubleLoadMagnitudeAccumulator,
@@ -267,6 +276,7 @@ var extendedModeFunction71Table = map[uint]func(engine *InstructionEngine) (comp
 var extendedModeFunction72Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
 	002: JumpPositiveAndShift,
 	003: JumpNegativeAndShift,
+	016: StoreRegisterSet,
 	017: LoadRegisterSet,
 }
 

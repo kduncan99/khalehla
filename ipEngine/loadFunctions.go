@@ -5,7 +5,6 @@
 package ipEngine
 
 import (
-	"fmt"
 	"khalehla/pkg"
 )
 
@@ -15,8 +14,8 @@ func DoubleLoadAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.
 	if result.complete && result.interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		grsIndex := e.GetExecOrUserARegisterIndex(ci.GetA())
-		e.generalRegisterSet.SetRegisterValue(grsIndex, result.source[0])
-		e.generalRegisterSet.SetRegisterValue(grsIndex+1, result.source[1])
+		e.generalRegisterSet.SetRegisterValue(grsIndex, result.source[0].GetW())
+		e.generalRegisterSet.SetRegisterValue(grsIndex+1, result.source[1].GetW())
 	}
 
 	return result.complete, result.interrupt
@@ -30,11 +29,11 @@ func DoubleLoadMagnitudeAccumulator(e *InstructionEngine) (completed bool, inter
 		ci := e.GetCurrentInstruction()
 		grsIndex := e.GetExecOrUserARegisterIndex(ci.GetA())
 		if result.source[0].IsNegative() {
-			e.generalRegisterSet.SetRegisterValue(grsIndex, pkg.Word36(pkg.Not(result.source[0].GetW())))
-			e.generalRegisterSet.SetRegisterValue(grsIndex+1, pkg.Word36(pkg.Not(result.source[1].GetW())))
+			e.generalRegisterSet.SetRegisterValue(grsIndex, pkg.Not(result.source[0].GetW()))
+			e.generalRegisterSet.SetRegisterValue(grsIndex+1, pkg.Not(result.source[1].GetW()))
 		} else {
-			e.generalRegisterSet.SetRegisterValue(grsIndex, result.source[0])
-			e.generalRegisterSet.SetRegisterValue(grsIndex+1, result.source[1])
+			e.generalRegisterSet.SetRegisterValue(grsIndex, result.source[0].GetW())
+			e.generalRegisterSet.SetRegisterValue(grsIndex+1, result.source[1].GetW())
 		}
 	}
 
@@ -48,8 +47,8 @@ func DoubleLoadNegativeAccumulator(e *InstructionEngine) (completed bool, interr
 	if result.complete && result.interrupt == nil {
 		ci := e.GetCurrentInstruction()
 		grsIndex := e.GetExecOrUserARegisterIndex(ci.GetA())
-		e.generalRegisterSet.SetRegisterValue(grsIndex, pkg.Word36(pkg.Not(result.source[0].GetW())))
-		e.generalRegisterSet.SetRegisterValue(grsIndex+1, pkg.Word36(pkg.Not(result.source[1].GetW())))
+		e.generalRegisterSet.SetRegisterValue(grsIndex, pkg.Not(result.source[0].GetW()))
+		e.generalRegisterSet.SetRegisterValue(grsIndex+1, pkg.Not(result.source[1].GetW()))
 	}
 
 	return result.complete, result.interrupt
@@ -59,7 +58,6 @@ func DoubleLoadNegativeAccumulator(e *InstructionEngine) (completed bool, interr
 func LoadAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	result := e.GetOperand(true, true, true, true, false)
 	if result.complete && result.interrupt == nil {
-		fmt.Printf("FOO") // TODO remove
 		ci := e.GetCurrentInstruction()
 		e.GetExecOrUserARegister(ci.GetA()).SetW(result.operand)
 	}
@@ -224,6 +222,9 @@ func LoadRegister(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt
 // If either count is zero, then the associated range is not used.
 // If the GRS address exceeds 0177, it wraps around to zero.
 func LoadRegisterSet(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+	completed = true
+	interrupt = nil
+
 	ci := e.GetCurrentInstruction()
 	aReg := e.GetExecOrUserARegister(ci.GetA())
 	count2 := aReg.GetQ1() & 0177
@@ -234,28 +235,39 @@ func LoadRegisterSet(e *InstructionEngine) (completed bool, interrupt pkg.Interr
 	result := e.GetConsecutiveOperands(false, count1+count2, false)
 	if result.complete && result.interrupt != nil {
 		grs := e.GetGeneralRegisterSet()
-		ux := 0
+		dr := e.GetDesignatorRegister()
 
-		grsx := address1
+		ux := 0
+		grsIndex := address1
 		count := count1
 		for count > 0 {
-			grs.registers[grsx].SetW(result.source[ux].GetW())
+			if !e.isGRSAccessAllowed(grsIndex, dr.GetProcessorPrivilege(), true) {
+				interrupt = pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationReadAccess, false)
+				return
+			}
+
+			grs.registers[grsIndex].SetW(result.source[ux].GetW())
 			ux++
-			grsx++
-			if grsx == 0200 {
-				grsx = 0
+			grsIndex++
+			if grsIndex == 0200 {
+				grsIndex = 0
 			}
 			count--
 		}
 
-		grsx = address2
+		grsIndex = address2
 		count = count2
 		for count > 0 {
-			grs.registers[grsx].SetW(result.source[ux].GetW())
+			if !e.isGRSAccessAllowed(grsIndex, dr.GetProcessorPrivilege(), true) {
+				interrupt = pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationReadAccess, false)
+				return
+			}
+
+			grs.registers[grsIndex].SetW(result.source[ux].GetW())
 			ux++
-			grsx++
-			if grsx == 0200 {
-				grsx = 0
+			grsIndex++
+			if grsIndex == 0200 {
+				grsIndex = 0
 			}
 			count--
 		}

@@ -8,7 +8,15 @@ import (
 	"khalehla/pkg"
 )
 
-// TODO DoubleStoreAccumulator (DSA)
+// DoubleStoreAccumulator (DSA) stores the value of A(a) and A(a+1) in the locations indicated by U and U+1
+func DoubleStoreAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+	ci := e.GetCurrentInstruction()
+	aReg0 := e.GetExecOrUserARegister(ci.GetA())
+	aReg1 := e.GetExecOrUserARegister(ci.GetA() + 1)
+	operands := []uint64{aReg0.GetW(), aReg1.GetW()}
+	completed, interrupt = e.StoreConsecutiveOperands(true, operands)
+	return
+}
 
 // StoreAccumulator (SA) stores the value of A(a) in the location indicated by U under j-field control
 func StoreAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
@@ -27,7 +35,36 @@ func StoreASCIIZeroes(e *InstructionEngine) (completed bool, interrupt pkg.Inter
 	return e.StoreOperand(true, true, true, true, 0_060060_060060)
 }
 
-// TODO StoreAQuarterWord (SAQW)
+// StoreAQuarterWord (SAQW) stores a quarter word from register Aa into U.
+// Xx.Mod is used to develop U. Xx(bit 4:5) determine which quarter word should be selected:
+// value 00: Q1
+// value 01: Q2
+// value 02: Q3
+// value 03: Q4
+// The architecture leaves it undefined as to the result of setting F0.H (x-register incrementation).
+// We will increment Xx in that case, which will result in strangeness, so don't set F0.H.
+// It is also undefined as to what happens when F0.X is zero. We will use X0 for selecting the
+// quarter-word via bits 4:5, but we will NOT use X0.Mod for developing U.
+var sqwTable = []func(uint64, uint64) uint64{
+	pkg.SetQ1,
+	pkg.SetQ2,
+	pkg.SetQ3,
+	pkg.SetQ4,
+}
+
+func StoreAQuarterWord(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+	result := e.GetOperand(false, false, false, false, false)
+	if result.complete && result.interrupt == nil {
+		ci := e.GetCurrentInstruction()
+		aReg := e.GetExecOrUserARegister(ci.GetA())
+		xReg := e.GetExecOrUserXRegister(ci.GetX())
+
+		byteSel := (xReg.GetW() >> 30) & 03
+		xReg.SetW(sqwTable[byteSel](xReg.GetW(), aReg.GetW()))
+	}
+
+	return result.complete, result.interrupt
+}
 
 // StoreFieldataSpaces (SFS) stores consecutive fieldata spaces in the location indicate by U under j-field control
 func StoreFieldataSpaces(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
@@ -46,8 +83,23 @@ func StoreIndexRegister(e *InstructionEngine) (completed bool, interrupt pkg.Int
 	return e.StoreOperand(true, true, true, true, value)
 }
 
-// TODO StoreMagnitudeA (SMA)
-// TODO StoreNegativeA (SNA)
+// StoreMagnitudeA (SMA) stores the absolute value of A(a) into U
+func StoreMagnitudeA(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+	ci := e.GetCurrentInstruction()
+	value := e.GetExecOrUserARegister(ci.GetA()).GetW()
+	if pkg.IsNegative(value) {
+		value = pkg.Not(value)
+	}
+	return e.StoreOperand(true, true, true, true, value)
+}
+
+// StoreNegativeA (SNA) Stores the arithmetic inverse of Aa into U
+func StoreNegativeA(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+	ci := e.GetCurrentInstruction()
+	value := e.GetExecOrUserARegister(ci.GetA()).GetW()
+	value = pkg.Not(value)
+	return e.StoreOperand(true, true, true, true, value)
+}
 
 // StoreNegativeOne (SN1) stores a negative one in the location indicate by U under j-field control
 func StoreNegativeOne(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
@@ -71,7 +123,74 @@ func StoreRegister(e *InstructionEngine) (completed bool, interrupt pkg.Interrup
 	return e.StoreOperand(true, true, true, true, value)
 }
 
-// TODO StoreRegisterSet (SRS)
+// StoreRegisterSet (LRS) Stores the GRS (or one or two subsets thereof) into U through U+n.
+// Specifically, the instruction defines two sets of ranges and lengths as follows:
+// Aa[2:8]   = range 2 length
+// Aa[11:17] = range 2 first GRS index
+// Aa[20:26] = range 1 count
+// Aa[29:35] = range 1 first GRS index
+// So we start storing registers from GRS index of range 1, for the number of registers in range 1 count,
+// to U[0] to U[range1count - 1], and then from GRS index of range 2, for the number of registers in range 2 count,
+// to U[range1count] to U[range1count + range2count - 1].
+// If either count is zero, then the associated range is not used.
+// If the GRS address exceeds 0177, it wraps around to zero.
+func StoreRegisterSet(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+	completed = true
+	interrupt = nil
+
+	ci := e.GetCurrentInstruction()
+	aReg := e.GetExecOrUserARegister(ci.GetA())
+
+	count2 := aReg.GetQ1() & 0177
+	address2 := aReg.GetQ2() & 0177
+	count1 := aReg.GetQ3() & 0177
+	address1 := aReg.GetQ4() & 0177
+
+	result := e.GetConsecutiveOperands(false, count1+count2, true)
+	if result.complete && result.interrupt == nil {
+		dr := e.GetDesignatorRegister()
+		grs := e.GetGeneralRegisterSet()
+		opx := 0
+
+		if count1 > 0 {
+			grsIndex := address1
+			for x := 0; x < int(count1); x++ {
+				if !e.isGRSAccessAllowed(grsIndex, dr.GetProcessorPrivilege(), true) {
+					interrupt = pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationReadAccess, false)
+					return
+				}
+
+				grs.SetRegisterValue(grsIndex, result.source[opx].GetW())
+
+				opx++
+				grsIndex++
+				if grsIndex == 0200 {
+					grsIndex = 0
+				}
+			}
+		}
+
+		if count2 > 0 {
+			grsIndex := address2
+			for x := 0; x < int(count2); x++ {
+				if !e.isGRSAccessAllowed(grsIndex, dr.GetProcessorPrivilege(), true) {
+					interrupt = pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationReadAccess, false)
+					return
+				}
+
+				grs.SetRegisterValue(grsIndex, result.source[opx].GetW())
+
+				opx++
+				grsIndex++
+				if grsIndex == 0200 {
+					grsIndex = 0
+				}
+			}
+		}
+	}
+
+	return result.complete, result.interrupt
+}
 
 // StoreZero (SZ) stores a positive zero in the location indicate by U under j-field control
 func StoreZero(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {

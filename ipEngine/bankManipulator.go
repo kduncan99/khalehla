@@ -689,7 +689,7 @@ func step13(bm *BankManipulator) bool {
 		parPCNext := bm.engine.activityStatePacket.GetProgramAddressRegister().GetProgramCounter() + 1
 		value := pkg.TranslateToBasicMode(bm.priorBankLevel, bm.priorBankDescriptorIndex, parPCNext).GetComposite()
 		value |= bm.baseRegisterIndex << 33
-		bm.engine.SetExecOrUserXRegister(bm.lxjXRegisterIndex, IndexRegister(value))
+		bm.engine.SetExecOrUserXRegister(bm.lxjXRegisterIndex, value)
 	} else if (bm.instructionType == CALLInstruction) && (bm.transferMode == ExtendedToBasicTransfer) {
 		bm.engine.SetExecOrUserXRegister(11, 2<<30)
 	}
@@ -720,7 +720,7 @@ func step14(bm *BankManipulator) bool {
 
 		key := asp.GetIndicatorKeyRegister().GetAccessKey()
 		value |= key.GetComposite()
-		bm.engine.GetGeneralRegisterSet().SetRegisterValue(X0, pkg.Word36(value))
+		bm.engine.GetGeneralRegisterSet().SetRegisterValue(X0, value)
 	}
 
 	bm.nextStep++
@@ -755,11 +755,11 @@ func step15(bm *BankManipulator) bool {
 		}
 
 		if !bm.gate.latentParameter0Inhibit {
-			bm.engine.SetExecOrUserRRegister(0, pkg.Word36(bm.gate.latentParameterValue0))
+			bm.engine.SetExecOrUserRRegister(0, bm.gate.latentParameterValue0)
 		}
 
 		if !bm.gate.latentParameter1Inhibit {
-			bm.engine.SetExecOrUserRRegister(1, pkg.Word36(bm.gate.latentParameterValue1))
+			bm.engine.SetExecOrUserRRegister(1, bm.gate.latentParameterValue1)
 		}
 
 		bm.nextStep = 17

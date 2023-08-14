@@ -134,9 +134,9 @@ func (p *InstructionProcessor) handleInterrupt(i pkg.Interrupt) {
 	}
 
 	//	Acquire a stack frame and verify limits
-	icsXReg := IndexRegister(grs.GetValueOfRegister(ICSIndexRegister))
+	icsXReg := IndexRegister(grs.GetRegisterValue(ICSIndexRegister))
 	icsXReg.DecrementModifier()
-	grs.SetRegisterValue(ICSIndexRegister, pkg.Word36(icsXReg))
+	grs.SetRegisterValue(ICSIndexRegister, icsXReg.GetW())
 	stackOffset := icsXReg.GetXM()
 	stackFrameSize := icsXReg.GetXI()
 	stackFrameLimit := stackOffset + stackFrameSize

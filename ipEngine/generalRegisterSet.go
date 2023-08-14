@@ -161,10 +161,10 @@ func (grs *GeneralRegisterSet) GetConsecutiveRegisters(firstRegName uint64, coun
 	return grs.registers[firstRegName : firstRegName+count]
 }
 
-func (grs *GeneralRegisterSet) GetValueOfRegister(regName uint64) pkg.Word36 {
-	return grs.registers[regName]
+func (grs *GeneralRegisterSet) GetRegisterValue(regName uint64) uint64 {
+	return grs.registers[regName].GetW()
 }
 
-func (grs *GeneralRegisterSet) SetRegisterValue(regName uint64, value pkg.Word36) {
-	grs.registers[regName] = value
+func (grs *GeneralRegisterSet) SetRegisterValue(regName uint64, value uint64) {
+	grs.registers[regName].SetW(value)
 }
