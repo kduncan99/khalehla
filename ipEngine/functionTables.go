@@ -18,6 +18,7 @@ var BasicModeFunctionTable = map[uint]func(*InstructionEngine) (completed bool, 
 	004: StoreRegister,
 	005: basicModeFunction05Handler,
 	006: StoreIndexRegister,
+	007: basicModeFunction07Handler,
 	010: LoadAccumulator,
 	011: LoadNegativeAccumulator,
 	012: LoadMagnitudeAccumulator,
@@ -59,6 +60,11 @@ var basicModeFunction05Table = map[uint]func(engine *InstructionEngine) (complet
 	007: StoreASCIIZeroes,
 }
 
+// Basic Mode, F=007, table is indexed by the j field
+var basicModeFunction07Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
+	004: LoadAQuarterWord,
+}
+
 // Basic Mode, F=071, table is indexed by the j field
 var basicModeFunction71Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
 	013: DoubleLoadAccumulator,
@@ -73,6 +79,7 @@ var basicModeFunction72Table = map[uint]func(engine *InstructionEngine) (complet
 	001: StoreLocationAndJump,
 	002: JumpPositiveAndShift,
 	003: JumpNegativeAndShift,
+	017: LoadRegisterSet,
 }
 
 // Basic Mode, F=073, table is indexed by the j field
@@ -165,6 +172,7 @@ var ExtendedModeFunctionTable = map[uint]func(*InstructionEngine) (completed boo
 	004: StoreRegister,
 	005: extendedModeFunction05Handler,
 	006: StoreIndexRegister,
+	007: extendedModeFunction07Handler,
 	010: LoadAccumulator,
 	011: LoadNegativeAccumulator,
 	012: LoadMagnitudeAccumulator,
@@ -185,6 +193,8 @@ var ExtendedModeFunctionTable = map[uint]func(*InstructionEngine) (completed boo
 	055: TestGreater,
 	056: TestWithinRange,
 	057: TestNotWithinRange,
+	060: LoadStringBitOffset,
+	061: LoadStringBitLength,
 	070: JumpGreaterAndDecrement,
 	071: extendedModeFunction71Handler,
 	072: extendedModeFunction72Handler,
@@ -203,6 +213,11 @@ var extendedModeFunction05Table = map[uint]func(engine *InstructionEngine) (comp
 	005: StoreFieldataZeroes,
 	006: StoreASCIISpaces,
 	007: StoreASCIIZeroes,
+}
+
+// Extended Mode, F=007, table is indexed by the j field
+var extendedModeFunction07Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
+	004: LoadAQuarterWord,
 }
 
 // Extended Mode, F=033, table is indexed by the j field
@@ -252,6 +267,7 @@ var extendedModeFunction71Table = map[uint]func(engine *InstructionEngine) (comp
 var extendedModeFunction72Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
 	002: JumpPositiveAndShift,
 	003: JumpNegativeAndShift,
+	017: LoadRegisterSet,
 }
 
 // Extended Mode, F=073, table is indexed by the j field
@@ -326,6 +342,15 @@ var extendedModeFunction75Table = map[uint]func(engine *InstructionEngine) (comp
 func basicModeFunction05Handler(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	ci := e.GetCurrentInstruction()
 	if inst, found := basicModeFunction05Table[uint(ci.GetA())]; found {
+		return inst(e)
+	} else {
+		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode)
+	}
+}
+
+func basicModeFunction07Handler(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+	ci := e.GetCurrentInstruction()
+	if inst, found := basicModeFunction07Table[uint(ci.GetJ())]; found {
 		return inst(e)
 	} else {
 		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode)
@@ -433,9 +458,18 @@ func extendedModeFunction05Handler(e *InstructionEngine) (completed bool, interr
 	}
 }
 
+func extendedModeFunction07Handler(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+	ci := e.GetCurrentInstruction()
+	if inst, found := extendedModeFunction07Table[uint(ci.GetJ())]; found {
+		return inst(e)
+	} else {
+		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode)
+	}
+}
+
 func extendedModeFunction33Handler(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	ci := e.GetCurrentInstruction()
-	if inst, found := extendedModeFunction73Table[uint(ci.GetJ())]; found {
+	if inst, found := extendedModeFunction33Table[uint(ci.GetJ())]; found {
 		return inst(e)
 	} else {
 		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode)

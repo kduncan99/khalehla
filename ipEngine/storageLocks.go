@@ -30,6 +30,8 @@ type StorageLocks struct {
 
 // NewStorageLocks creates one of these things.
 // There should be exactly one, shared among all the InstructionEngine instances.
+// These are used to protect the integrity of the following instructions:
+// ADD1, CR, DEC, DEC2, ENZ, INC, INC2, SUB1, TCS, TS, TSS
 func NewStorageLocks() *StorageLocks {
 	return &StorageLocks{
 		locks: make(map[storageLockKey]StorageLockClient),

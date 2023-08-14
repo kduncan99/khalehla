@@ -635,14 +635,30 @@ func TestAndClearAndSkip(e *InstructionEngine) (completed bool, interrupt pkg.In
 	return result.complete, result.interrupt
 }
 
-// ConditionalReplace (CR)
+// ConditionalReplace (CR) stores Aa+1 into U and skips the next instruction IF U currently == Aa.
+// All done under storage lock.
 func ConditionalReplace(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	return
+	result := e.GetOperand(false, true, false, false, true)
+	if completed && interrupt == nil {
+		ci := e.GetCurrentInstruction()
+		aReg1 := e.GetExecOrUserARegister(ci.GetA())
+		aReg2 := e.GetExecOrUserARegister(ci.GetA() + 1)
+		if result.source.GetW() == aReg1.GetW() {
+			result.source.SetW(aReg2.GetW())
+			pc := e.GetProgramAddressRegister().GetProgramCounter()
+			e.SetProgramCounter(pc+2, true)
+		}
+	}
+
+	return result.complete, result.interrupt
 }
 
-// Unlock (UNLK)
+// Unlock (UNLK) Stores zero into the lock portion of U.
+// There is no particular difference between this, and SZ,S2, U.
 func Unlock(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	//	TODO this is problematic in that we are essentially doing SZ,S2 U ...
-	//	 but we don't have a convenient way to instigate that from here...
+	result := e.GetOperand(false, true, false, false, true)
+	if completed && interrupt == nil {
+		result.source.SetS2(0)
+	}
 	return
 }
