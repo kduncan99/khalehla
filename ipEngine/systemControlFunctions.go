@@ -8,9 +8,9 @@ import (
 	"khalehla/pkg"
 )
 
-//	TODO StoreProcessorIdentification (SPID)
-//	TODO InstructionProcessorControl (IPC)
-//	TODO SystemControl (SYSC)
+//	TODO StoreProcessorIdentification (SPID) PP<3
+//	TODO InstructionProcessorControl (IPC) PP==0
+//	TODO SystemControl (SYSC) PP==0
 
 // InitiateAutoRecovery (IAR)
 //

@@ -14,3 +14,7 @@ import "khalehla/pkg"
 func NoOperation(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
 	return e.IgnoreOperand()
 }
+
+//	TODO DoubleCountBites (DCB)
+//	TODO Random Number Generator Integer (RNGI)
+//	TODO Random Number Generator Byte (RNGB)

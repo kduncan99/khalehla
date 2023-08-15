@@ -36,9 +36,9 @@ func StoreDesignatorRegister(e *InstructionEngine) (completed bool, interrupt pk
 //	TODO StoreProgramControlDesignators (SPD)
 //	TODO LoadUserDesignators (LUD)
 //	TODO StoreUserDesignators (SUD)
-//	TODO LoadAddressingEnvironment (LAE)
-//	TODO UserReturn (UR)
-//	TODO AccelerateUserRegisterSet (ACEL)
-//	TODO DecelerateUserRegisterSet (DCEL)
-//	TODO StoreKeyAndQuantumTimer (SKQT)
-//	TODO KeyChange (KCHG)
+//	TODO LoadAddressingEnvironment (LAE) PP==0
+//	TODO UserReturn (UR) PP==0
+//	TODO AccelerateUserRegisterSet (ACEL) PP<3
+//	TODO DecelerateUserRegisterSet (DCEL) PP<3
+//	TODO StoreKeyAndQuantumTimer (SKQT) PP<2
+//	TODO KeyChange (KCHG) PP==0
