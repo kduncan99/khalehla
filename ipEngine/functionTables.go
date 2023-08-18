@@ -66,6 +66,8 @@ var basicModeFunction05Table = map[uint]func(engine *InstructionEngine) (complet
 var basicModeFunction07Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
 	004: LoadAQuarterWord,
 	005: StoreAQuarterWord,
+	014: LoadProgramControlDesignators,
+	015: StoreProgramControlDesignators,
 }
 
 // Basic Mode, F=071, table is indexed by the j field
@@ -95,6 +97,8 @@ var basicModeFunction73Table = map[uint]func(engine *InstructionEngine) (complet
 
 // Basic Mode, F=073 J=015, table is indexed by the a field
 var basicModeFunction7315Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
+	003: AccelerateUserRegisterSet,
+	004: DecelerateUserRegisterSet,
 	014: LoadDesignatorRegister,
 	015: StoreDesignatorRegister,
 }
@@ -295,6 +299,8 @@ var extendedModeFunction7314Table = map[uint]func(engine *InstructionEngine) (co
 
 // Extended Mode, F=073 J=015, table is indexed by the a field
 var extendedModeFunction7315Table = map[uint]func(engine *InstructionEngine) (completed bool, interrupt pkg.Interrupt){
+	003: AccelerateUserRegisterSet,
+	004: DecelerateUserRegisterSet,
 	014: LoadDesignatorRegister,
 	015: StoreDesignatorRegister,
 }
@@ -304,6 +310,8 @@ var extendedModeFunction7317Table = map[uint]func(engine *InstructionEngine) (co
 	000: TestAndSet,
 	001: TestAndSetAndSkip,
 	002: TestAndClearAndSkip,
+	004: LoadUserDesignators,
+	005: StoreUserDesignators,
 	006: InitiateAutoRecovery,
 }
 

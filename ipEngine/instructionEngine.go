@@ -60,10 +60,11 @@ const ICSIndexRegister = EX1
 const RCSBaseRegister = 25
 const RCSIndexRegister = EX0
 
-type OperandResult struct {
+type GetOperandResult struct {
 	complete                bool
 	operand                 uint64
 	source                  *pkg.Word36
+	sourceIsGRS             bool
 	sourceBaseRegisterIndex uint
 	sourceRelativeAddress   uint64
 	sourceVirtualAddress    pkg.VirtualAddress
@@ -71,17 +72,18 @@ type OperandResult struct {
 	interrupt               pkg.Interrupt
 }
 
-func (or *OperandResult) GetString() string {
+func (gor *GetOperandResult) GetString() string {
 	return fmt.Sprintf(
-		"comp=%v op=%012o src=%012o brx=%d relAddr=%012o virtAddr=%012o absAddr=%s int=%s",
-		or.complete,
-		or.operand,
-		or.source.GetW(),
-		or.sourceBaseRegisterIndex,
-		or.sourceRelativeAddress,
-		or.sourceVirtualAddress.GetComposite(),
-		or.sourceAbsoluteAddress.GetString(),
-		pkg.GetInterruptString(or.interrupt))
+		"comp=%v op=%012o src=%012o grs=%v brx=%d relAddr=%012o virtAddr=%012o absAddr=%s int=%s",
+		gor.complete,
+		gor.operand,
+		gor.source.GetW(),
+		gor.sourceIsGRS,
+		gor.sourceBaseRegisterIndex,
+		gor.sourceRelativeAddress,
+		gor.sourceVirtualAddress.GetComposite(),
+		gor.sourceAbsoluteAddress.GetString(),
+		pkg.GetInterruptString(gor.interrupt))
 }
 
 type ConsecutiveOperandsResult struct {
@@ -600,7 +602,7 @@ func (e *InstructionEngine) GetOperand(
 	grsCheck bool,
 	allowImm bool,
 	allowPartial bool,
-	lockStorage bool) (result OperandResult) {
+	lockStorage bool) (result GetOperandResult) {
 
 	result.complete = true
 
@@ -648,6 +650,8 @@ func (e *InstructionEngine) GetOperand(
 			qWordMode := dReg.IsQuarterWordModeEnabled()
 			result.operand = pkg.ExtractPartialWord(grs.GetRegister(result.sourceRelativeAddress).GetW(), jField, qWordMode)
 		}
+
+		result.sourceIsGRS = true
 	} else {
 		//  Loading from storage.  Do so, then (maybe) honor partial word handling.
 		if basicMode {
