@@ -171,7 +171,7 @@ func (e *Executable) LinkSimple(segments map[uint64]*Segment, extendedMode bool)
 	} else {
 		e.initiallyBasedBanks[12] = bdi // the bank should be based on B12
 	}
-	e.startingAddress = 01000 // TODO pull this from .OPT command
+	e.startingAddress = 01000
 }
 
 // LinkBankPerSegment creates individual banks, one per input segment.
@@ -192,7 +192,7 @@ func (e *Executable) LinkBankPerSegment(segments map[uint64]*Segment, extendedMo
 	fmt.Printf("\nLink Bank-Per-Segment...\n")
 
 	e.banks = make(map[uint64]*Bank)
-	e.initiallyBasedBanks = make(map[uint64]uint64)
+	e.initiallyBasedBanks = make(map[uint64]uint64) // key is segment number, value is BDI
 	orderedSegmentNumbers := getOrderedSegmentNumbers(segments)
 
 	//  Create the bank descriptors here.
@@ -293,7 +293,11 @@ func (e *Executable) LinkBankPerSegment(segments map[uint64]*Segment, extendedMo
 		}
 	}
 
-	e.startingAddress = 01000
+	if e.basicMode {
+		e.startingAddress = e.banks[e.initiallyBasedBanks[12]].bankDescriptor.GetLowerLimitNormalized()
+	} else {
+		e.startingAddress = 01000
+	}
 }
 
 func (e *Executable) Dump() {
