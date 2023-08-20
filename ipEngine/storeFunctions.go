@@ -9,30 +9,49 @@ import (
 )
 
 // DoubleStoreAccumulator (DSA) stores the value of A(a) and A(a+1) in the locations indicated by U and U+1
-func DoubleStoreAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func DoubleStoreAccumulator(e *InstructionEngine) (completed bool) {
 	ci := e.GetCurrentInstruction()
 	aReg0 := e.GetExecOrUserARegister(ci.GetA())
 	aReg1 := e.GetExecOrUserARegister(ci.GetA() + 1)
 	operands := []uint64{aReg0.GetW(), aReg1.GetW()}
-	completed, interrupt = e.StoreConsecutiveOperands(true, operands)
-	return
+	comp, i := e.StoreConsecutiveOperands(true, operands)
+	if i != nil {
+		e.PostInterrupt(i)
+	}
+
+	return comp
 }
 
 // StoreAccumulator (SA) stores the value of A(a) in the location indicated by U under j-field control
-func StoreAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func StoreAccumulator(e *InstructionEngine) (completed bool) {
 	ci := e.GetCurrentInstruction()
 	value := e.GetExecOrUserARegister(ci.GetA()).GetW()
-	return e.StoreOperand(true, true, true, true, value)
+	comp, i := e.StoreOperand(true, true, true, true, value)
+	if i != nil {
+		e.PostInterrupt(i)
+	}
+
+	return comp
 }
 
 // StoreASCIISpaces (SAS) stores consecutive ASCII spaces in the location indicate by U under j-field control
-func StoreASCIISpaces(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	return e.StoreOperand(true, true, true, true, 0_040040_040040)
+func StoreASCIISpaces(e *InstructionEngine) (completed bool) {
+	comp, i := e.StoreOperand(true, true, true, true, 0_040040_040040)
+	if i != nil {
+		e.PostInterrupt(i)
+	}
+
+	return comp
 }
 
 // StoreASCIIZeroes (SAZ) stores consecutive ASCII zeroes in the location indicate by U under j-field control
-func StoreASCIIZeroes(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	return e.StoreOperand(true, true, true, true, 0_060060_060060)
+func StoreASCIIZeroes(e *InstructionEngine) (completed bool) {
+	comp, i := e.StoreOperand(true, true, true, true, 0_060060_060060)
+	if i != nil {
+		e.PostInterrupt(i)
+	}
+
+	return comp
 }
 
 // StoreAQuarterWord (SAQW) stores a quarter word from register Aa into U.
@@ -52,9 +71,11 @@ var sqwTable = []func(uint64, uint64) uint64{
 	pkg.SetQ4,
 }
 
-func StoreAQuarterWord(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func StoreAQuarterWord(e *InstructionEngine) (completed bool) {
 	result := e.GetOperand(false, false, false, false, false)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		aReg := e.GetExecOrUserARegister(ci.GetA())
 		xReg := e.GetExecOrUserXRegister(ci.GetX())
@@ -63,64 +84,113 @@ func StoreAQuarterWord(e *InstructionEngine) (completed bool, interrupt pkg.Inte
 		xReg.SetW(sqwTable[byteSel](xReg.GetW(), aReg.GetW()))
 	}
 
-	return result.complete, result.interrupt
+	return result.complete
 }
 
 // StoreFieldataSpaces (SFS) stores consecutive fieldata spaces in the location indicate by U under j-field control
-func StoreFieldataSpaces(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	return e.StoreOperand(true, true, true, true, 050505_050505)
+func StoreFieldataSpaces(e *InstructionEngine) (completed bool) {
+	comp, i := e.StoreOperand(true, true, true, true, 050505_050505)
+	if i != nil {
+		e.PostInterrupt(i)
+	}
+
+	return comp
 }
 
 // StoreFieldataZeroes (SFZ) stores consecutive fieldata zeroes in the location indicate by U under j-field control
-func StoreFieldataZeroes(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	return e.StoreOperand(true, true, true, true, 0_606060_606060)
+func StoreFieldataZeroes(e *InstructionEngine) (completed bool) {
+	comp, i := e.StoreOperand(true, true, true, true, 0_606060_606060)
+	if i != nil {
+		e.PostInterrupt(i)
+	}
+
+	return comp
 }
 
 // StoreIndexRegister (SX) stores the value of X(a) in the location indicated by U under j-field control
-func StoreIndexRegister(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func StoreIndexRegister(e *InstructionEngine) (completed bool) {
 	ci := e.GetCurrentInstruction()
 	value := e.GetExecOrUserXRegister(ci.GetA()).GetW()
-	return e.StoreOperand(true, true, true, true, value)
+
+	comp, i := e.StoreOperand(true, true, true, true, value)
+	if i != nil {
+		e.PostInterrupt(i)
+	}
+
+	return comp
 }
 
 // StoreMagnitudeA (SMA) stores the absolute value of A(a) into U
-func StoreMagnitudeA(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func StoreMagnitudeA(e *InstructionEngine) (completed bool) {
 	ci := e.GetCurrentInstruction()
 	value := e.GetExecOrUserARegister(ci.GetA()).GetW()
 	if pkg.IsNegative(value) {
 		value = pkg.Not(value)
 	}
-	return e.StoreOperand(true, true, true, true, value)
+
+	comp, i := e.StoreOperand(true, true, true, true, value)
+	if i != nil {
+		e.PostInterrupt(i)
+	}
+
+	return comp
 }
 
 // StoreNegativeA (SNA) Stores the arithmetic inverse of Aa into U
-func StoreNegativeA(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func StoreNegativeA(e *InstructionEngine) (completed bool) {
 	ci := e.GetCurrentInstruction()
 	value := e.GetExecOrUserARegister(ci.GetA()).GetW()
 	value = pkg.Not(value)
-	return e.StoreOperand(true, true, true, true, value)
+
+	comp, i := e.StoreOperand(true, true, true, true, value)
+	if i != nil {
+		e.PostInterrupt(i)
+	}
+
+	return comp
 }
 
 // StoreNegativeOne (SN1) stores a negative one in the location indicate by U under j-field control
-func StoreNegativeOne(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	return e.StoreOperand(true, true, true, true, pkg.NegativeOne)
+func StoreNegativeOne(e *InstructionEngine) (completed bool) {
+	comp, i := e.StoreOperand(true, true, true, true, pkg.NegativeOne)
+	if i != nil {
+		e.PostInterrupt(i)
+	}
+
+	return comp
 }
 
 // StoreNegativeZero (SNZ) stores a negative zero in the location indicate by U under j-field control
-func StoreNegativeZero(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	return e.StoreOperand(true, true, true, true, pkg.NegativeZero)
+func StoreNegativeZero(e *InstructionEngine) (completed bool) {
+	comp, i := e.StoreOperand(true, true, true, true, pkg.NegativeZero)
+	if i != nil {
+		e.PostInterrupt(i)
+	}
+
+	return comp
 }
 
 // StorePositiveOne (SP1) stores a positive one in the location indicate by U under j-field control
-func StorePositiveOne(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	return e.StoreOperand(true, true, true, true, pkg.PositiveOne)
+func StorePositiveOne(e *InstructionEngine) (completed bool) {
+	comp, i := e.StoreOperand(true, true, true, true, pkg.PositiveOne)
+	if i != nil {
+		e.PostInterrupt(i)
+	}
+
+	return comp
 }
 
 // StoreRegister (SR) stores the value of R(a) in the location indicated by U under j-field control
-func StoreRegister(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func StoreRegister(e *InstructionEngine) (completed bool) {
 	ci := e.GetCurrentInstruction()
 	value := e.GetExecOrUserRRegister(ci.GetA()).GetW()
-	return e.StoreOperand(true, true, true, true, value)
+
+	comp, i := e.StoreOperand(true, true, true, true, value)
+	if i != nil {
+		e.PostInterrupt(i)
+	}
+
+	return comp
 }
 
 // StoreRegisterSet (LRS) Stores the GRS (or one or two subsets thereof) into U through U+n.
@@ -134,10 +204,7 @@ func StoreRegister(e *InstructionEngine) (completed bool, interrupt pkg.Interrup
 // to U[range1count] to U[range1count + range2count - 1].
 // If either count is zero, then the associated range is not used.
 // If the GRS address exceeds 0177, it wraps around to zero.
-func StoreRegisterSet(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	completed = true
-	interrupt = nil
-
+func StoreRegisterSet(e *InstructionEngine) (completed bool) {
 	ci := e.GetCurrentInstruction()
 	aReg := e.GetExecOrUserARegister(ci.GetA())
 
@@ -156,8 +223,9 @@ func StoreRegisterSet(e *InstructionEngine) (completed bool, interrupt pkg.Inter
 			grsIndex := address1
 			for x := 0; x < int(count1); x++ {
 				if !e.isGRSAccessAllowed(grsIndex, dr.GetProcessorPrivilege(), true) {
-					interrupt = pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationReadAccess, false)
-					return
+					i := pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationReadAccess, false)
+					e.PostInterrupt(i)
+					return false
 				}
 
 				grs.SetRegisterValue(grsIndex, result.source[opx].GetW())
@@ -174,8 +242,9 @@ func StoreRegisterSet(e *InstructionEngine) (completed bool, interrupt pkg.Inter
 			grsIndex := address2
 			for x := 0; x < int(count2); x++ {
 				if !e.isGRSAccessAllowed(grsIndex, dr.GetProcessorPrivilege(), true) {
-					interrupt = pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationReadAccess, false)
-					return
+					i := pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationReadAccess, false)
+					e.PostInterrupt(i)
+					return false
 				}
 
 				grs.SetRegisterValue(grsIndex, result.source[opx].GetW())
@@ -189,10 +258,15 @@ func StoreRegisterSet(e *InstructionEngine) (completed bool, interrupt pkg.Inter
 		}
 	}
 
-	return result.complete, result.interrupt
+	return true
 }
 
 // StoreZero (SZ) stores a positive zero in the location indicate by U under j-field control
-func StoreZero(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	return e.StoreOperand(true, true, true, true, pkg.PositiveZero)
+func StoreZero(e *InstructionEngine) (completed bool) {
+	comp, i := e.StoreOperand(true, true, true, true, pkg.PositiveZero)
+	if i != nil {
+		e.PostInterrupt(i)
+	}
+
+	return comp
 }

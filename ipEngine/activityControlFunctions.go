@@ -9,27 +9,37 @@ import (
 )
 
 // LoadDesignatorRegister (LD) copies the value from U to the DR, excepting those bits which are set-to-zero
-func LoadDesignatorRegister(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadDesignatorRegister(e *InstructionEngine) (completed bool) {
 	if e.activityStatePacket.GetDesignatorRegister().GetProcessorPrivilege() > 0 {
-		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadPP)
+		i := pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadPP)
+		e.PostInterrupt(i)
+		return false
 	}
 
 	result := e.GetOperand(true, true, false, false, false)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+	} else if result.complete {
 		e.activityStatePacket.GetDesignatorRegister().SetComposite(result.operand)
 	}
 
-	return result.complete, result.interrupt
+	return result.complete
 }
 
 // StoreDesignatorRegister (SD) stores the content of the DR to the address specified by U
-func StoreDesignatorRegister(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func StoreDesignatorRegister(e *InstructionEngine) (completed bool) {
 	if e.activityStatePacket.GetDesignatorRegister().GetProcessorPrivilege() > 1 {
-		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadPP)
+		i := pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadPP)
+		e.PostInterrupt(i)
+		return false
 	}
 
 	op := e.activityStatePacket.GetDesignatorRegister().GetComposite()
-	return e.StoreOperand(false, true, false, false, op)
+	comp, i := e.StoreOperand(false, true, false, false, op)
+	if i != nil {
+		e.PostInterrupt(i)
+	}
+	return comp
 }
 
 // LoadProgramControlDesignators (LPD) loads a subset of the designator register from the immediate value of U.
@@ -40,26 +50,26 @@ func StoreDesignatorRegister(e *InstructionEngine) (completed bool, interrupt pk
 // U15 -> DB33
 // U16 -> DB34
 // U17 -> DB35
-func LoadProgramControlDesignators(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	completed = true
-	interrupt = nil
+func LoadProgramControlDesignators(e *InstructionEngine) (completed bool) {
+	operand, i := e.GetImmediateOperand()
+	if i != nil {
+		e.PostInterrupt(i)
+		return false
+	}
 
-	var operand uint64
-	operand, interrupt = e.GetImmediateOperand()
 	currentValue := e.GetDesignatorRegister().GetComposite()
 	newValue := (currentValue & 0_777777_777220) | (operand & uint64(0_000557))
 	e.GetDesignatorRegister().SetComposite(newValue)
 
-	return
+	return true
 }
 
 // StoreProgramControlDesignators (SPD)
-func StoreProgramControlDesignators(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	completed = true
-	interrupt = nil
-
+func StoreProgramControlDesignators(e *InstructionEngine) (completed bool) {
 	result := e.GetOperand(false, true, false, false, false)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+	} else if result.complete {
 		valueMasked := result.source.GetW() & 0_777200
 		drMasked := e.GetDesignatorRegister().GetComposite() & 0_000577
 		newValue := drMasked | valueMasked
@@ -70,37 +80,35 @@ func StoreProgramControlDesignators(e *InstructionEngine) (completed bool, inter
 		}
 	}
 
-	return
+	return result.complete
 }
 
 // LoadUserDesignators (LUD) is a superset of LPD... loading from (U) instead of U, and
 // affecting DB18-19, 21-23, 27, 29-30, and 32-35.
-func LoadUserDesignators(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	completed = true
-	interrupt = nil
-
+func LoadUserDesignators(e *InstructionEngine) (completed bool) {
 	result := e.GetOperand(false, true, false, false, false)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+	} else if result.complete {
 		currentValue := e.GetDesignatorRegister().GetComposite()
 		newValue := (currentValue & 0_777777107220) | (result.operand & uint64(0_000000_0670557))
 		e.GetDesignatorRegister().SetComposite(newValue)
 	}
 
-	return
+	return result.complete
 }
 
 // StoreUserDesignators (SUD) is a superset of SPD (see LUD above)
-func StoreUserDesignators(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	completed = true
-	interrupt = nil
-
+func StoreUserDesignators(e *InstructionEngine) (completed bool) {
 	result := e.GetOperand(false, true, false, false, false)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+	} else if result.complete {
 		newValue := e.GetDesignatorRegister().GetComposite() & 0_000000_777777
 		result.source.SetW(newValue)
 	}
 
-	return
+	return result.complete
 }
 
 //	TODO LoadAddressingEnvironment (LAE) PP==0
@@ -108,13 +116,17 @@ func StoreUserDesignators(e *InstructionEngine) (completed bool, interrupt pkg.I
 
 // AccelerateUserRegisterSet (ACEL) PP<3 Loads 32 consecutive registers beginning with X0 (or EX0), and the 16
 // consecutive registers beginning with R0 (or ER0), from 48 consecutive words beginning at U.
-func AccelerateUserRegisterSet(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func AccelerateUserRegisterSet(e *InstructionEngine) (completed bool) {
 	if e.activityStatePacket.GetDesignatorRegister().GetProcessorPrivilege() > 2 {
-		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadPP)
+		i := pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadPP)
+		e.PostInterrupt(i)
+		return false
 	}
 
 	result := e.GetConsecutiveOperands(false, 48, true)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+	} else if result.complete {
 		ux := 0
 		grsRegs := e.GetGeneralRegisterSet().registers
 
@@ -135,18 +147,22 @@ func AccelerateUserRegisterSet(e *InstructionEngine) (completed bool, interrupt 
 		}
 	}
 
-	return
+	return result.complete
 }
 
 // DecelerateUserRegisterSet (DCEL) PP<3 Copies the X, A, and R registers to the 48 words beginning with U.
 // (See ACEL).
-func DecelerateUserRegisterSet(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func DecelerateUserRegisterSet(e *InstructionEngine) (completed bool) {
 	if e.activityStatePacket.GetDesignatorRegister().GetProcessorPrivilege() > 2 {
-		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadPP)
+		i := pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadPP)
+		e.PostInterrupt(i)
+		return false
 	}
 
 	result := e.GetConsecutiveOperands(false, 48, true)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+	} else if result.complete {
 		ux := 0
 		grsRegs := e.GetGeneralRegisterSet().registers
 
@@ -167,7 +183,7 @@ func DecelerateUserRegisterSet(e *InstructionEngine) (completed bool, interrupt 
 		}
 	}
 
-	return
+	return result.complete
 }
 
 //	TODO StoreKeyAndQuantumTimer (SKQT) PP<2

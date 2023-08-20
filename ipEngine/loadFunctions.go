@@ -9,23 +9,29 @@ import (
 )
 
 // DoubleLoadAccumulator (DL) loads the content of U and U+1, storing the values in Aa and Aa+1
-func DoubleLoadAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func DoubleLoadAccumulator(e *InstructionEngine) (completed bool) {
 	result := e.GetConsecutiveOperands(true, 2, false)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		grsIndex := e.GetExecOrUserARegisterIndex(ci.GetA())
 		e.generalRegisterSet.SetRegisterValue(grsIndex, result.source[0].GetW())
 		e.generalRegisterSet.SetRegisterValue(grsIndex+1, result.source[1].GetW())
 	}
 
-	return result.complete, result.interrupt
+	return result.complete
 }
 
 // DoubleLoadMagnitudeAccumulator (DL) loads the arithmetic magnitude of the content of U and U+1,
 // storing the values in Aa and Aa+1
-func DoubleLoadMagnitudeAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func DoubleLoadMagnitudeAccumulator(e *InstructionEngine) (completed bool) {
 	result := e.GetConsecutiveOperands(true, 2, false)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		grsIndex := e.GetExecOrUserARegisterIndex(ci.GetA())
 		if result.source[0].IsNegative() {
@@ -37,32 +43,38 @@ func DoubleLoadMagnitudeAccumulator(e *InstructionEngine) (completed bool, inter
 		}
 	}
 
-	return result.complete, result.interrupt
+	return result.complete
 }
 
 // DoubleLoadNegativeAccumulator (DL) loads the arithmetic negative of the content of U and U+1,
 // storing the values in Aa and Aa+1
-func DoubleLoadNegativeAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func DoubleLoadNegativeAccumulator(e *InstructionEngine) (completed bool) {
 	result := e.GetConsecutiveOperands(true, 2, false)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		grsIndex := e.GetExecOrUserARegisterIndex(ci.GetA())
 		e.generalRegisterSet.SetRegisterValue(grsIndex, pkg.Not(result.source[0].GetW()))
 		e.generalRegisterSet.SetRegisterValue(grsIndex+1, pkg.Not(result.source[1].GetW()))
 	}
 
-	return result.complete, result.interrupt
+	return result.complete
 }
 
 // LoadAccumulator (LA) loads the content of U under j-field control, and stores it in A(a)
-func LoadAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadAccumulator(e *InstructionEngine) (completed bool) {
 	result := e.GetOperand(true, true, true, true, false)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		e.GetExecOrUserARegister(ci.GetA()).SetW(result.operand)
 	}
 
-	return result.complete, result.interrupt
+	return result.complete
 }
 
 // LoadAQuarterWord (LAQW) loads a quarter word from U into register Aa.
@@ -82,9 +94,12 @@ var lqwTable = []func(uint64) uint64{
 	pkg.GetQ4,
 }
 
-func LoadAQuarterWord(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadAQuarterWord(e *InstructionEngine) (completed bool) {
 	result := e.GetOperand(false, false, false, false, false)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		aReg := e.GetExecOrUserARegister(ci.GetA())
 		xReg := e.GetExecOrUserXRegister(ci.GetX())
@@ -94,75 +109,93 @@ func LoadAQuarterWord(e *InstructionEngine) (completed bool, interrupt pkg.Inter
 		aReg.SetW(value)
 	}
 
-	return result.complete, result.interrupt
+	return result.complete
 }
 
 // LoadIndexRegister (LX) loads the content of U under j-field control, and stores it in X(a)
-func LoadIndexRegister(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadIndexRegister(e *InstructionEngine) (completed bool) {
 	result := e.GetOperand(true, true, true, true, false)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		e.GetExecOrUserXRegister(ci.GetA()).SetW(result.operand)
 	}
 
-	return result.complete, result.interrupt
+	return result.complete
 }
 
 // LoadIndexRegisterModifier (LXM)
-func LoadIndexRegisterModifier(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadIndexRegisterModifier(e *InstructionEngine) (completed bool) {
 	result := e.GetOperand(true, true, true, true, false)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		e.GetExecOrUserXRegister(ci.GetA()).SetXM(result.operand)
 	}
 
-	return result.complete, result.interrupt
+	return result.complete
 }
 
 // LoadIndexRegisterLongModifier (LXLM)
-func LoadIndexRegisterLongModifier(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	completed = false
+func LoadIndexRegisterLongModifier(e *InstructionEngine) (completed bool) {
 	dr := e.activityStatePacket.GetDesignatorRegister()
 	if dr.IsBasicModeEnabled() && dr.GetProcessorPrivilege() > 0 {
-		interrupt = pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadPP)
-		return
+		i := pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadPP)
+		e.PostInterrupt(i)
+		return false
 	}
 
 	result := e.GetOperand(true, true, false, false, false)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		e.GetExecOrUserXRegister(ci.GetA()).SetXM24(result.operand)
 	}
 
-	return result.complete, result.interrupt
+	return result.complete
 }
 
 // LoadIndexRegisterIncrement (LXI)
-func LoadIndexRegisterIncrement(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadIndexRegisterIncrement(e *InstructionEngine) (completed bool) {
 	result := e.GetOperand(true, true, true, true, false)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		e.GetExecOrUserXRegister(ci.GetA()).SetXI(result.operand)
 	}
 
-	return result.complete, result.interrupt
+	return result.complete
 }
 
 // LoadIndexRegisterShortIncrement (LXSI)
-func LoadIndexRegisterShortIncrement(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadIndexRegisterShortIncrement(e *InstructionEngine) (completed bool) {
 	result := e.GetOperand(true, true, true, true, false)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		e.GetExecOrUserXRegister(ci.GetA()).SetXI12(result.operand)
 	}
 
-	return result.complete, result.interrupt
+	return result.complete
 }
 
 // LoadMagnitudeAccumulator (LMA)
-func LoadMagnitudeAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadMagnitudeAccumulator(e *InstructionEngine) (completed bool) {
 	result := e.GetOperand(true, true, true, true, false)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
 		if pkg.IsNegative(result.operand) {
 			result.operand ^= pkg.NegativeZero
 		}
@@ -170,25 +203,31 @@ func LoadMagnitudeAccumulator(e *InstructionEngine) (completed bool, interrupt p
 		e.GetExecOrUserARegister(ci.GetA()).SetW(result.operand)
 	}
 
-	return result.complete, result.interrupt
+	return result.complete
 }
 
 // LoadNegativeAccumulator (LNA)
-func LoadNegativeAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadNegativeAccumulator(e *InstructionEngine) (completed bool) {
 	result := e.GetOperand(true, true, true, true, false)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
 		result.operand ^= pkg.NegativeZero
 		ci := e.GetCurrentInstruction()
 		e.GetExecOrUserARegister(ci.GetA()).SetW(result.operand)
 	}
 
-	return result.complete, result.interrupt
+	return result.complete
 }
 
 // LoadNegativeMagnitudeAccumulator (LNMA)
-func LoadNegativeMagnitudeAccumulator(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadNegativeMagnitudeAccumulator(e *InstructionEngine) (completed bool) {
 	result := e.GetOperand(true, true, true, true, false)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
 		if !pkg.IsNegative(result.operand) {
 			result.operand ^= pkg.NegativeZero
 		}
@@ -196,18 +235,21 @@ func LoadNegativeMagnitudeAccumulator(e *InstructionEngine) (completed bool, int
 		e.GetExecOrUserARegister(ci.GetA()).SetW(result.operand)
 	}
 
-	return result.complete, result.interrupt
+	return result.complete
 }
 
 // LoadRegister (LR) loads the content of U under j-field control, and stores it in R(a)
-func LoadRegister(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadRegister(e *InstructionEngine) (completed bool) {
 	result := e.GetOperand(true, true, true, true, false)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		e.GetExecOrUserRRegister(ci.GetA()).SetW(result.operand)
 	}
 
-	return result.complete, result.interrupt
+	return result.complete
 }
 
 // LoadRegisterSet (LRS) Loads the GRS (or one or two subsets thereof) from the contents of U through U+n.
@@ -221,10 +263,7 @@ func LoadRegister(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt
 // from U[range1count] to U[range1count + range2count - 1].
 // If either count is zero, then the associated range is not used.
 // If the GRS address exceeds 0177, it wraps around to zero.
-func LoadRegisterSet(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
-	completed = true
-	interrupt = nil
-
+func LoadRegisterSet(e *InstructionEngine) (completed bool) {
 	ci := e.GetCurrentInstruction()
 	aReg := e.GetExecOrUserARegister(ci.GetA())
 	count2 := aReg.GetQ1() & 0177
@@ -233,7 +272,10 @@ func LoadRegisterSet(e *InstructionEngine) (completed bool, interrupt pkg.Interr
 	address1 := aReg.GetQ4() & 0177
 
 	result := e.GetConsecutiveOperands(false, count1+count2, false)
-	if result.complete && result.interrupt != nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
 		grs := e.GetGeneralRegisterSet()
 		dr := e.GetDesignatorRegister()
 
@@ -242,8 +284,9 @@ func LoadRegisterSet(e *InstructionEngine) (completed bool, interrupt pkg.Interr
 		count := count1
 		for count > 0 {
 			if !e.isGRSAccessAllowed(grsIndex, dr.GetProcessorPrivilege(), true) {
-				interrupt = pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationReadAccess, false)
-				return
+				i := pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationReadAccess, false)
+				e.PostInterrupt(i)
+				return false
 			}
 
 			grs.registers[grsIndex].SetW(result.source[ux].GetW())
@@ -259,8 +302,9 @@ func LoadRegisterSet(e *InstructionEngine) (completed bool, interrupt pkg.Interr
 		count = count2
 		for count > 0 {
 			if !e.isGRSAccessAllowed(grsIndex, dr.GetProcessorPrivilege(), true) {
-				interrupt = pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationReadAccess, false)
-				return
+				i := pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationReadAccess, false)
+				e.PostInterrupt(i)
+				return false
 			}
 
 			grs.registers[grsIndex].SetW(result.source[ux].GetW())
@@ -273,31 +317,37 @@ func LoadRegisterSet(e *InstructionEngine) (completed bool, interrupt pkg.Interr
 		}
 	}
 
-	return result.complete, result.interrupt
+	return result.complete
 }
 
 // LoadStringBitLength (LSBL) Copies the right-most 6 bits of U to Xa bits 6-11
-func LoadStringBitLength(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadStringBitLength(e *InstructionEngine) (completed bool) {
 	result := e.GetOperand(true, true, true, true, false)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		xReg := e.GetExecOrUserXRegister(ci.GetA())
 		value := (xReg.GetW() & 0_770077_777777) | ((result.operand & 077) << 24)
 		xReg.SetW(value)
 	}
 
-	return result.complete, result.interrupt
+	return result.complete
 }
 
 // LoadStringBitOffset (LSBO) Copies the right-most 6 bits of U to Xa bits 0-5
-func LoadStringBitOffset(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+func LoadStringBitOffset(e *InstructionEngine) (completed bool) {
 	result := e.GetOperand(true, true, true, true, false)
-	if result.complete && result.interrupt == nil {
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		xReg := e.GetExecOrUserXRegister(ci.GetA())
 		value := (xReg.GetW() & 0_007777_777777) | ((result.operand & 077) << 30)
 		xReg.SetW(value)
 	}
 
-	return result.complete, result.interrupt
+	return result.complete
 }

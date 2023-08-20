@@ -16,6 +16,8 @@ const (
 	fDL          = "071"
 	fDLM         = "071"
 	fDLN         = "071"
+	fEXBasic     = "072"
+	fEXExtended  = "073"
 	fHKJ         = "074"
 	fHLTJ        = "074"
 	fIAR         = "073"
@@ -57,6 +59,7 @@ const (
 	fTEP         = "044"
 	fTLEM        = "047"
 	fTOP         = "045"
+	fTSKP        = "050"
 )
 
 const (
@@ -64,6 +67,8 @@ const (
 	jDL          = "013"
 	jDLM         = "015"
 	jDLN         = "014"
+	jEXBasic     = "010"
+	jEXExtended  = "014"
 	jHKJ         = "005"
 	jHLTJ        = "015"
 	jIAR         = "017"
@@ -97,6 +102,7 @@ const (
 )
 
 const (
+	aEXExtended  = "005"
 	aHLTJ        = "005"
 	aIAR         = "006"
 	aJBasic      = "000"
@@ -114,6 +120,7 @@ const (
 	aJNO         = "000"
 	aJO          = "000"
 	aNOP         = "000"
+	aTSKP        = "017"
 )
 
 // partial word designators for j-field specification

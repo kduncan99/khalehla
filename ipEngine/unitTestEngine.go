@@ -122,6 +122,7 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 	//	Load BDT base registers B16 to B23. BDTable level 0 -> B16, 1 -> B17, etc.
 	//  For any level which does not have a BDT, we make the corresponding base register void.
 	fmt.Printf("  Loading base registers for bank descriptor tables...\n")
+	par := ute.engine.GetProgramAddressRegister()
 	for level, address := range ute.bankDescriptorTableAddresses {
 		table, _ := ute.storage.GetSegment(address.GetSegment())
 		brx := level + 16
@@ -163,7 +164,6 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 		fmt.Printf("    Set B%d -> %06o\n", brx, bdi)
 
 		//	Update PAR.BDI or an appropriate ABTE. We are not expecting to handle large banks.
-		par := ute.engine.GetProgramAddressRegister()
 		if brx == 0 {
 			par.SetLevel(level).SetBankDescriptorIndex(index)
 		} else {
@@ -171,10 +171,10 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 			abte.SetBankLevel(level).SetBankDescriptorIndex(index).SetSubsetSpecification(0)
 			fmt.Printf("    Set ABTE[%d]\n", brx)
 		}
-
-		//	Finally, set program counter to initial address
-		par.SetProgramCounter(executable.GetStartingAddress())
 	}
+
+	//	Set program counter to initial address
+	par.SetProgramCounter(executable.GetStartingAddress())
 
 	//	Initialize designator register
 	dr := ute.engine.GetDesignatorRegister()
@@ -207,7 +207,7 @@ func (ute *UnitTestEngine) Run() error {
 
 	//	Now Iterate until an interrupt is posted
 	for !ute.engine.HasPendingInterrupt() && !ute.engine.IsStopped() {
-		ute.engine.doCycle()
+		ute.engine.DoCycle()
 	}
 
 	if ute.engine.HasPendingInterrupt() {

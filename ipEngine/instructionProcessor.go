@@ -208,7 +208,7 @@ func (p *InstructionProcessor) run() {
 			}
 		} else {
 			// It's okay to do an engine cycle
-			p.engine.doCycle()
+			p.engine.DoCycle()
 		}
 	}
 

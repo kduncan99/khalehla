@@ -123,6 +123,11 @@ func (ikr *IndicatorKeyRegister) SetComposite(value uint64) *IndicatorKeyRegiste
 	return ikr
 }
 
+func (ikr *IndicatorKeyRegister) SetExecuteRepeatedInstruction(value bool) *IndicatorKeyRegister {
+	ikr.executeRepeatedInstruction = value
+	return ikr
+}
+
 func (ikr *IndicatorKeyRegister) SetInstructionInF0(value bool) *IndicatorKeyRegister {
 	ikr.instructionInF0 = value
 	return ikr

@@ -119,6 +119,7 @@ type InstructionEngine struct {
 
 	activeBaseTable           [16]*ActiveBaseTableEntry // [0] is unused
 	activityStatePacket       *pkg.ActivityStatePacket
+	cachedInstructionHandler  func(*InstructionEngine) (completed bool)
 	baseRegisters             [32]*pkg.BaseRegister
 	baseRegisterIndexForFetch uint // only applies to basic mode - if 0, it is not valid; otherwise it is 12:15
 	generalRegisterSet        *GeneralRegisterSet
@@ -207,7 +208,7 @@ func (e *InstructionEngine) Clear() {
 	e.breakpointWrite = false
 
 	e.isStopped = true
-	e.stopReason = NotStopped
+	e.stopReason = InitialStop
 	e.stopDetail = 0
 
 	e.preventPCUpdate = false
@@ -224,6 +225,88 @@ func (e *InstructionEngine) ClearJumpHistory() {
 
 func (e *InstructionEngine) ClearStop() {
 	e.isStopped = false
+}
+
+// DoCycle executes one cycle
+// caller should disposition any pending interrupts before invoking this...
+// Since the engine is not specifically hardware (could be an executor for a native mode OS),
+// we don't actually know how to handle the interrupts.
+// In any event, we are driven by the following two flags in the indicator key register:
+//
+//	INF: Indicates that a valid instruction is in F0.
+//			If we are returning from an interrupt, the instruction in F0 was interrupted.
+//			Otherwise, we are at a mid-execution point for the instruction in F0, or are doing address resolution.
+//			PAR.PC is the address of that instruction, or of an EX or EXR instruction which invoked the instruciton
+//			in F0.
+//
+//	EXRF: Indicates that F0 contains the target of an EXR instruction.
+//		if zero, PAR.PC contains the address of the next instruction to be loaded.
+//			if non-zero:
+//				if we are returning from an interrupt, then the instruction in F0 was interrupted.
+//				otherwise we are at a mid-execution point for the instruction in F0, or are doing address resolution.
+//				PAR.PC will be the address of the instruction (or of an EX or EXR instruction which invoked the
+//				instruction in F0).
+//
+// With INF == 0, we fetch the instruction referenced by PAR.PC. If that fails, INF and EXRF are still zero,
+// and interrupt is posted, and all we have to do is return to the caller so they can manage the interrupt.
+//
+// With INF == 1 and EXRF == 0, we hand off to the instruction handler for processing.
+//
+// With INF and EXRF == 1, we check R1 and terminate EXRF processing if R1 is zero, or else we hand off to the
+// instruction handler for processing if R1 is non-zero.
+//
+// When the instruction handler returns, we are in one of several possible situations:
+//
+//	The instruction never started because of an interrupt. The interrupt will be posted by the time we get here.
+//		INF and EXRF will both be clear, and we just return to the caller and let him sort it out (see next item).
+//	The instruction is not complete, and it posted an interrupt. INF is set, EXRF may be set or clear.
+//		We should service the interrupt, and let the interrupt handler decide whether we proceed with the interrupted
+//		instruction (by restoring the activity state packet and GRS), or to abandon it (by simply never 'returning')
+//		It doesn't matter to us; we just let the caller handle the interrupts and manipulate our internals as it
+//		wishes - eventually we'll get back here ready to do the next right thing.
+//		We do not change INF or EXRF before returning to the caller.
+//		Note that, if EXRF is set, we'll get here at least once after the target instruction has been placed in F0
+//		but its U has not yet been developed. We don't care; we just keep cycling.
+//	The instruction is complete, and it was NOT the target of an EXR instruction - INF is set, EXRF is clear.
+//		It will return complete==true, interrupt==nil, and e.preventPCUpdate will be true if the instruction was
+//		a successful jump or a test that skipped NI - in both of these cases, PAR.PC has already been set
+//		appropriately. We don't have to worry about preserving the state of e.preventPCUpdate because it will only
+//		be set by the JUMP/TEST instructions just before returning complete, and we'll increment PAR.PC (or not)
+//		and clear INF before returning to the caller for potential interrupt processing.
+//	The instruction is complete, and it WAS the target of an EXR instruction (INF and EXRF are set).
+//		If the repeat register (R1) is zero, EXR processing is complete (even if we haven't yet executed the target
+//		instruction - i.e., EXR invoked with any valid target instruction with R1==0... We don't care at this point.
+//		In this case, we clear INF and EXRF, and increment PAR.PC *if* we are not prevented from doing so.
+//		If R1 is NOT zero, we simply return to the caller *without* incrementing PAR.PC even if we could have done so
+//		otherwise. Having INF and EXRF already set, we won't waste time re-evaluating the EXR instruction, we'll
+//		just (re-)execute the target instruction.
+func (e *InstructionEngine) DoCycle() {
+	ikr := e.activityStatePacket.GetIndicatorKeyRegister()
+	if !ikr.IsInstructionInF0() {
+		e.fetchInstructionWord()
+		return
+	}
+
+	var complete bool
+	if ikr.IsExecuteRepeatedInstruction() {
+		rReg := e.GetExecOrUserRRegister(R1)
+		if rReg.IsZero() {
+			complete = true
+		}
+	} else {
+		complete = e.executeCurrentInstruction()
+	}
+
+	if complete {
+		e.SetInstructionPoint(BetweenInstructions)
+		e.clearStorageLocks()
+		e.cachedInstructionHandler = nil
+		ikr.SetInstructionInF0(false)
+		ikr.SetExecuteRepeatedInstruction(false)
+		if !e.preventPCUpdate {
+			e.GetProgramAddressRegister().IncrementProgramCounter()
+		}
+	}
 }
 
 func (e *InstructionEngine) Dump() {
@@ -582,7 +665,6 @@ func (e *InstructionEngine) GetJumpOperand() (operand uint64, flip31 bool, compl
 		}
 	}
 
-	//	TODO Need to check breakpoint
 	return
 }
 
@@ -759,7 +841,7 @@ func (e *InstructionEngine) IsStopped() bool {
 // Interrupts are posted top-down, in order of priority.
 // Synchronous interrupts of a lower priority than the new interrupt are discarded.
 func (e *InstructionEngine) PostInterrupt(i pkg.Interrupt) {
-	fmt.Printf("===Posting %s\n", pkg.GetInterruptString(i)) // TODO remove
+	fmt.Printf("===Posting %s\n", pkg.GetInterruptString(i)) // TODO remove later
 	e.pendingInterrupts.Post(i)
 	e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 }
@@ -1161,42 +1243,15 @@ func (e *InstructionEngine) createJumpHistoryEntry(address pkg.VirtualAddress) {
 	}
 }
 
-// doCycle executes one cycle
-// caller should disposition any pending interrupts before invoking this...
-// since the engine is not specifically hardware (could be an executor for a native mode OS),
-// we don't actually know how to handle the interrupts.
-func (e *InstructionEngine) doCycle() {
-	if !e.activityStatePacket.GetIndicatorKeyRegister().IsInstructionInF0() {
-		// If we manage to fetch an instruction, then we transition to resolving address...
-		// this is so that invoking code can handle any interrupts which can be handled at any
-		// interrupt point.
-		// If we do NOT fetch an instruction, then we are between instructions.
-		// There is an interrupt posted ('cause we failed), and the invoker needs to know
-		// that it can handle any interrupts which can be handled between instructions
-		// (which is essentially all of them).
-		if e.fetchInstructionWord() {
-			e.SetInstructionPoint(ResolvingAddress)
-		} else {
-			e.SetInstructionPoint(BetweenInstructions)
-		}
-	} else {
-		// There is already an instruction in F0.
-		// We might be still resolving its address, or maybe we've not started that yet
-		// (although the flag for resolving addresses would still be set), or maybe
-		// we have finished resolving the address, and had been interrupted during an
-		// interrupt-able instruction (such as EXR), in which case midInstruction flag is set.
-		// We don't care - we just execute the instruction as it is stored in F0.
-		e.executeCurrentInstruction()
-	}
-}
-
-func (e *InstructionEngine) executeCurrentInstruction() {
-	//	functions return true if they have completed (normally, or by posting an interrupt).
-	//	They return false if they return before completion, but without posting an interrupt.
-	//	Generally, a false return results either from a repeated execution instructionType giving
-	//	up the ipEngine, or by an indirect basic mode instructionType giving up the ipEngine
-	//	before completely developing the operand address.
-
+// executeCurrentInstruction executes the instruction in F0 (which we cache to save some cycles)
+// Functions return true if the have completed normally. They will return false in the following conditions:
+//
+//	Interrupt Mid-point
+//	Still resolving addressing (indirect addressing always does this)
+//	An interrupt was posted - this is so that the instruction can be retried for certain interrupts.
+//
+// Returns true if the instruction was complete, else false
+func (e *InstructionEngine) executeCurrentInstruction() (completed bool) {
 	if e.logInstructions {
 		code := dasm.DisassembleInstruction(e.activityStatePacket)
 		fmt.Printf("--[%012o  %s]\n", e.activityStatePacket.GetProgramAddressRegister().GetComposite(), code)
@@ -1204,37 +1259,22 @@ func (e *InstructionEngine) executeCurrentInstruction() {
 
 	dr := e.activityStatePacket.GetDesignatorRegister()
 	ci := e.activityStatePacket.GetCurrentInstruction()
-
 	e.preventPCUpdate = false
 
-	// Find the instruction handler for the instruction
-	fTable := FunctionTable[dr.IsBasicModeEnabled()]
-	inst, found := fTable[uint(ci.GetF())]
-	if !found {
-		// illegal instruction - post an interrupt, then note that we are between instructions.
-		e.PostInterrupt(pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode))
-		e.SetInstructionPoint(BetweenInstructions)
-		return
-	}
-
-	// Execute the instruction - if it throws an interrupt, don't change any of the instruction flags...
-	// the interrupt handler will want to know where we were in the process of handling the instruction.
-	completed, interrupt := inst(e)
-	if interrupt != nil {
-		e.PostInterrupt(interrupt)
-		return
-	}
-
-	// If the instruction did not complete, then we are either still resolving the address or we are at a
-	// mid-instruction point for something like EXR. Just return to the invoker so it can check for interrupts.
-	if completed {
-		e.SetInstructionPoint(BetweenInstructions)
-		e.clearStorageLocks()
-		e.activityStatePacket.GetIndicatorKeyRegister().SetInstructionInF0(false)
-		if !e.preventPCUpdate {
-			e.activityStatePacket.GetProgramAddressRegister().IncrementProgramCounter()
+	// Find the instruction handler for the instruction if it is not cached
+	if e.cachedInstructionHandler == nil {
+		fTable := FunctionTable[dr.IsBasicModeEnabled()]
+		var found bool
+		e.cachedInstructionHandler, found = fTable[uint(ci.GetF())]
+		if !found {
+			// illegal instruction - post an interrupt, then note that we are between instructions.
+			e.PostInterrupt(pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadFunctionCode))
+			e.SetInstructionPoint(BetweenInstructions)
+			return false
 		}
 	}
+
+	return e.cachedInstructionHandler(e)
 }
 
 // fetchInstructionWord retrieves the next instruction word from the appropriate bank.
@@ -1246,13 +1286,15 @@ func (e *InstructionEngine) fetchInstructionWord() bool {
 	programCounter := e.activityStatePacket.GetProgramAddressRegister().GetProgramCounter()
 
 	var bReg *pkg.BaseRegister
+	var brx uint
 	if basicMode {
 		// If we don't know the index of the current basic mode instruction bank,
 		// find it and set DB31 accordingly.
 		if e.baseRegisterIndexForFetch == 0 {
-			brx := e.FindBasicModeBank(programCounter)
+			brx = e.FindBasicModeBank(programCounter)
 			if brx == 0 {
-				e.PostInterrupt(pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationStorageLimits, false))
+				interrupt := pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationStorageLimits, false)
+				e.PostInterrupt(interrupt)
 				return false
 			}
 
@@ -1262,28 +1304,36 @@ func (e *InstructionEngine) fetchInstructionWord() bool {
 
 		bReg = e.baseRegisters[e.baseRegisterIndexForFetch]
 		if !e.isReadAllowed(bReg) {
-			e.PostInterrupt(pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationStorageLimits, false))
+			interrupt := pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationStorageLimits, false)
+			e.PostInterrupt(interrupt)
 			return false
 		}
 	} else {
+		brx = 0
 		bReg = e.baseRegisters[0]
 		ikr := e.activityStatePacket.GetIndicatorKeyRegister()
-		intp := e.checkAccessLimitsAndAccessibility(basicMode, 0, programCounter, true, false, false, ikr.GetAccessKey())
-		if intp != nil {
-			e.PostInterrupt(intp)
+		interrupt := e.checkAccessLimitsAndAccessibility(basicMode, 0, programCounter, true, false, false, ikr.GetAccessKey())
+		if interrupt != nil {
+			e.PostInterrupt(interrupt)
 			return false
 		}
 	}
 
 	if bReg.IsVoid() || bReg.GetBankDescriptor().IsLargeBank() {
-		e.PostInterrupt(pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationStorageLimits, false))
+		interrupt := pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationStorageLimits, false)
+		e.PostInterrupt(interrupt)
 		return false
 	}
 
 	pcOffset := programCounter - bReg.GetBankDescriptor().GetLowerLimitNormalized()
-	a := pkg.InstructionWord(bReg.GetStorage()[pcOffset])
-	e.activityStatePacket.SetCurrentInstruction(&a)
-	e.activityStatePacket.GetIndicatorKeyRegister().SetInstructionInF0(true)
+	iw := pkg.InstructionWord(bReg.GetStorage()[pcOffset])
+	asp := e.activityStatePacket
+	asp.SetCurrentInstruction(&iw)
+	asp.GetIndicatorKeyRegister().SetInstructionInF0(true)
+	asp.GetIndicatorKeyRegister().SetExecuteRepeatedInstruction(false)
+
+	_, absAddr, _ := e.translateAddress(brx, programCounter)
+	e.checkBreakpoint(BreakpointFetch, absAddr)
 
 	return true
 }

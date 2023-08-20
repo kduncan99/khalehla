@@ -15,16 +15,20 @@ import (
 // InitiateAutoRecovery (IAR)
 //
 //	In a departure from the architecture guide, we *do* allow this in basic mode as well as extended.
-//	This is mainly for unit test purposes.
-func InitiateAutoRecovery(e *InstructionEngine) (completed bool, interrupt pkg.Interrupt) {
+//	This is mainly for unit test purposes, and may change at any point.
+func InitiateAutoRecovery(e *InstructionEngine) (completed bool) {
 	if e.activityStatePacket.GetDesignatorRegister().GetProcessorPrivilege() > 0 {
-		return false, pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadPP)
+		i := pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadPP)
+		e.PostInterrupt(i)
+		return false
 	}
 
-	operand, interrupt := e.GetImmediateOperand()
-	if interrupt != nil {
-		return false, interrupt
+	operand, i := e.GetImmediateOperand()
+	if i != nil {
+		e.PostInterrupt(i)
+		return false
 	}
+
 	e.Stop(InitiateAutoRecoveryStop, pkg.Word36(operand))
-	return true, nil
+	return true
 }

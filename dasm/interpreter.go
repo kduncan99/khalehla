@@ -219,6 +219,7 @@ var function072InterpreterBasic = FunctionTable{
 		001: &Instruction{mnemonic: "SLJ", aField: AUnused, jField: JFunctionDiscriminator},
 		002: &Instruction{mnemonic: "JPS", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
 		003: &Instruction{mnemonic: "JNS", aField: ARegister, jField: JFunctionDiscriminator, uIs18Bits: true},
+		010: &Instruction{mnemonic: "EX", aField: AUnused, jField: JFunctionDiscriminator},
 		016: &Instruction{mnemonic: "SRS", aField: ARegister, jField: JFunctionDiscriminator},
 		017: &Instruction{mnemonic: "LRS", aField: ARegister, jField: JFunctionDiscriminator},
 	},
@@ -341,6 +342,7 @@ var ExtendedFunctionTable = FunctionTable{
 		045: &Instruction{mnemonic: "TOP", aField: RRegister, jField: JPartialWordDesignator},
 		046: &Instruction{mnemonic: "LXI", aField: XRegister, jField: JPartialWordDesignator},
 		047: &Instruction{mnemonic: "TLEM", aField: XRegister, jField: JPartialWordDesignator},
+		050: &function050InterpreterExtended,
 		051: &Instruction{mnemonic: "LXSI", aField: XRegister, jField: JPartialWordDesignator},
 		060: &Instruction{mnemonic: "LSBO", aField: XRegister, jField: JPartialWordDesignator},
 		061: &Instruction{mnemonic: "LSBL", aField: XRegister, jField: JPartialWordDesignator},
@@ -372,6 +374,13 @@ var function007InterpreterExtended = FunctionTable{
 	table: map[int]Interpreter{
 		004: &Instruction{mnemonic: "LAQW", aField: ARegister, jField: JFunctionDiscriminator},
 		005: &Instruction{mnemonic: "SAQW", aField: ARegister, jField: JFunctionDiscriminator},
+	},
+}
+
+var function050InterpreterExtended = FunctionTable{
+	indexBy: IndexByA,
+	table: map[int]Interpreter{
+		017: &Instruction{mnemonic: "TSKP", aField: AUnused, jField: JFunctionDiscriminator},
 	},
 }
 
@@ -409,6 +418,7 @@ var function07314InterpreterExtended = FunctionTable{
 	indexBy: IndexByA,
 	table: map[int]Interpreter{
 		000: &Instruction{mnemonic: "NOP", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		005: &Instruction{mnemonic: "EX", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
 	},
 }
 
