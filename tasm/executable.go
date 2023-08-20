@@ -193,6 +193,7 @@ func (e *Executable) LinkBankPerSegment(segments map[uint64]*Segment, extendedMo
 
 	e.banks = make(map[uint64]*Bank)
 	e.initiallyBasedBanks = make(map[uint64]uint64) // key is segment number, value is BDI
+	e.basicMode = !extendedMode
 	orderedSegmentNumbers := getOrderedSegmentNumbers(segments)
 
 	//  Create the bank descriptors here.
