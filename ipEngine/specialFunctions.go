@@ -235,17 +235,18 @@ func ExecuteRepeated(e *InstructionEngine) (completed bool) {
 	} else if result.complete {
 		e.activityStatePacket.GetCurrentInstruction().SetW(result.operand)
 		e.cachedInstructionHandler = nil
-		rReg := e.GetExecOrUserRRegister(R1)
+
+		ci := pkg.InstructionWord(result.operand)
+		if !exrMainHandler.isAllowed(ci.GetF(), ci.GetJ(), ci.GetA()) {
+			i := pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionEXRInvalidTarget)
+			e.PostInterrupt(i)
+			return false
+		}
+
+		e.activityStatePacket.GetIndicatorKeyRegister().SetExecuteRepeatedInstruction(true)
+		rReg := e.GetExecOrUserRRegister(1)
 		if !rReg.IsZero() {
-			newCI := e.GetCurrentInstruction()
-			if !exrMainHandler.isAllowed(newCI.GetF(), newCI.GetJ(), newCI.GetA()) {
-				i := pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionEXRInvalidTarget)
-				e.PostInterrupt(i)
-				completed = false
-			} else {
-				e.activityStatePacket.GetIndicatorKeyRegister().SetExecuteRepeatedInstruction(true)
-				completed = false // this forces another cycle which will now execute the new instruction in F0.
-			}
+			completed = false // this forces another cycle which will now execute the new instruction in F0.
 		}
 	}
 

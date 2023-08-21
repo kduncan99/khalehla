@@ -171,6 +171,7 @@ var BasicFunctionTable = FunctionTable{
 		044: &Instruction{mnemonic: "TEP", aField: RRegister, jField: JPartialWordDesignator},
 		045: &Instruction{mnemonic: "TOP", aField: RRegister, jField: JPartialWordDesignator},
 		046: &Instruction{mnemonic: "LXI", aField: XRegister},
+		050: &Instruction{mnemonic: "TZ", aField: AUnused, jField: JFunctionDiscriminator},
 		070: &Instruction{mnemonic: "JGD", aField: AGRSComponent, jField: JGRSComponent, uIs18Bits: true},
 		071: &function071InterpreterBasic,
 		072: &function072InterpreterBasic,
@@ -338,6 +339,8 @@ var ExtendedFunctionTable = FunctionTable{
 		023: &Instruction{mnemonic: "LR", aField: RRegister, jField: JPartialWordDesignator},
 		026: &Instruction{mnemonic: "LXM", aField: XRegister, jField: JPartialWordDesignator},
 		027: &Instruction{mnemonic: "LX", aField: XRegister, jField: JPartialWordDesignator},
+		033: &function033InterpreterExtended,
+		037: &function037InterpreterExtended,
 		044: &Instruction{mnemonic: "TEP", aField: RRegister, jField: JPartialWordDesignator},
 		045: &Instruction{mnemonic: "TOP", aField: RRegister, jField: JPartialWordDesignator},
 		046: &Instruction{mnemonic: "LXI", aField: XRegister, jField: JPartialWordDesignator},
@@ -377,9 +380,32 @@ var function007InterpreterExtended = FunctionTable{
 	},
 }
 
+var function033InterpreterExtended = FunctionTable{
+	indexBy: IndexByJ,
+	table: map[int]Interpreter{
+		015: &Instruction{mnemonic: "DCB", aField: ARegister, jField: JFunctionDiscriminator},
+	},
+}
+
+var function037InterpreterExtended = FunctionTable{
+	indexBy: IndexByJ,
+	table: map[int]Interpreter{
+		004: &function037004InterpreterExtended,
+	},
+}
+
+var function037004InterpreterExtended = FunctionTable{
+	indexBy: IndexByA,
+	table: map[int]Interpreter{
+		005: &Instruction{mnemonic: "RNGI", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		006: &Instruction{mnemonic: "RNGB", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+	},
+}
+
 var function050InterpreterExtended = FunctionTable{
 	indexBy: IndexByA,
 	table: map[int]Interpreter{
+		006: &Instruction{mnemonic: "TZ", aField: AFunctionDiscriminator, jField: JPartialWordDesignator},
 		017: &Instruction{mnemonic: "TSKP", aField: AUnused, jField: JFunctionDiscriminator},
 	},
 }
@@ -419,6 +445,7 @@ var function07314InterpreterExtended = FunctionTable{
 	table: map[int]Interpreter{
 		000: &Instruction{mnemonic: "NOP", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
 		005: &Instruction{mnemonic: "EX", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		006: &Instruction{mnemonic: "EXR", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
 	},
 }
 

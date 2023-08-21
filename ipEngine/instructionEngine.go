@@ -287,14 +287,25 @@ func (e *InstructionEngine) DoCycle() {
 		return
 	}
 
-	var complete bool
+	complete := false
+	isEXRF := ikr.IsExecuteRepeatedInstruction()
 	if ikr.IsExecuteRepeatedInstruction() {
-		rReg := e.GetExecOrUserRRegister(R1)
+		rReg := e.GetExecOrUserRRegister(1)
 		if rReg.IsZero() {
 			complete = true
 		}
-	} else {
+	}
+
+	if !complete {
+		wasEXRF := isEXRF
 		complete = e.executeCurrentInstruction()
+		if ikr.IsExecuteRepeatedInstruction() {
+			if wasEXRF {
+				rReg := e.GetExecOrUserRRegister(1)
+				rReg.SetW(rReg.GetW() - 1)
+				complete = e.preventPCUpdate
+			}
+		}
 	}
 
 	if complete {

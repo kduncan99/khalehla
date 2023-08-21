@@ -12,12 +12,14 @@ import (
 
 // f, j, and a fields for the various instructions
 const (
+	fDCB         = "033"
 	fDJZ         = "071"
 	fDL          = "071"
 	fDLM         = "071"
 	fDLN         = "071"
 	fEXBasic     = "072"
 	fEXExtended  = "073"
+	fEXR         = "073"
 	fHKJ         = "074"
 	fHLTJ        = "074"
 	fIAR         = "073"
@@ -53,22 +55,28 @@ const (
 	fLXM         = "026"
 	fNOPBasic    = "074"
 	fNOPExtended = "073"
+	fRNGB        = "037"
+	fRNGI        = "037"
 	fSA          = "001"
+	fSAS         = "005"
 	fSD          = "073"
 	fSLJ         = "072"
 	fTEP         = "044"
 	fTLEM        = "047"
 	fTOP         = "045"
 	fTSKP        = "050"
+	fTZ          = "050"
 )
 
 const (
+	jDCB         = "015"
 	jDJZ         = "016"
 	jDL          = "013"
 	jDLM         = "015"
 	jDLN         = "014"
 	jEXBasic     = "010"
 	jEXExtended  = "014"
+	jEXR         = "014"
 	jHKJ         = "005"
 	jHLTJ        = "015"
 	jIAR         = "017"
@@ -98,11 +106,14 @@ const (
 	jLMJ         = "013"
 	jNOPBasic    = "006"
 	jNOPExtended = "014"
+	jRNGB        = "004"
+	jRNGI        = "004"
 	jSLJ         = "001"
 )
 
 const (
 	aEXExtended  = "005"
+	aEXR         = "006"
 	aHLTJ        = "005"
 	aIAR         = "006"
 	aJBasic      = "000"
@@ -120,7 +131,11 @@ const (
 	aJNO         = "000"
 	aJO          = "000"
 	aNOP         = "000"
+	aRNGB        = "006"
+	aRNGI        = "005"
+	aSAS         = "006"
 	aTSKP        = "017"
+	aTZExtended  = "006"
 )
 
 // partial word designators for j-field specification
@@ -287,6 +302,17 @@ func iarSourceItem(label string, uField string) *tasm.SourceItem {
 	return tasm.NewSourceItem(label, "fjaxu", []string{fIAR, jIAR, aIAR, zero, uField})
 }
 
+func checkInterrupt(t *testing.T, engine *InstructionEngine, interruptClass pkg.InterruptClass) {
+	for _, i := range engine.pendingInterrupts.stack {
+		if i.GetClass() == interruptClass {
+			return
+		}
+	}
+
+	engine.pendingInterrupts.Dump()
+	t.Fatalf("Error:Expected interrupt class %d to be posted", interruptClass)
+}
+
 func checkProgramAddress(t *testing.T, engine *InstructionEngine, expectedAddress uint64) {
 	actual := engine.GetProgramAddressRegister().GetProgramCounter()
 	if actual != expectedAddress {
@@ -297,16 +323,18 @@ func checkProgramAddress(t *testing.T, engine *InstructionEngine, expectedAddres
 func checkMemory(t *testing.T, engine *InstructionEngine, addr *pkg.AbsoluteAddress, offset uint64, expected uint64) {
 	seg, interrupt := engine.mainStorage.GetSegment(addr.GetSegment())
 	if interrupt != nil {
+		engine.mainStorage.Dump()
 		t.Fatalf("Error:%s", pkg.GetInterruptString(interrupt))
 	}
 
 	if addr.GetOffset() >= uint64(len(seg)) {
-		t.Fatalf("Error:offset is out of range for address %s - segment size is %012o",
-			addr.GetString(), len(seg))
+		engine.mainStorage.Dump()
+		t.Fatalf("Error:offset is out of range for address %s - segment size is %012o", addr.GetString(), len(seg))
 	}
 
 	result := seg[addr.GetOffset()+offset]
 	if result.GetW() != expected {
+		engine.mainStorage.Dump()
 		t.Fatalf("Storage at %s+0%o is %012o, expected %012o", addr.GetString(), offset, result, expected)
 	}
 }
@@ -314,6 +342,7 @@ func checkMemory(t *testing.T, engine *InstructionEngine, addr *pkg.AbsoluteAddr
 func checkRegister(t *testing.T, engine *InstructionEngine, register uint64, expected uint64, name string) {
 	result := engine.generalRegisterSet.GetRegister(register).GetW()
 	if result != expected {
+		engine.generalRegisterSet.Dump()
 		t.Fatalf("Register %s is %012o, expected %012o", name, result, expected)
 	}
 }
