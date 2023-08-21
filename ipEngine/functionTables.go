@@ -94,6 +94,18 @@ var basicModeFunction72Table = map[uint]func(engine *InstructionEngine) (complet
 
 // Basic Mode, F=073, table is indexed by the j field
 var basicModeFunction73Table = map[uint]func(engine *InstructionEngine) (completed bool){
+	000: SingleShiftCircular,
+	001: DoubleShiftCircular,
+	002: SingleShiftLogical,
+	003: DoubleShiftLogical,
+	004: SingleShiftAlgebraic,
+	005: DoubleShiftAlgebraic,
+	006: LoadShiftAndCount,
+	007: DoubleLoadShiftAndCount,
+	010: LeftSingleShiftCircular,
+	011: LeftDoubleShiftCircular,
+	012: LeftSingleShiftLogical,
+	013: LeftDoubleShiftLogical,
 	015: basicModeFunction7315Handler,
 	017: basicModeFunction7317Handler,
 }
@@ -302,6 +314,18 @@ var extendedModeFunction72Table = map[uint]func(engine *InstructionEngine) (comp
 
 // Extended Mode, F=073, table is indexed by the j field
 var extendedModeFunction73Table = map[uint]func(engine *InstructionEngine) (completed bool){
+	000: SingleShiftCircular,
+	001: DoubleShiftCircular,
+	002: SingleShiftLogical,
+	003: DoubleShiftLogical,
+	004: SingleShiftAlgebraic,
+	005: DoubleShiftAlgebraic,
+	006: LoadShiftAndCount,
+	007: DoubleLoadShiftAndCount,
+	010: LeftSingleShiftCircular,
+	011: LeftDoubleShiftCircular,
+	012: LeftSingleShiftLogical,
+	013: LeftDoubleShiftLogical,
 	014: extendedModeFunction7314Handler,
 	015: extendedModeFunction7315Handler,
 	017: extendedModeFunction7317Handler,

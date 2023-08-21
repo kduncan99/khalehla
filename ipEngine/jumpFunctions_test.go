@@ -12,7 +12,7 @@ import (
 // Unconditional -------------------------------------------------------------------------------------------------------
 
 var lmjBasicMode = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fNOPBasic, jNOPBasic, aNOP, zero, zero}),
 	tasm.NewSourceItem("", "fjaxu", []string{fNOPBasic, jNOPBasic, aNOP, zero, zero}),
 	tasm.NewSourceItem("", "fjaxu", []string{fNOPBasic, jNOPBasic, aNOP, zero, zero}),
@@ -23,9 +23,9 @@ var lmjBasicMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "fjaxu", []string{fNOPBasic, jNOPBasic, aNOP, zero, zero}),
 	tasm.NewSourceItem("", "fjaxu", []string{fNOPBasic, jNOPBasic, aNOP, zero, zero}),
 	tasm.NewSourceItem("label", "fjaxu", []string{fNOPBasic, jNOPBasic, aNOP, zero, zero}),
-	iarSourceItem("", "1"),
-	iarSourceItem("", "2"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("", 2),
+	iarSourceItem("target", 0),
 }
 
 func Test_LMJ_Basic(t *testing.T) {
@@ -53,13 +53,13 @@ func Test_LMJ_Basic(t *testing.T) {
 }
 
 var sljBasicMode = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fSLJ, jSLJ, zero, zero, zero, zero, "target"}),
-	iarSourceItem("", "1"),
-	iarSourceItem("", "1"),
-	iarSourceItem("", "1"),
+	iarSourceItem("", 1),
+	iarSourceItem("", 1),
+	iarSourceItem("", 1),
 	tasm.NewSourceItem("target", "w", []string{"0"}),
-	iarSourceItem("", "0"),
+	iarSourceItem("", 0),
 }
 
 func Test_SLJ_Basic(t *testing.T) {
@@ -88,7 +88,7 @@ func Test_SLJ_Basic(t *testing.T) {
 }
 
 var lmjExtendedMode = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fNOPExtended, jNOPExtended, aNOP, zero, zero}),
 	tasm.NewSourceItem("", "fjaxu", []string{fNOPExtended, jNOPExtended, aNOP, zero, zero}),
 	tasm.NewSourceItem("", "fjaxu", []string{fNOPExtended, jNOPExtended, aNOP, zero, zero}),
@@ -99,9 +99,9 @@ var lmjExtendedMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "fjaxu", []string{fNOPExtended, jNOPExtended, aNOP, zero, zero}),
 	tasm.NewSourceItem("", "fjaxu", []string{fNOPExtended, jNOPExtended, aNOP, zero, zero}),
 	tasm.NewSourceItem("label", "fjaxu", []string{fNOPExtended, jNOPExtended, aNOP, zero, zero}),
-	iarSourceItem("", "1"),
-	iarSourceItem("", "2"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("", 2),
+	iarSourceItem("target", 0),
 }
 
 func Test_LMJ_Extended(t *testing.T) {
@@ -129,10 +129,10 @@ func Test_LMJ_Extended(t *testing.T) {
 }
 
 var jumpBasicMode = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fJ, jJBasic, aJBasic, zero, "target"}),
-	iarSourceItem("", "1"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
 }
 
 func Test_J_Basic(t *testing.T) {
@@ -160,10 +160,10 @@ func Test_J_Basic(t *testing.T) {
 }
 
 var jumpKeyBasicMode = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fJK, jJK, "1", zero, "target"}),
-	iarSourceItem("", "0"),
-	iarSourceItem("target", "1"),
+	iarSourceItem("", 0),
+	iarSourceItem("target", 1),
 }
 
 func Test_JK_Basic(t *testing.T) {
@@ -191,10 +191,10 @@ func Test_JK_Basic(t *testing.T) {
 }
 
 var jumpExtendedMode = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fJ, jJExtended, aJExtended, zero, "target"}),
-	iarSourceItem("", "1"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
 }
 
 func Test_J_Extended(t *testing.T) {
@@ -222,10 +222,10 @@ func Test_J_Extended(t *testing.T) {
 }
 
 var haltKeysAndJumpBasicMode = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fHKJ, jHKJ, zero, zero, "target"}),
-	iarSourceItem("", "1"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
 }
 
 func Test_HKJ_Basic(t *testing.T) {
@@ -253,10 +253,10 @@ func Test_HKJ_Basic(t *testing.T) {
 }
 
 var haltJumpExtendedMode = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fHLTJ, jHLTJ, aHLTJ, zero, "target"}),
-	iarSourceItem("", "1"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
 }
 
 func Test_HLTJ_Extended(t *testing.T) {
@@ -291,11 +291,11 @@ func Test_HLTJ_Extended(t *testing.T) {
 // Conditional based on register ---------------------------------------------------------------------------------------
 
 var jumpZeroExtendedPosZero = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fLA, jU, rA5, zero, "0"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fJZ, jJZ, rA5, zero, zero, zero, rB0, "target"}),
-	iarSourceItem("", "1"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
 }
 
 func Test_JZ_Extended_PosZero(t *testing.T) {
@@ -322,11 +322,11 @@ func Test_JZ_Extended_PosZero(t *testing.T) {
 }
 
 var jumpZeroExtendedNegZero = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fLA, jXU, rA5, zero, "0777777"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fJZ, jJZ, rA5, zero, zero, zero, rB0, "target"}),
-	iarSourceItem("", "1"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
 }
 
 func Test_JZ_Extended_NegZero(t *testing.T) {
@@ -353,11 +353,11 @@ func Test_JZ_Extended_NegZero(t *testing.T) {
 }
 
 var jumpZeroExtendedNotZero = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fLA, jU, rA5, zero, "01"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fJZ, jJZ, rA5, zero, zero, zero, rB0, "target"}),
-	iarSourceItem("", "1"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
 }
 
 func Test_JZ_Extended_NotZero(t *testing.T) {
@@ -384,7 +384,7 @@ func Test_JZ_Extended_NotZero(t *testing.T) {
 }
 
 var doubleJumpZeroExtendedMode = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"003"}),
+	segSourceItem(3),
 	tasm.NewSourceItem("posZero", "w", []string{"0"}),
 	tasm.NewSourceItem("", "w", []string{"0"}),
 	tasm.NewSourceItem("negZero", "w", []string{"0777777777777"}),
@@ -394,14 +394,14 @@ var doubleJumpZeroExtendedMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("notZero2", "w", []string{"0777777777777"}),
 	tasm.NewSourceItem("", "w", []string{"0"}),
 
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fDL, jDL, rA0, zero, zero, zero, rB3, "posZero"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fDJZ, jDJZ, rA0, zero, zero, zero, rB0, "target1"}),
-	iarSourceItem("", "1"),
+	iarSourceItem("", 1),
 
 	tasm.NewSourceItem("target1", "fjaxhibd", []string{fDL, jDL, rA2, zero, zero, zero, rB3, "negZero"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fDJZ, jDJZ, rA2, zero, zero, zero, rB0, "target2"}),
-	iarSourceItem("", "2"),
+	iarSourceItem("", 2),
 
 	tasm.NewSourceItem("target2", "fjaxhibd", []string{fDL, jDL, rA4, zero, zero, zero, rB3, "notZero1"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fDJZ, jDJZ, rA4, zero, zero, zero, rB0, "bad3"}),
@@ -410,9 +410,9 @@ var doubleJumpZeroExtendedMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "fjaxhibd", []string{fDJZ, jDJZ, rA6, zero, zero, zero, rB0, "bad4"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fJ, jJExtended, aJExtended, zero, "end"}),
 
-	iarSourceItem("bad3", "3"),
-	iarSourceItem("bad4", "4"),
-	iarSourceItem("end", "0"),
+	iarSourceItem("bad3", 3),
+	iarSourceItem("bad4", 4),
+	iarSourceItem("end", 0),
 }
 
 func Test_DJZ_Extended_PosZero(t *testing.T) {
@@ -439,11 +439,11 @@ func Test_DJZ_Extended_PosZero(t *testing.T) {
 }
 
 var jumpNonZeroExtendedPosZero = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fLA, jU, rA5, zero, "0"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fJNZ, jJNZ, rA5, zero, zero, zero, rB0, "target"}),
-	iarSourceItem("", "1"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
 }
 
 func Test_JNZ_Extended_PosZero(t *testing.T) {
@@ -470,11 +470,11 @@ func Test_JNZ_Extended_PosZero(t *testing.T) {
 }
 
 var jumpNonZeroExtendedNegZero = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fLA, jXU, rA5, zero, "0777777"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fJNZ, jJNZ, rA5, zero, zero, zero, rB0, "target"}),
-	iarSourceItem("", "1"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
 }
 
 func Test_JNZ_Extended_NegZero(t *testing.T) {
@@ -501,11 +501,11 @@ func Test_JNZ_Extended_NegZero(t *testing.T) {
 }
 
 var jumpNonZeroExtendedNotZero = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fLA, jU, rA5, zero, "01"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fJNZ, jJNZ, rA5, zero, zero, zero, rB0, "target"}),
-	iarSourceItem("", "1"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
 }
 
 func Test_JNZ_Extended_NotZero(t *testing.T) {
@@ -532,10 +532,10 @@ func Test_JNZ_Extended_NotZero(t *testing.T) {
 }
 
 var jumpPosNegExtended = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fLA, jU, rA10, zero, "0"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fJP, jJP, rA10, zero, "target1"}),
-	iarSourceItem("bad1", "1"),
+	iarSourceItem("bad1", 1),
 	tasm.NewSourceItem("target1", "fjaxu", []string{fJN, jJN, rA10, zero, "bad2"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fNOPExtended, jNOPExtended, zero, zero, zero}),
 
@@ -543,10 +543,10 @@ var jumpPosNegExtended = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "fjaxu", []string{fJP, jJP, rA10, zero, "bad3"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fJN, jJN, rA10, zero, "end"}),
 
-	iarSourceItem("bad4", "4"),
-	iarSourceItem("bad2", "2"),
-	iarSourceItem("bad3", "3"),
-	iarSourceItem("end", "0"),
+	iarSourceItem("bad4", 4),
+	iarSourceItem("bad2", 2),
+	iarSourceItem("bad3", 3),
+	iarSourceItem("end", 0),
 }
 
 func Test_JP_JN_Extended(t *testing.T) {
@@ -579,10 +579,10 @@ func Test_JP_JN_Extended(t *testing.T) {
 // Conditional based on designator register bits -----------------------------------------------------------------------
 
 var jumpCarryBasic = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fJC, jJCBasic, aJCBasic, zero, "target"}),
-	iarSourceItem("", "1"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
 }
 
 func Test_JC_Basic_Pos(t *testing.T) {
@@ -636,10 +636,10 @@ func Test_JC_Basic_Neg(t *testing.T) {
 }
 
 var jumpCarryExtended = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fJC, jJCExtended, aJCExtended, zero, "target"}),
-	iarSourceItem("", "1"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
 }
 
 func Test_JC_Extended_Pos(t *testing.T) {
@@ -668,11 +668,11 @@ func Test_JC_Extended_Pos(t *testing.T) {
 }
 
 var jumpDivideFault = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fJDF, jJDF, aJDF, zero, "target"}),
 
-	iarSourceItem("", "1"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
 }
 
 func Test_JDF_Basic_Pos(t *testing.T) {
@@ -776,10 +776,10 @@ func Test_JDF_Extended_Neg(t *testing.T) {
 }
 
 var jumpFloatingOverflow = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fJFO, jJFO, aJFO, zero, "target"}),
-	iarSourceItem("", "1"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
 }
 
 func Test_JFO_Basic_Pos(t *testing.T) {
@@ -883,10 +883,10 @@ func Test_JFO_Extended_Neg(t *testing.T) {
 }
 
 var jumpFloatingUnderflow = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fJFU, jJFU, aJFU, zero, "target"}),
-	iarSourceItem("", "1"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
 }
 
 func Test_JFU_Basic_Pos(t *testing.T) {
@@ -992,10 +992,10 @@ func Test_JFU_Extended_Neg(t *testing.T) {
 //	--------------------------------------------------------------------------------------------------------------------
 
 var jumpNoOverflow = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fJNO, jJNO, aJNO, zero, "target"}),
-	iarSourceItem("", "1"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
 }
 
 func Test_JNO_Basic_Pos(t *testing.T) {
@@ -1049,10 +1049,10 @@ func Test_JNO_Extended_Neg(t *testing.T) {
 }
 
 var jumpNoCarryBasic = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fJNC, jJNCBasic, aJNCBasic, zero, "target"}),
-	iarSourceItem("", "1"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
 }
 
 func Test_JNC_Basic_Pos(t *testing.T) {
@@ -1106,10 +1106,10 @@ func Test_JNC_Basic_Neg(t *testing.T) {
 }
 
 var jumpNoCarryExtended = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fJNC, jJNCExtended, aJNCExtended, zero, "target"}),
-	iarSourceItem("", "1"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
 }
 
 func Test_JNC_Extended_Pos(t *testing.T) {
@@ -1138,11 +1138,11 @@ func Test_JNC_Extended_Pos(t *testing.T) {
 }
 
 var jumpNoDivideFault = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fJNDF, jJNDF, aJNDF, zero, "target"}),
 
-	iarSourceItem("", "1"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
 }
 
 func Test_JNDF_Basic_Pos(t *testing.T) {
@@ -1246,10 +1246,10 @@ func Test_JNDF_Extended_Neg(t *testing.T) {
 }
 
 var jumpNoFloatingOverflow = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fJNFO, jJNFO, aJNFO, zero, "target"}),
-	iarSourceItem("", "1"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
 }
 
 func Test_JNFO_Basic_Pos(t *testing.T) {
@@ -1353,10 +1353,10 @@ func Test_JNFO_Extended_Neg(t *testing.T) {
 }
 
 var jumpNoFloatingUnderflow = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fJNFU, jJNFU, aJNFU, zero, "target"}),
-	iarSourceItem("", "1"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
 }
 
 func Test_JNFU_Basic_Pos(t *testing.T) {

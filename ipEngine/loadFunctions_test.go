@@ -18,7 +18,7 @@ import (
 //	TODO LSBL
 
 var laBasicMode = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"077"}),
+	segSourceItem(077),
 	tasm.NewSourceItem("data", "", []string{}),
 	tasm.NewSourceItem("a1value", "sw", []string{"01", "02", "03", "04", "05", "06"}),
 	tasm.NewSourceItem("a2value", "qw", []string{"0101", "0102", "0103", "0104"}),
@@ -27,13 +27,13 @@ var laBasicMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "w", []string{zero}),
 	tasm.NewSourceItem("", "w", []string{"07777"}),
 
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fLA, jU, rA0, rX0, "0123"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fLA, jW, rA1, rX0, zero, zero, "a1value"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fLA, jQ2, rA2, rX0, zero, zero, "a2value"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fLX, jU, rX4, rX0, "05"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fLA, jW, rA3, rX4, zero, zero, "data"}),
-	iarSourceItem("", "0"),
+	iarSourceItem("", 0),
 }
 
 func Test_LA_Basic(t *testing.T) {
@@ -65,7 +65,7 @@ func Test_LA_Basic(t *testing.T) {
 }
 
 var laExtendedMode = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"077"}),
+	segSourceItem(077),
 	tasm.NewSourceItem("data", "", []string{}),
 	tasm.NewSourceItem("a1value", "sw", []string{"01", "02", "03", "04", "05", "06"}),
 	tasm.NewSourceItem("a2value", "qw", []string{"0101", "0102", "0103", "0104"}),
@@ -74,13 +74,13 @@ var laExtendedMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "w", []string{zero}),
 	tasm.NewSourceItem("", "w", []string{"07777"}),
 
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fLA, jU, rA0, rX0, "0123"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLA, jW, rA1, rX0, zero, zero, rB0, "a1value"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLA, jQ2, rA2, rX0, zero, zero, rB0, "a2value"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fLX, jU, rX4, rX0, "05"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLA, jW, rA3, rX4, zero, zero, rB0, "data"}),
-	iarSourceItem("", "0"),
+	iarSourceItem("", 0),
 }
 
 func Test_LA_Extended(t *testing.T) {
@@ -111,12 +111,12 @@ func Test_LA_Extended(t *testing.T) {
 }
 
 var lmaExtendedMode = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"077"}),
+	segSourceItem(077),
 	tasm.NewSourceItem("posValue", "w", []string{"0300000123456"}),
 	tasm.NewSourceItem("negValue", "w", []string{"0400000000001"}),
 	tasm.NewSourceItem("partValue", "w", []string{"0555577664444"}),
 
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fLMA, jU, rA0, zero, "0377777"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fLMA, jU, rA1, zero, "0477777"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fLMA, jXU, rA2, zero, "0377777"}),
@@ -125,7 +125,7 @@ var lmaExtendedMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLMA, jW, rA5, zero, zero, zero, rB0, "negValue"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLMA, jT2, rA6, zero, zero, zero, rB0, "partValue"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLMA, jS5, rA7, zero, zero, zero, rB0, "partValue"}),
-	iarSourceItem("", "0"),
+	iarSourceItem("", 0),
 }
 
 func Test_LMA_Extended(t *testing.T) {
@@ -160,12 +160,12 @@ func Test_LMA_Extended(t *testing.T) {
 }
 
 var lnaExtendedMode = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"077"}),
+	segSourceItem(077),
 	tasm.NewSourceItem("posValue", "w", []string{"0300000123456"}),
 	tasm.NewSourceItem("negValue", "w", []string{"0400000000001"}),
 	tasm.NewSourceItem("partValue", "w", []string{"0555577664444"}),
 
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fLNA, jU, rA0, zero, "0377777"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fLNA, jU, rA1, zero, "0477777"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fLNA, jXU, rA2, zero, "0377777"}),
@@ -174,7 +174,7 @@ var lnaExtendedMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLNA, jW, rA5, zero, zero, zero, rB0, "negValue"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLNA, jT2, rA6, zero, zero, zero, rB0, "partValue"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLNA, jS5, rA7, zero, zero, zero, rB0, "partValue"}),
-	iarSourceItem("", "0"),
+	iarSourceItem("", 0),
 }
 
 func Test_LNA_Extended(t *testing.T) {
@@ -209,12 +209,12 @@ func Test_LNA_Extended(t *testing.T) {
 }
 
 var lnmaExtendedMode = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"077"}),
+	segSourceItem(077),
 	tasm.NewSourceItem("posValue", "w", []string{"0300000123456"}),
 	tasm.NewSourceItem("negValue", "w", []string{"0400000000001"}),
 	tasm.NewSourceItem("partValue", "w", []string{"0555577664444"}),
 
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fLNMA, jU, rA0, zero, "0377777"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fLNMA, jU, rA1, zero, "0477777"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fLNMA, jXU, rA2, zero, "0377777"}),
@@ -223,7 +223,7 @@ var lnmaExtendedMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLNMA, jW, rA5, zero, zero, zero, rB0, "negValue"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLNMA, jT2, rA6, zero, zero, zero, rB0, "partValue"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLNMA, jS5, rA7, zero, zero, zero, rB0, "partValue"}),
-	iarSourceItem("", "0"),
+	iarSourceItem("", 0),
 }
 
 func Test_LNMA_Extended(t *testing.T) {
@@ -258,14 +258,14 @@ func Test_LNMA_Extended(t *testing.T) {
 }
 
 var lrBasicMode = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"077"}),
+	segSourceItem(077),
 	tasm.NewSourceItem("r7value", "qw", []string{"061", "062", "063", "064"}),
 	tasm.NewSourceItem("r8value", "sw", []string{"01", "02", "03", "04", "05", "06"}),
 
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fLR, jQ3, rR7, rX0, zero, zero, "r7value"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fLR, jXH2, rR8, rX0, zero, zero, "r8value"}),
-	iarSourceItem("", "0"),
+	iarSourceItem("", 0),
 }
 
 func Test_LR_Basic(t *testing.T) {
@@ -295,14 +295,14 @@ func Test_LR_Basic(t *testing.T) {
 }
 
 var lrExtendedMode = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"077"}),
+	segSourceItem(077),
 	tasm.NewSourceItem("r5value", "tw", []string{"03210", "04000", "0123"}),
 	tasm.NewSourceItem("r4value", "sw", []string{"01", "02", "03", "04", "05", "06"}),
 
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLR, jT2, rR5, rX0, zero, zero, rB0, "r5value"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLR, jXH2, rR4, rX0, zero, zero, rB0, "r4value"}),
-	iarSourceItem("", "0"),
+	iarSourceItem("", 0),
 }
 
 func Test_LR_Extended(t *testing.T) {
@@ -332,13 +332,13 @@ func Test_LR_Extended(t *testing.T) {
 }
 
 var lxBasicMode = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"077"}),
+	segSourceItem(077),
 	tasm.NewSourceItem("data", "w", []string{"0112233445566"}),
 
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fLX, jU, rX1, rX0, "0377777"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fLX, jW, rX15, rX0, zero, zero, "data"}),
-	iarSourceItem("", "0"),
+	iarSourceItem("", 0),
 }
 
 func Test_LX_Basic(t *testing.T) {
@@ -369,11 +369,9 @@ func Test_LX_Basic(t *testing.T) {
 }
 
 var lxExtendedMode = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"077"}),
-
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fLX, jU, rX1, rX0, "05"}),
-	iarSourceItem("", "0"),
+	iarSourceItem("", 0),
 }
 
 func Test_LX_Extended(t *testing.T) {
@@ -401,21 +399,21 @@ func Test_LX_Extended(t *testing.T) {
 }
 
 var dlBasicMode = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"077"}),
+	segSourceItem(077),
 	tasm.NewSourceItem("posValue", "w", []string{"0100200300400"}),
 	tasm.NewSourceItem("negValue", "w", []string{"0500600700777"}),
 	tasm.NewSourceItem("", "w", []string{"05"}),
 	tasm.NewSourceItem("indAddr1", "w", []string{"0200000+indAddr2"}),
 	tasm.NewSourceItem("indAddr2", "w", []string{"posValue"}),
 
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fDL, jDL, rA4, zero, zero, zero, "posValue"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fDL, jDL, rA0, zero, zero, "1", "indAddr1"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fDLN, jDLN, rA2, zero, zero, zero, "posValue"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fDLN, jDLN, rA6, zero, zero, zero, "negValue"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fDLM, jDLM, rA10, zero, zero, zero, "posValue"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fDLM, jDLM, rA12, zero, zero, zero, "negValue"}),
-	iarSourceItem("", "0"),
+	iarSourceItem("", 0),
 }
 
 func Test_DL_Basic(t *testing.T) {

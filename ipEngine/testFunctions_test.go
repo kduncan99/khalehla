@@ -12,7 +12,7 @@ import (
 // Unconditional -------------------------------------------------------------------------------------------------------
 
 var tzBasicMode = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxu", []string{fNOPBasic, jNOPBasic, aNOP, zero, zero}),
 	tasm.NewSourceItem("", "fjaxu", []string{fNOPBasic, jNOPBasic, aNOP, zero, zero}),
 	tasm.NewSourceItem("", "fjaxu", []string{fNOPBasic, jNOPBasic, aNOP, zero, zero}),
@@ -23,9 +23,9 @@ var tzBasicMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "fjaxu", []string{fNOPBasic, jNOPBasic, aNOP, zero, zero}),
 	tasm.NewSourceItem("", "fjaxu", []string{fNOPBasic, jNOPBasic, aNOP, zero, zero}),
 	tasm.NewSourceItem("label", "fjaxu", []string{fNOPBasic, jNOPBasic, aNOP, zero, zero}),
-	iarSourceItem("", "1"),
-	iarSourceItem("", "2"),
-	iarSourceItem("target", "0"),
+	iarSourceItem("", 1),
+	iarSourceItem("", 2),
+	iarSourceItem("target", 0),
 }
 
 func Test_TZ_Basic(t *testing.T) {

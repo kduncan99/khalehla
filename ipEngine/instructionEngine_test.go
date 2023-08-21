@@ -10,14 +10,14 @@ import (
 )
 
 var partialWordLoadsBasicThirdWord = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"077"}),
+	segSourceItem(077),
 	tasm.NewSourceItem("data1", "w", []string{"0556677001122"}),
 	tasm.NewSourceItem("data2", "hw", []string{"0506070", "0507777"}),
 	tasm.NewSourceItem("data3", "hw", []string{"0223344", "0221100"}),
 	tasm.NewSourceItem("data4", "tw", []string{"01111", "02222", "03333"}),
 	tasm.NewSourceItem("data5", "tw", []string{"05500", "06600", "07700"}),
 
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fLA, jW, rA0, zero, zero, zero, "data1"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fLA, jH1, rA1, zero, zero, zero, "data2"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fLA, jH2, rA2, zero, zero, zero, "data2"}),
@@ -31,7 +31,7 @@ var partialWordLoadsBasicThirdWord = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "fjaxhiu", []string{fLA, jT2, rA10, zero, zero, zero, "data5"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fLA, jT3, rA11, zero, zero, zero, "data4"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fLA, jT3, rA12, zero, zero, zero, "data5"}),
-	iarSourceItem("", "0"),
+	iarSourceItem("", 0),
 }
 
 func Test_PartialWordLoads_BasicThirdWord(t *testing.T) {
@@ -72,11 +72,11 @@ func Test_PartialWordLoads_BasicThirdWord(t *testing.T) {
 }
 
 var PartialWordLoadsBasicQuarterWord = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"077"}),
+	segSourceItem(077),
 	tasm.NewSourceItem("data1", "qw", []string{"0400", "0501", "0677", "0777"}),
 	tasm.NewSourceItem("data2", "sw", []string{"012", "034", "056", "075", "042", "010"}),
 
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fLR, jQ1, rA0, zero, zero, zero, "data1"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fLR, jQ2, rA1, zero, zero, zero, "data1"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fLR, jQ3, rA2, zero, zero, zero, "data1"}),
@@ -87,7 +87,7 @@ var PartialWordLoadsBasicQuarterWord = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "fjaxhiu", []string{fLR, jS4, rA7, zero, zero, zero, "data2"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fLR, jS5, rA8, zero, zero, zero, "data2"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fLR, jS6, rA9, zero, zero, zero, "data2"}),
-	iarSourceItem("", "0"),
+	iarSourceItem("", 0),
 }
 
 func Test_PartialWordLoads_BasicQuarterWord(t *testing.T) {
@@ -125,7 +125,7 @@ func Test_PartialWordLoads_BasicQuarterWord(t *testing.T) {
 }
 
 var partialWordStoresBasicThirdWord = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"13"}),
+	segSourceItem(13),
 	tasm.NewSourceItem("data1", "w", []string{"0444444444444"}),
 	tasm.NewSourceItem("data2", "w", []string{"0333333333333"}),
 	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
@@ -138,7 +138,7 @@ var partialWordStoresBasicThirdWord = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
 	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
 
-	tasm.NewSourceItem("", ".SEG", []string{"12"}),
+	segSourceItem(12),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fLA, jW, rA0, zero, zero, zero, "data1"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fLXI, jU, rX1, zero, "1"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fLXM, jU, rX1, zero, "0"}),
@@ -151,7 +151,7 @@ var partialWordStoresBasicThirdWord = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jT1, rA0, rX1, "1", zero, "data2"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jT2, rA0, rX1, "1", zero, "data2"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jT3, rA0, rX1, "1", zero, "data2"}),
-	iarSourceItem("", "0"),
+	iarSourceItem("", 0),
 }
 
 func Test_PartialWordStores_BasicThirdWord(t *testing.T) {
@@ -188,7 +188,7 @@ func Test_PartialWordStores_BasicThirdWord(t *testing.T) {
 }
 
 var partialWordStoresBasicQuarterWord = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"13"}),
+	segSourceItem(13),
 	tasm.NewSourceItem("data1", "w", []string{"0444444444444"}),
 	tasm.NewSourceItem("data2", "w", []string{"0333333333333"}),
 	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
@@ -201,7 +201,7 @@ var partialWordStoresBasicQuarterWord = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
 	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
 
-	tasm.NewSourceItem("", ".SEG", []string{"12"}),
+	segSourceItem(12),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLA, jW, rA0, zero, zero, zero, "data1"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fLXI, jU, rX1, zero, "1"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fLXM, jU, rX1, zero, "0"}),
@@ -216,7 +216,7 @@ var partialWordStoresBasicQuarterWord = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jS4, rA0, rX1, "1", zero, "data2"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jS5, rA0, rX1, "1", zero, "data2"}),
 	tasm.NewSourceItem("", "fjaxhiu", []string{fSA, jS6, rA0, rX1, "1", zero, "data2"}),
-	iarSourceItem("", "0"),
+	iarSourceItem("", 0),
 }
 
 func Test_PartialWordStores_BasicQuarterWord(t *testing.T) {
@@ -261,14 +261,14 @@ func Test_PartialWordStores_BasicQuarterWord(t *testing.T) {
 //	TODO basic mode addressing topics (incl. indirect)
 
 var partialWordLoadsExtendedThirdWord = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"077"}),
+	segSourceItem(077),
 	tasm.NewSourceItem("data1", "w", []string{"0556677001122"}),
 	tasm.NewSourceItem("data2", "hw", []string{"0506070", "0507777"}),
 	tasm.NewSourceItem("data3", "hw", []string{"0223344", "0221100"}),
 	tasm.NewSourceItem("data4", "tw", []string{"01111", "02222", "03333"}),
 	tasm.NewSourceItem("data5", "tw", []string{"05500", "06600", "07700"}),
 
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLA, jW, rA0, zero, zero, zero, rB0, "data1"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLA, jH1, rA1, zero, zero, zero, rB0, "data2"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLA, jH2, rA2, zero, zero, zero, rB0, "data2"}),
@@ -282,7 +282,7 @@ var partialWordLoadsExtendedThirdWord = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLA, jT2, rA10, zero, zero, zero, rB0, "data5"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLA, jT3, rA11, zero, zero, zero, rB0, "data4"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLA, jT3, rA12, zero, zero, zero, rB0, "data5"}),
-	iarSourceItem("", "0"),
+	iarSourceItem("", 0),
 }
 
 func Test_PartialWordLoads_ExtendedThirdWord(t *testing.T) {
@@ -323,11 +323,11 @@ func Test_PartialWordLoads_ExtendedThirdWord(t *testing.T) {
 }
 
 var PartialWordLoadsExtendedQuarterWord = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"077"}),
+	segSourceItem(077),
 	tasm.NewSourceItem("data1", "qw", []string{"0400", "0501", "0677", "0777"}),
 	tasm.NewSourceItem("data2", "sw", []string{"012", "034", "056", "075", "042", "010"}),
 
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLR, jQ1, rA0, zero, zero, zero, rB0, "data1"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLR, jQ2, rA1, zero, zero, zero, rB0, "data1"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLR, jQ3, rA2, zero, zero, zero, rB0, "data1"}),
@@ -338,7 +338,7 @@ var PartialWordLoadsExtendedQuarterWord = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLR, jS4, rA7, zero, zero, zero, rB0, "data2"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLR, jS5, rA8, zero, zero, zero, rB0, "data2"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLR, jS6, rA9, zero, zero, zero, rB0, "data2"}),
-	iarSourceItem("", "0"),
+	iarSourceItem("", 0),
 }
 
 func Test_PartialWordLoads_ExtendedQuarterWord(t *testing.T) {
@@ -376,7 +376,7 @@ func Test_PartialWordLoads_ExtendedQuarterWord(t *testing.T) {
 }
 
 var partialWordStoresExtendedThirdWord = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"002"}),
+	segSourceItem(2),
 	tasm.NewSourceItem("data1", "w", []string{"0444444444444"}),
 	tasm.NewSourceItem("data2", "w", []string{"0333333333333"}),
 	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
@@ -389,7 +389,7 @@ var partialWordStoresExtendedThirdWord = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
 	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
 
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLA, jW, rA0, zero, zero, zero, rB2, "data1"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fLXI, jU, rX1, zero, "1"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fLXM, jU, rX1, zero, "0"}),
@@ -402,7 +402,7 @@ var partialWordStoresExtendedThirdWord = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "fjaxhibd", []string{fSA, jT1, rA0, rX1, "1", zero, rB2, "data2"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fSA, jT2, rA0, rX1, "1", zero, rB2, "data2"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fSA, jT3, rA0, rX1, "1", zero, rB2, "data2"}),
-	iarSourceItem("", "0"),
+	iarSourceItem("", 0),
 }
 
 func Test_PartialWordStores_ExtendedThirdWord(t *testing.T) {
@@ -439,7 +439,7 @@ func Test_PartialWordStores_ExtendedThirdWord(t *testing.T) {
 }
 
 var partialWordStoresExtendedQuarterWord = []*tasm.SourceItem{
-	tasm.NewSourceItem("", ".SEG", []string{"002"}),
+	segSourceItem(2),
 	tasm.NewSourceItem("data1", "w", []string{"0444444444444"}),
 	tasm.NewSourceItem("data2", "w", []string{"0333333333333"}),
 	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
@@ -452,7 +452,7 @@ var partialWordStoresExtendedQuarterWord = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
 	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
 
-	tasm.NewSourceItem("", ".SEG", []string{"000"}),
+	segSourceItem(0),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fLA, jW, rA0, zero, zero, zero, rB2, "data1"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fLXI, jU, rX1, zero, "1"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fLXM, jU, rX1, zero, "0"}),
@@ -467,7 +467,7 @@ var partialWordStoresExtendedQuarterWord = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "fjaxhibd", []string{fSA, jS4, rA0, rX1, "1", zero, rB2, "data2"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fSA, jS5, rA0, rX1, "1", zero, rB2, "data2"}),
 	tasm.NewSourceItem("", "fjaxhibd", []string{fSA, jS6, rA0, rX1, "1", zero, rB2, "data2"}),
-	iarSourceItem("", "0"),
+	iarSourceItem("", 0),
 }
 
 func Test_PartialWordStores_ExtendedQuarterWord(t *testing.T) {

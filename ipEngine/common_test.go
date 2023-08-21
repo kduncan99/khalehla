@@ -5,6 +5,7 @@
 package ipEngine
 
 import (
+	"fmt"
 	"khalehla/pkg"
 	"khalehla/tasm"
 	"testing"
@@ -17,6 +18,10 @@ const (
 	fDL          = "071"
 	fDLM         = "071"
 	fDLN         = "071"
+	fDLSC        = "073"
+	fDSA         = "073"
+	fDSC         = "073"
+	fDSL         = "073"
 	fEXBasic     = "072"
 	fEXExtended  = "073"
 	fEXR         = "073"
@@ -45,11 +50,16 @@ const (
 	fJZ          = "074"
 	fLA          = "010"
 	fLD          = "073"
+	fLDSC        = "073"
+	fLDSL        = "073"
 	fLMA         = "012"
 	fLMJ         = "074"
 	fLNA         = "011"
 	fLNMA        = "013"
 	fLR          = "023"
+	fLSC         = "073"
+	fLSSC        = "073"
+	fLSSL        = "073"
 	fLX          = "027"
 	fLXI         = "046"
 	fLXM         = "026"
@@ -61,6 +71,9 @@ const (
 	fSAS         = "005"
 	fSD          = "073"
 	fSLJ         = "072"
+	fSSA         = "073"
+	fSSC         = "073"
+	fSSL         = "073"
 	fTEP         = "044"
 	fTLEM        = "047"
 	fTOP         = "045"
@@ -74,6 +87,10 @@ const (
 	jDL          = "013"
 	jDLM         = "015"
 	jDLN         = "014"
+	jDSA         = "005"
+	jDSC         = "001"
+	jDSL         = "003"
+	jDLSC        = "007"
 	jEXBasic     = "010"
 	jEXExtended  = "014"
 	jEXR         = "014"
@@ -103,12 +120,20 @@ const (
 	jJP          = "002"
 	jJPS         = "002"
 	jJZ          = "000"
+	jLDSC        = "011"
+	jLDSL        = "013"
 	jLMJ         = "013"
+	jLSC         = "006"
+	jLSSC        = "010"
+	jLSSL        = "012"
 	jNOPBasic    = "006"
 	jNOPExtended = "014"
 	jRNGB        = "004"
 	jRNGI        = "004"
 	jSLJ         = "001"
+	jSSA         = "004"
+	jSSC         = "000"
+	jSSL         = "002"
 )
 
 const (
@@ -298,8 +323,12 @@ const (
 )
 
 // iarSourceItem creates an instruction to perform an IAR - this is the preferred way to end a unit test
-func iarSourceItem(label string, uField string) *tasm.SourceItem {
-	return tasm.NewSourceItem(label, "fjaxu", []string{fIAR, jIAR, aIAR, zero, uField})
+func iarSourceItem(label string, uField int) *tasm.SourceItem {
+	return tasm.NewSourceItem(label, "fjaxu", []string{fIAR, jIAR, aIAR, zero, fmt.Sprintf("%d", uField)})
+}
+
+func segSourceItem(segIndex int) *tasm.SourceItem {
+	return tasm.NewSourceItem("", ".SEG", []string{fmt.Sprintf("%d", segIndex)})
 }
 
 func checkInterrupt(t *testing.T, engine *InstructionEngine, interruptClass pkg.InterruptClass) {
