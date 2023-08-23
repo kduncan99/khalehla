@@ -10,13 +10,10 @@ import (
 )
 
 var sscCode = []*tasm.SourceItem{
-	// tasm.NewSourceItem("", ".SEG", []string{"077"}),
-	// tasm.NewSourceItem("data", "hw", []string{"0123456", "0654321"}),
-	//
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fLA, jW, rA0, zero, zero, zero, rB2, "data0"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fLA, jW, rA1, zero, zero, zero, rB2, "data0"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fLA, jW, rA2, zero, zero, zero, rB2, "data0"}),
+	laSourceItemHIBDRef("", jW, 0, 0, 0, 0, 2, "data0"),
+	laSourceItemHIBDRef("", jW, 1, 0, 0, 0, 2, "data0"),
+	laSourceItemHIBDRef("", jW, 2, 0, 0, 0, 2, "data0"),
 	tasm.NewSourceItem("", "fjaxu", []string{fSSC, jSSC, rA0, zero, "0"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fSSC, jSSC, rA1, zero, "36"}),
 	tasm.NewSourceItem("", "fjaxu", []string{fSSC, jSSC, rA2, zero, "72"}),

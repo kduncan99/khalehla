@@ -28,11 +28,11 @@ var laBasicMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "w", []string{"07777"}),
 
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxu", []string{fLA, jU, rA0, rX0, "0123"}),
-	tasm.NewSourceItem("", "fjaxhiu", []string{fLA, jW, rA1, rX0, zero, zero, "a1value"}),
-	tasm.NewSourceItem("", "fjaxhiu", []string{fLA, jQ2, rA2, rX0, zero, zero, "a2value"}),
-	tasm.NewSourceItem("", "fjaxu", []string{fLX, jU, rX4, rX0, "05"}),
-	tasm.NewSourceItem("", "fjaxhiu", []string{fLA, jW, rA3, rX4, zero, zero, "data"}),
+	laSourceItemU("", jU, 0, 0, 0123),
+	laSourceItemHIURef("", jW, 1, 0, 0, 0, "a1Value"),
+	laSourceItemHIURef("", jQ2, 2, 0, 0, 0, "a2value"),
+	lxSourceItemU("", jU, 4, 0, 5),
+	laSourceItemHIURef("", jW, 3, 4, 0, 0, "data"),
 	iarSourceItem("", 0),
 }
 
@@ -69,17 +69,17 @@ var laExtendedMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("data", "", []string{}),
 	tasm.NewSourceItem("a1value", "sw", []string{"01", "02", "03", "04", "05", "06"}),
 	tasm.NewSourceItem("a2value", "qw", []string{"0101", "0102", "0103", "0104"}),
-	tasm.NewSourceItem("", "w", []string{zero}),
-	tasm.NewSourceItem("", "w", []string{zero}),
-	tasm.NewSourceItem("", "w", []string{zero}),
-	tasm.NewSourceItem("", "w", []string{"07777"}),
+	sourceItem("", "w", []int{0}),
+	sourceItem("", "w", []int{0}),
+	sourceItem("", "w", []int{0}),
+	sourceItem("", "w", []int{0}),
 
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxu", []string{fLA, jU, rA0, rX0, "0123"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fLA, jW, rA1, rX0, zero, zero, rB0, "a1value"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fLA, jQ2, rA2, rX0, zero, zero, rB0, "a2value"}),
-	tasm.NewSourceItem("", "fjaxu", []string{fLX, jU, rX4, rX0, "05"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fLA, jW, rA3, rX4, zero, zero, rB0, "data"}),
+	laSourceItemU("", jU, 0, 0, 0123),
+	laSourceItemHIBDRef("", jW, 1, 0, 0, 0, 0, "a1Value"),
+	laSourceItemHIBDRef("", jQ2, 2, 0, 0, 0, 0, "a2Value"),
+	lxSourceItemU("", jU, 4, 0, 05),
+	laSourceItemHIBDRef("", jW, 3, 4, 0, 0, 0, "data"),
 	iarSourceItem("", 0),
 }
 
@@ -117,14 +117,14 @@ var lmaExtendedMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("partValue", "w", []string{"0555577664444"}),
 
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxu", []string{fLMA, jU, rA0, zero, "0377777"}),
-	tasm.NewSourceItem("", "fjaxu", []string{fLMA, jU, rA1, zero, "0477777"}),
-	tasm.NewSourceItem("", "fjaxu", []string{fLMA, jXU, rA2, zero, "0377777"}),
-	tasm.NewSourceItem("", "fjaxu", []string{fLMA, jXU, rA3, zero, "0477777"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fLMA, jW, rA4, zero, zero, zero, rB0, "posValue"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fLMA, jW, rA5, zero, zero, zero, rB0, "negValue"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fLMA, jT2, rA6, zero, zero, zero, rB0, "partValue"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fLMA, jS5, rA7, zero, zero, zero, rB0, "partValue"}),
+	lmaSourceItemU("", jU, 0, 0, 0_377777),
+	lmaSourceItemU("", jU, 1, 0, 0_477777),
+	lmaSourceItemU("", jXU, 2, 0, 0_377777),
+	lmaSourceItemU("", jXU, 3, 0, 0_477777),
+	lmaSourceItemHIBDRef("", jW, 4, 0, 0, 0, 0, "posValue"),
+	lmaSourceItemHIBDRef("", jW, 5, 0, 0, 0, 0, "negValue"),
+	lmaSourceItemHIBDRef("", jT2, 6, 0, 0, 0, 0, "partValue"),
+	lmaSourceItemHIBDRef("", jS5, 7, 0, 0, 0, 0, "partValue"),
 	iarSourceItem("", 0),
 }
 
@@ -166,14 +166,14 @@ var lnaExtendedMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("partValue", "w", []string{"0555577664444"}),
 
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxu", []string{fLNA, jU, rA0, zero, "0377777"}),
-	tasm.NewSourceItem("", "fjaxu", []string{fLNA, jU, rA1, zero, "0477777"}),
-	tasm.NewSourceItem("", "fjaxu", []string{fLNA, jXU, rA2, zero, "0377777"}),
-	tasm.NewSourceItem("", "fjaxu", []string{fLNA, jXU, rA3, zero, "0477777"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fLNA, jW, rA4, zero, zero, zero, rB0, "posValue"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fLNA, jW, rA5, zero, zero, zero, rB0, "negValue"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fLNA, jT2, rA6, zero, zero, zero, rB0, "partValue"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fLNA, jS5, rA7, zero, zero, zero, rB0, "partValue"}),
+	lnaSourceItemU("", jU, 0, 0, 0_377777),
+	lnaSourceItemU("", jU, 1, 0, 0_477777),
+	lnaSourceItemU("", jXU, 2, 0, 0_377777),
+	lnaSourceItemU("", jXU, 3, 0, 0_477777),
+	lnaSourceItemHIBDRef("", jW, 4, 0, 0, 0, 0, "posValue"),
+	lnaSourceItemHIBDRef("", jW, 5, 0, 0, 0, 0, "negValue"),
+	lnaSourceItemHIBDRef("", jT2, 6, 0, 0, 0, 0, "partValue"),
+	lnaSourceItemHIBDRef("", jS5, 7, 0, 0, 0, 0, "partValue"),
 	iarSourceItem("", 0),
 }
 
@@ -215,14 +215,14 @@ var lnmaExtendedMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("partValue", "w", []string{"0555577664444"}),
 
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxu", []string{fLNMA, jU, rA0, zero, "0377777"}),
-	tasm.NewSourceItem("", "fjaxu", []string{fLNMA, jU, rA1, zero, "0477777"}),
-	tasm.NewSourceItem("", "fjaxu", []string{fLNMA, jXU, rA2, zero, "0377777"}),
-	tasm.NewSourceItem("", "fjaxu", []string{fLNMA, jXU, rA3, zero, "0477777"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fLNMA, jW, rA4, zero, zero, zero, rB0, "posValue"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fLNMA, jW, rA5, zero, zero, zero, rB0, "negValue"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fLNMA, jT2, rA6, zero, zero, zero, rB0, "partValue"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fLNMA, jS5, rA7, zero, zero, zero, rB0, "partValue"}),
+	lnmaSourceItemU("", jU, 0, 0, 0_377777),
+	lnmaSourceItemU("", jU, 1, 0, 0_477777),
+	lnmaSourceItemU("", jXU, 2, 0, 0_377777),
+	lnmaSourceItemU("", jXU, 3, 0, 0_477777),
+	lnmaSourceItemHIBDRef("", jW, 4, 0, 0, 0, 0, "posValue"),
+	lnmaSourceItemHIBDRef("", jW, 5, 0, 0, 0, 0, "negValue"),
+	lnmaSourceItemHIBDRef("", jT2, 6, 0, 0, 0, 0, "partValue"),
+	lnmaSourceItemHIBDRef("", jS5, 7, 0, 0, 0, 0, "partValue"),
 	iarSourceItem("", 0),
 }
 
@@ -263,8 +263,8 @@ var lrBasicMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("r8value", "sw", []string{"01", "02", "03", "04", "05", "06"}),
 
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxhiu", []string{fLR, jQ3, rR7, rX0, zero, zero, "r7value"}),
-	tasm.NewSourceItem("", "fjaxhiu", []string{fLR, jXH2, rR8, rX0, zero, zero, "r8value"}),
+	lrSourceItemHIURef("", jQ3, 7, 0, 0, 0, "r7value"),
+	lrSourceItemHIURef("", jXH2, 8, 0, 0, 0, "r8value"),
 	iarSourceItem("", 0),
 }
 
@@ -300,8 +300,8 @@ var lrExtendedMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("r4value", "sw", []string{"01", "02", "03", "04", "05", "06"}),
 
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fLR, jT2, rR5, rX0, zero, zero, rB0, "r5value"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fLR, jXH2, rR4, rX0, zero, zero, rB0, "r4value"}),
+	lrSourceItemHIBDRef("", jT2, 5, 0, 0, 0, 0, "r5value"),
+	lrSourceItemHIBDRef("", jXH2, 4, 0, 0, 0, 0, "r4value"),
 	iarSourceItem("", 0),
 }
 
@@ -336,8 +336,8 @@ var lxBasicMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("data", "w", []string{"0112233445566"}),
 
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxu", []string{fLX, jU, rX1, rX0, "0377777"}),
-	tasm.NewSourceItem("", "fjaxhiu", []string{fLX, jW, rX15, rX0, zero, zero, "data"}),
+	lxSourceItemU("", jU, 1, 0, 0_377777),
+	lxSourceItemHIURef("", jW, 15, 0, 0, 0, "data"),
 	iarSourceItem("", 0),
 }
 
@@ -370,7 +370,7 @@ func Test_LX_Basic(t *testing.T) {
 
 var lxExtendedMode = []*tasm.SourceItem{
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxu", []string{fLX, jU, rX1, rX0, "05"}),
+	lxSourceItemU("", jU, 1, 0, 05),
 	iarSourceItem("", 0),
 }
 
@@ -407,12 +407,12 @@ var dlBasicMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("indAddr2", "w", []string{"posValue"}),
 
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxhiu", []string{fDL, jDL, rA4, zero, zero, zero, "posValue"}),
-	tasm.NewSourceItem("", "fjaxhiu", []string{fDL, jDL, rA0, zero, zero, "1", "indAddr1"}),
-	tasm.NewSourceItem("", "fjaxhiu", []string{fDLN, jDLN, rA2, zero, zero, zero, "posValue"}),
-	tasm.NewSourceItem("", "fjaxhiu", []string{fDLN, jDLN, rA6, zero, zero, zero, "negValue"}),
-	tasm.NewSourceItem("", "fjaxhiu", []string{fDLM, jDLM, rA10, zero, zero, zero, "posValue"}),
-	tasm.NewSourceItem("", "fjaxhiu", []string{fDLM, jDLM, rA12, zero, zero, zero, "negValue"}),
+	dlSourceItemHIURef("", 4, 0, 0, 0, "posValue"),
+	dlSourceItemHIURef("", 0, 0, 0, 1, "indAddr1"),
+	dlSourceItemHIURef("", 2, 0, 0, 0, "posValue"),
+	dlSourceItemHIURef("", 6, 0, 0, 0, "negValue"),
+	dlSourceItemHIURef("", 10, 0, 0, 0, "posValue"),
+	dlSourceItemHIURef("", 12, 0, 0, 0, "negValue"),
 	iarSourceItem("", 0),
 }
 
