@@ -72,13 +72,13 @@ var laExtendedMode = []*tasm.SourceItem{
 	sourceItem("", "w", []int{0}),
 	sourceItem("", "w", []int{0}),
 	sourceItem("", "w", []int{0}),
-	sourceItem("", "w", []int{0}),
+	sourceItem("", "w", []int{07777}),
 
 	segSourceItem(0),
 	laSourceItemU("", jU, 0, 0, 0123),
 	laSourceItemHIBDRef("", jW, 1, 0, 0, 0, 0, "a1Value"),
 	laSourceItemHIBDRef("", jQ2, 2, 0, 0, 0, 0, "a2Value"),
-	lxSourceItemU("", jU, 4, 0, 05),
+	lxmSourceItemU("", jU, 4, 0, 05),
 	laSourceItemHIBDRef("", jW, 3, 4, 0, 0, 0, "data"),
 	iarSourceItem("", 0),
 }
@@ -409,10 +409,10 @@ var dlBasicMode = []*tasm.SourceItem{
 	segSourceItem(0),
 	dlSourceItemHIURef("", 4, 0, 0, 0, "posValue"),
 	dlSourceItemHIURef("", 0, 0, 0, 1, "indAddr1"),
-	dlSourceItemHIURef("", 2, 0, 0, 0, "posValue"),
-	dlSourceItemHIURef("", 6, 0, 0, 0, "negValue"),
-	dlSourceItemHIURef("", 10, 0, 0, 0, "posValue"),
-	dlSourceItemHIURef("", 12, 0, 0, 0, "negValue"),
+	dlnSourceItemHIURef("", 2, 0, 0, 0, "posValue"),
+	dlnSourceItemHIURef("", 6, 0, 0, 0, "negValue"),
+	dlmSourceItemHIURef("", 10, 0, 0, 0, "posValue"),
+	dlmSourceItemHIURef("", 12, 0, 0, 0, "negValue"),
 	iarSourceItem("", 0),
 }
 

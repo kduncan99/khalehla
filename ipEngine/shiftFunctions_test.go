@@ -14,9 +14,12 @@ var sscCode = []*tasm.SourceItem{
 	laSourceItemHIBDRef("", jW, 0, 0, 0, 0, 2, "data0"),
 	laSourceItemHIBDRef("", jW, 1, 0, 0, 0, 2, "data0"),
 	laSourceItemHIBDRef("", jW, 2, 0, 0, 0, 2, "data0"),
-	tasm.NewSourceItem("", "fjaxu", []string{fSSC, jSSC, rA0, zero, "0"}),
-	tasm.NewSourceItem("", "fjaxu", []string{fSSC, jSSC, rA1, zero, "36"}),
-	tasm.NewSourceItem("", "fjaxu", []string{fSSC, jSSC, rA2, zero, "72"}),
+	laSourceItemHIBDRef("", jW, 3, 0, 0, 0, 2, "data0"),
+	sscSourceItemU("", 0, 0, 0, 0, 0),
+	sscSourceItemU("", 1, 0, 0, 0, 36),
+	sscSourceItemU("", 2, 0, 0, 0, 72),
+	sscSourceItemU("", 3, 0, 0, 0, 18),
+	//	TODO some non-integral shift counts here...
 	iarSourceItem("end", 0),
 
 	segSourceItem(2),
@@ -47,4 +50,5 @@ func Test_SSC(t *testing.T) {
 	checkRegister(t, engine, A0, 0_112233_445566, "A0")
 	checkRegister(t, engine, A1, 0_112233_445566, "A1")
 	checkRegister(t, engine, A2, 0_112233_445566, "A2")
+	checkRegister(t, engine, A3, 0_445566_112233, "A3")
 }

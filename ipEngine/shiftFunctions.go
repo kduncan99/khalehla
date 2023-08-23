@@ -4,7 +4,9 @@
 
 package ipEngine
 
-import "khalehla/pkg"
+import (
+	"khalehla/pkg"
+)
 
 // SingleShiftCircular (SSC) shifts the value in Aa to the right, by the number of bits indicated in U.
 // bits shifted out of bit 35 are shifted into bit 0.
@@ -15,7 +17,7 @@ func SingleShiftCircular(e *InstructionEngine) (completed bool) {
 		return false
 	}
 
-	op = op % 36
+	op = (op & 0177) % 36
 	ci := e.GetCurrentInstruction()
 	aReg := e.GetExecOrUserARegister(ci.GetA())
 	value := aReg.GetW()
@@ -27,7 +29,7 @@ func SingleShiftCircular(e *InstructionEngine) (completed bool) {
 	}
 
 	if op > 0 {
-		mask := (2 ^ op) - 1
+		mask := uint64(2<<op) - 1
 		remnant := value & mask
 		value >>= op
 		value |= remnant << (36 - op)
@@ -88,7 +90,7 @@ func LeftSingleShiftCircular(e *InstructionEngine) (completed bool) {
 		return false
 	}
 
-	op = op % 36
+	op = (op & 0177) % 36
 	ci := e.GetCurrentInstruction()
 	aReg := e.GetExecOrUserARegister(ci.GetA())
 	value := aReg.GetW()

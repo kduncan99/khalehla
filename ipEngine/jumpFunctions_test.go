@@ -98,7 +98,7 @@ var lmjExtendedMode = []*tasm.SourceItem{
 	nopItemHIBD("", 0, 0, 0, 0, 0),
 	nopItemHIBD("", 0, 0, 0, 0, 0),
 	nopItemHIBD("", 0, 0, 0, 0, 0),
-	nopItemHIBD("", 0, 0, 0, 0, 0),
+	nopItemHIBD("label", 0, 0, 0, 0, 0),
 	iarSourceItem("", 1),
 	iarSourceItem("", 2),
 	iarSourceItem("target", 0),
@@ -323,7 +323,7 @@ func Test_JZ_Extended_PosZero(t *testing.T) {
 
 var jumpZeroExtendedNegZero = []*tasm.SourceItem{
 	segSourceItem(0),
-	laSourceItemHIU("", jXU, 5, 0, 0, 0, 0_777777),
+	laSourceItemU("", jXU, 5, 0, 0_777777),
 	jzSourceItemHIBDRef("", 5, 0, 0, 0, 0, "target"),
 	iarSourceItem("", 1),
 	iarSourceItem("target", 0),
@@ -539,7 +539,7 @@ var jumpPosNegExtended = []*tasm.SourceItem{
 	jnSourceItemHIBDRef("target1", 10, 0, 0, 0, 0, "bad2"),
 
 	nopItemHIBD("", 0, 0, 0, 0, 0),
-	laSourceItemHIU("", jXU, 10, 0, 0, 0, 0_444444),
+	laSourceItemU("", jXU, 10, 0, 0_444444),
 	jpSourceItemHIBDRef("", 10, 0, 0, 0, 0, "bad3"),
 	jnSourceItemHIBDRef("", 10, 0, 0, 0, 0, "end"),
 
@@ -990,63 +990,6 @@ func Test_JFU_Extended_Neg(t *testing.T) {
 
 //	--------------------------------------------------------------------------------------------------------------------
 
-var jumpNoOverflow = []*tasm.SourceItem{
-	segSourceItem(0),
-	jnoSourceItemHIURef("", 0, 0, 0, "target"),
-	iarSourceItem("", 1),
-	iarSourceItem("target", 0),
-}
-
-func Test_JNO_Basic_Pos(t *testing.T) {
-	sourceSet := tasm.NewSourceSet("Test", jumpNoOverflow)
-	a := tasm.NewTinyAssembler()
-	a.Assemble(sourceSet)
-
-	e := tasm.Executable{}
-	e.LinkSimple(a.GetSegments(), false)
-
-	ute := NewUnitTestExecutor()
-	err := ute.Load(&e)
-	if err == nil {
-		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(true)
-		ute.GetEngine().GetDesignatorRegister().SetOverflow(false)
-		err = ute.Run()
-	}
-
-	if err != nil {
-		t.Fatalf("%s\n", err.Error())
-	}
-
-	engine := ute.GetEngine()
-	checkStopped(t, engine)
-	checkProgramAddress(t, engine, 01003)
-}
-
-func Test_JNO_Extended_Neg(t *testing.T) {
-	sourceSet := tasm.NewSourceSet("Test", jumpNoOverflow)
-	a := tasm.NewTinyAssembler()
-	a.Assemble(sourceSet)
-
-	e := tasm.Executable{}
-	e.LinkSimple(a.GetSegments(), true)
-
-	ute := NewUnitTestExecutor()
-	err := ute.Load(&e)
-	if err == nil {
-		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(false)
-		ute.GetEngine().GetDesignatorRegister().SetOverflow(true)
-		err = ute.Run()
-	}
-
-	if err != nil {
-		t.Fatalf("%s\n", err.Error())
-	}
-
-	engine := ute.GetEngine()
-	checkStopped(t, engine)
-	checkProgramAddress(t, engine, 01002)
-}
-
 var jumpNoCarryBasic = []*tasm.SourceItem{
 	segSourceItem(0),
 	jncSourceItemHIURef("", 0, 0, 0, "target"),
@@ -1457,4 +1400,116 @@ func Test_JNFU_Extended_Neg(t *testing.T) {
 	checkProgramAddress(t, engine, 01002)
 }
 
-//	TODO Test_JO_***
+var jumpNoOverflow = []*tasm.SourceItem{
+	segSourceItem(0),
+	jnoSourceItemHIURef("", 0, 0, 0, "target"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
+}
+
+func Test_JNO_Basic_Pos(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", jumpNoOverflow)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkSimple(a.GetSegments(), false)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(true)
+		ute.GetEngine().GetDesignatorRegister().SetOverflow(false)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkStopped(t, engine)
+	checkProgramAddress(t, engine, 01003)
+}
+
+func Test_JNO_Extended_Neg(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", jumpNoOverflow)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkSimple(a.GetSegments(), true)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(false)
+		ute.GetEngine().GetDesignatorRegister().SetOverflow(true)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkStopped(t, engine)
+	checkProgramAddress(t, engine, 01002)
+}
+
+var jumpOverflow = []*tasm.SourceItem{
+	segSourceItem(0),
+	joSourceItemHIURef("", 0, 0, 0, "target"),
+	iarSourceItem("", 1),
+	iarSourceItem("target", 0),
+}
+
+func Test_JO_Basic_Pos(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", jumpOverflow)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkSimple(a.GetSegments(), false)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(true)
+		ute.GetEngine().GetDesignatorRegister().SetOverflow(true)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkStopped(t, engine)
+	checkProgramAddress(t, engine, 01003)
+}
+
+func Test_JO_Extended_Neg(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", jumpOverflow)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkSimple(a.GetSegments(), true)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(false)
+		ute.GetEngine().GetDesignatorRegister().SetOverflow(false)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkStopped(t, engine)
+	checkProgramAddress(t, engine, 01002)
+}

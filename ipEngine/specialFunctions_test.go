@@ -16,16 +16,16 @@ var exBasicMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("data", "hw", []string{"0123456", "0654321"}),
 
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxu", []string{fLXI, jU, rX5, zero, "01"}),
-	tasm.NewSourceItem("", "fjaxu", []string{fLXM, jU, rX5, zero, "04"}),
-	tasm.NewSourceItem("", "fjaxhiu", []string{fEXBasic, jEXBasic, zero, rX5, "01", zero, "target"}),
+	lxiSourceItemU("", jU, 5, 0, 01),
+	lxmSourceItemU("", jU, 5, 0, 04),
+	exSourceItemHIURef("", 5, 1, 0, "target"),
 	iarSourceItem("end", 0),
 
 	tasm.NewSourceItem("target", "w", []string{"0"}),
 	tasm.NewSourceItem("", "w", []string{"0"}),
 	tasm.NewSourceItem("", "w", []string{"0"}),
 	tasm.NewSourceItem("", "w", []string{"0"}),
-	tasm.NewSourceItem("", "fjaxhiu", []string{fLR, jH1, rR3, zero, zero, zero, "data"}),
+	lrSourceItemHIURef("", jH1, 3, 0, 0, 0, "data"),
 }
 
 func Test_EX_Basic(t *testing.T) {
@@ -56,9 +56,9 @@ func Test_EX_Basic(t *testing.T) {
 
 var exBasicModeIndirect = []*tasm.SourceItem{
 	segSourceItem(12),
-	tasm.NewSourceItem("", "fjaxu", []string{fLXI, jU, rX5, zero, "01"}),
-	tasm.NewSourceItem("", "fjaxu", []string{fLXM, jU, rX5, zero, "04"}),
-	tasm.NewSourceItem("", "fjaxhiu", []string{fEXBasic, jEXBasic, zero, zero, zero, "1", "ind1"}),
+	lxiSourceItemU("", jU, 5, 0, 01),
+	lxmSourceItemU("", jU, 5, 0, 04),
+	exSourceItemHIURef("", 0, 0, 1, "ind1"),
 	iarSourceItem("end", 0),
 
 	segSourceItem(15),
@@ -69,7 +69,7 @@ var exBasicModeIndirect = []*tasm.SourceItem{
 	tasm.NewSourceItem("", ".SEG", []string{"14"}),
 	tasm.NewSourceItem("ind1", "fjaxhiu", []string{zero, zero, zero, zero, zero, "1", "ind2"}),
 	tasm.NewSourceItem("ind2", "fjaxhiu", []string{zero, zero, zero, zero, zero, zero, "target"}),
-	tasm.NewSourceItem("target", "fjaxhiu", []string{fLR, jH1, rR3, zero, zero, "1", "data1"}),
+	lrSourceItemHIURef("target", jH1, 3, 0, 0, 1, "data1"),
 }
 
 func Test_EX_BasicModeIndirect(t *testing.T) {
@@ -101,15 +101,16 @@ var exExtendedMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("data", "hw", []string{"0123456", "0654321"}),
 
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxu", []string{fLXI, jU, rX5, zero, "01"}),
-	tasm.NewSourceItem("", "fjaxu", []string{fLXM, jU, rX5, zero, "04"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fEXExtended, jEXExtended, aEXExtended, rX5, "01", zero, zero, "target"}),
+	lxiSourceItemU("", jU, 5, 0, 01),
+	lxmSourceItemU("", jU, 5, 0, 04),
+	exSourceItemHIBDRef("", 5, 1, 0, 0, "target"),
 	iarSourceItem("end", 0),
+
 	tasm.NewSourceItem("target", "w", []string{"0"}),
 	tasm.NewSourceItem("", "w", []string{"0"}),
 	tasm.NewSourceItem("", "w", []string{"0"}),
 	tasm.NewSourceItem("", "w", []string{"0"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fLR, jH1, rR3, zero, zero, zero, zero, "data"}),
+	lrSourceItemHIBDRef("", jH1, 3, 0, 0, 0, 0, "data"),
 }
 
 func Test_EX_Extended(t *testing.T) {
@@ -143,16 +144,16 @@ var exExtendedModeCascade = []*tasm.SourceItem{
 	tasm.NewSourceItem("data", "hw", []string{"0123456", "0654321"}),
 
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fEXExtended, jEXExtended, aEXExtended, zero, zero, zero, rB4, "target1"}),
+	exSourceItemHIBDRef("", 0, 0, 0, 4, "target1"),
 	iarSourceItem("end", 0),
 
 	tasm.NewSourceItem("", ".SEG", []string{"04"}),
-	tasm.NewSourceItem("target1", "fjaxhibd", []string{fEXExtended, jEXExtended, aEXExtended, zero, zero, zero, rB4, "target2"}),
-	tasm.NewSourceItem("target2", "fjaxhibd", []string{fEXExtended, jEXExtended, aEXExtended, zero, zero, zero, rB4, "target3"}),
-	tasm.NewSourceItem("target3", "fjaxhibd", []string{fEXExtended, jEXExtended, aEXExtended, zero, zero, zero, rB5, "target4"}),
+	exSourceItemHIBDRef("target1", 0, 0, 0, 4, "target2"),
+	exSourceItemHIBDRef("target1", 0, 0, 0, 4, "target3"),
+	exSourceItemHIBDRef("target1", 0, 0, 0, 5, "target4"),
 
 	tasm.NewSourceItem("", ".SEG", []string{"05"}),
-	tasm.NewSourceItem("target4", "fjaxhibd", []string{fLR, jH1, rR7, zero, zero, zero, rB2, "data"}),
+	lrSourceItemHIBDRef("target4", jH1, 7, 0, 0, 0, 2, "data"),
 }
 
 func Test_EX_ExtendedCascade(t *testing.T) {
@@ -182,9 +183,9 @@ func Test_EX_ExtendedCascade(t *testing.T) {
 
 var exExtendedModeJump = []*tasm.SourceItem{
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fEXExtended, jEXExtended, aEXExtended, zero, zero, zero, zero, "target"}),
+	exSourceItemHIBDRef("", 0, 0, 0, 0, "target"),
 	iarSourceItem("badend", 1),
-	tasm.NewSourceItem("target", "fjaxu", []string{fJ, jJExtended, aJExtended, zero, "goodend"}),
+	jcSourceItemHIBDRef("target", 0, 0, 0, 0, "goodend"),
 	iarSourceItem("goodend", 0),
 }
 
@@ -213,10 +214,10 @@ func Test_EX_ExtendedJump(t *testing.T) {
 
 var exExtendedModeTest = []*tasm.SourceItem{
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fEXExtended, jEXExtended, aEXExtended, zero, zero, zero, zero, "target"}),
+	exSourceItemHIBDRef("", 0, 0, 0, 0, "target"),
 	iarSourceItem("badend", 1),
 	iarSourceItem("goodend", 0),
-	tasm.NewSourceItem("target", "fjaxu", []string{fTSKP, zero, aTSKP, zero, "target"}),
+	tskpSourceItemHIBDRef("target", jW, 0, 0, 0, 0, "target"),
 }
 
 func Test_EX_ExtendedTest(t *testing.T) {
@@ -244,17 +245,17 @@ func Test_EX_ExtendedTest(t *testing.T) {
 
 var exrExtendedMode = []*tasm.SourceItem{
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxu", []string{fLXM, jU, rX7, zero, "02"}), //	EXR 2 past target
-	tasm.NewSourceItem("", "fjaxu", []string{fLXI, jU, rX8, zero, "01"}),
-	tasm.NewSourceItem("", "fjaxu", []string{fLXM, jU, rX8, zero, "00"}),
-	tasm.NewSourceItem("", "fjaxu", []string{fLR, jU, rR1, zero, "010"}), //	repeat 8 times
-	tasm.NewSourceItem("", "fjaxhibd", []string{fEXR, jEXR, aEXR, rX7, zero, zero, rB2, "target"}),
+	lxmSourceItemU("", jU, 7, 0, 02),
+	lxiSourceItemU("", jU, 8, 0, 01),
+	lxmSourceItemU("", jU, 8, 0, 0),
+	lrSourceItemU("", jU, 1, 0, 010),
+	exrSourceItemHIBDRef("", 7, 0, 0, 2, "target"),
 	iarSourceItem("end", 0),
 
 	segSourceItem(02),
 	tasm.NewSourceItem("target", "w", []string{"0"}),
 	tasm.NewSourceItem("", "w", []string{"0"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fSAS, jH1, aSAS, rX8, "1", zero, rB3, "data"}),
+	sasSourceItemHIBDRef("", jH1, 8, 1, 0, 3, "data"),
 
 	segSourceItem(03),
 	tasm.NewSourceItem("data", "hw", []string{"0", "0777777"}),
@@ -304,9 +305,9 @@ func Test_EXR_Extended(t *testing.T) {
 
 var exrExtendedModeInvalidInstruction = []*tasm.SourceItem{
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fEXR, jEXR, aEXR, rX7, zero, zero, rB0, "target"}),
+	exrSourceItemHIBDRef("", 7, 0, 0, 0, "target"),
 	iarSourceItem("end", 1),
-	tasm.NewSourceItem("target", "fjaxu", []string{fLA, jU, rA3, zero, "0177777"}),
+	laSourceItemU("target", jU, 3, 0, 0_177777),
 }
 
 func Test_EXR_ExtendedInvalidInstruction(t *testing.T) {
@@ -335,14 +336,14 @@ func Test_EXR_ExtendedInvalidInstruction(t *testing.T) {
 
 var exrExtendedModeTZ = []*tasm.SourceItem{
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxu", []string{fLXI, jU, rX8, zero, "01"}),
-	tasm.NewSourceItem("", "fjaxu", []string{fLXM, jU, rX8, zero, "00"}),
-	tasm.NewSourceItem("", "fjaxu", []string{fLR, jU, rR1, zero, "020"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fEXR, jEXR, aEXR, zero, zero, zero, rB0, "target"}),
+	lxiSourceItemU("", jU, 8, 0, 01),
+	lxmSourceItemU("", jU, 8, 0, 0),
+	lrSourceItemU("", jU, 1, 0, 020),
+	exrSourceItemHIBDRef("", 0, 0, 0, 0, "target"),
 	iarSourceItem("badend", 1),
 	iarSourceItem("goodend", 0),
 
-	tasm.NewSourceItem("target", "fjaxhibd", []string{fTZ, jH2, aTZExtended, rX8, "1", zero, rB0, "data"}),
+	tzSourceItemHIBDRef("target", jH2, 8, 1, 0, 0, "data"),
 
 	tasm.NewSourceItem("data", "hw", []string{"01", "04"}),
 	tasm.NewSourceItem("", "hw", []string{"01", "03"}),
@@ -385,9 +386,9 @@ func Test_EXR_ExtendedTZ(t *testing.T) {
 
 var dcbExtendedMode = []*tasm.SourceItem{
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fDCB, jDCB, rA3, zero, zero, zero, zero, "data"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fDCB, jDCB, rA4, zero, zero, zero, zero, "data+1"}),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fDCB, jDCB, rA5, zero, zero, zero, zero, "data+2"}),
+	dcbSourceItemHIBDRef("", 3, 0, 0, 0, 0, "data"),
+	dcbSourceItemHIBDRef("", 4, 0, 0, 0, 0, "data+1"),
+	dcbSourceItemHIBDRef("", 5, 0, 0, 0, 0, "data+2"),
 	iarSourceItem("end", 0),
 	tasm.NewSourceItem("data", "w", []string{"030405030405"}),
 	tasm.NewSourceItem("", "w", []string{"0777777777777"}),
@@ -429,7 +430,7 @@ var rngbExtendedMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "w", []string{"0"}),
 
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fRNGB, jRNGB, aRNGB, zero, zero, zero, rB2, "data"}),
+	rngbSourceItemHIBDRef("", 0, 0, 0, 2, "data"),
 	iarSourceItem("end", 0),
 }
 
@@ -473,7 +474,7 @@ var rngiExtendedMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "w", []string{"0"}),
 
 	segSourceItem(0),
-	tasm.NewSourceItem("", "fjaxhibd", []string{fRNGI, jRNGI, aRNGI, zero, zero, zero, rB2, "data"}),
+	rngiSourceItemHIBDRef("", 0, 0, 0, 2, "data"),
 	iarSourceItem("end", 0),
 }
 
