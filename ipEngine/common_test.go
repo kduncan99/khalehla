@@ -910,6 +910,15 @@ func dsaSourceItemU(label string, a int, x int, h int, i int, u int) *tasm.Sourc
 	return sourceItem(label, "fjaxhiu", []int{fSSA, jSSA, a, x, h, i, u})
 }
 
+// LSSC ----------------------------------------------------------------------------------------------------------------
+
+const fLSSC = 073
+const jLSSC = 010
+
+func lsscSourceItemU(label string, a int, x int, h int, i int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhiu", []int{fLSSC, jLSSC, a, x, h, i, u})
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 // Jump functions
 // ---------------------------------------------------------------------------------------------------------------------

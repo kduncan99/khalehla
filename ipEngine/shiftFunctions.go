@@ -11,16 +11,41 @@ import (
 // SingleShiftCircular (SSC) shifts the value in Aa to the right, by the number of bits indicated in U.
 // bits shifted out of bit 35 are shifted into bit 0.
 func SingleShiftCircular(e *InstructionEngine) (completed bool) {
+	count, i := e.GetImmediateOperand()
+	if i != nil {
+		e.PostInterrupt(i)
+		return false
+	}
+
+	count = (count & 0177) % 36
+	ci := e.GetCurrentInstruction()
+	aReg := e.GetExecOrUserARegister(ci.GetA())
+	aReg.SetW(pkg.RightShiftCircular(aReg.GetW(), count))
+	return true
+}
+
+// DoubleShiftCircular (SSC)
+func DoubleShiftCircular(e *InstructionEngine) (completed bool) {
 	op, i := e.GetImmediateOperand()
 	if i != nil {
 		e.PostInterrupt(i)
 		return false
 	}
 
-	op = (op & 0177) % 36
+	op = (op & 0177) % 72
 	ci := e.GetCurrentInstruction()
-	aReg := e.GetExecOrUserARegister(ci.GetA())
-	value := aReg.GetW()
+	aReg0 := e.GetExecOrUserARegister(ci.GetA())
+	aReg1 := e.GetExecOrUserARegister(ci.GetA() + 1)
+	value0 := aReg0.GetW()
+	value1 := aReg1.GetW()
+
+	if op > 36 {
+		v := value0
+		value0 = value1
+		value1 = v
+		op -= 72
+	}
+
 	if op > 18 {
 		remnant := value & 0_777777
 		value >>= 18
@@ -36,12 +61,6 @@ func SingleShiftCircular(e *InstructionEngine) (completed bool) {
 	}
 
 	aReg.SetW(value)
-	return true
-}
-
-// DoubleShiftCircular (SSC)
-func DoubleShiftCircular(e *InstructionEngine) (completed bool) {
-	//	TODO
 	return true
 }
 
@@ -84,28 +103,16 @@ func DoubleLoadShiftAndCount(e *InstructionEngine) (completed bool) {
 // LeftSingleShiftCircular (LSSC) shifts the value in Aa to the left, by the number of bits indicated in U.
 // bits shifted out of bit 0 are shifted into bit 35.
 func LeftSingleShiftCircular(e *InstructionEngine) (completed bool) {
-	op, i := e.GetImmediateOperand()
+	count, i := e.GetImmediateOperand()
 	if i != nil {
 		e.PostInterrupt(i)
 		return false
 	}
 
-	op = (op & 0177) % 36
+	count = (count & 0177) % 36
 	ci := e.GetCurrentInstruction()
 	aReg := e.GetExecOrUserARegister(ci.GetA())
-	value := aReg.GetW()
-	if op > 18 {
-		value <<= 18
-		value |= value >> 36
-		value &= pkg.NegativeZero
-	}
-
-	if op > 0 {
-		value <<= op
-		value |= value >> 36
-	}
-
-	aReg.SetW(value)
+	aReg.SetW(pkg.LeftShiftCircular(aReg.GetW(), count))
 	return true
 }
 

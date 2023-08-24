@@ -158,8 +158,40 @@ func IsZero(operand uint64) bool {
 	return operand == PositiveZero || operand == NegativeZero
 }
 
-func IsZeroDouble(operand []uint64) bool {
+func IsDoubleZero(operand []uint64) bool {
 	return IsZero(operand[0]) && operand[0] == operand[1]
+}
+
+// LeftShiftCircular shifts the 36-bit word to the left by the given count value,
+// where every bit shifted out of bit 0 is end-around shifted into bit 35.
+func LeftShiftCircular(operand uint64, count uint64) uint64 {
+	result := operand
+	if count > 0 {
+		count %= 36
+		if count > 18 {
+			result <<= 18
+			result |= result >> 36
+			result &= NegativeZero
+			count -= 18
+		}
+
+		if count > 0 {
+			result <<= count
+			result |= result >> 36
+		}
+	}
+
+	return result
+}
+
+// LeftShiftLogical shifts the 36-bit word to the left by the given count value.
+// Bits shifted out of bit 0 are lost, and zeroes are shift into bit 35.
+func LeftShiftLogical(operand uint64, count uint64) uint64 {
+	if count >= 36 {
+		return 0
+	} else {
+		return (operand << count) & NegativeZero
+	}
 }
 
 // Magnitude returns the absolute value of the given operand
@@ -195,4 +227,50 @@ func Or(lhs uint64, rhs uint64) uint64 {
 
 func Xor(lhs uint64, rhs uint64) uint64 {
 	return (lhs ^ rhs) & NegativeZero
+}
+
+// RightShiftAlgebraic shifts the 36-bit word to the left by the given count value,
+// Bits shifted out of bit 35 are lost while bit 0 is propagated to the right.
+func RightShiftAlgebraic(operand uint64, count uint64) uint64 {
+	if count >= 36 {
+		return 0
+	} else if count > 0 {
+		//	TODO
+	} else {
+		return operand
+	}
+}
+
+// RightShiftCircular shifts the 36-bit word to the right by the given count value,
+// where every bit shifted out of bit 35 is end-around shifted into bit 0.
+func RightShiftCircular(operand uint64, count uint64) uint64 {
+	result := operand
+	if count > 0 {
+		count %= 36
+		if count > 18 {
+			result <<= 18
+			result |= result >> 36
+			result &= NegativeZero
+			count -= 18
+		}
+
+		if count > 0 {
+			result <<= count
+			result |= result >> 36
+		}
+	}
+
+	return result
+}
+
+// RightShiftLogical shifts the 36-bit word to the left by the given count value.
+// Bits shifted out of bit 35 are lost, and zeroes are shift into bit 0.
+func RightShiftLogical(operand uint64, count uint64) uint64 {
+	if count >= 36 {
+		return 0
+	} else if count > 0 {
+		return (operand & NegativeZero) >> count
+	} else {
+		return operand
+	}
 }
