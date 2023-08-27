@@ -4,6 +4,17 @@
 
 package pkg
 
+var DoubleNegativeZero = []uint64{NegativeZero, NegativeZero}
+var DoublePositiveZero = []uint64{PositiveZero, PositiveZero}
+
+func uint64Min(v1 uint64, v2 uint64) uint64 {
+	if v1 < v2 {
+		return v1
+	} else {
+		return v2
+	}
+}
+
 // AddSimple takes two numbers which are 36-bit signed values packed into uint64's,
 // and adds them according to ones-complement rules.
 func AddSimple(operand1 uint64, operand2 uint64) uint64 {
@@ -162,23 +173,69 @@ func IsDoubleZero(operand []uint64) bool {
 	return IsZero(operand[0]) && operand[0] == operand[1]
 }
 
+// LeftDoubleShiftCircular shifts the 72-bit word stored in two consecutive uint64's (MSW first)
+// to the left by the given count value, where every bit shifted out of bit 0 is end-around shifted into bit 71.
+func LeftDoubleShiftCircular(operand []uint64, count uint64) []uint64 {
+	result := []uint64{operand[0], operand[1]}
+	count %= 72
+	for count > 0 {
+		if count >= 36 {
+			r := result[0]
+			result[0] = result[1]
+			result[1] = r
+			count -= 36
+		} else {
+			shift := uint64Min(27, count)
+			result[0] <<= shift
+			result[1] <<= shift
+			result[1] |= result[0] >> 36
+			result[0] |= result[1] >> 36
+			result[0] &= NegativeZero
+			result[1] &= NegativeZero
+			count -= shift
+		}
+	}
+
+	return result
+}
+
+// LeftDoubleShiftLogical shifts the 72-bit word stored in two consecutive uint64's (MSW first)
+// to the left by the given count value. Bits shifted out of bit 0 are lost, and zeroes are shift into bit 71.
+func LeftDoubleShiftLogical(operand []uint64, count uint64) []uint64 {
+	result := []uint64{operand[0], operand[1]}
+	count %= 72
+	if count > 0 {
+		if count >= 36 {
+			result[0] = result[1]
+			result[1] = PositiveZero
+			count -= 36
+		}
+
+		for count > 0 {
+			shift := uint64Min(27, count)
+			result[0] <<= shift
+			result[1] <<= shift
+			result[0] |= result[1] >> 36
+			result[1] &= NegativeZero
+			count -= shift
+		}
+		result[0] &= NegativeZero
+	}
+
+	return result
+}
+
 // LeftShiftCircular shifts the 36-bit word to the left by the given count value,
 // where every bit shifted out of bit 0 is end-around shifted into bit 35.
 func LeftShiftCircular(operand uint64, count uint64) uint64 {
 	result := operand
+	count %= 36
 	if count > 0 {
-		count %= 36
-		if count > 18 {
-			result <<= 18
-			result |= result >> 36
-			result &= NegativeZero
-			count -= 18
-		}
-
-		if count > 0 {
-			result <<= count
-			result |= result >> 36
-		}
+		shift := uint64Min(27, count)
+		result <<= shift
+		result |= result >> 36
+		result &= NegativeZero
+		count -= shift
 	}
 
 	return result
@@ -187,11 +244,16 @@ func LeftShiftCircular(operand uint64, count uint64) uint64 {
 // LeftShiftLogical shifts the 36-bit word to the left by the given count value.
 // Bits shifted out of bit 0 are lost, and zeroes are shift into bit 35.
 func LeftShiftLogical(operand uint64, count uint64) uint64 {
-	if count >= 36 {
-		return 0
-	} else {
-		return (operand << count) & NegativeZero
+	result := operand
+	if count > 0 {
+		if count >= 36 {
+			result = PositiveZero
+		} else {
+			result = (operand << count) & NegativeZero
+		}
 	}
+
+	return result
 }
 
 // Magnitude returns the absolute value of the given operand
@@ -229,35 +291,138 @@ func Xor(lhs uint64, rhs uint64) uint64 {
 	return (lhs ^ rhs) & NegativeZero
 }
 
-// RightShiftAlgebraic shifts the 36-bit word to the left by the given count value,
+// RightDoubleShiftAlgebraic shifts the 72-bit word stored in two consecutive uint64's (MSW first)
+// to the right. Bits shifted out of bit 71 are lost while bit 0 is propagated to the right.
+func RightDoubleShiftAlgebraic(operand []uint64, count uint64) []uint64 {
+	var result []uint64
+	if count > 71 {
+		if IsNegative(operand[0]) {
+			result = DoubleNegativeZero
+		} else {
+			result = DoublePositiveZero
+		}
+	} else {
+		if count > 0 {
+			neg := IsNegative(operand[0])
+			if count > 36 {
+				if neg {
+					result[0] = NegativeZero
+				} else {
+					result[0] = PositiveZero
+				}
+				result[1] = operand[0]
+				count -= 36
+			} else {
+				result = []uint64{operand[0], operand[1]}
+			}
+
+			for count > 0 {
+				shift := uint64Min(27, count)
+				mask := uint64(1<<shift) - 1
+				partial := result[0] & mask
+				result[0] >>= shift
+				if neg {
+					bits := mask << (36 - count)
+					result[0] |= bits
+				}
+				result[1] |= partial << 36
+				result[1] >>= shift
+				count -= shift
+			}
+		} else {
+			result = operand
+		}
+	}
+	return result
+}
+
+// RightDoubleShiftCircular shifts the 72-bit word stored in two consecutive uint64's (MSW first)
+// where every bit shifted out of bit 35 is end-around shifted into bit 0.
+func RightDoubleShiftCircular(operand []uint64, count uint64) []uint64 {
+	result := []uint64{operand[0], operand[1]}
+	count %= 72
+	for count > 0 {
+		if count >= 36 {
+			r := result[0]
+			result[0] = result[1]
+			result[1] = r
+			count -= 36
+		} else {
+			shift := uint64Min(27, count)
+			mask := uint64(1<<shift) - 1
+			result[0] |= (result[1] & mask) << 36
+			result[1] |= (result[0] & mask) << 36
+			result[0] >>= shift
+			result[1] >>= shift
+			count -= shift
+		}
+	}
+	return result
+}
+
+// RightDoubleShiftLogical shifts the 72-bit word stored in two consecutive uint64's (MSW first)
+// Bits shifted out of bit 35 are lost, and zeroes are shift into bit 0.
+func RightDoubleShiftLogical(operand []uint64, count uint64) []uint64 {
+	var result []uint64
+	if count >= 72 {
+		result = DoublePositiveZero
+	} else {
+		result = []uint64{operand[0], operand[1]}
+		if count > 36 {
+			result[1] = result[0]
+			result[0] = PositiveZero
+			count -= 36
+		}
+
+		for count > 0 {
+			shift := uint64Min(count, 27)
+			mask := uint64(1<<shift) - 1
+			partial := (result[0] & mask) << (36 - count)
+			result[0] >>= count
+
+			result[1] >>= shift
+			result[1] |= partial
+			count -= shift
+		}
+	}
+	return result
+}
+
+// RightShiftAlgebraic shifts the 72-bit word to the left by the given count value,
 // Bits shifted out of bit 35 are lost while bit 0 is propagated to the right.
 func RightShiftAlgebraic(operand uint64, count uint64) uint64 {
-	if count >= 36 {
-		return 0
-	} else if count > 0 {
-		//	TODO
+	var result uint64
+	if count >= 35 {
+		if IsNegative(operand) {
+			result = NegativeZero
+		} else {
+			result = PositiveZero
+		}
 	} else {
-		return operand
+		if count > 0 {
+			result = operand >> count
+			if IsNegative(operand) {
+				propMask := uint64((1<<count)-1) << (36 - count)
+				return result | propMask
+			}
+		} else {
+			result = operand
+		}
 	}
+	return result
 }
 
 // RightShiftCircular shifts the 36-bit word to the right by the given count value,
 // where every bit shifted out of bit 35 is end-around shifted into bit 0.
 func RightShiftCircular(operand uint64, count uint64) uint64 {
 	result := operand
-	if count > 0 {
-		count %= 36
-		if count > 18 {
-			result <<= 18
-			result |= result >> 36
-			result &= NegativeZero
-			count -= 18
-		}
-
-		if count > 0 {
-			result <<= count
-			result |= result >> 36
-		}
+	count %= 36
+	for count > 0 {
+		shift := uint64Min(27, count)
+		mask := uint64(1<<shift) - 1
+		partial := (result & mask) << 36
+		result = (partial | result) >> count
+		count -= shift
 	}
 
 	return result
@@ -266,11 +431,12 @@ func RightShiftCircular(operand uint64, count uint64) uint64 {
 // RightShiftLogical shifts the 36-bit word to the left by the given count value.
 // Bits shifted out of bit 35 are lost, and zeroes are shift into bit 0.
 func RightShiftLogical(operand uint64, count uint64) uint64 {
+	result := operand
 	if count >= 36 {
-		return 0
-	} else if count > 0 {
-		return (operand & NegativeZero) >> count
+		result = PositiveZero
 	} else {
-		return operand
+		result >>= count
 	}
+
+	return result
 }
