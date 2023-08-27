@@ -51,7 +51,7 @@ func SingleShiftLogical(e *InstructionEngine) (completed bool) {
 		return false
 	}
 
-	count = (count & 0177) % 36
+	count = count & 0177
 	ci := e.GetCurrentInstruction()
 	aReg := e.GetExecOrUserARegister(ci.GetA())
 	aReg.SetW(pkg.RightShiftLogical(aReg.GetW(), count))
