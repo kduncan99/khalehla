@@ -230,7 +230,7 @@ func LeftDoubleShiftLogical(operand []uint64, count uint64) []uint64 {
 func LeftShiftCircular(operand uint64, count uint64) uint64 {
 	result := operand
 	count %= 36
-	if count > 0 {
+	for count > 0 {
 		shift := uint64Min(27, count)
 		result <<= shift
 		result |= result >> 36
@@ -421,7 +421,7 @@ func RightShiftCircular(operand uint64, count uint64) uint64 {
 		shift := uint64Min(27, count)
 		mask := uint64(1<<shift) - 1
 		partial := (result & mask) << 36
-		result = (partial | result) >> count
+		result = (partial | result) >> shift
 		count -= shift
 	}
 

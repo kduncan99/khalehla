@@ -62,6 +62,14 @@ func Test_SSC(t *testing.T) {
 	checkRegister(t, engine, A6, 0_661122_334455, "A6")
 }
 
+// TODO DSC
+// TODO SSL
+// TODO DSL
+// TODO SSA
+// TODO DSA
+// TODO LSC
+// TODO DLSC
+
 var lsscCode = []*tasm.SourceItem{
 	segSourceItem(0),
 	laSourceItemHIBDRef("", jW, 0, 0, 0, 0, 2, "data0"),
@@ -114,3 +122,7 @@ func Test_LSSC(t *testing.T) {
 	checkRegister(t, engine, A5, 0_045115_622673, "A5")
 	checkRegister(t, engine, A6, 0_223344_556611, "A6")
 }
+
+// TODO LDSC
+// TODO LSSL
+// TODO LDSL

@@ -206,7 +206,7 @@ func LeftSingleShiftCircular(e *InstructionEngine) (completed bool) {
 	return true
 }
 
-// LeftDoubleShiftCircular (LSSC)
+// LeftDoubleShiftCircular (LDSC)
 func LeftDoubleShiftCircular(e *InstructionEngine) (completed bool) {
 	count, i := e.GetImmediateOperand()
 	if i != nil {
