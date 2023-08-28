@@ -1729,6 +1729,178 @@ func sljSourceItemU(label string, x int, u int) *tasm.SourceItem {
 // Logical functions
 // ---------------------------------------------------------------------------------------------------------------------
 
+// OR ------------------------------------------------------------------------------------------------------------------
+
+const fOR = 040
+
+func orSourceItemHIBD(label string, j int, a int, x int, h int, i int, b int, d int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhibd", []int{fOR, j, a, x, h, i, b, d})
+}
+
+func orSourceItemHIBDRef(label string, j int, a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fOR),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		fmt.Sprintf("%03o", b),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhibd", ops)
+}
+
+func orSourceItemHIU(label string, j int, a int, x int, h int, i int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhiu", []int{fOR, j, a, x, h, i, u})
+}
+
+func orSourceItemHIURef(label string, j int, a int, x int, h int, i int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fOR),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhiu", ops)
+}
+
+func orSourceItemU(label string, j int, a int, x int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxu", []int{fOR, j, a, x, u})
+}
+
+// XOR -----------------------------------------------------------------------------------------------------------------
+
+const fXOR = 041
+
+func xorSourceItemHIBD(label string, j int, a int, x int, h int, i int, b int, d int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhibd", []int{fXOR, j, a, x, h, i, b, d})
+}
+
+func xorSourceItemHIBDRef(label string, j int, a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fXOR),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		fmt.Sprintf("%03o", b),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhibd", ops)
+}
+
+func xorSourceItemHIU(label string, j int, a int, x int, h int, i int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhiu", []int{fXOR, j, a, x, h, i, u})
+}
+
+func xorSourceItemHIURef(label string, j int, a int, x int, h int, i int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fXOR),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhiu", ops)
+}
+
+func xorSourceItemU(label string, j int, a int, x int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxu", []int{fXOR, j, a, x, u})
+}
+
+// AND -----------------------------------------------------------------------------------------------------------------
+
+const fAND = 042
+
+func andSourceItemHIBD(label string, j int, a int, x int, h int, i int, b int, d int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhibd", []int{fAND, j, a, x, h, i, b, d})
+}
+
+func andSourceItemHIBDRef(label string, j int, a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fAND),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		fmt.Sprintf("%03o", b),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhibd", ops)
+}
+
+func andSourceItemHIU(label string, j int, a int, x int, h int, i int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhiu", []int{fAND, j, a, x, h, i, u})
+}
+
+func andSourceItemHIURef(label string, j int, a int, x int, h int, i int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fAND),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhiu", ops)
+}
+
+func andSourceItemU(label string, j int, a int, x int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxu", []int{fAND, j, a, x, u})
+}
+
+// MLU -----------------------------------------------------------------------------------------------------------------
+
+const fMLU = 043
+
+func mluSourceItemHIBD(label string, j int, a int, x int, h int, i int, b int, d int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhibd", []int{fMLU, j, a, x, h, i, b, d})
+}
+
+func mluSourceItemHIBDRef(label string, j int, a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fMLU),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		fmt.Sprintf("%03o", b),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhibd", ops)
+}
+
+func mluSourceItemHIU(label string, j int, a int, x int, h int, i int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhiu", []int{fMLU, j, a, x, h, i, u})
+}
+
+func mluSourceItemHIURef(label string, j int, a int, x int, h int, i int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fMLU),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhiu", ops)
+}
+
+func mluSourceItemU(label string, j int, a int, x int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxu", []int{fMLU, j, a, x, u})
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 // Storage-to-storage functions
 // ---------------------------------------------------------------------------------------------------------------------
