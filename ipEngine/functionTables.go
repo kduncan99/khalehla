@@ -92,6 +92,7 @@ var basicModeFunction72Table = map[uint]func(engine *InstructionEngine) (complet
 	002: JumpPositiveAndShift,
 	003: JumpNegativeAndShift,
 	010: Execute,
+	011: ExecutiveRequest,
 	016: StoreRegisterSet,
 	017: LoadRegisterSet,
 }
@@ -139,6 +140,7 @@ var basicModeFunction74Table = map[uint]func(engine *InstructionEngine) (complet
 	004: basicModeFunction7404Handler,
 	005: HaltKeysAndJump,
 	006: NoOperation,
+	007: AllowAllInterruptsAndJump,
 	010: JumpNoLowBit,
 	011: JumpLowBit,
 	012: JumpModifierGreaterAndIncrement,
@@ -175,6 +177,7 @@ var basicModeFunction7414Table = map[uint]func(engine *InstructionEngine) (compl
 	001: JumpFloatingUnderflow,
 	002: JumpFloatingOverflow,
 	003: JumpDivideFault,
+	007: PreventAllInterruptsAndJump,
 }
 
 // Basic Mode, F=074 J=15, table is indexed by the a field
@@ -353,6 +356,7 @@ var extendedModeFunction7315Table = map[uint]func(engine *InstructionEngine) (co
 	004: DecelerateUserRegisterSet,
 	014: LoadDesignatorRegister,
 	015: StoreDesignatorRegister,
+	017: SignalCondition,
 }
 
 // Extended Mode, F=073 J=017, table is indexed by the a field
@@ -387,6 +391,8 @@ var extendedModeFunction7414Table = map[uint]func(engine *InstructionEngine) (co
 	003: JumpDivideFault,
 	004: JumpCarry,
 	005: JumpNoCarry,
+	006: AllowAllInterruptsAndJump,
+	007: PreventAllInterruptsAndJump,
 }
 
 // Extended Mode, F=074 J=015, table is indexed by the a field

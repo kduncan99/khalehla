@@ -66,6 +66,11 @@ const (
 )
 
 const (
+	ERSignal   InterruptShortStatus = 00
+	SGNLSignal InterruptShortStatus = 01
+)
+
+const (
 	InvalidInstructionBadFunctionCode  InterruptShortStatus = 00
 	InvalidInstructionX0Linkage        InterruptShortStatus = 00
 	InvalidInstructionLBUUsesB0OrB1    InterruptShortStatus = 00
@@ -366,6 +371,63 @@ func NewRCSGenericStackUnderOverflowInterrupt(
 
 	isw0 := (Word36(baseRegister) << 30) | Word36(relativeAddress)
 	return &RCSGenericStackUnderOverflowInterrupt{
+		shortStatusField:     shortStatusField,
+		interruptStatusWord0: isw0,
+	}
+}
+
+// Class 12 Signal -----------------------------------------------------------------------------------------------------
+
+// ssf values:
+//
+//	0 Generated for ER instructions
+//	1 Generated for SGNL instructions
+//
+// ISW0: Contains U (immediate value) from the ER or SIGNAL instruction
+
+type SignalInterrupt struct {
+	shortStatusField     InterruptShortStatus
+	interruptStatusWord0 Word36
+}
+
+func (i *SignalInterrupt) GetClass() InterruptClass {
+	return SignalInterruptClass
+}
+
+func (i *SignalInterrupt) GetInterruptPoint() InterruptPoint {
+	return InterruptIndirectExecute
+}
+
+func (i *SignalInterrupt) GetShortStatusField() InterruptShortStatus {
+	return i.shortStatusField
+}
+
+func (i *SignalInterrupt) GetStatusWord0() Word36 {
+	return i.interruptStatusWord0
+}
+
+func (i *SignalInterrupt) GetStatusWord1() Word36 {
+	return 0
+}
+
+func (i *SignalInterrupt) GetSynchrony() InterruptSync {
+	return InterruptSynchronous
+}
+
+func (i *SignalInterrupt) IsDeferrable() bool {
+	return false
+}
+
+func (i *SignalInterrupt) IsFault() bool {
+	return true
+}
+
+func NewSignalInterrupt(
+	shortStatusField InterruptShortStatus,
+	code uint64) *SignalInterrupt {
+
+	isw0 := Word36(code)
+	return &SignalInterrupt{
 		shortStatusField:     shortStatusField,
 		interruptStatusWord0: isw0,
 	}

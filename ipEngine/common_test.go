@@ -1930,8 +1930,117 @@ func mluSourceItemU(label string, j int, a int, x int, u int) *tasm.SourceItem {
 // ---------------------------------------------------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------------------------------------------------
-// Interrupt functions
+// Interrupt Control functions
 // ---------------------------------------------------------------------------------------------------------------------
+
+// ER ------------------------------------------------------------------------------------------------------------------
+
+const fER = 072
+const jER = 011
+
+func erSourceItemHIRef(label string, x int, h int, i int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fER),
+		fmt.Sprintf("%03o", jER),
+		"0",
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhiu", ops)
+}
+
+func erSourceItemU(label string, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxu", []int{fER, jER, 0, u})
+}
+
+// SGNL ----------------------------------------------------------------------------------------------------------------
+
+const fSGNL = 073
+const jSGNL = 015
+const aSGNL = 017
+
+func sgnlSourceItemHIRef(label string, x int, h int, i int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fSGNL),
+		fmt.Sprintf("%03o", jSGNL),
+		fmt.Sprintf("%03o", aSGNL),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhiu", ops)
+}
+
+func sgnlSourceItemU(label string, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxu", []int{fSGNL, jSGNL, aSGNL, u})
+}
+
+// PAIJ ----------------------------------------------------------------------------------------------------------------
+
+const fPAIJ = 074
+const jPAIJ = 014
+const aPAIJ = 007
+
+func paijSourceItemHIBDRef(label string, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fPAIJ),
+		fmt.Sprintf("%03o", jPAIJ),
+		fmt.Sprintf("%03o", aPAIJ),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		fmt.Sprintf("%03o", b),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhibd", ops)
+}
+
+func paijSourceItemRef(label string, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fPAIJ),
+		fmt.Sprintf("%03o", jPAIJ),
+		fmt.Sprintf("%03o", aPAIJ),
+		"0",
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxu", ops)
+}
+
+// AAIJ ----------------------------------------------------------------------------------------------------------------
+
+const fAAIJ = 074
+const jAAIJExtended = 014
+const jAAIJBasic = 007
+const aAAIJExtended = 006
+const aAAIJBasic = 000
+
+func aaijSourceItemHIBDRef(label string, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fAAIJ),
+		fmt.Sprintf("%03o", jAAIJExtended),
+		fmt.Sprintf("%03o", aAAIJExtended),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		fmt.Sprintf("%03o", b),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhibd", ops)
+}
+
+func aaijSourceItemRef(label string, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fAAIJ),
+		fmt.Sprintf("%03o", jAAIJBasic),
+		fmt.Sprintf("%03o", aAAIJBasic),
+		"0",
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxu", ops)
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 // System Control functions
