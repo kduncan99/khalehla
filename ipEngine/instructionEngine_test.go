@@ -56,7 +56,7 @@ func Test_PartialWordLoads_BasicThirdWord(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.A0, 0_556677_001122, "A0")
 	checkRegister(t, engine, pkg.A1, 0_506070, "A1")
 	checkRegister(t, engine, pkg.A2, 0_507777, "A2")
@@ -112,7 +112,7 @@ func Test_PartialWordLoads_BasicQuarterWord(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.R0, 0400, "R0")
 	checkRegister(t, engine, pkg.R1, 0501, "R1")
 	checkRegister(t, engine, pkg.R2, 0677, "R2")
@@ -176,7 +176,7 @@ func Test_PartialWordStores_BasicThirdWord(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	dataBankAddr := e.GetBanks()[0601015].GetBankDescriptor().GetBaseAddress()
 	checkMemory(t, engine, dataBankAddr, 1, 0_444444_444444)
 	checkMemory(t, engine, dataBankAddr, 2, 0_444444_333333)
@@ -241,7 +241,7 @@ func Test_PartialWordStores_BasicQuarterWord(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	dataBankAddr := e.GetBanks()[0601015].GetBankDescriptor().GetBaseAddress()
 	checkMemory(t, engine, dataBankAddr, 1, 0_444_333_333_333)
 	checkMemory(t, engine, dataBankAddr, 2, 0_333_444_333_333)
@@ -307,7 +307,7 @@ func Test_PartialWordLoads_ExtendedThirdWord(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.A0, 0_556677_001122, "A0")
 	checkRegister(t, engine, pkg.A1, 0_506070, "A1")
 	checkRegister(t, engine, pkg.A2, 0_507777, "A2")
@@ -363,7 +363,7 @@ func Test_PartialWordLoads_ExtendedQuarterWord(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.R0, 0400, "R0")
 	checkRegister(t, engine, pkg.R1, 0501, "R1")
 	checkRegister(t, engine, pkg.R2, 0677, "R2")
@@ -426,7 +426,7 @@ func Test_PartialWordStores_ExtendedThirdWord(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	dataBankAddr := e.GetBanks()[0601002].GetBankDescriptor().GetBaseAddress()
 	checkMemory(t, engine, dataBankAddr, 1, 0_444444_444444)
 	checkMemory(t, engine, dataBankAddr, 2, 0_444444_333333)
@@ -491,7 +491,7 @@ func Test_PartialWordStores_ExtendedQuarterWord(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	dataBankAddr := e.GetBanks()[0601002].GetBankDescriptor().GetBaseAddress()
 	checkMemory(t, engine, dataBankAddr, 1, 0_444_333_333_333)
 	checkMemory(t, engine, dataBankAddr, 2, 0_333_444_333_333)

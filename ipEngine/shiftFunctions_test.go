@@ -53,7 +53,7 @@ func Test_SSC(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.A0, 0_112233_445566, "A0")
 	checkRegister(t, engine, pkg.A1, 0_112233_445566, "A1")
 	checkRegister(t, engine, pkg.A2, 0_112233_445566, "A2")
@@ -111,7 +111,7 @@ func Test_SSL(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.A0, 0_112233_445566, "A0")
 	checkRegister(t, engine, pkg.A1, 0, "A1")
 	checkRegister(t, engine, pkg.A2, 0, "A2")
@@ -171,7 +171,7 @@ func Test_LSSC(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.A0, 0_112233_445566, "A0")
 	checkRegister(t, engine, pkg.A1, 0_112233_445566, "A1")
 	checkRegister(t, engine, pkg.A2, 0_112233_445566, "A2")

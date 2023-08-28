@@ -733,13 +733,90 @@ func sfzSourceItemHIURef(label string, j int, x int, h int, i int, ref string) *
 // Fixed-point Binary functions
 // ---------------------------------------------------------------------------------------------------------------------
 
+//	TODO AA
+//	TODO ANA
+//	TODO AMA
+//	TODO ANMA
+//	TODO AU
+//	TODO ANU
+//	TODO AX
+//	TODO ANX
+//	TODO MI
+//	TODO MSI
+//	TODO MF
+//	TODO DI
+//	TODO DSF
+//	TODO DF
+//	TODO DA
+//	TODO DAN
+//	TODO AH
+//	TODO ANH
+//	TODO AT
+//	TODO ANT
+//	TODO ADD1
+//	TODO SUB1
+//	TODO INC
+//	TODO INC2
+//	TODO DEC
+//	TODO DEC2
+//	TODO ENZ
+//	TODO BAO
+
 // ---------------------------------------------------------------------------------------------------------------------
 // Floating-point Binary functions
 // ---------------------------------------------------------------------------------------------------------------------
 
+//	TODO FA
+//	TODO FAN
+//	TODO DFA
+//	TODO DFAN
+//	TODO FM
+//	TODO DFM
+//	TODO FD
+//	TODO DFD
+//	TODO LUF
+//	TODO DFU
+//	TODO LCF
+//	TODO DFP
+//	TODO FEL
+//	TODO FCL
+//	TODO MCDU
+//	TODO CDU
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Fixed-point Decimal functions
+// ---------------------------------------------------------------------------------------------------------------------
+
+//	TODO ADE
+//	TODO DADE
+//	TODO SDE
+//	TODO DSDE
+//	TODO DEI
+//	TODO DDEI
+//	TODO IDE
+//	TODO DIDE
+//	TODO BDE
+//	TODO DEB
+//	TODO EDDE
+
 // ---------------------------------------------------------------------------------------------------------------------
 // Search functions
 // ---------------------------------------------------------------------------------------------------------------------
+
+//	TODO SE
+//	TODO SNE
+//	TODO SLE
+//	TODO SG
+//	TODO SW
+//	TODO SNW
+//	TODO MSE
+//	TODO MSNE
+//	TODO MSLE
+//	TODO MSG
+//	TODO MSW
+//	TODO MSNW
+//	TODO MASL
+//	TODO MASG
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Test functions
@@ -2005,29 +2082,88 @@ func mluSourceItemU(label string, j int, a int, x int, u int) *tasm.SourceItem {
 // Storage-to-storage functions
 // ---------------------------------------------------------------------------------------------------------------------
 
+//	TODO BT
+//	TODO BIM
+//	TODO BIC
+//	TODO BIMT
+//	TODO BICL
+//	TODO BIML
+//	TODO BN
+//	TODO BBN
+
 // ---------------------------------------------------------------------------------------------------------------------
 // String functions
 // ---------------------------------------------------------------------------------------------------------------------
+
+//	TODO LS
+//	TODO LSA
+//	TODO SS
+//	TODO TES
+//	TODO TNES
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Address Space Management functions
 // ---------------------------------------------------------------------------------------------------------------------
 
+//	TODO LBU
+//	TODO LBE
+//	TODO LBUD
+//	TODO LBED
+//	TODO SBUD
+//	TODO SBED
+//	TODO SBU
+//	TODO LBN
+//	TODO TRA
+//	TODO TVA
+//	TODO DABT
+//	TODO TRARS
+
 // ---------------------------------------------------------------------------------------------------------------------
 // Procedure Control functions
 // ---------------------------------------------------------------------------------------------------------------------
+
+//	TODO GOTO
+//	TODO CALL
+//	TODO LOCL
+//	TODO RTN
+//	TODO LBJ
+//	TODO LIJ
+//	TODO LDJ
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Queuing functions
 // ---------------------------------------------------------------------------------------------------------------------
 
+//	TODO ENQ
+//	TODO ENQF
+//	TODO DEQ
+//	TODO DEQW
+//	TODO DEPOSITQB
+//	TODO WITHDRAWQB
+
 // ---------------------------------------------------------------------------------------------------------------------
 // Activity Control functions
 // ---------------------------------------------------------------------------------------------------------------------
 
+//	TODO LD
+//	TODO SD
+//	TODO LPD
+//	TODO SPD
+//	TODO LUD
+//	TODO SUD
+//	TODO LAE
+//	TODO UR
+//	TODO ACEL
+//	TODO DCEL
+//	TODO SKQT
+//	TODO KCHG
+
 // ---------------------------------------------------------------------------------------------------------------------
 // Stack functions
 // ---------------------------------------------------------------------------------------------------------------------
+
+//	TODO BUY
+//	TODO SELL
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Interrupt Control functions
@@ -2146,6 +2282,10 @@ func aaijSourceItemRef(label string, ref string) *tasm.SourceItem {
 // System Control functions
 // ---------------------------------------------------------------------------------------------------------------------
 
+//	TODO SPID
+//	TODO IPC
+//	TODO SPC
+
 // IAR -----------------------------------------------------------------------------------------------------------------
 
 const fIAR = 073
@@ -2164,13 +2304,29 @@ func segSourceItem(segIndex int) *tasm.SourceItem {
 // Dayclock functions
 // ---------------------------------------------------------------------------------------------------------------------
 
+//	TODO LRD
+//	TODO SMD
+//	TODO RMD
+//	TODO LMC
+//	TODO SDMN
+//	TODO SDMS
+//	TODO SDMF
+//	TODO RDC
+
 // ---------------------------------------------------------------------------------------------------------------------
 // UPI functions
 // ---------------------------------------------------------------------------------------------------------------------
 
+//	TODO SEND
+//	TODO ACK
+
 // ---------------------------------------------------------------------------------------------------------------------
 // System Instrumentation functions
 // ---------------------------------------------------------------------------------------------------------------------
+
+//	TODO LBRX
+//	TODO CJHE
+//	TODO SJH
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Special functions
@@ -2379,19 +2535,6 @@ func checkRegister(t *testing.T, engine *InstructionEngine, register uint64, exp
 	if result != expected {
 		engine.generalRegisterSet.Dump()
 		t.Fatalf("Register %s is %012o, expected %012o", name, result, expected)
-	}
-}
-
-// TODO following is deprecated, use checkStoppedReason() instead, so we don't have to check the PAR.PC
-func checkStopped(t *testing.T, engine *InstructionEngine) {
-	if engine.HasPendingInterrupt() {
-		engine.Dump()
-		t.Fatalf("Engine has unexpected pending interrupts")
-	}
-
-	if !engine.IsStopped() {
-		engine.Dump()
-		t.Fatalf("Expected engine to be stopped; it is not")
 	}
 }
 

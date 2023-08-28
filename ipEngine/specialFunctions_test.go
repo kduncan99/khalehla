@@ -49,7 +49,7 @@ func Test_EX_Basic(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.X5, 0_000001_000005, "X5")
 	checkRegister(t, engine, pkg.R3, 0_123456, "R3")
 }
@@ -134,7 +134,7 @@ func Test_EX_Extended(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.X5, 0_000001_000005, "X5")
 	checkRegister(t, engine, pkg.R3, 0_123456, "R3")
 }
@@ -177,7 +177,7 @@ func Test_EX_ExtendedCascade(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.R7, 0_123456, "R7")
 }
 
@@ -185,7 +185,7 @@ var exExtendedModeJump = []*tasm.SourceItem{
 	segSourceItem(0),
 	exSourceItemHIBDRef("", 0, 0, 0, 0, "target"),
 	iarSourceItem("badend", 1),
-	jcSourceItemHIBDRef("target", 0, 0, 0, 0, "goodend"),
+	jSourceItemExtended("target", 0, 0, 0, "goodend"),
 	iarSourceItem("goodend", 0),
 }
 
@@ -209,7 +209,7 @@ func Test_EX_ExtendedJump(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 }
 
 var exExtendedModeTest = []*tasm.SourceItem{
@@ -240,7 +240,7 @@ func Test_EX_ExtendedTest(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 }
 
 var exrExtendedMode = []*tasm.SourceItem{
@@ -291,7 +291,7 @@ func Test_EXR_Extended(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.X8, 0_000001_000010, "X8")
 
 	for ox := uint64(0); ox < 8; ox++ {
@@ -378,7 +378,7 @@ func Test_EXR_ExtendedTZ(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.R1, 013, "R1")
 }
 
@@ -416,7 +416,7 @@ func Test_DCB_ExtendedTest(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.A3, 46, "A3")
 	checkRegister(t, engine, pkg.A4, 36, "A4")
 	checkRegister(t, engine, pkg.A5, 1, "A5")
@@ -455,7 +455,7 @@ func Test_RNGB_ExtendedTest(t *testing.T) {
 
 	//	not much we can do except verify bits 0, 9, 18, and 27 of storage are all zero.
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	storage := engine.baseRegisters[2].GetStorage()
 	for mx := 0; mx < 4; mx++ {
 		value := storage[mx]
@@ -499,7 +499,7 @@ func Test_RNGI_ExtendedTest(t *testing.T) {
 
 	//	not much we can do except verify bits 0-3 of storage are all zero.
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	storage := engine.baseRegisters[2].GetStorage()
 	for mx := 0; mx < 4; mx++ {
 		value := storage[mx]

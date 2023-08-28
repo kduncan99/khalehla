@@ -156,7 +156,7 @@ func Test_J_Basic(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01003)
 }
 
@@ -187,7 +187,7 @@ func Test_JK_Basic(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01002)
 }
 
@@ -218,7 +218,7 @@ func Test_J_Extended(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01003)
 }
 
@@ -249,7 +249,7 @@ func Test_HKJ_Basic(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01003)
 }
 
@@ -280,12 +280,7 @@ func Test_HLTJ_Extended(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
-	reason, detail := engine.GetStopReason()
-	if reason != HaltJumpExecutedStop {
-		t.Fatalf("Processor stopped for wrong reason: %d detail: %012o", reason, detail)
-	}
-
+	checkStoppedReason(t, engine, HaltJumpExecutedStop, 0)
 	checkProgramAddress(t, engine, 01002)
 }
 
@@ -607,7 +602,7 @@ func Test_JC_Basic_Pos(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01003)
 }
 
@@ -632,7 +627,7 @@ func Test_JC_Basic_Neg(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 1)
 	checkProgramAddress(t, engine, 01002)
 }
 
@@ -664,7 +659,7 @@ func Test_JC_Extended_Pos(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01003)
 }
 
@@ -696,7 +691,7 @@ func Test_JDF_Basic_Pos(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01003)
 }
 
@@ -721,7 +716,7 @@ func Test_JDF_Basic_Neg(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 1)
 	checkProgramAddress(t, engine, 01002)
 }
 
@@ -746,7 +741,7 @@ func Test_JDF_Extended_Pos(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01003)
 }
 
@@ -771,7 +766,7 @@ func Test_JDF_Extended_Neg(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 1)
 	checkProgramAddress(t, engine, 01002)
 }
 
@@ -803,7 +798,7 @@ func Test_JFO_Basic_Pos(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01003)
 }
 
@@ -828,7 +823,7 @@ func Test_JFO_Basic_Neg(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 1)
 	checkProgramAddress(t, engine, 01002)
 }
 
@@ -853,7 +848,7 @@ func Test_JFO_Extended_Pos(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01003)
 }
 
@@ -878,7 +873,7 @@ func Test_JFO_Extended_Neg(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 1)
 	checkProgramAddress(t, engine, 01002)
 }
 
@@ -910,7 +905,7 @@ func Test_JFU_Basic_Pos(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01003)
 }
 
@@ -935,7 +930,7 @@ func Test_JFU_Basic_Neg(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 1)
 	checkProgramAddress(t, engine, 01002)
 }
 
@@ -960,7 +955,7 @@ func Test_JFU_Extended_Pos(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01003)
 }
 
@@ -985,7 +980,7 @@ func Test_JFU_Extended_Neg(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 1)
 	checkProgramAddress(t, engine, 01002)
 }
 
@@ -1019,7 +1014,7 @@ func Test_JNC_Basic_Pos(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01003)
 }
 
@@ -1044,7 +1039,7 @@ func Test_JNC_Basic_Neg(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 1)
 	checkProgramAddress(t, engine, 01002)
 }
 
@@ -1076,7 +1071,7 @@ func Test_JNC_Extended_Pos(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01003)
 }
 
@@ -1108,7 +1103,7 @@ func Test_JNDF_Basic_Pos(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01003)
 }
 
@@ -1133,7 +1128,7 @@ func Test_JNDF_Basic_Neg(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 1)
 	checkProgramAddress(t, engine, 01002)
 }
 
@@ -1158,7 +1153,7 @@ func Test_JNDF_Extended_Pos(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01003)
 }
 
@@ -1183,7 +1178,7 @@ func Test_JNDF_Extended_Neg(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 1)
 	checkProgramAddress(t, engine, 01002)
 }
 
@@ -1215,7 +1210,7 @@ func Test_JNFO_Basic_Pos(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01003)
 }
 
@@ -1240,7 +1235,7 @@ func Test_JNFO_Basic_Neg(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 1)
 	checkProgramAddress(t, engine, 01002)
 }
 
@@ -1265,7 +1260,7 @@ func Test_JNFO_Extended_Pos(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01003)
 }
 
@@ -1290,7 +1285,7 @@ func Test_JNFO_Extended_Neg(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 1)
 	checkProgramAddress(t, engine, 01002)
 }
 
@@ -1322,7 +1317,7 @@ func Test_JNFU_Basic_Pos(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01003)
 }
 
@@ -1347,7 +1342,7 @@ func Test_JNFU_Basic_Neg(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 1)
 	checkProgramAddress(t, engine, 01002)
 }
 
@@ -1372,7 +1367,7 @@ func Test_JNFU_Extended_Pos(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01003)
 }
 
@@ -1397,7 +1392,7 @@ func Test_JNFU_Extended_Neg(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 1)
 	checkProgramAddress(t, engine, 01002)
 }
 
@@ -1429,7 +1424,7 @@ func Test_JNO_Basic_Pos(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01003)
 }
 
@@ -1454,7 +1449,7 @@ func Test_JNO_Extended_Neg(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 1)
 	checkProgramAddress(t, engine, 01002)
 }
 
@@ -1486,7 +1481,7 @@ func Test_JO_Basic_Pos(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkProgramAddress(t, engine, 01003)
 }
 
@@ -1511,6 +1506,6 @@ func Test_JO_Extended_Neg(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 1)
 	checkProgramAddress(t, engine, 01002)
 }

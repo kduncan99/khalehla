@@ -58,7 +58,7 @@ func Test_LA_Basic(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.A0, 0123, "A0")
 	checkRegister(t, engine, pkg.A1, 0_010203_040506, "A1")
 	checkRegister(t, engine, pkg.A2, 0102, "A2")
@@ -104,7 +104,7 @@ func Test_LA_Extended(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.A0, 0123, "A0")
 	checkRegister(t, engine, pkg.A1, 0_010203_040506, "A1")
 	checkRegister(t, engine, pkg.A2, 0102, "A2")
@@ -149,7 +149,7 @@ func Test_LMA_Extended(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.A0, 0_377777, "A0")
 	checkRegister(t, engine, pkg.A1, 0_477777, "A1")
 	checkRegister(t, engine, pkg.A2, 0_377777, "A2")
@@ -198,7 +198,7 @@ func Test_LNA_Extended(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.A0, 0_777777_400000, "A0")
 	checkRegister(t, engine, pkg.A1, 0_777777_300000, "A1")
 	checkRegister(t, engine, pkg.A2, 0_777777_400000, "A2")
@@ -247,7 +247,7 @@ func Test_LNMA_Extended(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.A0, 0_777777_400000, "A0")
 	checkRegister(t, engine, pkg.A1, 0_777777_300000, "A1")
 	checkRegister(t, engine, pkg.A2, 0_777777_400000, "A2")
@@ -290,7 +290,7 @@ func Test_LR_Basic(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.R7, 063, "R7")
 	checkRegister(t, engine, pkg.R8, 040506, "R8")
 }
@@ -327,7 +327,7 @@ func Test_LR_Extended(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.R4, 0_000000_040506, "R4")
 	checkRegister(t, engine, pkg.R5, 0_777777_774000, "R5")
 }
@@ -363,7 +363,7 @@ func Test_LX_Basic(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.X1, 0_377777, "X1")
 	checkRegister(t, engine, pkg.X15, 0_112233_445566, "X15")
 	checkRegister(t, engine, pkg.A3, 0_112233_445566, "A3")
@@ -395,7 +395,7 @@ func Test_LX_Extended(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkStopped(t, engine)
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.X1, 05, "X1")
 }
 
