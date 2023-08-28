@@ -741,6 +741,32 @@ func sfzSourceItemHIURef(label string, j int, x int, h int, i int, ref string) *
 // Test functions
 // ---------------------------------------------------------------------------------------------------------------------
 
+// TEP -----------------------------------------------------------------------------------------------------------------
+
+const fTEP = 044
+
+func tepSourceItemHIBD(label string, j int, a int, x int, h int, i int, b int, d int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhibd", []int{fTEP, j, a, x, h, i, b, d})
+}
+
+func tepSourceItemHIBDRef(label string, j int, a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fTEP),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		fmt.Sprintf("%03o", b),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhibd", ops)
+}
+
+func tepSourceItemU(label string, j int, a int, x int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxu", []int{fTEP, j, a, x, u})
+}
+
 // TLZ -----------------------------------------------------------------------------------------------------------------
 
 const fTLZ = 050
@@ -762,6 +788,32 @@ func tlzSourceItemHIBDRef(label string, j int, x int, h int, i int, b int, ref s
 		ref,
 	}
 	return tasm.NewSourceItem(label, "fjaxhibd", ops)
+}
+
+// TOP -----------------------------------------------------------------------------------------------------------------
+
+const fTOP = 045
+
+func topSourceItemHIBD(label string, j int, a int, x int, h int, i int, b int, d int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhibd", []int{fTOP, j, a, x, h, i, b, d})
+}
+
+func topSourceItemHIBDRef(label string, j int, a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fTOP),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		fmt.Sprintf("%03o", b),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhibd", ops)
+}
+
+func topSourceItemU(label string, j int, a int, x int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxu", []int{fTOP, j, a, x, u})
 }
 
 // TP ------------------------------------------------------------------------------------------------------------------
@@ -1034,25 +1086,24 @@ const jJExtended = 015
 const aJBasic = 000
 const aJExtended = 004
 
-func jSourceItemHIBDRef(label string, x int, h int, i int, b int, ref string) *tasm.SourceItem {
-	ops := []string{
-		fmt.Sprintf("%03o", fJ),
-		fmt.Sprintf("%03o", jJExtended),
-		fmt.Sprintf("%03o", aJExtended),
-		fmt.Sprintf("%03o", x),
-		fmt.Sprintf("%03o", h),
-		fmt.Sprintf("%03o", i),
-		fmt.Sprintf("%03o", b),
-		ref,
-	}
-	return tasm.NewSourceItem(label, "fjaxhibd", ops)
-}
-
-func jSourceItemHIURef(label string, x int, h int, i int, ref string) *tasm.SourceItem {
+func jSourceItemBasic(label string, x int, h int, i int, ref string) *tasm.SourceItem {
 	ops := []string{
 		fmt.Sprintf("%03o", fJ),
 		fmt.Sprintf("%03o", jJBasic),
 		fmt.Sprintf("%03o", aJBasic),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhiu", ops)
+}
+
+func jSourceItemExtended(label string, x int, h int, i int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fJ),
+		fmt.Sprintf("%03o", jJExtended),
+		fmt.Sprintf("%03o", aJExtended),
 		fmt.Sprintf("%03o", x),
 		fmt.Sprintf("%03o", h),
 		fmt.Sprintf("%03o", i),

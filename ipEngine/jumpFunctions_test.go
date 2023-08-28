@@ -130,7 +130,7 @@ func Test_LMJ_Extended(t *testing.T) {
 
 var jumpBasicMode = []*tasm.SourceItem{
 	segSourceItem(0),
-	jSourceItemHIURef("", 0, 0, 0, "target"),
+	jSourceItemBasic("", 0, 0, 0, "target"),
 	iarSourceItem("", 1),
 	iarSourceItem("target", 0),
 }
@@ -192,7 +192,7 @@ func Test_JK_Basic(t *testing.T) {
 
 var jumpExtendedMode = []*tasm.SourceItem{
 	segSourceItem(0),
-	jSourceItemHIBDRef("", 0, 0, 0, 0, "target"),
+	jSourceItemExtended("", 0, 0, 0, "target"),
 	iarSourceItem("", 1),
 	iarSourceItem("target", 0),
 }
@@ -408,7 +408,7 @@ var doubleJumpZeroExtendedMode = []*tasm.SourceItem{
 
 	dlSourceItemHIBDRef("target3", 6, 0, 0, 0, 3, "notZero2"),
 	djzSourceItemHIBDRef("", 6, 0, 0, 0, 0, "bad4"),
-	jSourceItemHIBDRef("", 0, 0, 0, 0, "end"),
+	jSourceItemExtended("", 0, 0, 0, "end"),
 
 	iarSourceItem("bad3", 3),
 	iarSourceItem("bad4", 4),

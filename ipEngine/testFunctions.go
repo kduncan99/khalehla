@@ -6,13 +6,17 @@ package ipEngine
 
 import "khalehla/pkg"
 
-// TestEvenParity (TEP) skips the next instruction if U has an even number of bits set to one.
+// TestEvenParity (TEP) skips the next instruction if the logical AND of (U) with Aa
+// has an even number of bits set to one.
 func TestEvenParity(e *InstructionEngine) (completed bool) {
 	result := e.GetOperand(false, true, true, true, false)
 	if result.interrupt != nil {
 		e.PostInterrupt(result.interrupt)
 	} else if result.complete {
-		if pkg.CountBits(result.operand)&01 == 0 {
+		ci := e.GetCurrentInstruction()
+		aReg := e.GetExecOrUserARegister(ci.GetA())
+		value := result.operand & aReg.GetW()
+		if pkg.CountBits(value)&01 == 0 {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
 			e.SetProgramCounter(pc+2, true)
 		}
@@ -21,13 +25,17 @@ func TestEvenParity(e *InstructionEngine) (completed bool) {
 	return result.complete
 }
 
-// TestOddParity (TOP) skips the next instruction if U has an odd number of bits set to one.
+// TestOddParity (TOP) skips the next instruction if the logical AND of (U) with Aa
+// has an odd number of bits set to one.
 func TestOddParity(e *InstructionEngine) (completed bool) {
 	result := e.GetOperand(false, true, true, true, false)
 	if result.interrupt != nil {
 		e.PostInterrupt(result.interrupt)
 	} else if result.complete {
-		if pkg.CountBits(result.operand)&01 != 0 {
+		ci := e.GetCurrentInstruction()
+		aReg := e.GetExecOrUserARegister(ci.GetA())
+		value := result.operand & aReg.GetW()
+		if pkg.CountBits(value)&01 == 01 {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
 			e.SetProgramCounter(pc+2, true)
 		}
