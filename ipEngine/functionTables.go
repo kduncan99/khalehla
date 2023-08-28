@@ -193,6 +193,7 @@ var basicModeFunction7415Table = map[uint]func(engine *InstructionEngine) (compl
 var basicModeFunction75Table = map[uint]func(engine *InstructionEngine) (completed bool){
 	013: LoadIndexRegisterLongModifier,
 	015: ConditionalReplace,
+	017: ReadMasterDayclock,
 }
 
 //	--------------------------------------------------------------------------------------------------------------------
@@ -273,6 +274,7 @@ var extendedModeFunction37Table = map[uint]func(engine *InstructionEngine) (comp
 
 // Extended Mode, F=037, J=004 table is indexed by the a field
 var extendedModeFunction3704Table = map[uint]func(engine *InstructionEngine) (completed bool){
+	000: SelectMasterDayclock,
 	005: RandomNumberGeneratorInteger,
 	006: RandomNumberGeneratorByte,
 }
@@ -409,6 +411,7 @@ var extendedModeFunction7415Table = map[uint]func(engine *InstructionEngine) (co
 var extendedModeFunction75Table = map[uint]func(engine *InstructionEngine) (completed bool){
 	013: LoadIndexRegisterLongModifier,
 	015: ConditionalReplace,
+	017: ReadMasterDayclock,
 }
 
 //	Handlers -----------------------------------------------------------------------------------------------------------
