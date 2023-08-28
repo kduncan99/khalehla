@@ -289,7 +289,7 @@ func LoadRegisterSet(e *InstructionEngine) (completed bool) {
 				return false
 			}
 
-			grs.registers[grsIndex].SetW(result.source[ux].GetW())
+			grs.GetRegister(grsIndex).SetW(result.source[ux].GetW())
 			ux++
 			grsIndex++
 			if grsIndex == 0200 {
@@ -307,7 +307,7 @@ func LoadRegisterSet(e *InstructionEngine) (completed bool) {
 				return false
 			}
 
-			grs.registers[grsIndex].SetW(result.source[ux].GetW())
+			grs.GetRegister(grsIndex).SetW(result.source[ux].GetW())
 			ux++
 			grsIndex++
 			if grsIndex == 0200 {

@@ -2,11 +2,10 @@
 // Copyright © 2023 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package ipEngine
+package pkg
 
 import (
 	"fmt"
-	"khalehla/pkg"
 )
 
 //	TODO important - review 2.3.6 reserved for hardware, and 2.3.7 accessing GeneralRegisterSet locations
@@ -127,12 +126,12 @@ const (
 )
 
 type GeneralRegisterSet struct {
-	registers []pkg.Word36
+	registers []Word36
 }
 
 func NewGeneralRegisterSet() *GeneralRegisterSet {
 	GeneralRegisterSet := GeneralRegisterSet{}
-	GeneralRegisterSet.registers = make([]pkg.Word36, 128)
+	GeneralRegisterSet.registers = make([]Word36, 128)
 	return &GeneralRegisterSet
 }
 
@@ -153,11 +152,11 @@ func (grs *GeneralRegisterSet) Dump() {
 	}
 }
 
-func (grs *GeneralRegisterSet) GetRegister(regName uint64) *pkg.Word36 {
+func (grs *GeneralRegisterSet) GetRegister(regName uint64) *Word36 {
 	return &grs.registers[regName]
 }
 
-func (grs *GeneralRegisterSet) GetConsecutiveRegisters(firstRegName uint64, count uint64) []pkg.Word36 {
+func (grs *GeneralRegisterSet) GetConsecutiveRegisters(firstRegName uint64, count uint64) []Word36 {
 	return grs.registers[firstRegName : firstRegName+count]
 }
 

@@ -5,6 +5,7 @@
 package ipEngine
 
 import (
+	"khalehla/pkg"
 	"khalehla/tasm"
 	"testing"
 )
@@ -49,7 +50,7 @@ func Test_LMJ_Basic(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
-	checkRegister(t, engine, X11, 0_000000_01006, "X11")
+	checkRegister(t, engine, pkg.X11, 0_000000_01006, "X11")
 }
 
 var sljBasicMode = []*tasm.SourceItem{
@@ -125,7 +126,7 @@ func Test_LMJ_Extended(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
-	checkRegister(t, engine, X11, 0_000000_01006, "X11")
+	checkRegister(t, engine, pkg.X11, 0_000000_01006, "X11")
 }
 
 var jumpBasicMode = []*tasm.SourceItem{

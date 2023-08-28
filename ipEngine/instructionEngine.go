@@ -56,9 +56,9 @@ const (
 
 const L0BDTBaseRegister = 16
 const ICSBaseRegister = 26
-const ICSIndexRegister = EX1
+const ICSIndexRegister = pkg.EX1
 const RCSBaseRegister = 25
-const RCSIndexRegister = EX0
+const RCSIndexRegister = pkg.EX0
 
 type GetOperandResult struct {
 	complete                bool
@@ -122,7 +122,7 @@ type InstructionEngine struct {
 	cachedInstructionHandler  func(*InstructionEngine) (completed bool)
 	baseRegisters             [32]*pkg.BaseRegister
 	baseRegisterIndexForFetch uint // only applies to basic mode - if 0, it is not valid; otherwise it is 12:15
-	generalRegisterSet        *GeneralRegisterSet
+	generalRegisterSet        *pkg.GeneralRegisterSet
 
 	//	If not nil, describes an interrupt which needs to be handled as soon as possible
 	pendingInterrupts *InterruptStack
@@ -199,7 +199,7 @@ func (e *InstructionEngine) Clear() {
 	}
 	e.baseRegisterIndexForFetch = 0
 
-	e.generalRegisterSet = NewGeneralRegisterSet()
+	e.generalRegisterSet = pkg.NewGeneralRegisterSet()
 	e.activityStatePacket = pkg.NewActivityStatePacket()
 	e.breakpointAddress = nil
 	e.breakpointHalt = false
@@ -523,9 +523,9 @@ func (e *InstructionEngine) GetExecOrUserARegister(registerIndex uint64) *pkg.Wo
 // depending upon the setting of designator register ExecRegisterSetSelected
 func (e *InstructionEngine) GetExecOrUserARegisterIndex(registerIndex uint64) uint64 {
 	if e.activityStatePacket.GetDesignatorRegister().IsExecRegisterSetSelected() {
-		return EA0 + registerIndex
+		return pkg.EA0 + registerIndex
 	} else {
-		return A0 + registerIndex
+		return pkg.A0 + registerIndex
 	}
 }
 
@@ -539,9 +539,9 @@ func (e *InstructionEngine) GetExecOrUserRRegister(registerIndex uint64) *pkg.Wo
 // depending upon the setting of designator register ExecRegisterSetSelected
 func (e *InstructionEngine) GetExecOrUserRRegisterIndex(registerIndex uint64) uint64 {
 	if e.activityStatePacket.GetDesignatorRegister().IsExecRegisterSetSelected() {
-		return ER0 + registerIndex
+		return pkg.ER0 + registerIndex
 	} else {
-		return R0 + registerIndex
+		return pkg.R0 + registerIndex
 	}
 }
 
@@ -556,14 +556,14 @@ func (e *InstructionEngine) GetExecOrUserXRegister(registerIndex uint64) *IndexR
 // depending upon the setting of designator register ExecRegisterSetSelected
 func (e *InstructionEngine) GetExecOrUserXRegisterIndex(registerIndex uint64) uint64 {
 	if e.activityStatePacket.GetDesignatorRegister().IsExecRegisterSetSelected() {
-		return EX0 + registerIndex
+		return pkg.EX0 + registerIndex
 	} else {
-		return X0 + registerIndex
+		return pkg.X0 + registerIndex
 	}
 }
 
 // GetGeneralRegisterSet retrieves a pointer to the GRS
-func (e *InstructionEngine) GetGeneralRegisterSet() *GeneralRegisterSet {
+func (e *InstructionEngine) GetGeneralRegisterSet() *pkg.GeneralRegisterSet {
 	return e.generalRegisterSet
 }
 
@@ -730,7 +730,7 @@ func (e *InstructionEngine) GetOperand(
 	//  (Any GRS-to-GRS transfer is full-word, regardless of j-field)
 	if (grsCheck) && (basicMode || (result.sourceBaseRegisterIndex == 0)) && (result.sourceRelativeAddress < 0200) {
 		//  First, do accessibility checks
-		if e.isGRSAccessAllowed(result.sourceRelativeAddress, privilege, false) {
+		if !e.isGRSAccessAllowed(result.sourceRelativeAddress, privilege, false) {
 			result.interrupt = pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationReadAccess, true)
 			return
 		}

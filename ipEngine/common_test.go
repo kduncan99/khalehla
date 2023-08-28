@@ -106,6 +106,10 @@ func sourceItem(label string, operator string, operands []int) *tasm.SourceItem 
 	return tasm.NewSourceItem(label, operator, strOps)
 }
 
+func labelSourceItem(label string) *tasm.SourceItem {
+	return tasm.NewSourceItem(label, "", []string{})
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 // Load functions
 // ---------------------------------------------------------------------------------------------------------------------
@@ -767,6 +771,28 @@ func tepSourceItemU(label string, j int, a int, x int, u int) *tasm.SourceItem {
 	return sourceItem(label, "fjaxu", []int{fTEP, j, a, x, u})
 }
 
+// TLEM ----------------------------------------------------------------------------------------------------------------
+
+const fTLEM = 047
+
+func tlemSourceItemHIBD(label string, j int, a int, x int, h int, i int, b int, d int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhibd", []int{fTLEM, j, a, x, h, i, b, d})
+}
+
+func tlemSourceItemHIBDRef(label string, j int, a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fTLEM),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		fmt.Sprintf("%03o", b),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhibd", ops)
+}
+
 // TLZ -----------------------------------------------------------------------------------------------------------------
 
 const fTLZ = 050
@@ -781,6 +807,29 @@ func tlzSourceItemHIBDRef(label string, j int, x int, h int, i int, b int, ref s
 		fmt.Sprintf("%03o", fTLZ),
 		fmt.Sprintf("%03o", j),
 		fmt.Sprintf("%03o", aTLZ),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		fmt.Sprintf("%03o", b),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhibd", ops)
+}
+
+// TNOP ----------------------------------------------------------------------------------------------------------------
+
+const fTNOP = 050
+const aTNOP = 000
+
+func tnopSourceItemHIBD(label string, j int, x int, h int, i int, b int, d int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhibd", []int{fTNOP, j, aTNOP, x, h, i, b, d})
+}
+
+func tnopSourceItemHIBDRef(label string, j int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fTNOP),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", aTNOP),
 		fmt.Sprintf("%03o", x),
 		fmt.Sprintf("%03o", h),
 		fmt.Sprintf("%03o", i),

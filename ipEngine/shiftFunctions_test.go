@@ -5,6 +5,7 @@
 package ipEngine
 
 import (
+	"khalehla/pkg"
 	"khalehla/tasm"
 	"testing"
 )
@@ -53,13 +54,13 @@ func Test_SSC(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, A0, 0_112233_445566, "A0")
-	checkRegister(t, engine, A1, 0_112233_445566, "A1")
-	checkRegister(t, engine, A2, 0_112233_445566, "A2")
-	checkRegister(t, engine, A3, 0_445566_112233, "A3")
-	checkRegister(t, engine, A4, 0_045115_622673, "A4")
-	checkRegister(t, engine, A5, 0_224467_113354, "A5")
-	checkRegister(t, engine, A6, 0_661122_334455, "A6")
+	checkRegister(t, engine, pkg.A0, 0_112233_445566, "A0")
+	checkRegister(t, engine, pkg.A1, 0_112233_445566, "A1")
+	checkRegister(t, engine, pkg.A2, 0_112233_445566, "A2")
+	checkRegister(t, engine, pkg.A3, 0_445566_112233, "A3")
+	checkRegister(t, engine, pkg.A4, 0_045115_622673, "A4")
+	checkRegister(t, engine, pkg.A5, 0_224467_113354, "A5")
+	checkRegister(t, engine, pkg.A6, 0_661122_334455, "A6")
 }
 
 // TODO DSC
@@ -111,14 +112,14 @@ func Test_SSL(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, A0, 0_112233_445566, "A0")
-	checkRegister(t, engine, A1, 0, "A1")
-	checkRegister(t, engine, A2, 0, "A2")
-	checkRegister(t, engine, A3, 0_112233, "A3")
-	checkRegister(t, engine, A4, 0_266666_666666, "A4")
-	checkRegister(t, engine, A5, 01, "A5")
-	checkRegister(t, engine, A6, 0_044444_733333, "A6")
-	checkRegister(t, engine, A7, 0, "A7")
+	checkRegister(t, engine, pkg.A0, 0_112233_445566, "A0")
+	checkRegister(t, engine, pkg.A1, 0, "A1")
+	checkRegister(t, engine, pkg.A2, 0, "A2")
+	checkRegister(t, engine, pkg.A3, 0_112233, "A3")
+	checkRegister(t, engine, pkg.A4, 0_266666_666666, "A4")
+	checkRegister(t, engine, pkg.A5, 01, "A5")
+	checkRegister(t, engine, pkg.A6, 0_044444_733333, "A6")
+	checkRegister(t, engine, pkg.A7, 0, "A7")
 }
 
 // TODO DSL
@@ -171,13 +172,13 @@ func Test_LSSC(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, A0, 0_112233_445566, "A0")
-	checkRegister(t, engine, A1, 0_112233_445566, "A1")
-	checkRegister(t, engine, A2, 0_112233_445566, "A2")
-	checkRegister(t, engine, A3, 0_445566_112233, "A3")
-	checkRegister(t, engine, A4, 0_224467_113354, "A4")
-	checkRegister(t, engine, A5, 0_045115_622673, "A5")
-	checkRegister(t, engine, A6, 0_223344_556611, "A6")
+	checkRegister(t, engine, pkg.A0, 0_112233_445566, "A0")
+	checkRegister(t, engine, pkg.A1, 0_112233_445566, "A1")
+	checkRegister(t, engine, pkg.A2, 0_112233_445566, "A2")
+	checkRegister(t, engine, pkg.A3, 0_445566_112233, "A3")
+	checkRegister(t, engine, pkg.A4, 0_224467_113354, "A4")
+	checkRegister(t, engine, pkg.A5, 0_045115_622673, "A5")
+	checkRegister(t, engine, pkg.A6, 0_223344_556611, "A6")
 }
 
 // TODO LDSC

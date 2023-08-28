@@ -5,6 +5,7 @@
 package ipEngine
 
 import (
+	"khalehla/pkg"
 	"khalehla/tasm"
 	"testing"
 )
@@ -56,19 +57,19 @@ func Test_PartialWordLoads_BasicThirdWord(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, A0, 0_556677_001122, "A0")
-	checkRegister(t, engine, A1, 0_506070, "A1")
-	checkRegister(t, engine, A2, 0_507777, "A2")
-	checkRegister(t, engine, A3, 0_777777_506070, "A3")
-	checkRegister(t, engine, A4, 0_223344, "A4")
-	checkRegister(t, engine, A5, 0_777777_507777, "A5")
-	checkRegister(t, engine, A6, 0_221100, "A6")
-	checkRegister(t, engine, A7, 01111, "A7")
-	checkRegister(t, engine, A8, 0_777777_775500, "A8")
-	checkRegister(t, engine, A9, 02222, "A9")
-	checkRegister(t, engine, A10, 0_777777_776600, "A10")
-	checkRegister(t, engine, A11, 03333, "A11")
-	checkRegister(t, engine, A12, 0_777777_777700, "A12")
+	checkRegister(t, engine, pkg.A0, 0_556677_001122, "A0")
+	checkRegister(t, engine, pkg.A1, 0_506070, "A1")
+	checkRegister(t, engine, pkg.A2, 0_507777, "A2")
+	checkRegister(t, engine, pkg.A3, 0_777777_506070, "A3")
+	checkRegister(t, engine, pkg.A4, 0_223344, "A4")
+	checkRegister(t, engine, pkg.A5, 0_777777_507777, "A5")
+	checkRegister(t, engine, pkg.A6, 0_221100, "A6")
+	checkRegister(t, engine, pkg.A7, 01111, "A7")
+	checkRegister(t, engine, pkg.A8, 0_777777_775500, "A8")
+	checkRegister(t, engine, pkg.A9, 02222, "A9")
+	checkRegister(t, engine, pkg.A10, 0_777777_776600, "A10")
+	checkRegister(t, engine, pkg.A11, 03333, "A11")
+	checkRegister(t, engine, pkg.A12, 0_777777_777700, "A12")
 }
 
 var PartialWordLoadsBasicQuarterWord = []*tasm.SourceItem{
@@ -112,16 +113,16 @@ func Test_PartialWordLoads_BasicQuarterWord(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, R0, 0400, "R0")
-	checkRegister(t, engine, R1, 0501, "R1")
-	checkRegister(t, engine, R2, 0677, "R2")
-	checkRegister(t, engine, R3, 0777, "R3")
-	checkRegister(t, engine, R4, 012, "R4")
-	checkRegister(t, engine, R5, 034, "R5")
-	checkRegister(t, engine, R6, 056, "R6")
-	checkRegister(t, engine, R7, 075, "R7")
-	checkRegister(t, engine, R8, 042, "R8")
-	checkRegister(t, engine, R9, 010, "R9")
+	checkRegister(t, engine, pkg.R0, 0400, "R0")
+	checkRegister(t, engine, pkg.R1, 0501, "R1")
+	checkRegister(t, engine, pkg.R2, 0677, "R2")
+	checkRegister(t, engine, pkg.R3, 0777, "R3")
+	checkRegister(t, engine, pkg.R4, 012, "R4")
+	checkRegister(t, engine, pkg.R5, 034, "R5")
+	checkRegister(t, engine, pkg.R6, 056, "R6")
+	checkRegister(t, engine, pkg.R7, 075, "R7")
+	checkRegister(t, engine, pkg.R8, 042, "R8")
+	checkRegister(t, engine, pkg.R9, 010, "R9")
 }
 
 var partialWordStoresBasicThirdWord = []*tasm.SourceItem{
@@ -307,19 +308,19 @@ func Test_PartialWordLoads_ExtendedThirdWord(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, A0, 0_556677_001122, "A0")
-	checkRegister(t, engine, A1, 0_506070, "A1")
-	checkRegister(t, engine, A2, 0_507777, "A2")
-	checkRegister(t, engine, A3, 0_777777_506070, "A3")
-	checkRegister(t, engine, A4, 0_223344, "A4")
-	checkRegister(t, engine, A5, 0_777777_507777, "A5")
-	checkRegister(t, engine, A6, 0_221100, "A6")
-	checkRegister(t, engine, A7, 01111, "A7")
-	checkRegister(t, engine, A8, 0_777777_775500, "A8")
-	checkRegister(t, engine, A9, 02222, "A9")
-	checkRegister(t, engine, A10, 0_777777_776600, "A10")
-	checkRegister(t, engine, A11, 03333, "A11")
-	checkRegister(t, engine, A12, 0_777777_777700, "A12")
+	checkRegister(t, engine, pkg.A0, 0_556677_001122, "A0")
+	checkRegister(t, engine, pkg.A1, 0_506070, "A1")
+	checkRegister(t, engine, pkg.A2, 0_507777, "A2")
+	checkRegister(t, engine, pkg.A3, 0_777777_506070, "A3")
+	checkRegister(t, engine, pkg.A4, 0_223344, "A4")
+	checkRegister(t, engine, pkg.A5, 0_777777_507777, "A5")
+	checkRegister(t, engine, pkg.A6, 0_221100, "A6")
+	checkRegister(t, engine, pkg.A7, 01111, "A7")
+	checkRegister(t, engine, pkg.A8, 0_777777_775500, "A8")
+	checkRegister(t, engine, pkg.A9, 02222, "A9")
+	checkRegister(t, engine, pkg.A10, 0_777777_776600, "A10")
+	checkRegister(t, engine, pkg.A11, 03333, "A11")
+	checkRegister(t, engine, pkg.A12, 0_777777_777700, "A12")
 }
 
 var PartialWordLoadsExtendedQuarterWord = []*tasm.SourceItem{
@@ -363,16 +364,16 @@ func Test_PartialWordLoads_ExtendedQuarterWord(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, R0, 0400, "R0")
-	checkRegister(t, engine, R1, 0501, "R1")
-	checkRegister(t, engine, R2, 0677, "R2")
-	checkRegister(t, engine, R3, 0777, "R3")
-	checkRegister(t, engine, R4, 012, "R4")
-	checkRegister(t, engine, R5, 034, "R5")
-	checkRegister(t, engine, R6, 056, "R6")
-	checkRegister(t, engine, R7, 075, "R7")
-	checkRegister(t, engine, R8, 042, "R8")
-	checkRegister(t, engine, R9, 010, "R9")
+	checkRegister(t, engine, pkg.R0, 0400, "R0")
+	checkRegister(t, engine, pkg.R1, 0501, "R1")
+	checkRegister(t, engine, pkg.R2, 0677, "R2")
+	checkRegister(t, engine, pkg.R3, 0777, "R3")
+	checkRegister(t, engine, pkg.R4, 012, "R4")
+	checkRegister(t, engine, pkg.R5, 034, "R5")
+	checkRegister(t, engine, pkg.R6, 056, "R6")
+	checkRegister(t, engine, pkg.R7, 075, "R7")
+	checkRegister(t, engine, pkg.R8, 042, "R8")
+	checkRegister(t, engine, pkg.R9, 010, "R9")
 }
 
 var partialWordStoresExtendedThirdWord = []*tasm.SourceItem{
@@ -504,7 +505,42 @@ func Test_PartialWordStores_ExtendedQuarterWord(t *testing.T) {
 	checkMemory(t, engine, dataBankAddr, 10, 0_333333_333344)
 }
 
-//	TODO extended mode GRS addressing
+// TODO extended mode GRS addressing
+var grsAddressingExtended = []*tasm.SourceItem{
+	segSourceItem(2),
+
+	segSourceItem(0),
+	lxSourceItemU("", jU, 5, 0, 42),
+	laSourceItemU("", jW, 5, 0, grsX5),
+	laSourceItemU("", jS3, 6, 0, grsX5), // partial word ignored, we're register-to-register
+	iarSourceItem("", 0),
+}
+
+func Test_GRSAddressing_Extended(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", grsAddressingExtended)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkBankPerSegment(a.GetSegments(), true)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(false)
+		ute.GetEngine().GetDesignatorRegister().SetQuarterWordModeEnabled(true)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
+	checkRegister(t, engine, pkg.A5, 42, "A5")
+	checkRegister(t, engine, pkg.A6, 42, "A5")
+}
 
 //	TODO extended mode index register handling
 

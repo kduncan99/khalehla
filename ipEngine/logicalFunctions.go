@@ -61,7 +61,7 @@ func MaskedLoadUpper(e *InstructionEngine) (completed bool) {
 	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		aValue := e.GetExecOrUserXRegister(ci.GetA()).GetW()
-		mask := e.GetExecOrUserRRegister(R2).GetW()
+		mask := e.GetExecOrUserRRegister(pkg.R2).GetW()
 		notMask := pkg.Not(mask)
 		value := (result.operand & mask) | (aValue & notMask)
 		e.GetExecOrUserARegister(ci.GetA() + 1).SetW(value)

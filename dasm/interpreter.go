@@ -84,10 +84,25 @@ func (ft *FunctionTable) IsInstruction() bool {
 }
 
 type Instruction struct {
-	mnemonic  string
-	aField    AFieldUsage
-	jField    JFieldUsage
-	uIs18Bits bool
+	mnemonic     string
+	aField       AFieldUsage
+	jField       JFieldUsage
+	uIs18Bits    bool
+	noGRSAddress bool
+}
+
+func (i *Instruction) getGRSString(addr uint64) string {
+	if !i.noGRSAddress {
+		if addr < pkg.X12 {
+			return fmt.Sprintf("X%d", addr)
+		} else if addr >= pkg.A0 && addr <= pkg.A15 {
+			return fmt.Sprintf("A%d", addr-pkg.A0)
+		} else if addr >= pkg.R0 && addr <= pkg.R15 {
+			return fmt.Sprintf("R%d", addr-pkg.R0)
+		}
+	}
+
+	return ""
 }
 
 func (i *Instruction) Interpret(iw *pkg.InstructionWord, basicMode bool, quarterWordMode bool) (string, bool) {
@@ -109,20 +124,37 @@ func (i *Instruction) Interpret(iw *pkg.InstructionWord, basicMode bool, quarter
 		str += fmt.Sprintf("%s%d", aFieldPrefix[i.aField], iw.GetA()) + ","
 	}
 
-	if basicMode {
-		if immediate {
-			str += fmt.Sprintf("0%o", iw.GetHIU())
-		} else {
-			if iw.GetI() > 0 {
-				str += "*"
+	displayB := false
+	if immediate {
+		str += fmt.Sprintf("0%o", iw.GetHIU())
+	} else {
+		if basicMode {
+			u := iw.GetU()
+			subStr := i.getGRSString(u)
+			if subStr == "" {
+				if iw.GetI() > 0 {
+					str += "*"
+				}
+				subStr = fmt.Sprintf("0%o", u)
 			}
-			str += fmt.Sprintf("0%o", iw.GetU())
-		}
-	} else /* !basicMode */ {
-		if immediate {
-			str += fmt.Sprintf("0%o", iw.GetHIU())
-		} else {
-			str += fmt.Sprintf("0%o", iw.GetD())
+			str += subStr
+		} else /* !basicMode */ {
+			if !i.uIs18Bits {
+				displayB = true
+			}
+
+			var subStr string
+			d := iw.GetD()
+			if iw.GetB() == 0 {
+				subStr = i.getGRSString(d)
+			}
+			if subStr == "" {
+				str += fmt.Sprintf("0%o", d)
+			} else {
+				displayB = false
+			}
+
+			str += subStr
 		}
 	}
 
@@ -134,7 +166,7 @@ func (i *Instruction) Interpret(iw *pkg.InstructionWord, basicMode bool, quarter
 		str += fmt.Sprintf("X%d", iw.GetX())
 	}
 
-	if !basicMode && !i.uIs18Bits && !immediate {
+	if displayB {
 		str += fmt.Sprintf(",B%d", iw.GetB())
 	}
 
@@ -263,7 +295,7 @@ var function07315InterpreterBasic = FunctionTable{
 var function07317InterpreterBasic = FunctionTable{
 	indexBy: IndexByA,
 	table: map[int]Interpreter{
-		006: &Instruction{mnemonic: "IAR", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		006: &Instruction{mnemonic: "IAR", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true, noGRSAddress: true},
 	},
 }
 
@@ -429,6 +461,7 @@ var function037004InterpreterExtended = FunctionTable{
 var function050InterpreterExtended = FunctionTable{
 	indexBy: IndexByA,
 	table: map[int]Interpreter{
+		000: &Instruction{mnemonic: "TNOP", aField: AUnused, jField: JFunctionDiscriminator},
 		006: &Instruction{mnemonic: "TZ", aField: AFunctionDiscriminator, jField: JPartialWordDesignator},
 		017: &Instruction{mnemonic: "TSKP", aField: AUnused, jField: JFunctionDiscriminator},
 	},
@@ -496,7 +529,7 @@ var function07315InterpreterExtended = FunctionTable{
 var function07317InterpreterExtended = FunctionTable{
 	indexBy: IndexByA,
 	table: map[int]Interpreter{
-		006: &Instruction{mnemonic: "IAR", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator},
+		006: &Instruction{mnemonic: "IAR", aField: AFunctionDiscriminator, jField: JFunctionDiscriminator, uIs18Bits: true, noGRSAddress: true},
 	},
 }
 

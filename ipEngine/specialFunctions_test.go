@@ -50,8 +50,8 @@ func Test_EX_Basic(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, X5, 0_000001_000005, "X5")
-	checkRegister(t, engine, R3, 0_123456, "R3")
+	checkRegister(t, engine, pkg.X5, 0_000001_000005, "X5")
+	checkRegister(t, engine, pkg.R3, 0_123456, "R3")
 }
 
 var exBasicModeIndirect = []*tasm.SourceItem{
@@ -93,7 +93,7 @@ func Test_EX_BasicModeIndirect(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkRegister(t, engine, R3, 0_123456, "R3")
+	checkRegister(t, engine, pkg.R3, 0_123456, "R3")
 }
 
 var exExtendedMode = []*tasm.SourceItem{
@@ -135,8 +135,8 @@ func Test_EX_Extended(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, X5, 0_000001_000005, "X5")
-	checkRegister(t, engine, R3, 0_123456, "R3")
+	checkRegister(t, engine, pkg.X5, 0_000001_000005, "X5")
+	checkRegister(t, engine, pkg.R3, 0_123456, "R3")
 }
 
 var exExtendedModeCascade = []*tasm.SourceItem{
@@ -178,7 +178,7 @@ func Test_EX_ExtendedCascade(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, R7, 0_123456, "R7")
+	checkRegister(t, engine, pkg.R7, 0_123456, "R7")
 }
 
 var exExtendedModeJump = []*tasm.SourceItem{
@@ -292,7 +292,7 @@ func Test_EXR_Extended(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, X8, 0_000001_000010, "X8")
+	checkRegister(t, engine, pkg.X8, 0_000001_000010, "X8")
 
 	for ox := uint64(0); ox < 8; ox++ {
 		checkMemory(t, engine, engine.baseRegisters[3].GetBankDescriptor().GetBaseAddress(), ox, 0_040040_777777)
@@ -379,7 +379,7 @@ func Test_EXR_ExtendedTZ(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, R1, 013, "R1")
+	checkRegister(t, engine, pkg.R1, 013, "R1")
 }
 
 // TODO NOP
@@ -417,9 +417,9 @@ func Test_DCB_ExtendedTest(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, A3, 46, "A3")
-	checkRegister(t, engine, A4, 36, "A4")
-	checkRegister(t, engine, A5, 1, "A5")
+	checkRegister(t, engine, pkg.A3, 46, "A3")
+	checkRegister(t, engine, pkg.A4, 36, "A4")
+	checkRegister(t, engine, pkg.A5, 1, "A5")
 }
 
 var rngbExtendedMode = []*tasm.SourceItem{

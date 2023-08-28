@@ -128,9 +128,9 @@ func AccelerateUserRegisterSet(e *InstructionEngine) (completed bool) {
 		e.PostInterrupt(result.interrupt)
 	} else if result.complete {
 		ux := 0
-		grsRegs := e.GetGeneralRegisterSet().registers
+		grsRegs := e.GetGeneralRegisterSet().GetConsecutiveRegisters(pkg.X0, 128)
 
-		ix := e.GetExecOrUserXRegisterIndex(X0)
+		ix := e.GetExecOrUserXRegisterIndex(pkg.X0)
 		iLimit := ix + 32
 		for ix < iLimit {
 			grsRegs[ix].SetW(result.source[ux].GetW())
@@ -138,7 +138,7 @@ func AccelerateUserRegisterSet(e *InstructionEngine) (completed bool) {
 			ux++
 		}
 
-		ix = e.GetExecOrUserRRegisterIndex(R0)
+		ix = e.GetExecOrUserRRegisterIndex(pkg.R0)
 		iLimit = ix + 16
 		for ix < iLimit {
 			grsRegs[ix].SetW(result.source[ux].GetW())
@@ -164,9 +164,9 @@ func DecelerateUserRegisterSet(e *InstructionEngine) (completed bool) {
 		e.PostInterrupt(result.interrupt)
 	} else if result.complete {
 		ux := 0
-		grsRegs := e.GetGeneralRegisterSet().registers
+		grsRegs := e.GetGeneralRegisterSet().GetConsecutiveRegisters(pkg.X0, 128)
 
-		ix := e.GetExecOrUserXRegisterIndex(X0)
+		ix := e.GetExecOrUserXRegisterIndex(pkg.X0)
 		iLimit := ix + 32
 		for ix < iLimit {
 			result.source[ux].SetW(grsRegs[ix].GetW())
@@ -174,7 +174,7 @@ func DecelerateUserRegisterSet(e *InstructionEngine) (completed bool) {
 			ux++
 		}
 
-		ix = e.GetExecOrUserRRegisterIndex(R0)
+		ix = e.GetExecOrUserRRegisterIndex(pkg.R0)
 		iLimit = ix + 16
 		for ix < iLimit {
 			result.source[ux].SetW(grsRegs[ix].GetW())

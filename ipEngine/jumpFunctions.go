@@ -378,7 +378,7 @@ func JumpGreaterAndDecrement(e *InstructionEngine) (completed bool) {
 
 	ci := e.GetCurrentInstruction()
 	ix := ((ci.GetJ() << 4) | ci.GetA()) & 0177
-	value := e.generalRegisterSet.registers[ix]
+	value := e.generalRegisterSet.GetRegister(ix)
 	if value.IsPositive() && !value.IsZero() {
 		operand, flip31, comp, i := e.GetJumpOperand()
 
@@ -397,7 +397,7 @@ func JumpGreaterAndDecrement(e *InstructionEngine) (completed bool) {
 
 	if completed {
 		newValue := pkg.AddSimple(value.GetW(), pkg.NegativeOne)
-		e.generalRegisterSet.registers[ix].SetW(newValue)
+		e.generalRegisterSet.GetRegister(ix).SetW(newValue)
 	}
 
 	return

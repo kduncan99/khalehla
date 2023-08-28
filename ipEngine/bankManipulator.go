@@ -720,7 +720,7 @@ func step14(bm *BankManipulator) bool {
 
 		key := asp.GetIndicatorKeyRegister().GetAccessKey()
 		value |= key.GetComposite()
-		bm.engine.GetGeneralRegisterSet().SetRegisterValue(X0, value)
+		bm.engine.GetGeneralRegisterSet().SetRegisterValue(pkg.X0, value)
 	}
 
 	bm.nextStep++

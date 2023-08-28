@@ -4,7 +4,9 @@
 
 package ipEngine
 
-import "khalehla/pkg"
+import (
+	"khalehla/pkg"
+)
 
 // TestEvenParity (TEP) skips the next instruction if the logical AND of (U) with Aa
 // has an even number of bits set to one.
@@ -88,10 +90,8 @@ func TestLessThanOrEqualToModifier(e *InstructionEngine) (completed bool) {
 	if result.complete && result.interrupt == nil {
 		//	perform the comparison
 		if (result.operand & 0_777777) <= xaMod {
-			if pkg.CountBits(result.operand)&01 != 0 {
-				pc := e.GetProgramAddressRegister().GetProgramCounter()
-				e.SetProgramCounter(pc+2, true)
-			}
+			pc := e.GetProgramAddressRegister().GetProgramCounter()
+			e.SetProgramCounter(pc+2, true)
 		}
 
 		//	now (probably) increment Xa.
@@ -369,7 +369,7 @@ func DoubleTestEqual(e *InstructionEngine) (completed bool) {
 	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		ax := e.GetExecOrUserARegisterIndex(ci.GetA())
-		aRegs := e.generalRegisterSet.registers[ax : ax+2]
+		aRegs := e.generalRegisterSet.GetConsecutiveRegisters(ax, 2)
 		if (aRegs[0].GetW() == result.source[0].GetW()) && (aRegs[1].GetW() == result.source[1].GetW()) {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
 			e.SetProgramCounter(pc+2, true)
@@ -517,7 +517,7 @@ func MaskedTestEqual(e *InstructionEngine) (completed bool) {
 	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		aValue := e.GetExecOrUserARegister(ci.GetA()).GetW()
-		rValue := e.GetExecOrUserRRegister(R2).GetW()
+		rValue := e.GetExecOrUserRRegister(pkg.R2).GetW()
 		if pkg.And(result.operand, rValue) == pkg.And(aValue, rValue) {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
 			e.SetProgramCounter(pc+2, true)
@@ -535,7 +535,7 @@ func MaskedTestNotEqual(e *InstructionEngine) (completed bool) {
 	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		aValue := e.GetExecOrUserARegister(ci.GetA()).GetW()
-		rValue := e.GetExecOrUserRRegister(R2).GetW()
+		rValue := e.GetExecOrUserRRegister(pkg.R2).GetW()
 		if pkg.And(result.operand, rValue) != pkg.And(aValue, rValue) {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
 			e.SetProgramCounter(pc+2, true)
@@ -554,7 +554,7 @@ func MaskedTestLessThanOrEqual(e *InstructionEngine) (completed bool) {
 	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		aValue := e.GetExecOrUserARegister(ci.GetA()).GetW()
-		rValue := e.GetExecOrUserRRegister(R2).GetW()
+		rValue := e.GetExecOrUserRRegister(pkg.R2).GetW()
 		if pkg.Compare(pkg.And(result.operand, rValue), pkg.And(aValue, rValue)) <= 0 {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
 			e.SetProgramCounter(pc+2, true)
@@ -573,7 +573,7 @@ func MaskedTestGreater(e *InstructionEngine) (completed bool) {
 	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		aValue := e.GetExecOrUserARegister(ci.GetA()).GetW()
-		rValue := e.GetExecOrUserRRegister(R2).GetW()
+		rValue := e.GetExecOrUserRRegister(pkg.R2).GetW()
 		if pkg.Compare(pkg.And(result.operand, rValue), pkg.And(aValue, rValue)) > 0 {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
 			e.SetProgramCounter(pc+2, true)
@@ -592,7 +592,7 @@ func MaskedTestWithinRange(e *InstructionEngine) (completed bool) {
 	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		ax := e.GetExecOrUserARegisterIndex(ci.GetA())
-		rVal := e.GetExecOrUserRRegister(R2).GetW()
+		rVal := e.GetExecOrUserRRegister(pkg.R2).GetW()
 		a1Masked := pkg.And(e.GetExecOrUserARegister(ax).GetW(), rVal)
 		a2Masked := pkg.And(e.GetExecOrUserARegister(ax+1).GetW(), rVal)
 		opMasked := pkg.And(result.operand, rVal)
@@ -616,7 +616,7 @@ func MaskedTestNotWithinRange(e *InstructionEngine) (completed bool) {
 	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		ax := e.GetExecOrUserARegisterIndex(ci.GetA())
-		rVal := e.GetExecOrUserRRegister(R2).GetW()
+		rVal := e.GetExecOrUserRRegister(pkg.R2).GetW()
 		a1Masked := pkg.And(e.GetExecOrUserARegister(ax).GetW(), rVal)
 		a2Masked := pkg.And(e.GetExecOrUserARegister(ax+1).GetW(), rVal)
 		opMasked := pkg.And(result.operand, rVal)
@@ -642,7 +642,7 @@ func MaskedAlphanumericTestLessThanOrEqual(e *InstructionEngine) (completed bool
 	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		aValue := e.GetExecOrUserARegister(ci.GetA()).GetW()
-		rValue := e.GetExecOrUserRRegister(R2).GetW()
+		rValue := e.GetExecOrUserRRegister(pkg.R2).GetW()
 		if pkg.And(result.operand, rValue) <= pkg.And(aValue, rValue) {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
 			e.SetProgramCounter(pc+2, true)
@@ -663,7 +663,7 @@ func MaskedAlphanumericTestGreater(e *InstructionEngine) (completed bool) {
 	} else if result.complete {
 		ci := e.GetCurrentInstruction()
 		aValue := e.GetExecOrUserARegister(ci.GetA()).GetW()
-		rValue := e.GetExecOrUserRRegister(R2).GetW()
+		rValue := e.GetExecOrUserRRegister(pkg.R2).GetW()
 		if pkg.And(result.operand, rValue) > pkg.And(aValue, rValue) {
 			pc := e.GetProgramAddressRegister().GetProgramCounter()
 			e.SetProgramCounter(pc+2, true)

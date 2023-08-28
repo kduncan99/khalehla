@@ -5,6 +5,7 @@
 package ipEngine
 
 import (
+	"khalehla/pkg"
 	"khalehla/tasm"
 	"testing"
 )
@@ -58,10 +59,10 @@ func Test_LA_Basic(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, A0, 0123, "A0")
-	checkRegister(t, engine, A1, 0_010203_040506, "A1")
-	checkRegister(t, engine, A2, 0102, "A2")
-	checkRegister(t, engine, A3, 07777, "A3")
+	checkRegister(t, engine, pkg.A0, 0123, "A0")
+	checkRegister(t, engine, pkg.A1, 0_010203_040506, "A1")
+	checkRegister(t, engine, pkg.A2, 0102, "A2")
+	checkRegister(t, engine, pkg.A3, 07777, "A3")
 }
 
 var laExtendedMode = []*tasm.SourceItem{
@@ -104,10 +105,10 @@ func Test_LA_Extended(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, A0, 0123, "A0")
-	checkRegister(t, engine, A1, 0_010203_040506, "A1")
-	checkRegister(t, engine, A2, 0102, "A2")
-	checkRegister(t, engine, A3, 07777, "A3")
+	checkRegister(t, engine, pkg.A0, 0123, "A0")
+	checkRegister(t, engine, pkg.A1, 0_010203_040506, "A1")
+	checkRegister(t, engine, pkg.A2, 0102, "A2")
+	checkRegister(t, engine, pkg.A3, 07777, "A3")
 }
 
 var lmaExtendedMode = []*tasm.SourceItem{
@@ -149,14 +150,14 @@ func Test_LMA_Extended(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, A0, 0_377777, "A0")
-	checkRegister(t, engine, A1, 0_477777, "A1")
-	checkRegister(t, engine, A2, 0_377777, "A2")
-	checkRegister(t, engine, A3, 0_300000, "A3")
-	checkRegister(t, engine, A4, 0_300000_123456, "A4")
-	checkRegister(t, engine, A5, 0_377777_777776, "A5")
-	checkRegister(t, engine, A6, 011, "A6")
-	checkRegister(t, engine, A7, 044, "A7")
+	checkRegister(t, engine, pkg.A0, 0_377777, "A0")
+	checkRegister(t, engine, pkg.A1, 0_477777, "A1")
+	checkRegister(t, engine, pkg.A2, 0_377777, "A2")
+	checkRegister(t, engine, pkg.A3, 0_300000, "A3")
+	checkRegister(t, engine, pkg.A4, 0_300000_123456, "A4")
+	checkRegister(t, engine, pkg.A5, 0_377777_777776, "A5")
+	checkRegister(t, engine, pkg.A6, 011, "A6")
+	checkRegister(t, engine, pkg.A7, 044, "A7")
 }
 
 var lnaExtendedMode = []*tasm.SourceItem{
@@ -198,14 +199,14 @@ func Test_LNA_Extended(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, A0, 0_777777_400000, "A0")
-	checkRegister(t, engine, A1, 0_777777_300000, "A1")
-	checkRegister(t, engine, A2, 0_777777_400000, "A2")
-	checkRegister(t, engine, A3, 0_300000, "A3")
-	checkRegister(t, engine, A4, 0_477777_654321, "A4")
-	checkRegister(t, engine, A5, 0_377777_777776, "A5")
-	checkRegister(t, engine, A6, 011, "A6")
-	checkRegister(t, engine, A7, 0_777777_777733, "A7")
+	checkRegister(t, engine, pkg.A0, 0_777777_400000, "A0")
+	checkRegister(t, engine, pkg.A1, 0_777777_300000, "A1")
+	checkRegister(t, engine, pkg.A2, 0_777777_400000, "A2")
+	checkRegister(t, engine, pkg.A3, 0_300000, "A3")
+	checkRegister(t, engine, pkg.A4, 0_477777_654321, "A4")
+	checkRegister(t, engine, pkg.A5, 0_377777_777776, "A5")
+	checkRegister(t, engine, pkg.A6, 011, "A6")
+	checkRegister(t, engine, pkg.A7, 0_777777_777733, "A7")
 }
 
 var lnmaExtendedMode = []*tasm.SourceItem{
@@ -247,14 +248,14 @@ func Test_LNMA_Extended(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, A0, 0_777777_400000, "A0")
-	checkRegister(t, engine, A1, 0_777777_300000, "A1")
-	checkRegister(t, engine, A2, 0_777777_400000, "A2")
-	checkRegister(t, engine, A3, 0_777777_477777, "A3")
-	checkRegister(t, engine, A4, 0_477777_654321, "A4")
-	checkRegister(t, engine, A5, 0_400000_000001, "A5")
-	checkRegister(t, engine, A6, 0_777777_777766, "A6")
-	checkRegister(t, engine, A7, 0_777777_777733, "A7")
+	checkRegister(t, engine, pkg.A0, 0_777777_400000, "A0")
+	checkRegister(t, engine, pkg.A1, 0_777777_300000, "A1")
+	checkRegister(t, engine, pkg.A2, 0_777777_400000, "A2")
+	checkRegister(t, engine, pkg.A3, 0_777777_477777, "A3")
+	checkRegister(t, engine, pkg.A4, 0_477777_654321, "A4")
+	checkRegister(t, engine, pkg.A5, 0_400000_000001, "A5")
+	checkRegister(t, engine, pkg.A6, 0_777777_777766, "A6")
+	checkRegister(t, engine, pkg.A7, 0_777777_777733, "A7")
 }
 
 var lrBasicMode = []*tasm.SourceItem{
@@ -290,8 +291,8 @@ func Test_LR_Basic(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, R7, 063, "R7")
-	checkRegister(t, engine, R8, 040506, "R8")
+	checkRegister(t, engine, pkg.R7, 063, "R7")
+	checkRegister(t, engine, pkg.R8, 040506, "R8")
 }
 
 var lrExtendedMode = []*tasm.SourceItem{
@@ -327,8 +328,8 @@ func Test_LR_Extended(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, R4, 0_000000_040506, "R4")
-	checkRegister(t, engine, R5, 0_777777_774000, "R5")
+	checkRegister(t, engine, pkg.R4, 0_000000_040506, "R4")
+	checkRegister(t, engine, pkg.R5, 0_777777_774000, "R5")
 }
 
 var lxBasicMode = []*tasm.SourceItem{
@@ -363,9 +364,9 @@ func Test_LX_Basic(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, X1, 0_377777, "X1")
-	checkRegister(t, engine, X15, 0_112233_445566, "X15")
-	checkRegister(t, engine, A3, 0_112233_445566, "A3")
+	checkRegister(t, engine, pkg.X1, 0_377777, "X1")
+	checkRegister(t, engine, pkg.X15, 0_112233_445566, "X15")
+	checkRegister(t, engine, pkg.A3, 0_112233_445566, "A3")
 }
 
 var lxExtendedMode = []*tasm.SourceItem{
@@ -395,7 +396,7 @@ func Test_LX_Extended(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStopped(t, engine)
-	checkRegister(t, engine, X1, 05, "X1")
+	checkRegister(t, engine, pkg.X1, 05, "X1")
 }
 
 var dlBasicMode = []*tasm.SourceItem{
@@ -438,16 +439,16 @@ func Test_DL_Basic(t *testing.T) {
 
 	engine := ute.GetEngine()
 	//	don't check stopped - we execute at PP=2 and expect to get Invalid Interrupt on IAR instruction
-	checkRegister(t, engine, A4, 0_100200_300400, "A4")
-	checkRegister(t, engine, A5, 0_500600_700777, "A5")
-	checkRegister(t, engine, A0, 0_100200_300400, "A0")
-	checkRegister(t, engine, A1, 0_500600_700777, "A1")
-	checkRegister(t, engine, A2, 0_677577_477377, "A2")
-	checkRegister(t, engine, A3, 0_277177_077000, "A3")
-	checkRegister(t, engine, A6, 0_277177_077000, "A6")
-	checkRegister(t, engine, A7, 0_777777_777772, "A7")
-	checkRegister(t, engine, A10, 0_100200_300400, "A10")
-	checkRegister(t, engine, A11, 0_500600_700777, "A11")
-	checkRegister(t, engine, A12, 0_277177_077000, "A12")
-	checkRegister(t, engine, A13, 0_777777_777772, "A13")
+	checkRegister(t, engine, pkg.A4, 0_100200_300400, "A4")
+	checkRegister(t, engine, pkg.A5, 0_500600_700777, "A5")
+	checkRegister(t, engine, pkg.A0, 0_100200_300400, "A0")
+	checkRegister(t, engine, pkg.A1, 0_500600_700777, "A1")
+	checkRegister(t, engine, pkg.A2, 0_677577_477377, "A2")
+	checkRegister(t, engine, pkg.A3, 0_277177_077000, "A3")
+	checkRegister(t, engine, pkg.A6, 0_277177_077000, "A6")
+	checkRegister(t, engine, pkg.A7, 0_777777_777772, "A7")
+	checkRegister(t, engine, pkg.A10, 0_100200_300400, "A10")
+	checkRegister(t, engine, pkg.A11, 0_500600_700777, "A11")
+	checkRegister(t, engine, pkg.A12, 0_277177_077000, "A12")
+	checkRegister(t, engine, pkg.A13, 0_777777_777772, "A13")
 }
