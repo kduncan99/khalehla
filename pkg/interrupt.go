@@ -61,6 +61,13 @@ const (
 )
 
 const (
+	TerminalAddressingExceptionTargetBDG                  InterruptShortStatus = 01
+	TerminalAddressingExceptionEnterAccessDenied          InterruptShortStatus = 02
+	TerminalAddressingExceptionValidatedEntryError        InterruptShortStatus = 02
+	TerminalAddressingExceptionBaseRegisterSelectionError InterruptShortStatus = 02
+)
+
+const (
 	RCSGenericStackOverflow  InterruptShortStatus = 00
 	RCSGenericStackUnderflow InterruptShortStatus = 01
 )
@@ -71,12 +78,32 @@ const (
 )
 
 const (
-	InvalidInstructionBadFunctionCode  InterruptShortStatus = 00
-	InvalidInstructionX0Linkage        InterruptShortStatus = 00
-	InvalidInstructionLBUUsesB0OrB1    InterruptShortStatus = 00
-	InvalidInstructionLBUDUsesB0       InterruptShortStatus = 00
-	InvalidInstructionBadPP            InterruptShortStatus = 01
-	InvalidInstructionEXRInvalidTarget InterruptShortStatus = 03
+	InvalidInstructionBadFunctionCode   InterruptShortStatus = 00
+	InvalidInstructionX0Linkage         InterruptShortStatus = 00
+	InvalidInstructionLBUUsesB0OrB1     InterruptShortStatus = 00
+	InvalidInstructionLBUDUsesB0        InterruptShortStatus = 00
+	InvalidInstructionBadPP             InterruptShortStatus = 01
+	InvalidInstructionEXRInvalidTarget  InterruptShortStatus = 03
+	InvalidInstructionCompatibilityTrap InterruptShortStatus = 04
+)
+
+const (
+	ArithmeticExceptionCharacteristicOverflow  InterruptShortStatus = 00
+	ArithmeticExceptionCharacteristicUnderflow InterruptShortStatus = 01
+	ArithmeticExceptionDivideCheck             InterruptShortStatus = 02
+)
+
+const (
+	DataExceptionIllegalControlCharacter  InterruptShortStatus = 00
+	DataExceptionTooManyStorageReferences InterruptShortStatus = 01
+	DataExceptionIncorrectBitCount        InterruptShortStatus = 02
+	DataExceptionBIMTException            InterruptShortStatus = 03
+)
+
+const (
+	OperationTrapFixedPointBinaryOverflow      InterruptShortStatus = 00
+	OperationTrapFixedPointDecimalOverflow     InterruptShortStatus = 01
+	OperationTrapMultiplySingleIntegerOverflow InterruptShortStatus = 02
 )
 
 const (
@@ -357,7 +384,7 @@ func (i *RCSGenericStackUnderOverflowInterrupt) GetSynchrony() InterruptSync {
 }
 
 func (i *RCSGenericStackUnderOverflowInterrupt) IsDeferrable() bool {
-	return false
+	return true
 }
 
 func (i *RCSGenericStackUnderOverflowInterrupt) IsFault() bool {
@@ -395,7 +422,7 @@ func (i *SignalInterrupt) GetClass() InterruptClass {
 }
 
 func (i *SignalInterrupt) GetInterruptPoint() InterruptPoint {
-	return InterruptIndirectExecute
+	return InterruptBetweenInstruction
 }
 
 func (i *SignalInterrupt) GetShortStatusField() InterruptShortStatus {
@@ -415,11 +442,11 @@ func (i *SignalInterrupt) GetSynchrony() InterruptSync {
 }
 
 func (i *SignalInterrupt) IsDeferrable() bool {
-	return false
+	return true
 }
 
 func (i *SignalInterrupt) IsFault() bool {
-	return true
+	return false
 }
 
 func NewSignalInterrupt(
@@ -534,6 +561,107 @@ func (i *InvalidInstructionInterrupt) IsFault() bool {
 
 func NewInvalidInstructionInterrupt(shortStatusField InterruptShortStatus) *InvalidInstructionInterrupt {
 	return &InvalidInstructionInterrupt{
+		shortStatusField: shortStatusField,
+	}
+}
+
+// Class 16 Arithmetic Exception ---------------------------------------------------------------------------------------
+
+// ssf values:
+//
+//	0 Characteristic Overflow
+//	1 Characteristic Underflow
+//	2 Divide Check
+
+type ArithmeticExceptionInterrupt struct {
+	shortStatusField InterruptShortStatus
+}
+
+func (i *ArithmeticExceptionInterrupt) GetClass() InterruptClass {
+	return ArithmeticExceptionInterruptClass
+}
+
+func (i *ArithmeticExceptionInterrupt) GetInterruptPoint() InterruptPoint {
+	return InterruptIndirectExecute
+}
+
+func (i *ArithmeticExceptionInterrupt) GetShortStatusField() InterruptShortStatus {
+	return i.shortStatusField
+}
+
+func (i *ArithmeticExceptionInterrupt) GetStatusWord0() Word36 {
+	return 0
+}
+
+func (i *ArithmeticExceptionInterrupt) GetStatusWord1() Word36 {
+	return 0
+}
+
+func (i *ArithmeticExceptionInterrupt) GetSynchrony() InterruptSync {
+	return InterruptSynchronous
+}
+
+func (i *ArithmeticExceptionInterrupt) IsDeferrable() bool {
+	return true
+}
+
+func (i *ArithmeticExceptionInterrupt) IsFault() bool {
+	return true
+}
+
+func NewArithmeticExceptionInterrupt(shortStatusField InterruptShortStatus) *ArithmeticExceptionInterrupt {
+	return &ArithmeticExceptionInterrupt{
+		shortStatusField: shortStatusField,
+	}
+}
+
+// Class 18 Operation Trap ---------------------------------------------------------------------------------------------
+
+// ssf values:
+//
+//	0 Fixed point binary integer overflow
+//	1 Fixed point decimal integer overflow
+//	2 Multiply single integer overflow
+
+type OperationTrapInterrupt struct {
+	shortStatusField InterruptShortStatus
+}
+
+func (i *OperationTrapInterrupt) GetClass() InterruptClass {
+	return OperationTrapInterruptClass
+}
+
+func (i *OperationTrapInterrupt) GetInterruptPoint() InterruptPoint {
+	return InterruptIndirectExecute
+}
+
+func (i *OperationTrapInterrupt) GetShortStatusField() InterruptShortStatus {
+	return i.shortStatusField
+}
+
+func (i *OperationTrapInterrupt) GetStatusWord0() Word36 {
+	return 0
+}
+
+func (i *OperationTrapInterrupt) GetStatusWord1() Word36 {
+	return 0
+}
+
+func (i *OperationTrapInterrupt) GetSynchrony() InterruptSync {
+	return InterruptSynchronous
+}
+
+func (i *OperationTrapInterrupt) IsDeferrable() bool {
+	return true
+}
+
+func (i *OperationTrapInterrupt) IsFault() bool {
+	return false
+}
+
+func NewOperationTrapInterrupt(shortStatusField InterruptShortStatus) *OperationTrapInterrupt {
+
+	return &OperationTrapInterrupt{
 		shortStatusField: shortStatusField,
 	}
 }
