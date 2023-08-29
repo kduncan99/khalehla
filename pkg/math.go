@@ -11,11 +11,61 @@ import (
 var DoubleNegativeZero = []uint64{NegativeZero, NegativeZero}
 var DoublePositiveZero = []uint64{PositiveZero, PositiveZero}
 
+var bigMask = big.NewInt(0_777777_777777)
+var bigMaxQuotient = big.NewInt(0_377777_777777)
+
 func uint64Min(v1 uint64, v2 uint64) uint64 {
 	if v1 < v2 {
 		return v1
 	} else {
 		return v2
+	}
+}
+
+func AddDouble(operand1 []uint64, operand2 []uint64) []uint64 {
+	if IsDoubleNegativeZero(operand1) && IsDoubleNegativeZero(operand2) {
+		return DoubleNegativeZero
+	} else {
+		var op1MSW big.Int
+		var op1LSW big.Int
+		var bigAddend1 big.Int
+		var op2MSW big.Int
+		var op2LSW big.Int
+		var bigAddend2 big.Int
+		var bigSum big.Int
+		var bigSumCopy big.Int
+
+		op1Mag := MagnitudeDouble(operand1)
+		op1MSW.SetUint64(op1Mag[0])
+		op1LSW.SetUint64(op1Mag[1])
+		bigAddend1.Lsh(&op1MSW, 36)
+		bigAddend1.Or(&bigAddend1, &op1LSW)
+		if IsNegativeDouble(operand1) {
+			bigAddend1.Neg(&bigAddend1)
+		}
+
+		op2Mag := MagnitudeDouble(operand2)
+		op2MSW.SetUint64(op2Mag[0])
+		op2LSW.SetUint64(op2Mag[1])
+		bigAddend2.Lsh(&op2MSW, 36)
+		bigAddend2.Or(&bigAddend2, &op2LSW)
+		if IsNegativeDouble(operand2) {
+			bigAddend1.Neg(&bigAddend2)
+		}
+
+		bigSum.Add(&bigAddend1, &bigAddend2)
+		negSumFlag := bigSum.Cmp(big.NewInt(0)) < 0
+		bigSum.Abs(&bigSum)
+		bigSumCopy.Set(&bigSum)
+
+		sum := []uint64{
+			bigSum.Rsh(&bigSum, 36).Uint64(),
+			bigSumCopy.And(&bigSumCopy, bigMask).Uint64(),
+		}
+		if negSumFlag {
+			sum = NegateDouble(sum)
+		}
+		return sum
 	}
 }
 
@@ -114,8 +164,6 @@ func CompareDouble(operand1 []uint64, operand2 []uint64) int {
 	}
 }
 
-var maxQuotient = big.NewInt(0_377777_777777)
-
 // Divide performs integer division
 func Divide(dividend []uint64, divisor uint64) (quotient uint64, remainder uint64, divByZero bool, overflow bool) {
 	var div0 big.Int
@@ -137,7 +185,7 @@ func Divide(dividend []uint64, divisor uint64) (quotient uint64, remainder uint6
 	bigDivisor.SetUint64(Magnitude(divisor))
 
 	bigQuotient.DivMod(&bigDividend, &bigDivisor, &bigRemainder)
-	if bigQuotient.Cmp(maxQuotient) == 1 {
+	if bigQuotient.Cmp(bigMaxQuotient) == 1 {
 		overflow = true
 		return
 	}
@@ -202,8 +250,16 @@ func IsNegativeDouble(value []uint64) bool {
 	return (value[0] & 0_400000_000000) != 0
 }
 
+func IsNegativeZero(value uint64) bool {
+	return value == NegativeZero
+}
+
 func IsPositive(value uint64) bool {
 	return (value & 0_400000_000000) == 0
+}
+
+func IsPositiveDouble(value []uint64) bool {
+	return (value[0] & 0_400000_000000) == 0
 }
 
 func IsZero(operand uint64) bool {
@@ -212,6 +268,10 @@ func IsZero(operand uint64) bool {
 
 func IsDoubleZero(operand []uint64) bool {
 	return IsZero(operand[0]) && operand[0] == operand[1]
+}
+
+func IsDoubleNegativeZero(operand []uint64) bool {
+	return IsNegativeZero(operand[0]) && IsNegativeZero(operand[1])
 }
 
 // LeftDoubleShiftCircular shifts the 72-bit word stored in two consecutive uint64's (MSW first)
@@ -302,20 +362,18 @@ func Magnitude(operand uint64) uint64 {
 	if IsPositive(operand) {
 		return operand
 	} else {
-		return Not(operand)
+		return Negate(operand)
 	}
 }
 
 // MagnitudeDouble returns the absolute value of the given 72-bit operand
-func MagnitudeDouble(operand uint64) uint64 {
-	if IsPositive(operand) {
+func MagnitudeDouble(operand []uint64) []uint64 {
+	if IsPositiveDouble(operand) {
 		return operand
 	} else {
-		return Not(operand)
+		return NegateDouble(operand)
 	}
 }
-
-var bigMask = big.NewInt(0_777777_777777)
 
 // Multiply returns the product of two 36-bit signed factors as a 72-bit signed integer
 // packed into two uint64's.

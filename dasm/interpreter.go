@@ -256,6 +256,8 @@ var function007InterpreterBasic = FunctionTable{
 var function071InterpreterBasic = FunctionTable{
 	indexBy: IndexByJ,
 	table: map[int]Interpreter{
+		010: &Instruction{mnemonic: "DA", aField: ARegister, jField: JFunctionDiscriminator},
+		011: &Instruction{mnemonic: "DAN", aField: ARegister, jField: JFunctionDiscriminator},
 		012: &Instruction{mnemonic: "DS", aField: ARegister, jField: JFunctionDiscriminator},
 		013: &Instruction{mnemonic: "DL", aField: ARegister, jField: JFunctionDiscriminator},
 		014: &Instruction{mnemonic: "DLN", aField: ARegister, jField: JFunctionDiscriminator},
@@ -498,6 +500,8 @@ var function050InterpreterExtended = FunctionTable{
 var function071InterpreterExtended = FunctionTable{
 	indexBy: IndexByJ,
 	table: map[int]Interpreter{
+		010: &Instruction{mnemonic: "DA", aField: ARegister, jField: JFunctionDiscriminator},
+		011: &Instruction{mnemonic: "DAN", aField: ARegister, jField: JFunctionDiscriminator},
 		012: &Instruction{mnemonic: "DS", aField: ARegister, jField: JFunctionDiscriminator},
 		013: &Instruction{mnemonic: "DL", aField: ARegister, jField: JFunctionDiscriminator},
 		014: &Instruction{mnemonic: "DLN", aField: ARegister, jField: JFunctionDiscriminator},

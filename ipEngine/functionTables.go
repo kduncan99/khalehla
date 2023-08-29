@@ -92,6 +92,8 @@ var basicModeFunction07Table = map[uint]func(engine *InstructionEngine) (complet
 
 // Basic Mode, F=071, table is indexed by the j field
 var basicModeFunction71Table = map[uint]func(engine *InstructionEngine) (completed bool){
+	010: DoubleAddAccumulator,
+	011: DoubleAddNegativeAccumulator,
 	012: DoubleStoreAccumulator,
 	013: DoubleLoadAccumulator,
 	014: DoubleLoadNegativeAccumulator,
@@ -337,6 +339,8 @@ var extendedModeFunction71Table = map[uint]func(engine *InstructionEngine) (comp
 	005: MaskedTestNotWithinRange,
 	006: MaskedAlphanumericTestLessThanOrEqual,
 	007: MaskedAlphanumericTestGreater,
+	010: DoubleAddAccumulator,
+	011: DoubleAddNegativeAccumulator,
 	012: DoubleStoreAccumulator,
 	013: DoubleLoadAccumulator,
 	014: DoubleLoadNegativeAccumulator,

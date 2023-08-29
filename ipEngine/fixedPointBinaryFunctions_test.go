@@ -623,3 +623,96 @@ func Test_DF_Extended(t *testing.T) {
 	checkRegister(t, engine, pkg.A4, 0_000000_021653, "A4")
 	checkRegister(t, engine, pkg.A5, 0_000000_000056, "A5")
 }
+
+var daCode = []*tasm.SourceItem{
+	segSourceItem(0),
+	laSourceItemHIBDRef("", jW, 4, 0, 0, 0, 2, "a4data"),
+	laSourceItemHIBDRef("", jW, 5, 0, 0, 0, 2, "a5data"),
+	daSourceItemHIBDRef("", 4, 0, 0, 0, 2, "data1"),
+	iarSourceItem("", 0),
+
+	segSourceItem(2),
+	tasm.NewSourceItem("a4data", "w", []string{"0_123001_230121"}),
+	tasm.NewSourceItem("a5data", "w", []string{"0_400002_321021"}),
+	tasm.NewSourceItem("data1", "w", []string{"0_000011_112431"}),
+	tasm.NewSourceItem("data2", "w", []string{"0_456321_000105"}),
+}
+
+func Test_DA_Extended(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", daCode)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkBankPerSegment(a.GetSegments(), true)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(false)
+		ute.GetEngine().GetDesignatorRegister().SetQuarterWordModeEnabled(true)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
+	checkRegister(t, engine, pkg.A4, 0_123012_342553, "A4")
+	checkRegister(t, engine, pkg.A5, 0_056323_321126, "A5")
+}
+
+var danCode = []*tasm.SourceItem{
+	segSourceItem(0),
+	laSourceItemHIBDRef("", jW, 4, 0, 0, 0, 2, "a4data"),
+	laSourceItemHIBDRef("", jW, 5, 0, 0, 0, 2, "a5data"),
+	danSourceItemHIBDRef("", 4, 0, 0, 0, 2, "data1"),
+	iarSourceItem("", 0),
+
+	segSourceItem(2),
+	tasm.NewSourceItem("a4data", "w", []string{"0_000000_543210"}),
+	tasm.NewSourceItem("a5data", "w", []string{"0_210056_523004"}),
+	tasm.NewSourceItem("data1", "w", []string{"0_000000_430100"}),
+	tasm.NewSourceItem("data2", "w", []string{"0_000042_110002"}),
+}
+
+func Test_DAN_Extended(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", danCode)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkBankPerSegment(a.GetSegments(), true)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(false)
+		ute.GetEngine().GetDesignatorRegister().SetQuarterWordModeEnabled(true)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
+	checkRegister(t, engine, pkg.A4, 0_000000_113110, "A4")
+	checkRegister(t, engine, pkg.A5, 0_210014_413002, "A5")
+}
+
+//	TODO AH
+//	TODO ANH
+//	TODO AT
+//	TODO ANT
+//	TODO ADD1
+//	TODO SUB1
+//	TODO INC
+//	TODO INC2
+//	TODO DEC
+//	TODO DEC2
+//	TODO ENZ
+//	TODO BAO

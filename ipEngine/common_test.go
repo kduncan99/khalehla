@@ -1335,8 +1335,94 @@ func dfSourceItemU(label string, j int, a int, x int, u int) *tasm.SourceItem {
 	return sourceItem(label, "fjaxu", []int{fDF, j, a, x, u})
 }
 
-//	TODO DA
-//	TODO DAN
+// DA ------------------------------------------------------------------------------------------------------------------
+
+const fDA = 071
+const jDA = 010
+
+func daSourceItemHIBD(label string, a int, x int, h int, i int, b int, d int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhibd", []int{fDA, jDA, a, x, h, i, b, d})
+}
+
+func daSourceItemHIBDRef(label string, a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fDA),
+		fmt.Sprintf("%03o", jDA),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		fmt.Sprintf("%03o", b),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhibd", ops)
+}
+
+func daSourceItemHIU(label string, a int, x int, h int, i int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhiu", []int{fDA, jDA, a, x, h, i, u})
+}
+
+func daSourceItemHIURef(label string, a int, x int, h int, i int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fDA),
+		fmt.Sprintf("%03o", jDA),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhiu", ops)
+}
+
+func daSourceItemU(label string, a int, x int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxu", []int{fDA, jDA, a, x, u})
+}
+
+// DAN ------------------------------------------------------------------------------------------------------------------
+
+const fDAN = 071
+const jDAN = 011
+
+func danSourceItemHIBD(label string, a int, x int, h int, i int, b int, d int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhibd", []int{fDAN, jDAN, a, x, h, i, b, d})
+}
+
+func danSourceItemHIBDRef(label string, a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fDAN),
+		fmt.Sprintf("%03o", jDAN),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		fmt.Sprintf("%03o", b),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhibd", ops)
+}
+
+func danSourceItemHIU(label string, a int, x int, h int, i int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhiu", []int{fDAN, jDAN, a, x, h, i, u})
+}
+
+func danSourceItemHIURef(label string, a int, x int, h int, i int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fDAN),
+		fmt.Sprintf("%03o", jDAN),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhiu", ops)
+}
+
+func danSourceItemU(label string, a int, x int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxu", []int{fDAN, jDAN, a, x, u})
+}
+
 //	TODO AH
 //	TODO ANH
 //	TODO AT
