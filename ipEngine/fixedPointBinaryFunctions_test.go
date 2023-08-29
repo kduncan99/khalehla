@@ -319,8 +319,6 @@ func Test_ANX_Basic(t *testing.T) {
 	checkRegister(t, engine, pkg.X2, 0_000344_070550, "X2")
 }
 
-// TODO Need some testing for divide check conditions
-
 var miCode = []*tasm.SourceItem{
 	segSourceItem(0),
 	dlSourceItemHIBDRef("", 2, 0, 0, 0, 2, "a2data"),
@@ -357,6 +355,42 @@ func Test_MI_Extended(t *testing.T) {
 	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.A2, 0_000000_000000, "A2")
 	checkRegister(t, engine, pkg.A3, 0_115624_561516, "A3")
+}
+
+var msiCodeOverflow = []*tasm.SourceItem{
+	segSourceItem(0),
+	laSourceItemHIBDRef("", jW, 2, 0, 0, 0, 2, "a2data"),
+	msiSourceItemHIBDRef("", jW, 2, 0, 0, 0, 2, "data"),
+	iarSourceItem("", 1),
+
+	segSourceItem(2),
+	tasm.NewSourceItem("a2data", "w", []string{"0_377777_777777"}),
+	tasm.NewSourceItem("data", "w", []string{"02"}),
+}
+
+func Test_MSI_Overflow(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", msiCodeOverflow)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkBankPerSegment(a.GetSegments(), true)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(false)
+		ute.GetEngine().GetDesignatorRegister().SetQuarterWordModeEnabled(true)
+		ute.GetEngine().GetDesignatorRegister().SetOperationTrapEnabled(true)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkInterruptAndSSF(t, engine, pkg.OperationTrapInterruptClass, pkg.OperationTrapMultiplySingleIntegerOverflow)
 }
 
 var msiCode = []*tasm.SourceItem{
@@ -471,6 +505,45 @@ func Test_DI_Extended(t *testing.T) {
 	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
 	checkRegister(t, engine, pkg.A2, 0_005213_747442, "A2")
 	checkRegister(t, engine, pkg.A3, 0_000000_244613, "A3")
+}
+
+var diCodeDivideCheck = []*tasm.SourceItem{
+	segSourceItem(0),
+	dlSourceItemHIBDRef("", 2, 0, 0, 0, 2, "a2data"),
+	laSourceItemU("", jU, 10, 0, 0),
+	diSourceItemHIBD("", jW, 2, 0, 0, 0, 0, grsA10),
+	iarSourceItem("", 1),
+
+	segSourceItem(2),
+	tasm.NewSourceItem("a2data", "w", []string{"0_000001_612175"}),
+	tasm.NewSourceItem("a3data", "w", []string{"0_437777_700000"}),
+	tasm.NewSourceItem("data", "w", []string{"0_000000053746"}),
+}
+
+func Test_DI_DivideCheck(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", diCodeDivideCheck)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkBankPerSegment(a.GetSegments(), true)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(false)
+		ute.GetEngine().GetDesignatorRegister().SetQuarterWordModeEnabled(true)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkInterruptAndSSF(t, engine, pkg.ArithmeticExceptionInterruptClass, pkg.ArithmeticExceptionDivideCheck)
+	checkRegister(t, engine, pkg.A2, 0_000001_612175, "A2")
+	checkRegister(t, engine, pkg.A3, 0_437777_700000, "A3")
 }
 
 var dsfCode = []*tasm.SourceItem{

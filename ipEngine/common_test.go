@@ -3092,6 +3092,26 @@ func checkInterrupt(t *testing.T, engine *InstructionEngine, interruptClass pkg.
 	t.Errorf("Error:Expected interrupt class %d to be posted", interruptClass)
 }
 
+func checkInterruptAndSSF(
+	t *testing.T,
+	engine *InstructionEngine,
+	interruptClass pkg.InterruptClass,
+	shortStatusField pkg.InterruptShortStatus) {
+
+	for _, i := range engine.pendingInterrupts.stack {
+		if i.GetClass() == interruptClass {
+			if i.GetShortStatusField() != shortStatusField {
+				t.Errorf("Error:Found interrupt class %d but SSF was %d and we expected %d",
+					interruptClass, i.GetShortStatusField(), shortStatusField)
+			}
+			return
+		}
+	}
+
+	engine.pendingInterrupts.Dump()
+	t.Errorf("Error:Expected interrupt class %d to be posted", interruptClass)
+}
+
 func checkProgramAddress(t *testing.T, engine *InstructionEngine, expectedAddress uint64) {
 	actual := engine.GetProgramAddressRegister().GetProgramCounter()
 	if actual != expectedAddress {
