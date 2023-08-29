@@ -2,6 +2,8 @@ package pkg
 
 import "testing"
 
+//	TODO Need tests for Multiply(), Divide()
+
 func Test_AddSimple_2(t *testing.T) {
 	value1 := uint64(0_300000_000000)
 	value2 := uint64(0_077777_777777)
