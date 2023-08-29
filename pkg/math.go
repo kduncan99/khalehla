@@ -4,6 +4,10 @@
 
 package pkg
 
+import (
+	"math/big"
+)
+
 var DoubleNegativeZero = []uint64{NegativeZero, NegativeZero}
 var DoublePositiveZero = []uint64{PositiveZero, PositiveZero}
 
@@ -110,6 +114,39 @@ func CompareDouble(operand1 []uint64, operand2 []uint64) int {
 	}
 }
 
+var maxQuotient = big.NewInt(0_377777_777777)
+
+// Divide performs integer division
+func Divide(dividend []uint64, divisor uint64) (quotient uint64, remainder uint64, divByZero bool, overflow bool) {
+	var div0 big.Int
+	var div1 big.Int
+	var bigDividend big.Int
+	var bigDivisor big.Int
+	var bigRemainder big.Int
+	var bigQuotient big.Int
+
+	div0.SetUint64(Magnitude(dividend[0]))
+	div1.SetUint64(Magnitude(dividend[1]))
+	bigDividend.Lsh(&div0, 36)
+	bigDividend.Or(&bigDividend, &div1)
+
+	if divisor == 0 {
+		divByZero = true
+		return
+	}
+	bigDivisor.SetUint64(Magnitude(divisor))
+
+	bigQuotient.DivMod(&bigDividend, &bigDivisor, &bigRemainder)
+	if bigQuotient.Cmp(maxQuotient) == 1 {
+		overflow = true
+		return
+	}
+
+	quotient = bigQuotient.Uint64()
+	remainder = bigRemainder.Uint64()
+	return
+}
+
 // GetOnesComplement takes a standard twos-complement value and converts it to a
 // 36-bit ones-complement value packed in a uint64.
 func GetOnesComplement(operand uint64) uint64 {
@@ -159,6 +196,10 @@ func GetTwosComplement(operand uint64) uint64 {
 
 func IsNegative(value uint64) bool {
 	return (value & 0_400000_000000) != 0
+}
+
+func IsNegativeDouble(value []uint64) bool {
+	return (value[0] & 0_400000_000000) != 0
 }
 
 func IsPositive(value uint64) bool {
@@ -274,11 +315,46 @@ func MagnitudeDouble(operand uint64) uint64 {
 	}
 }
 
-// Negate returns the additive inverse of a given 36-bit signed value packed into a uint64
-func Negate(operand uint64) uint64 {
-	return operand ^ NegativeZero
+var bigMask = big.NewInt(0_777777_777777)
+
+// Multiply returns the product of two 36-bit signed factors as a 72-bit signed integer
+// packed into two uint64's.
+func Multiply(factor1 uint64, factor2 uint64) []uint64 {
+	var mag1 big.Int
+	var mag2 big.Int
+	mag1.SetUint64(Magnitude(factor1))
+	mag2.SetUint64(Magnitude(factor2))
+	neg := IsNegative(factor1) != IsNegative(factor2)
+
+	mag1.Mul(&mag1, &mag2)
+	mag2.Set(&mag1)
+
+	magResult := []uint64{
+		mag1.Rsh(&mag1, 36).Uint64(),
+		mag2.And(&mag2, bigMask).Uint64(),
+	}
+
+	if neg {
+		magResult = NegateDouble(magResult)
+	}
+
+	return magResult
 }
 
+// Negate returns the additive inverse of a given 36-bit signed value packed into a uint64
+func Negate(op uint64) uint64 {
+	return (op ^ NegativeZero) & NegativeZero
+}
+
+// NegateDouble returns the additive inverse of the given 72-bit signed value packed into uint64's
+func NegateDouble(op []uint64) []uint64 {
+	return []uint64{
+		Negate(op[0]),
+		Negate(op[1]),
+	}
+}
+
+// Not returns the logical inverse of a given 36-bit signed value packed into a uint64
 func Not(op uint64) uint64 {
 	return (op ^ NegativeZero) & NegativeZero
 }

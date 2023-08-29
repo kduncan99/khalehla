@@ -191,8 +191,6 @@ func AddNegativeIndexRegister(e *InstructionEngine) (completed bool) {
 	return result.complete
 }
 
-//	TODO MI
-//
 // MultiplyInteger (MI) multiplies (U) with Aa storing the 72-bit result in Aa/Aa+1.
 // Bits 0/1 of Aa/Aa+1 are sign bits.
 func MultiplyInteger(e *InstructionEngine) (completed bool) {
@@ -204,16 +202,189 @@ func MultiplyInteger(e *InstructionEngine) (completed bool) {
 		ci := e.GetCurrentInstruction()
 		aReg0 := e.GetExecOrUserARegister(ci.GetA())
 		aReg1 := e.GetExecOrUserARegister(ci.GetA() + 1)
+		res72 := pkg.Multiply(aReg0.GetW(), result.operand)
+		if pkg.IsNegativeDouble(res72) {
+			res72[0] |= 0_200000_000000
+		}
+		aReg0.SetW(res72[0])
+		aReg1.SetW(res72[1])
 	}
 
 	return result.complete
 }
 
-//	TODO MSI
-//	TODO MF
-//	TODO DI
-//	TODO DSF
-//	TODO DF
+// MultiplySingleInteger (MI) multiplies (U) with Aa storing the 36-bit result in Aa.
+// If the calculation overflows 36 signed bits, DR bit 19 (overflow) is set.
+// If overflow is set and operation trap is enabled, an operation trap interrupt is posted.
+// How to tell from 72-bit result that overflow has occurred:
+//
+//	For positive numbers, word[0] and bit0 of word[1] must all be zero, else we have an overflow.
+//	For negative numbers, word[0] and bit0 of word[1] must all be one, else we have an overflow.
+func MultiplySingleInteger(e *InstructionEngine) (completed bool) {
+	result := e.GetOperand(true, true, true, true, false)
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
+		ci := e.GetCurrentInstruction()
+		aReg := e.GetExecOrUserARegister(ci.GetA())
+		res72 := pkg.Multiply(aReg.GetW(), result.operand)
+		aReg.SetW(res72[1])
+
+		okay := ((res72[0] == 0) && (res72[1]&0_400000_000000 == 0)) ||
+			((res72[0] == 0_777777_777777) && (res72[1]&0_400000_000000 != 0))
+		if !okay {
+			dr := e.GetDesignatorRegister()
+			dr.SetOverflow(true)
+			if dr.IsOperationTrapEnabled() {
+				i := pkg.NewOperationTrapInterrupt(pkg.OperationTrapMultiplySingleIntegerOverflow)
+				e.PostInterrupt(i)
+			}
+		}
+	}
+
+	return result.complete
+}
+
+// MultiplyFractional (MF) multiplies (U) with Aa, performs a circular shift left by 1 bit,
+// and stores the 72-bit result in Aa/Aa+1.
+func MultiplyFractional(e *InstructionEngine) (completed bool) {
+	result := e.GetOperand(true, true, true, true, false)
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
+		ci := e.GetCurrentInstruction()
+		aReg0 := e.GetExecOrUserARegister(ci.GetA())
+		aReg1 := e.GetExecOrUserARegister(ci.GetA() + 1)
+		res72 := pkg.Multiply(aReg0.GetW(), result.operand)
+		if pkg.IsNegativeDouble(res72) {
+			res72[0] |= 0_200000_000000
+		}
+
+		res72 = pkg.LeftDoubleShiftCircular(res72, 1)
+		aReg0.SetW(res72[0])
+		aReg1.SetW(res72[1])
+	}
+
+	return result.complete
+}
+
+var divCheck = pkg.NewArithmeticExceptionInterrupt(pkg.ArithmeticExceptionDivideCheck)
+
+// DivideInteger (DI) divides the 72-bit value in Aa|Aa+1 by (U),
+// storing the integer quotient in Aa, and the remainder in Aa+1.
+// The remainder retains the sign of the dividend.
+func DivideInteger(e *InstructionEngine) (completed bool) {
+	result := e.GetOperand(true, true, true, true, false)
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
+		divisor := result.operand
+
+		ci := e.GetCurrentInstruction()
+		aReg0 := e.GetExecOrUserARegister(ci.GetA())
+		aReg1 := e.GetExecOrUserARegister(ci.GetA() + 1)
+		dividend := []uint64{aReg0.GetW(), aReg1.GetW()}
+
+		quotient, remainder, divByZero, overflow := pkg.Divide(dividend, divisor)
+		if divByZero || overflow {
+			e.PostInterrupt(divCheck)
+			return false
+		}
+
+		divIsNegative := pkg.IsNegativeDouble(dividend)
+		if divIsNegative != pkg.IsNegative(divisor) {
+			quotient = pkg.Negate(quotient)
+		}
+		if divIsNegative != pkg.IsNegative(remainder) {
+			remainder = pkg.Negate(remainder)
+		}
+
+		aReg0.SetW(quotient)
+		aReg1.SetW(remainder)
+	}
+
+	return result.complete
+}
+
+var signBitLookup = map[bool]uint64{
+	false: 0,
+	true:  pkg.NegativeZero,
+}
+
+// DivideSingleFractional (DSF) creates a dividend using Aa as the MSW and 36 sign bits as the LSW,
+// right-shifts the dividend algebraically by one bit, then divides it by (U).
+// The resulting quotient is stored in Aa+1, and the remainder is lost.
+func DivideSingleFractional(e *InstructionEngine) (completed bool) {
+	result := e.GetOperand(true, true, true, true, false)
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
+		divisor := result.operand
+
+		ci := e.GetCurrentInstruction()
+		aReg0 := e.GetExecOrUserARegister(ci.GetA())
+		aReg1 := e.GetExecOrUserARegister(ci.GetA() + 1)
+
+		dividend := []uint64{aReg0.GetW(), signBitLookup[pkg.IsNegative(aReg0.GetW())]}
+		dividend = pkg.RightDoubleShiftAlgebraic(dividend, 1)
+		if (divisor == 0) || (aReg0.GetW() > pkg.Magnitude(divisor)) {
+			e.PostInterrupt(divCheck)
+			return false
+		}
+
+		quotient, _, _, _ := pkg.Divide(dividend, divisor)
+		if pkg.IsNegativeDouble(dividend) != pkg.IsNegative(divisor) {
+			quotient = pkg.Negate(quotient)
+		}
+
+		aReg1.SetW(quotient)
+	}
+
+	return result.complete
+}
+
+// DivideFractional (DF) creates a 72-bit divisor from Aa|Aa+1, shifts it right algebraically by one bit,
+// and divides it by (U) storing the integer quotient in Aa, and the remainder in Aa+1.
+// The remainder retains the sign of the dividend.
+func DivideFractional(e *InstructionEngine) (completed bool) {
+	result := e.GetOperand(true, true, true, true, false)
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
+		divisor := result.operand
+
+		ci := e.GetCurrentInstruction()
+		aReg0 := e.GetExecOrUserARegister(ci.GetA())
+		aReg1 := e.GetExecOrUserARegister(ci.GetA() + 1)
+		dividend := []uint64{aReg0.GetW(), aReg1.GetW()}
+		dividend = pkg.RightDoubleShiftAlgebraic(dividend, 1)
+
+		quotient, remainder, divByZero, overflow := pkg.Divide(dividend, divisor)
+		if divByZero || overflow {
+			e.PostInterrupt(divCheck)
+			return false
+		}
+
+		divIsNegative := pkg.IsNegativeDouble(dividend)
+		if divIsNegative != pkg.IsNegative(divisor) {
+			quotient = pkg.Negate(quotient)
+		}
+		if divIsNegative != pkg.IsNegative(remainder) {
+			remainder = pkg.Negate(remainder)
+		}
+
+		aReg0.SetW(quotient)
+		aReg1.SetW(remainder)
+	}
+
+	return result.complete
+}
+
 //	TODO DA
 //	TODO DAN
 //	TODO AH
