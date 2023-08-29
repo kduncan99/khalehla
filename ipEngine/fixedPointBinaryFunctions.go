@@ -192,6 +192,23 @@ func AddNegativeIndexRegister(e *InstructionEngine) (completed bool) {
 }
 
 //	TODO MI
+//
+// MultiplyInteger (MI) multiplies (U) with Aa storing the 72-bit result in Aa/Aa+1.
+// Bits 0/1 of Aa/Aa+1 are sign bits.
+func MultiplyInteger(e *InstructionEngine) (completed bool) {
+	result := e.GetOperand(true, true, true, true, false)
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
+		ci := e.GetCurrentInstruction()
+		aReg0 := e.GetExecOrUserARegister(ci.GetA())
+		aReg1 := e.GetExecOrUserARegister(ci.GetA() + 1)
+	}
+
+	return result.complete
+}
+
 //	TODO MSI
 //	TODO MF
 //	TODO DI
