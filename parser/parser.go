@@ -73,7 +73,9 @@ func (p *Parser) ParseCharacter(char uint8) bool {
 	}
 }
 
-func (p *Parser) ParseInteger(allowOctal bool) (uint64, bool) {
+// ParseInteger parses a string of characters which comprise a decimal or (optionally) an octal integer literal.
+// The literal may (optionally) contain underscore separators, which are treated as if they were not in place.
+func (p *Parser) ParseInteger(allowOctal bool, allowSeparator bool) (uint64, bool) {
 	if !p.AtEnd() {
 		ch, _ := p.PeekNextChar()
 		if IsDecimalDigit(ch) {
@@ -83,11 +85,18 @@ func (p *Parser) ParseInteger(allowOctal bool) (uint64, bool) {
 			}
 
 			var value uint64
-			for IsDecimalDigit(ch) {
-				value *= radix
-				value += uint64(ch - '0')
-				_ = p.Advance(1)
-				ch, _ = p.PeekNextChar()
+			for true {
+				if IsDecimalDigit(ch) {
+					value *= radix
+					value += uint64(ch - '0')
+					_ = p.Advance(1)
+					ch, _ = p.PeekNextChar()
+				} else if allowSeparator && ch == '_' {
+					_ = p.Advance(1)
+					ch, _ = p.PeekNextChar()
+				} else {
+					break
+				}
 			}
 
 			return value, true

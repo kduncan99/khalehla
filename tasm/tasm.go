@@ -63,7 +63,7 @@ func evaluate(expression string) (uint64, []string, error) {
 
 		if wantTerm {
 			p.SkipWhiteSpace()
-			iVal, ok := p.ParseInteger(true)
+			iVal, ok := p.ParseInteger(true, true)
 			if ok {
 				value += iVal
 				wantTerm = false
