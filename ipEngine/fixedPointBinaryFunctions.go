@@ -6,9 +6,6 @@ package ipEngine
 
 import "khalehla/pkg"
 
-// DB18 (Carry)
-// DB19 (Overflow)
-
 // The following instructions update DB18 (carry) and DB19 (overflow) in the following conditions:
 //  Input Signs   Output Sign   DB18 DB19
 //      +/+             +         0    0
@@ -22,7 +19,7 @@ import "khalehla/pkg"
 func updateDesignatorRegister(e *InstructionEngine, addend1Positive bool, addend2Positive bool, sumPositive bool) {
 	bothNeg := !addend1Positive && !addend2Positive
 	addendsAgree := addend1Positive == addend2Positive
-	db18 := bothNeg || (addendsAgree && sumPositive)
+	db18 := bothNeg || (!addendsAgree && sumPositive)
 	db19 := addendsAgree && (addend1Positive != sumPositive)
 	dr := e.GetDesignatorRegister()
 	dr.SetCarry(db18)

@@ -733,14 +733,350 @@ func sfzSourceItemHIURef(label string, j int, x int, h int, i int, ref string) *
 // Fixed-point Binary functions
 // ---------------------------------------------------------------------------------------------------------------------
 
-//	TODO AA
-//	TODO ANA
-//	TODO AMA
-//	TODO ANMA
-//	TODO AU
-//	TODO ANU
-//	TODO AX
-//	TODO ANX
+// AA ------------------------------------------------------------------------------------------------------------------
+
+const fAA = 014
+
+func aaSourceItemHIBD(label string, j int, a int, x int, h int, i int, b int, d int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhibd", []int{fAA, j, a, x, h, i, b, d})
+}
+
+func aaSourceItemHIBDRef(label string, j int, a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fAA),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		fmt.Sprintf("%03o", b),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhibd", ops)
+}
+
+func aaSourceItemHIU(label string, j int, a int, x int, h int, i int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhiu", []int{fAA, j, a, x, h, i, u})
+}
+
+func aaSourceItemHIURef(label string, j int, a int, x int, h int, i int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fAA),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhiu", ops)
+}
+
+func aaSourceItemU(label string, j int, a int, x int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxu", []int{fAA, j, a, x, u})
+}
+
+// ANA ------------------------------------------------------------------------------------------------------------------
+
+const fANA = 015
+
+func anaSourceItemHIBD(label string, j int, a int, x int, h int, i int, b int, d int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhibd", []int{fANA, j, a, x, h, i, b, d})
+}
+
+func anaSourceItemHIBDRef(label string, j int, a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fANA),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		fmt.Sprintf("%03o", b),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhibd", ops)
+}
+
+func anaSourceItemHIU(label string, j int, a int, x int, h int, i int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhiu", []int{fANA, j, a, x, h, i, u})
+}
+
+func anaSourceItemHIURef(label string, j int, a int, x int, h int, i int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fANA),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhiu", ops)
+}
+
+func anaSourceItemU(label string, j int, a int, x int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxu", []int{fANA, j, a, x, u})
+}
+
+// AMA ------------------------------------------------------------------------------------------------------------------
+
+const fAMA = 016
+
+func amaSourceItemHIBD(label string, j int, a int, x int, h int, i int, b int, d int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhibd", []int{fAMA, j, a, x, h, i, b, d})
+}
+
+func amaSourceItemHIBDRef(label string, j int, a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fAMA),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		fmt.Sprintf("%03o", b),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhibd", ops)
+}
+
+func amaSourceItemHIU(label string, j int, a int, x int, h int, i int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhiu", []int{fAMA, j, a, x, h, i, u})
+}
+
+func amaSourceItemHIURef(label string, j int, a int, x int, h int, i int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fAMA),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhiu", ops)
+}
+
+func amaSourceItemU(label string, j int, a int, x int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxu", []int{fAMA, j, a, x, u})
+}
+
+// ANMA ------------------------------------------------------------------------------------------------------------------
+
+const fANMA = 017
+
+func anmaSourceItemHIBD(label string, j int, a int, x int, h int, i int, b int, d int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhibd", []int{fANMA, j, a, x, h, i, b, d})
+}
+
+func anmaSourceItemHIBDRef(label string, j int, a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fANMA),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		fmt.Sprintf("%03o", b),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhibd", ops)
+}
+
+func anmaSourceItemHIU(label string, j int, a int, x int, h int, i int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhiu", []int{fANMA, j, a, x, h, i, u})
+}
+
+func anmaSourceItemHIURef(label string, j int, a int, x int, h int, i int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fANMA),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhiu", ops)
+}
+
+func anmaSourceItemU(label string, j int, a int, x int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxu", []int{fANMA, j, a, x, u})
+}
+
+// AU ------------------------------------------------------------------------------------------------------------------
+
+const fAU = 020
+
+func auSourceItemHIBD(label string, j int, a int, x int, h int, i int, b int, d int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhibd", []int{fAU, j, a, x, h, i, b, d})
+}
+
+func auSourceItemHIBDRef(label string, j int, a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fAU),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		fmt.Sprintf("%03o", b),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhibd", ops)
+}
+
+func auSourceItemHIU(label string, j int, a int, x int, h int, i int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhiu", []int{fAU, j, a, x, h, i, u})
+}
+
+func auSourceItemHIURef(label string, j int, a int, x int, h int, i int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fAU),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhiu", ops)
+}
+
+func auSourceItemU(label string, j int, a int, x int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxu", []int{fAU, j, a, x, u})
+}
+
+// ANU ------------------------------------------------------------------------------------------------------------------
+
+const fANU = 021
+
+func anuSourceItemHIBD(label string, j int, a int, x int, h int, i int, b int, d int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhibd", []int{fANU, j, a, x, h, i, b, d})
+}
+
+func anuSourceItemHIBDRef(label string, j int, a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fANU),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		fmt.Sprintf("%03o", b),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhibd", ops)
+}
+
+func anuSourceItemHIU(label string, j int, a int, x int, h int, i int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhiu", []int{fANU, j, a, x, h, i, u})
+}
+
+func anuSourceItemHIURef(label string, j int, a int, x int, h int, i int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fANU),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhiu", ops)
+}
+
+func anuSourceItemU(label string, j int, a int, x int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxu", []int{fANU, j, a, x, u})
+}
+
+// AX ------------------------------------------------------------------------------------------------------------------
+
+const fAX = 024
+
+func axSourceItemHIBD(label string, j int, a int, x int, h int, i int, b int, d int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhibd", []int{fAX, j, a, x, h, i, b, d})
+}
+
+func axSourceItemHIBDRef(label string, j int, a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fAX),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		fmt.Sprintf("%03o", b),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhibd", ops)
+}
+
+func axSourceItemHIU(label string, j int, a int, x int, h int, i int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhiu", []int{fAX, j, a, x, h, i, u})
+}
+
+func axSourceItemHIURef(label string, j int, a int, x int, h int, i int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fAX),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhiu", ops)
+}
+
+func axSourceItemU(label string, j int, a int, x int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxu", []int{fAX, j, a, x, u})
+}
+
+// ANX ------------------------------------------------------------------------------------------------------------------
+
+const fANX = 025
+
+func anxSourceItemHIBD(label string, j int, a int, x int, h int, i int, b int, d int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhibd", []int{fANX, j, a, x, h, i, b, d})
+}
+
+func anxSourceItemHIBDRef(label string, j int, a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fANX),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		fmt.Sprintf("%03o", b),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhibd", ops)
+}
+
+func anxSourceItemHIU(label string, j int, a int, x int, h int, i int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxhiu", []int{fANX, j, a, x, h, i, u})
+}
+
+func anxSourceItemHIURef(label string, j int, a int, x int, h int, i int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", fANX),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		ref,
+	}
+	return tasm.NewSourceItem(label, "fjaxhiu", ops)
+}
+
+func anxSourceItemU(label string, j int, a int, x int, u int) *tasm.SourceItem {
+	return sourceItem(label, "fjaxu", []int{fANX, j, a, x, u})
+}
+
 //	TODO MI
 //	TODO MSI
 //	TODO MF
@@ -2501,13 +2837,13 @@ func checkInterrupt(t *testing.T, engine *InstructionEngine, interruptClass pkg.
 	}
 
 	engine.pendingInterrupts.Dump()
-	t.Fatalf("Error:Expected interrupt class %d to be posted", interruptClass)
+	t.Errorf("Error:Expected interrupt class %d to be posted", interruptClass)
 }
 
 func checkProgramAddress(t *testing.T, engine *InstructionEngine, expectedAddress uint64) {
 	actual := engine.GetProgramAddressRegister().GetProgramCounter()
 	if actual != expectedAddress {
-		t.Fatalf("Error:Expected PAR.PC is %06o but we expected it to be %06o", actual, expectedAddress)
+		t.Errorf("Error:Expected PAR.PC is %06o but we expected it to be %06o", actual, expectedAddress)
 	}
 }
 
@@ -2515,18 +2851,18 @@ func checkMemory(t *testing.T, engine *InstructionEngine, addr *pkg.AbsoluteAddr
 	seg, interrupt := engine.mainStorage.GetSegment(addr.GetSegment())
 	if interrupt != nil {
 		engine.mainStorage.Dump()
-		t.Fatalf("Error:%s", pkg.GetInterruptString(interrupt))
+		t.Errorf("Error:%s", pkg.GetInterruptString(interrupt))
 	}
 
 	if addr.GetOffset() >= uint64(len(seg)) {
 		engine.mainStorage.Dump()
-		t.Fatalf("Error:offset is out of range for address %s - segment size is %012o", addr.GetString(), len(seg))
+		t.Errorf("Error:offset is out of range for address %s - segment size is %012o", addr.GetString(), len(seg))
 	}
 
 	result := seg[addr.GetOffset()+offset]
 	if result.GetW() != expected {
 		engine.mainStorage.Dump()
-		t.Fatalf("Storage at (%s)+0%o is %012o, expected %012o", addr.GetString(), offset, result, expected)
+		t.Errorf("Storage at (%s)+0%o is %012o, expected %012o", addr.GetString(), offset, result, expected)
 	}
 }
 
@@ -2534,29 +2870,29 @@ func checkRegister(t *testing.T, engine *InstructionEngine, register uint64, exp
 	result := engine.generalRegisterSet.GetRegister(register).GetW()
 	if result != expected {
 		engine.generalRegisterSet.Dump()
-		t.Fatalf("Register %s is %012o, expected %012o", name, result, expected)
+		t.Errorf("Register %s is %012o, expected %012o", name, result, expected)
 	}
 }
 
 func checkStoppedReason(t *testing.T, engine *InstructionEngine, reason StopReason, detail uint64) {
 	if engine.HasPendingInterrupt() {
 		engine.Dump()
-		t.Fatalf("Engine has unexpected pending interrupts")
+		t.Errorf("Engine has unexpected pending interrupts")
 	}
 
 	if !engine.IsStopped() {
 		engine.Dump()
-		t.Fatalf("Expected engine to be stopped; it is not")
+		t.Errorf("Expected engine to be stopped; it is not")
 	}
 
 	actualReason, actualDetail := engine.GetStopReason()
 	if actualReason != reason {
 		engine.Dump()
-		t.Fatalf("Engine stopped for reason %d; expected reason %d", actualReason, reason)
+		t.Errorf("Engine stopped for reason %d; expected reason %d", actualReason, reason)
 	}
 
 	if actualDetail != detail {
 		engine.Dump()
-		t.Fatalf("Engine stopped for detail %d; expected detail %d", actualDetail, detail)
+		t.Errorf("Engine stopped for detail %d; expected detail %d", actualDetail, detail)
 	}
 }
