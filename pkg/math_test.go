@@ -55,6 +55,15 @@ func Test_AddDouble(t *testing.T) {
 		t.Errorf("Error expected result to be %012o:%012o, but it was %012o:%012o",
 			expected[0], expected[1], result[0], result[1])
 	}
+
+	addend1 = []uint64{0_000000_543210, 0_210056_523004}
+	addend2 = []uint64{0_777777_347677, 0_777735_667775}
+	expected = []uint64{0_000000_113110, 0_210014_413002}
+	result = AddDouble(addend1, addend2)
+	if CompareDouble(result, expected) != 0 {
+		t.Errorf("Error expected result to be %012o:%012o, but it was %012o:%012o",
+			expected[0], expected[1], result[0], result[1])
+	}
 }
 
 func Test_AddSimple_2(t *testing.T) {

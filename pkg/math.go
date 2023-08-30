@@ -50,7 +50,7 @@ func AddDouble(operand1 []uint64, operand2 []uint64) []uint64 {
 		bigAddend2.Lsh(&op2MSW, 36)
 		bigAddend2.Or(&bigAddend2, &op2LSW)
 		if IsNegativeDouble(operand2) {
-			bigAddend1.Neg(&bigAddend2)
+			bigAddend2.Neg(&bigAddend2)
 		}
 
 		bigSum.Add(&bigAddend1, &bigAddend2)
