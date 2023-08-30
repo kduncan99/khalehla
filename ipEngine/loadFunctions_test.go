@@ -29,7 +29,7 @@ const jDLN = 014
 // ---------------------------------------------------
 // LA
 
-func laSourceItemU(j uint64, a uint64, x uint64, u int) *tasm.SourceItem {
+func laSourceItemU(j uint64, a uint64, x uint64, u uint64) *tasm.SourceItem {
 	return fjaxuSourceItem(fLA, j, a, x, u)
 }
 
@@ -44,7 +44,7 @@ func laSourceItemHIBRef(j uint64, a uint64, x uint64, h uint64, i uint64, b uint
 // ---------------------------------------------------
 // LMA
 
-func lmaSourceItemU(j uint64, a uint64, x uint64, u int) *tasm.SourceItem {
+func lmaSourceItemU(j uint64, a uint64, x uint64, u uint64) *tasm.SourceItem {
 	return fjaxuSourceItem(fLMA, j, a, x, u)
 }
 
@@ -59,7 +59,7 @@ func lmaSourceItemHIBRef(j uint64, a uint64, x uint64, h uint64, i uint64, b uin
 // ---------------------------------------------------
 // LNA
 
-func lnaSourceItemU(j uint64, a uint64, x uint64, u int) *tasm.SourceItem {
+func lnaSourceItemU(j uint64, a uint64, x uint64, u uint64) *tasm.SourceItem {
 	return fjaxuSourceItem(fLNA, j, a, x, u)
 }
 
@@ -74,7 +74,7 @@ func lnaSourceItemHIBRef(j uint64, a uint64, x uint64, h uint64, i uint64, b uin
 // ---------------------------------------------------
 // LNMA
 
-func lnmaSourceItemU(j uint64, a uint64, x uint64, u int) *tasm.SourceItem {
+func lnmaSourceItemU(j uint64, a uint64, x uint64, u uint64) *tasm.SourceItem {
 	return fjaxuSourceItem(fLNMA, j, a, x, u)
 }
 
@@ -122,7 +122,7 @@ func dlnSourceItemHIBRef(a uint64, x uint64, h uint64, i uint64, b uint64, ref s
 // ---------------------------------------------------
 // LR
 
-func lrSourceItemU(j uint64, a uint64, x uint64, u int) *tasm.SourceItem {
+func lrSourceItemU(j uint64, a uint64, x uint64, u uint64) *tasm.SourceItem {
 	return fjaxuSourceItem(fLR, j, a, x, u)
 }
 
@@ -137,7 +137,7 @@ func lrSourceItemHIBRef(j uint64, a uint64, x uint64, h uint64, i uint64, b uint
 // ---------------------------------------------------
 // LX
 
-func lxSourceItemU(j uint64, a uint64, x uint64, u int) *tasm.SourceItem {
+func lxSourceItemU(j uint64, a uint64, x uint64, u uint64) *tasm.SourceItem {
 	return fjaxuSourceItem(fLX, j, a, x, u)
 }
 
@@ -152,7 +152,7 @@ func lxSourceItemHIBRef(j uint64, a uint64, x uint64, h uint64, i uint64, b uint
 // ---------------------------------------------------
 // LXI
 
-func lxiSourceItemU(j uint64, a uint64, x uint64, u int) *tasm.SourceItem {
+func lxiSourceItemU(j uint64, a uint64, x uint64, u uint64) *tasm.SourceItem {
 	return fjaxuSourceItem(fLXI, j, a, x, u)
 }
 
@@ -167,7 +167,7 @@ func lxiSourceItemHIBRef(j uint64, a uint64, x uint64, h uint64, i uint64, b uin
 // ---------------------------------------------------
 // LXM
 
-func lxmSourceItemU(j uint64, a uint64, x uint64, u int) *tasm.SourceItem {
+func lxmSourceItemU(j uint64, a uint64, x uint64, u uint64) *tasm.SourceItem {
 	return fjaxuSourceItem(fLXM, j, a, x, u)
 }
 

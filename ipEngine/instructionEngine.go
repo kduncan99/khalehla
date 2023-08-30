@@ -1409,6 +1409,11 @@ func (e *InstructionEngine) findBaseRegisterIndex(relAddr uint64) (baseRegisterI
 	return
 }
 
+func (e *InstructionEngine) flipDesignatorRegisterBit31() {
+	dr := e.GetDesignatorRegister()
+	dr.SetBasicModeBaseRegisterSelection(!dr.GetBasicModeBaseRegisterSelection())
+}
+
 func (e *InstructionEngine) getCurrentVirtualAddress() pkg.VirtualAddress {
 	dr := e.GetDesignatorRegister()
 	if dr.IsBasicModeEnabled() {

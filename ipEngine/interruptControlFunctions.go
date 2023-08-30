@@ -50,7 +50,7 @@ func PreventAllInterruptsAndJump(e *InstructionEngine) (completed bool) {
 
 	if comp {
 		if flip {
-			// the following is in jumpFunctions.go
+			// the following is in unconditionalJumpFunctions.go
 			flipDesignatorRegisterBit31(e)
 		}
 		dr.SetDeferrableInterruptEnabled(true)
@@ -78,7 +78,7 @@ func AllowAllInterruptsAndJump(e *InstructionEngine) (completed bool) {
 
 	if comp {
 		if flip {
-			// the following is in jumpFunctions.go
+			// the following is in unconditionalJumpFunctions.go
 			flipDesignatorRegisterBit31(e)
 		}
 		dr.SetDeferrableInterruptEnabled(false)

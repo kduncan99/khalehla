@@ -8,137 +8,6 @@ import (
 	"khalehla/pkg"
 )
 
-func flipDesignatorRegisterBit31(e *InstructionEngine) {
-	dr := e.GetDesignatorRegister()
-	dr.SetBasicModeBaseRegisterSelection(!dr.GetBasicModeBaseRegisterSelection())
-}
-
-// unconditional jumps -------------------------------------------------------------------------------------------------
-
-// StoreLocationAndJump (SLJ) stores the relative address of the instruction incremented by one in the location
-// specified by U, then loads the program counter with U+1.
-func StoreLocationAndJump(e *InstructionEngine) (completed bool) {
-	value := (e.GetProgramAddressRegister().GetProgramCounter() + 1) & 0_777777
-	comp1, i1 := e.StoreOperand(false, true, false, false, value)
-	if i1 != nil {
-		e.PostInterrupt(i1)
-		return false
-	} else if !comp1 {
-		return false
-	}
-
-	operand, flip31, comp2, i2 := e.GetJumpOperand()
-	if i2 != nil {
-		e.PostInterrupt(i2)
-		return false
-	} else if !comp2 {
-		return false
-	}
-
-	e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
-	e.SetProgramCounter(operand, false) // we need auto-increment to get us to the next instruction
-	if flip31 {
-		flipDesignatorRegisterBit31(e)
-	}
-
-	return true
-}
-
-// LoadModifierAndJump (LMJ) stores the incremented-by-one of the instruction's relative address into
-// the 18-bit modifier portion of Xa, then loads the program counter from the U field.
-func LoadModifierAndJump(e *InstructionEngine) (completed bool) {
-	operand, flip31, comp, i := e.GetJumpOperand()
-
-	if i != nil {
-		e.PostInterrupt(i)
-	} else if comp {
-		ci := e.GetCurrentInstruction()
-		xReg := e.GetExecOrUserXRegister(ci.GetA())
-		xReg.SetXM(e.GetProgramAddressRegister().GetProgramCounter() + 1)
-
-		e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
-		e.SetProgramCounter(operand, true)
-		if flip31 {
-			flipDesignatorRegisterBit31(e)
-		}
-	}
-
-	return comp
-}
-
-// Jump (J) Loads the program counter from the U field - assumes no bank switching
-func Jump(e *InstructionEngine) (completed bool) {
-	operand, flip31, comp, i := e.GetJumpOperand()
-
-	if i != nil {
-		e.PostInterrupt(i)
-	} else if comp {
-		e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
-		e.SetProgramCounter(operand, true)
-		if flip31 {
-			flipDesignatorRegisterBit31(e)
-		}
-	}
-
-	return comp
-}
-
-// JumpKeys (JK) evaluates the operand, but does not jump.
-// The assumption is that the selected jump key is present, but cleared.
-// It is not specified how the jump key is selected, but it doesn't matter.
-func JumpKeys(e *InstructionEngine) (completed bool) {
-	_, _, comp, i := e.GetJumpOperand()
-
-	if i != nil {
-		e.PostInterrupt(i)
-	}
-
-	return comp
-}
-
-// HaltJump (HLTJ) Loads the program counter for the U field then stops the processor
-func HaltJump(e *InstructionEngine) (completed bool) {
-	if e.activityStatePacket.GetDesignatorRegister().GetProcessorPrivilege() > 0 {
-		i := pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadPP)
-		e.PostInterrupt(i)
-		return false
-	}
-
-	operand, flip31, comp, i := e.GetJumpOperand()
-
-	if i != nil {
-		e.PostInterrupt(i)
-	} else if comp {
-		e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
-		e.SetProgramCounter(operand, true)
-		if flip31 {
-			flipDesignatorRegisterBit31(e)
-		}
-		e.Stop(HaltJumpExecutedStop, 0)
-	}
-
-	return comp
-}
-
-// HaltKeysAndJump (HJ or HKJ) Loads the program counter for the U field. No halt occurs.
-func HaltKeysAndJump(e *InstructionEngine) (completed bool) {
-	operand, flip31, comp, i := e.GetJumpOperand()
-
-	if i != nil {
-		e.PostInterrupt(i)
-	} else if comp {
-		e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
-		e.SetProgramCounter(operand, true)
-		if flip31 {
-			flipDesignatorRegisterBit31(e)
-		}
-	}
-
-	return comp
-}
-
-// Jumps conditional upon some value -----------------------------------------------------------------------------------
-
 // JumpZero (JZ) Loads the program counter from the U field *IF* Aa is zero
 func JumpZero(e *InstructionEngine) (completed bool) {
 	completed = true
@@ -153,7 +22,7 @@ func JumpZero(e *InstructionEngine) (completed bool) {
 			e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 			e.SetProgramCounter(operand, true)
 			if flip31 {
-				flipDesignatorRegisterBit31(e)
+				e.flipDesignatorRegisterBit31()
 			}
 		}
 
@@ -182,7 +51,7 @@ func DoubleJumpZero(e *InstructionEngine) (completed bool) {
 			e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 			e.SetProgramCounter(operand, true)
 			if flip31 {
-				flipDesignatorRegisterBit31(e)
+				e.flipDesignatorRegisterBit31()
 			}
 		}
 
@@ -206,7 +75,7 @@ func JumpNonZero(e *InstructionEngine) (completed bool) {
 			e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 			e.SetProgramCounter(operand, true)
 			if flip31 {
-				flipDesignatorRegisterBit31(e)
+				e.flipDesignatorRegisterBit31()
 			}
 		}
 
@@ -230,7 +99,7 @@ func JumpPositive(e *InstructionEngine) (completed bool) {
 			e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 			e.SetProgramCounter(operand, true)
 			if flip31 {
-				flipDesignatorRegisterBit31(e)
+				e.flipDesignatorRegisterBit31()
 			}
 		}
 
@@ -255,7 +124,7 @@ func JumpPositiveAndShift(e *InstructionEngine) (completed bool) {
 			e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 			e.SetProgramCounter(operand, true)
 			if flip31 {
-				flipDesignatorRegisterBit31(e)
+				e.flipDesignatorRegisterBit31()
 			}
 		}
 
@@ -283,7 +152,7 @@ func JumpNegative(e *InstructionEngine) (completed bool) {
 			e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 			e.SetProgramCounter(operand, true)
 			if flip31 {
-				flipDesignatorRegisterBit31(e)
+				e.flipDesignatorRegisterBit31()
 			}
 		}
 
@@ -308,7 +177,7 @@ func JumpNegativeAndShift(e *InstructionEngine) (completed bool) {
 			e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 			e.SetProgramCounter(operand, true)
 			if flip31 {
-				flipDesignatorRegisterBit31(e)
+				e.flipDesignatorRegisterBit31()
 			}
 		}
 
@@ -336,7 +205,7 @@ func JumpLowBit(e *InstructionEngine) (completed bool) {
 			e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 			e.SetProgramCounter(operand, true)
 			if flip31 {
-				flipDesignatorRegisterBit31(e)
+				e.flipDesignatorRegisterBit31()
 			}
 		}
 
@@ -360,7 +229,7 @@ func JumpNoLowBit(e *InstructionEngine) (completed bool) {
 			e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 			e.SetProgramCounter(operand, true)
 			if flip31 {
-				flipDesignatorRegisterBit31(e)
+				e.flipDesignatorRegisterBit31()
 			}
 		}
 
@@ -388,7 +257,7 @@ func JumpGreaterAndDecrement(e *InstructionEngine) (completed bool) {
 			e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 			e.SetProgramCounter(operand, true)
 			if flip31 {
-				flipDesignatorRegisterBit31(e)
+				e.flipDesignatorRegisterBit31()
 			}
 		}
 
@@ -422,7 +291,7 @@ func JumpModifierGreaterAndIncrement(e *InstructionEngine) (completed bool) {
 			e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 			e.SetProgramCounter(operand, true)
 			if flip31 {
-				flipDesignatorRegisterBit31(e)
+				e.flipDesignatorRegisterBit31()
 			}
 		}
 
@@ -451,7 +320,7 @@ func JumpOverflow(e *InstructionEngine) (completed bool) {
 			e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 			e.SetProgramCounter(operand, true)
 			if flip31 {
-				flipDesignatorRegisterBit31(e)
+				e.flipDesignatorRegisterBit31()
 			}
 		}
 
@@ -474,7 +343,7 @@ func JumpNoOverflow(e *InstructionEngine) (completed bool) {
 			e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 			e.SetProgramCounter(operand, true)
 			if flip31 {
-				flipDesignatorRegisterBit31(e)
+				e.flipDesignatorRegisterBit31()
 			}
 		}
 
@@ -497,7 +366,7 @@ func JumpCarry(e *InstructionEngine) (completed bool) {
 			e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 			e.SetProgramCounter(operand, true)
 			if flip31 {
-				flipDesignatorRegisterBit31(e)
+				e.flipDesignatorRegisterBit31()
 			}
 		}
 
@@ -520,7 +389,7 @@ func JumpNoCarry(e *InstructionEngine) (completed bool) {
 			e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 			e.SetProgramCounter(operand, true)
 			if flip31 {
-				flipDesignatorRegisterBit31(e)
+				e.flipDesignatorRegisterBit31()
 			}
 		}
 
@@ -543,7 +412,7 @@ func JumpDivideFault(e *InstructionEngine) (completed bool) {
 			e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 			e.SetProgramCounter(operand, true)
 			if flip31 {
-				flipDesignatorRegisterBit31(e)
+				e.flipDesignatorRegisterBit31()
 			}
 		}
 
@@ -566,7 +435,7 @@ func JumpNoDivideFault(e *InstructionEngine) (completed bool) {
 			e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 			e.SetProgramCounter(operand, true)
 			if flip31 {
-				flipDesignatorRegisterBit31(e)
+				e.flipDesignatorRegisterBit31()
 			}
 		}
 
@@ -589,7 +458,7 @@ func JumpFloatingOverflow(e *InstructionEngine) (completed bool) {
 			e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 			e.SetProgramCounter(operand, true)
 			if flip31 {
-				flipDesignatorRegisterBit31(e)
+				e.flipDesignatorRegisterBit31()
 			}
 		}
 
@@ -612,7 +481,7 @@ func JumpNoFloatingOverflow(e *InstructionEngine) (completed bool) {
 			e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 			e.SetProgramCounter(operand, true)
 			if flip31 {
-				flipDesignatorRegisterBit31(e)
+				e.flipDesignatorRegisterBit31()
 			}
 		}
 
@@ -635,7 +504,7 @@ func JumpFloatingUnderflow(e *InstructionEngine) (completed bool) {
 			e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 			e.SetProgramCounter(operand, true)
 			if flip31 {
-				flipDesignatorRegisterBit31(e)
+				e.flipDesignatorRegisterBit31()
 			}
 		}
 
@@ -658,7 +527,7 @@ func JumpNoFloatingUnderflow(e *InstructionEngine) (completed bool) {
 			e.createJumpHistoryEntry(e.getCurrentVirtualAddress())
 			e.SetProgramCounter(operand, true)
 			if flip31 {
-				flipDesignatorRegisterBit31(e)
+				e.flipDesignatorRegisterBit31()
 			}
 		}
 
