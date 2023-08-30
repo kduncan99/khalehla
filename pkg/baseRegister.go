@@ -4,6 +4,41 @@
 
 package pkg
 
+const (
+	B0 = iota
+	B1
+	B2
+	B3
+	B4
+	B5
+	B6
+	B7
+	B8
+	B9
+	B10
+	B11
+	B12
+	B13
+	B14
+	B15
+	B16
+	B17
+	B18
+	B19
+	B20
+	B21
+	B22
+	B23
+	B24
+	B25
+	B26
+	B27
+	B28
+	B29
+	B30
+	B31
+)
+
 type BaseRegister struct {
 	storage        []Word36        // slice representing the storage for this bank - nil for void bank
 	bankDescriptor *BankDescriptor // reference to BankDescriptor for this base register - nil for void bank

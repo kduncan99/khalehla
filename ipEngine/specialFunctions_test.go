@@ -25,7 +25,7 @@ var exBasicMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "w", []string{"0"}),
 	tasm.NewSourceItem("", "w", []string{"0"}),
 	tasm.NewSourceItem("", "w", []string{"0"}),
-	lrSourceItemHIURef("", jH1, 3, 0, 0, 0, "data"),
+	lrSourceItemHIRef("", jH1, 3, 0, 0, 0, "data"),
 }
 
 func Test_EX_Basic(t *testing.T) {
@@ -50,8 +50,8 @@ func Test_EX_Basic(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
-	checkRegister(t, engine, pkg.X5, 0_000001_000005, "X5")
-	checkRegister(t, engine, pkg.R3, 0_123456, "R3")
+	checkRegister(t, engine, pkg.X5, 0_000001_000005)
+	checkRegister(t, engine, pkg.R3, 0_123456)
 }
 
 var exBasicModeIndirect = []*tasm.SourceItem{
@@ -69,7 +69,7 @@ var exBasicModeIndirect = []*tasm.SourceItem{
 	tasm.NewSourceItem("", ".SEG", []string{"14"}),
 	tasm.NewSourceItem("ind1", "fjaxhiu", []string{zero, zero, zero, zero, zero, "1", "ind2"}),
 	tasm.NewSourceItem("ind2", "fjaxhiu", []string{zero, zero, zero, zero, zero, zero, "target"}),
-	lrSourceItemHIURef("target", jH1, 3, 0, 0, 1, "data1"),
+	lrSourceItemHIRef("target", jH1, 3, 0, 0, 1, "data1"),
 }
 
 func Test_EX_BasicModeIndirect(t *testing.T) {
@@ -93,7 +93,7 @@ func Test_EX_BasicModeIndirect(t *testing.T) {
 	}
 
 	engine := ute.GetEngine()
-	checkRegister(t, engine, pkg.R3, 0_123456, "R3")
+	checkRegister(t, engine, pkg.R3, 0_123456)
 }
 
 var exExtendedMode = []*tasm.SourceItem{
@@ -110,7 +110,7 @@ var exExtendedMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "w", []string{"0"}),
 	tasm.NewSourceItem("", "w", []string{"0"}),
 	tasm.NewSourceItem("", "w", []string{"0"}),
-	lrSourceItemHIBDRef("", jH1, 3, 0, 0, 0, 0, "data"),
+	lrSourceItemHIBRef("", jH1, 3, 0, 0, 0, 0, "data"),
 }
 
 func Test_EX_Extended(t *testing.T) {
@@ -135,8 +135,8 @@ func Test_EX_Extended(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
-	checkRegister(t, engine, pkg.X5, 0_000001_000005, "X5")
-	checkRegister(t, engine, pkg.R3, 0_123456, "R3")
+	checkRegister(t, engine, pkg.X5, 0_000001_000005)
+	checkRegister(t, engine, pkg.R3, 0_123456)
 }
 
 var exExtendedModeCascade = []*tasm.SourceItem{
@@ -153,7 +153,7 @@ var exExtendedModeCascade = []*tasm.SourceItem{
 	exSourceItemHIBDRef("target1", 0, 0, 0, 5, "target4"),
 
 	tasm.NewSourceItem("", ".SEG", []string{"05"}),
-	lrSourceItemHIBDRef("target4", jH1, 7, 0, 0, 0, 2, "data"),
+	lrSourceItemHIBRef("target4", jH1, 7, 0, 0, 0, 2, "data"),
 }
 
 func Test_EX_ExtendedCascade(t *testing.T) {
@@ -178,7 +178,7 @@ func Test_EX_ExtendedCascade(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
-	checkRegister(t, engine, pkg.R7, 0_123456, "R7")
+	checkRegister(t, engine, pkg.R7, 0_123456)
 }
 
 var exExtendedModeJump = []*tasm.SourceItem{
@@ -255,7 +255,7 @@ var exrExtendedMode = []*tasm.SourceItem{
 	segSourceItem(02),
 	tasm.NewSourceItem("target", "w", []string{"0"}),
 	tasm.NewSourceItem("", "w", []string{"0"}),
-	sasSourceItemHIBDRef("", jH1, 8, 1, 0, 3, "data"),
+	sasSourceItemHIBRef("", jH1, 8, 1, 0, 3, "data"),
 
 	segSourceItem(03),
 	tasm.NewSourceItem("data", "hw", []string{"0", "0777777"}),
@@ -292,7 +292,7 @@ func Test_EXR_Extended(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
-	checkRegister(t, engine, pkg.X8, 0_000001_000010, "X8")
+	checkRegister(t, engine, pkg.X8, 0_000001_000010)
 
 	for ox := uint64(0); ox < 8; ox++ {
 		checkMemory(t, engine, engine.baseRegisters[3].GetBankDescriptor().GetBaseAddress(), ox, 0_040040_777777)
@@ -379,7 +379,7 @@ func Test_EXR_ExtendedTZ(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
-	checkRegister(t, engine, pkg.R1, 013, "R1")
+	checkRegister(t, engine, pkg.R1, 013)
 }
 
 // TODO NOP
@@ -417,9 +417,9 @@ func Test_DCB_ExtendedTest(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
-	checkRegister(t, engine, pkg.A3, 46, "A3")
-	checkRegister(t, engine, pkg.A4, 36, "A4")
-	checkRegister(t, engine, pkg.A5, 1, "A5")
+	checkRegister(t, engine, pkg.A3, 46)
+	checkRegister(t, engine, pkg.A4, 36)
+	checkRegister(t, engine, pkg.A5, 1)
 }
 
 var rngbExtendedMode = []*tasm.SourceItem{

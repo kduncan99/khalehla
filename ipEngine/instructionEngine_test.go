@@ -12,26 +12,26 @@ import (
 
 var partialWordLoadsBasicThirdWord = []*tasm.SourceItem{
 	segSourceItem(077),
-	tasm.NewSourceItem("data1", "w", []string{"0556677001122"}),
-	tasm.NewSourceItem("data2", "hw", []string{"0506070", "0507777"}),
-	tasm.NewSourceItem("data3", "hw", []string{"0223344", "0221100"}),
-	tasm.NewSourceItem("data4", "tw", []string{"01111", "02222", "03333"}),
-	tasm.NewSourceItem("data5", "tw", []string{"05500", "06600", "07700"}),
+	labelDataSourceItem("data1", []uint64{0_556677_001122}),
+	labelDataSourceItem("data2", []uint64{0_506070, 0_507777}),
+	labelDataSourceItem("data3", []uint64{0_223344, 0_221100}),
+	labelDataSourceItem("data4", []uint64{01111, 02222, 03333}),
+	labelDataSourceItem("data5", []uint64{05500, 06600, 07700}),
 
 	segSourceItem(0),
-	laSourceItemHIURef("", jW, 0, 0, 0, 0, "data1"),
-	laSourceItemHIURef("", jH1, 1, 0, 0, 0, "data2"),
-	laSourceItemHIURef("", jH2, 2, 0, 0, 0, "data2"),
-	laSourceItemHIURef("", jXH1, 3, 0, 0, 0, "data2"),
-	laSourceItemHIURef("", jXH1, 4, 0, 0, 0, "data3"),
-	laSourceItemHIURef("", jXH2, 5, 0, 0, 0, "data2"),
-	laSourceItemHIURef("", jXH2, 6, 0, 0, 0, "data3"),
-	laSourceItemHIURef("", jT1, 7, 0, 0, 0, "data4"),
-	laSourceItemHIURef("", jT1, 8, 0, 0, 0, "data5"),
-	laSourceItemHIURef("", jT2, 9, 0, 0, 0, "data4"),
-	laSourceItemHIURef("", jT2, 10, 0, 0, 0, "data5"),
-	laSourceItemHIURef("", jT3, 11, 0, 0, 0, "data4"),
-	laSourceItemHIURef("", jT3, 12, 0, 0, 0, "data5"),
+	laSourceItemHIRef("", jW, 0, 0, 0, 0, "data1"),
+	laSourceItemHIRef("", jH1, 1, 0, 0, 0, "data2"),
+	laSourceItemHIRef("", jH2, 2, 0, 0, 0, "data2"),
+	laSourceItemHIRef("", jXH1, 3, 0, 0, 0, "data2"),
+	laSourceItemHIRef("", jXH1, 4, 0, 0, 0, "data3"),
+	laSourceItemHIRef("", jXH2, 5, 0, 0, 0, "data2"),
+	laSourceItemHIRef("", jXH2, 6, 0, 0, 0, "data3"),
+	laSourceItemHIRef("", jT1, 7, 0, 0, 0, "data4"),
+	laSourceItemHIRef("", jT1, 8, 0, 0, 0, "data5"),
+	laSourceItemHIRef("", jT2, 9, 0, 0, 0, "data4"),
+	laSourceItemHIRef("", jT2, 10, 0, 0, 0, "data5"),
+	laSourceItemHIRef("", jT3, 11, 0, 0, 0, "data4"),
+	laSourceItemHIRef("", jT3, 12, 0, 0, 0, "data5"),
 	iarSourceItem("", 0),
 }
 
@@ -57,19 +57,19 @@ func Test_PartialWordLoads_BasicThirdWord(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
-	checkRegister(t, engine, pkg.A0, 0_556677_001122, "A0")
-	checkRegister(t, engine, pkg.A1, 0_506070, "A1")
-	checkRegister(t, engine, pkg.A2, 0_507777, "A2")
-	checkRegister(t, engine, pkg.A3, 0_777777_506070, "A3")
-	checkRegister(t, engine, pkg.A4, 0_223344, "A4")
-	checkRegister(t, engine, pkg.A5, 0_777777_507777, "A5")
-	checkRegister(t, engine, pkg.A6, 0_221100, "A6")
-	checkRegister(t, engine, pkg.A7, 01111, "A7")
-	checkRegister(t, engine, pkg.A8, 0_777777_775500, "A8")
-	checkRegister(t, engine, pkg.A9, 02222, "A9")
-	checkRegister(t, engine, pkg.A10, 0_777777_776600, "A10")
-	checkRegister(t, engine, pkg.A11, 03333, "A11")
-	checkRegister(t, engine, pkg.A12, 0_777777_777700, "A12")
+	checkRegister(t, engine, pkg.A0, 0_556677_001122)
+	checkRegister(t, engine, pkg.A1, 0_506070)
+	checkRegister(t, engine, pkg.A2, 0_507777)
+	checkRegister(t, engine, pkg.A3, 0_777777_506070)
+	checkRegister(t, engine, pkg.A4, 0_223344)
+	checkRegister(t, engine, pkg.A5, 0_777777_507777)
+	checkRegister(t, engine, pkg.A6, 0_221100)
+	checkRegister(t, engine, pkg.A7, 01111)
+	checkRegister(t, engine, pkg.A8, 0_777777_775500)
+	checkRegister(t, engine, pkg.A9, 02222)
+	checkRegister(t, engine, pkg.A10, 0_777777_776600)
+	checkRegister(t, engine, pkg.A11, 03333)
+	checkRegister(t, engine, pkg.A12, 0_777777_777700)
 }
 
 var PartialWordLoadsBasicQuarterWord = []*tasm.SourceItem{
@@ -78,16 +78,16 @@ var PartialWordLoadsBasicQuarterWord = []*tasm.SourceItem{
 	tasm.NewSourceItem("data2", "sw", []string{"012", "034", "056", "075", "042", "010"}),
 
 	segSourceItem(0),
-	lrSourceItemHIURef("", jQ1, 0, 0, 0, 0, "data1"),
-	lrSourceItemHIURef("", jQ2, 1, 0, 0, 0, "data1"),
-	lrSourceItemHIURef("", jQ3, 2, 0, 0, 0, "data1"),
-	lrSourceItemHIURef("", jQ4, 3, 0, 0, 0, "data1"),
-	lrSourceItemHIURef("", jS1, 4, 0, 0, 0, "data2"),
-	lrSourceItemHIURef("", jS2, 5, 0, 0, 0, "data2"),
-	lrSourceItemHIURef("", jS3, 6, 0, 0, 0, "data2"),
-	lrSourceItemHIURef("", jS4, 7, 0, 0, 0, "data2"),
-	lrSourceItemHIURef("", jS5, 8, 0, 0, 0, "data2"),
-	lrSourceItemHIURef("", jS6, 9, 0, 0, 0, "data2"),
+	lrSourceItemHIRef("", jQ1, 0, 0, 0, 0, "data1"),
+	lrSourceItemHIRef("", jQ2, 1, 0, 0, 0, "data1"),
+	lrSourceItemHIRef("", jQ3, 2, 0, 0, 0, "data1"),
+	lrSourceItemHIRef("", jQ4, 3, 0, 0, 0, "data1"),
+	lrSourceItemHIRef("", jS1, 4, 0, 0, 0, "data2"),
+	lrSourceItemHIRef("", jS2, 5, 0, 0, 0, "data2"),
+	lrSourceItemHIRef("", jS3, 6, 0, 0, 0, "data2"),
+	lrSourceItemHIRef("", jS4, 7, 0, 0, 0, "data2"),
+	lrSourceItemHIRef("", jS5, 8, 0, 0, 0, "data2"),
+	lrSourceItemHIRef("", jS6, 9, 0, 0, 0, "data2"),
 	iarSourceItem("", 0),
 }
 
@@ -113,16 +113,16 @@ func Test_PartialWordLoads_BasicQuarterWord(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
-	checkRegister(t, engine, pkg.R0, 0400, "R0")
-	checkRegister(t, engine, pkg.R1, 0501, "R1")
-	checkRegister(t, engine, pkg.R2, 0677, "R2")
-	checkRegister(t, engine, pkg.R3, 0777, "R3")
-	checkRegister(t, engine, pkg.R4, 012, "R4")
-	checkRegister(t, engine, pkg.R5, 034, "R5")
-	checkRegister(t, engine, pkg.R6, 056, "R6")
-	checkRegister(t, engine, pkg.R7, 075, "R7")
-	checkRegister(t, engine, pkg.R8, 042, "R8")
-	checkRegister(t, engine, pkg.R9, 010, "R9")
+	checkRegister(t, engine, pkg.R0, 0400)
+	checkRegister(t, engine, pkg.R1, 0501)
+	checkRegister(t, engine, pkg.R2, 0677)
+	checkRegister(t, engine, pkg.R3, 0777)
+	checkRegister(t, engine, pkg.R4, 012)
+	checkRegister(t, engine, pkg.R5, 034)
+	checkRegister(t, engine, pkg.R6, 056)
+	checkRegister(t, engine, pkg.R7, 075)
+	checkRegister(t, engine, pkg.R8, 042)
+	checkRegister(t, engine, pkg.R9, 010)
 }
 
 var partialWordStoresBasicThirdWord = []*tasm.SourceItem{
@@ -140,18 +140,18 @@ var partialWordStoresBasicThirdWord = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
 
 	segSourceItem(12),
-	laSourceItemHIURef("", jW, 0, 0, 0, 0, "data1"),
+	laSourceItemHIRef("", jW, 0, 0, 0, 0, "data1"),
 	lxiSourceItemU("", jU, 1, 0, 1),
 	lxmSourceItemU("", jU, 1, 0, 0),
-	laSourceItemHIURef("", jW, 0, 0, 0, 0, "data1"),
-	saSourceItemHIURef("", jW, 0, 1, 1, 0, "data2"),
-	saSourceItemHIURef("", jH1, 0, 1, 1, 0, "data2"),
-	saSourceItemHIURef("", jH2, 0, 1, 1, 0, "data2"),
-	saSourceItemHIURef("", jXH1, 0, 1, 1, 0, "data2"),
-	saSourceItemHIURef("", jXH2, 0, 1, 1, 0, "data2"),
-	saSourceItemHIURef("", jT1, 0, 1, 1, 0, "data2"),
-	saSourceItemHIURef("", jT2, 0, 1, 1, 0, "data2"),
-	saSourceItemHIURef("", jT3, 0, 1, 1, 0, "data2"),
+	laSourceItemHIRef("", jW, 0, 0, 0, 0, "data1"),
+	saSourceItemHIRef("", jW, 0, 1, 1, 0, "data2"),
+	saSourceItemHIRef("", jH1, 0, 1, 1, 0, "data2"),
+	saSourceItemHIRef("", jH2, 0, 1, 1, 0, "data2"),
+	saSourceItemHIRef("", jXH1, 0, 1, 1, 0, "data2"),
+	saSourceItemHIRef("", jXH2, 0, 1, 1, 0, "data2"),
+	saSourceItemHIRef("", jT1, 0, 1, 1, 0, "data2"),
+	saSourceItemHIRef("", jT2, 0, 1, 1, 0, "data2"),
+	saSourceItemHIRef("", jT3, 0, 1, 1, 0, "data2"),
 	iarSourceItem("", 0),
 }
 
@@ -203,20 +203,20 @@ var partialWordStoresBasicQuarterWord = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
 
 	segSourceItem(12),
-	laSourceItemHIURef("", jW, 0, 0, 0, 0, "data1"),
+	laSourceItemHIRef("", jW, 0, 0, 0, 0, "data1"),
 	lxiSourceItemU("", jU, 1, 0, 1),
 	lxmSourceItemU("", jU, 1, 0, 0),
-	laSourceItemHIURef("", jW, 0, 0, 0, 0, "data1"),
-	saSourceItemHIURef("", jQ1, 0, 1, 1, 0, "data2"),
-	saSourceItemHIURef("", jQ2, 0, 1, 1, 0, "data2"),
-	saSourceItemHIURef("", jQ3, 0, 1, 1, 0, "data2"),
-	saSourceItemHIURef("", jQ4, 0, 1, 1, 0, "data2"),
-	saSourceItemHIURef("", jS1, 0, 1, 1, 0, "data2"),
-	saSourceItemHIURef("", jS2, 0, 1, 1, 0, "data2"),
-	saSourceItemHIURef("", jS3, 0, 1, 1, 0, "data2"),
-	saSourceItemHIURef("", jS4, 0, 1, 1, 0, "data2"),
-	saSourceItemHIURef("", jS5, 0, 1, 1, 0, "data2"),
-	saSourceItemHIURef("", jS6, 0, 1, 1, 0, "data2"),
+	laSourceItemHIRef("", jW, 0, 0, 0, 0, "data1"),
+	saSourceItemHIRef("", jQ1, 0, 1, 1, 0, "data2"),
+	saSourceItemHIRef("", jQ2, 0, 1, 1, 0, "data2"),
+	saSourceItemHIRef("", jQ3, 0, 1, 1, 0, "data2"),
+	saSourceItemHIRef("", jQ4, 0, 1, 1, 0, "data2"),
+	saSourceItemHIRef("", jS1, 0, 1, 1, 0, "data2"),
+	saSourceItemHIRef("", jS2, 0, 1, 1, 0, "data2"),
+	saSourceItemHIRef("", jS3, 0, 1, 1, 0, "data2"),
+	saSourceItemHIRef("", jS4, 0, 1, 1, 0, "data2"),
+	saSourceItemHIRef("", jS5, 0, 1, 1, 0, "data2"),
+	saSourceItemHIRef("", jS6, 0, 1, 1, 0, "data2"),
 	iarSourceItem("", 0),
 }
 
@@ -270,19 +270,19 @@ var partialWordLoadsExtendedThirdWord = []*tasm.SourceItem{
 	tasm.NewSourceItem("data5", "tw", []string{"05500", "06600", "07700"}),
 
 	segSourceItem(0),
-	laSourceItemHIBDRef("", jW, 0, 0, 0, 0, 0, "data1"),
-	laSourceItemHIBDRef("", jH1, 1, 0, 0, 0, 0, "data2"),
-	laSourceItemHIBDRef("", jH2, 2, 0, 0, 0, 0, "data2"),
-	laSourceItemHIBDRef("", jXH1, 3, 0, 0, 0, 0, "data2"),
-	laSourceItemHIBDRef("", jXH1, 4, 0, 0, 0, 0, "data3"),
-	laSourceItemHIBDRef("", jXH2, 5, 0, 0, 0, 0, "data2"),
-	laSourceItemHIBDRef("", jXH2, 6, 0, 0, 0, 0, "data3"),
-	laSourceItemHIBDRef("", jT1, 7, 0, 0, 0, 0, "data4"),
-	laSourceItemHIBDRef("", jT1, 8, 0, 0, 0, 0, "data5"),
-	laSourceItemHIBDRef("", jT2, 9, 0, 0, 0, 0, "data4"),
-	laSourceItemHIBDRef("", jT2, 10, 0, 0, 0, 0, "data5"),
-	laSourceItemHIBDRef("", jT3, 11, 0, 0, 0, 0, "data4"),
-	laSourceItemHIBDRef("", jT3, 12, 0, 0, 0, 0, "data5"),
+	laSourceItemHIBRef("", jW, 0, 0, 0, 0, 0, "data1"),
+	laSourceItemHIBRef("", jH1, 1, 0, 0, 0, 0, "data2"),
+	laSourceItemHIBRef("", jH2, 2, 0, 0, 0, 0, "data2"),
+	laSourceItemHIBRef("", jXH1, 3, 0, 0, 0, 0, "data2"),
+	laSourceItemHIBRef("", jXH1, 4, 0, 0, 0, 0, "data3"),
+	laSourceItemHIBRef("", jXH2, 5, 0, 0, 0, 0, "data2"),
+	laSourceItemHIBRef("", jXH2, 6, 0, 0, 0, 0, "data3"),
+	laSourceItemHIBRef("", jT1, 7, 0, 0, 0, 0, "data4"),
+	laSourceItemHIBRef("", jT1, 8, 0, 0, 0, 0, "data5"),
+	laSourceItemHIBRef("", jT2, 9, 0, 0, 0, 0, "data4"),
+	laSourceItemHIBRef("", jT2, 10, 0, 0, 0, 0, "data5"),
+	laSourceItemHIBRef("", jT3, 11, 0, 0, 0, 0, "data4"),
+	laSourceItemHIBRef("", jT3, 12, 0, 0, 0, 0, "data5"),
 	iarSourceItem("", 0),
 }
 
@@ -308,19 +308,19 @@ func Test_PartialWordLoads_ExtendedThirdWord(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
-	checkRegister(t, engine, pkg.A0, 0_556677_001122, "A0")
-	checkRegister(t, engine, pkg.A1, 0_506070, "A1")
-	checkRegister(t, engine, pkg.A2, 0_507777, "A2")
-	checkRegister(t, engine, pkg.A3, 0_777777_506070, "A3")
-	checkRegister(t, engine, pkg.A4, 0_223344, "A4")
-	checkRegister(t, engine, pkg.A5, 0_777777_507777, "A5")
-	checkRegister(t, engine, pkg.A6, 0_221100, "A6")
-	checkRegister(t, engine, pkg.A7, 01111, "A7")
-	checkRegister(t, engine, pkg.A8, 0_777777_775500, "A8")
-	checkRegister(t, engine, pkg.A9, 02222, "A9")
-	checkRegister(t, engine, pkg.A10, 0_777777_776600, "A10")
-	checkRegister(t, engine, pkg.A11, 03333, "A11")
-	checkRegister(t, engine, pkg.A12, 0_777777_777700, "A12")
+	checkRegister(t, engine, pkg.A0, 0_556677_001122)
+	checkRegister(t, engine, pkg.A1, 0_506070)
+	checkRegister(t, engine, pkg.A2, 0_507777)
+	checkRegister(t, engine, pkg.A3, 0_777777_506070)
+	checkRegister(t, engine, pkg.A4, 0_223344)
+	checkRegister(t, engine, pkg.A5, 0_777777_507777)
+	checkRegister(t, engine, pkg.A6, 0_221100)
+	checkRegister(t, engine, pkg.A7, 01111)
+	checkRegister(t, engine, pkg.A8, 0_777777_775500)
+	checkRegister(t, engine, pkg.A9, 02222)
+	checkRegister(t, engine, pkg.A10, 0_777777_776600)
+	checkRegister(t, engine, pkg.A11, 03333)
+	checkRegister(t, engine, pkg.A12, 0_777777_777700)
 }
 
 var PartialWordLoadsExtendedQuarterWord = []*tasm.SourceItem{
@@ -329,16 +329,16 @@ var PartialWordLoadsExtendedQuarterWord = []*tasm.SourceItem{
 	tasm.NewSourceItem("data2", "sw", []string{"012", "034", "056", "075", "042", "010"}),
 
 	segSourceItem(0),
-	lrSourceItemHIBDRef("", jQ1, 0, 0, 0, 0, 0, "data1"),
-	lrSourceItemHIBDRef("", jQ2, 1, 0, 0, 0, 0, "data1"),
-	lrSourceItemHIBDRef("", jQ3, 2, 0, 0, 0, 0, "data1"),
-	lrSourceItemHIBDRef("", jQ4, 3, 0, 0, 0, 0, "data1"),
-	lrSourceItemHIBDRef("", jS1, 4, 0, 0, 0, 0, "data2"),
-	lrSourceItemHIBDRef("", jS2, 5, 0, 0, 0, 0, "data2"),
-	lrSourceItemHIBDRef("", jS3, 6, 0, 0, 0, 0, "data2"),
-	lrSourceItemHIBDRef("", jS4, 7, 0, 0, 0, 0, "data2"),
-	lrSourceItemHIBDRef("", jS5, 8, 0, 0, 0, 0, "data2"),
-	lrSourceItemHIBDRef("", jS6, 9, 0, 0, 0, 0, "data2"),
+	lrSourceItemHIBRef("", jQ1, 0, 0, 0, 0, 0, "data1"),
+	lrSourceItemHIBRef("", jQ2, 1, 0, 0, 0, 0, "data1"),
+	lrSourceItemHIBRef("", jQ3, 2, 0, 0, 0, 0, "data1"),
+	lrSourceItemHIBRef("", jQ4, 3, 0, 0, 0, 0, "data1"),
+	lrSourceItemHIBRef("", jS1, 4, 0, 0, 0, 0, "data2"),
+	lrSourceItemHIBRef("", jS2, 5, 0, 0, 0, 0, "data2"),
+	lrSourceItemHIBRef("", jS3, 6, 0, 0, 0, 0, "data2"),
+	lrSourceItemHIBRef("", jS4, 7, 0, 0, 0, 0, "data2"),
+	lrSourceItemHIBRef("", jS5, 8, 0, 0, 0, 0, "data2"),
+	lrSourceItemHIBRef("", jS6, 9, 0, 0, 0, 0, "data2"),
 	iarSourceItem("", 0),
 }
 
@@ -364,16 +364,16 @@ func Test_PartialWordLoads_ExtendedQuarterWord(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
-	checkRegister(t, engine, pkg.R0, 0400, "R0")
-	checkRegister(t, engine, pkg.R1, 0501, "R1")
-	checkRegister(t, engine, pkg.R2, 0677, "R2")
-	checkRegister(t, engine, pkg.R3, 0777, "R3")
-	checkRegister(t, engine, pkg.R4, 012, "R4")
-	checkRegister(t, engine, pkg.R5, 034, "R5")
-	checkRegister(t, engine, pkg.R6, 056, "R6")
-	checkRegister(t, engine, pkg.R7, 075, "R7")
-	checkRegister(t, engine, pkg.R8, 042, "R8")
-	checkRegister(t, engine, pkg.R9, 010, "R9")
+	checkRegister(t, engine, pkg.R0, 0400)
+	checkRegister(t, engine, pkg.R1, 0501)
+	checkRegister(t, engine, pkg.R2, 0677)
+	checkRegister(t, engine, pkg.R3, 0777)
+	checkRegister(t, engine, pkg.R4, 012)
+	checkRegister(t, engine, pkg.R5, 034)
+	checkRegister(t, engine, pkg.R6, 056)
+	checkRegister(t, engine, pkg.R7, 075)
+	checkRegister(t, engine, pkg.R8, 042)
+	checkRegister(t, engine, pkg.R9, 010)
 }
 
 var partialWordStoresExtendedThirdWord = []*tasm.SourceItem{
@@ -391,17 +391,17 @@ var partialWordStoresExtendedThirdWord = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
 
 	segSourceItem(0),
-	laSourceItemHIBDRef("", jW, 0, 0, 0, 0, 2, "data1"),
+	laSourceItemHIBRef("", jW, 0, 0, 0, 0, 2, "data1"),
 	lxiSourceItemU("", jU, 1, 0, 1),
 	lxmSourceItemU("", jU, 1, 0, 0),
-	saSourceItemHIBDRef("", jW, 0, 1, 1, 0, 2, "data2"),
-	saSourceItemHIBDRef("", jH1, 0, 1, 1, 0, 2, "data2"),
-	saSourceItemHIBDRef("", jH2, 0, 1, 1, 0, 2, "data2"),
-	saSourceItemHIBDRef("", jXH1, 0, 1, 1, 0, 2, "data2"),
-	saSourceItemHIBDRef("", jXH2, 0, 1, 1, 0, 2, "data2"),
-	saSourceItemHIBDRef("", jT1, 0, 1, 1, 0, 2, "data2"),
-	saSourceItemHIBDRef("", jT2, 0, 1, 1, 0, 2, "data2"),
-	saSourceItemHIBDRef("", jT3, 0, 1, 1, 0, 2, "data2"),
+	saSourceItemHIBRef("", jW, 0, 1, 1, 0, 2, "data2"),
+	saSourceItemHIBRef("", jH1, 0, 1, 1, 0, 2, "data2"),
+	saSourceItemHIBRef("", jH2, 0, 1, 1, 0, 2, "data2"),
+	saSourceItemHIBRef("", jXH1, 0, 1, 1, 0, 2, "data2"),
+	saSourceItemHIBRef("", jXH2, 0, 1, 1, 0, 2, "data2"),
+	saSourceItemHIBRef("", jT1, 0, 1, 1, 0, 2, "data2"),
+	saSourceItemHIBRef("", jT2, 0, 1, 1, 0, 2, "data2"),
+	saSourceItemHIBRef("", jT3, 0, 1, 1, 0, 2, "data2"),
 	iarSourceItem("", 0),
 }
 
@@ -453,20 +453,20 @@ var partialWordStoresExtendedQuarterWord = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "w", []string{"0333333333333"}),
 
 	segSourceItem(0),
-	laSourceItemHIBDRef("", jW, 0, 0, 0, 0, 2, "data1"),
+	laSourceItemHIBRef("", jW, 0, 0, 0, 0, 2, "data1"),
 	lxiSourceItemU("", jU, 1, 0, 1),
 	lxmSourceItemU("", jU, 1, 0, 0),
-	laSourceItemHIBDRef("", jW, 0, 0, 0, 0, 2, "data1"),
-	saSourceItemHIBDRef("", jQ1, 0, 1, 1, 0, 2, "data2"),
-	saSourceItemHIBDRef("", jQ2, 0, 1, 1, 0, 2, "data2"),
-	saSourceItemHIBDRef("", jQ3, 0, 1, 1, 0, 2, "data2"),
-	saSourceItemHIBDRef("", jQ4, 0, 1, 1, 0, 2, "data2"),
-	saSourceItemHIBDRef("", jS1, 0, 1, 1, 0, 2, "data2"),
-	saSourceItemHIBDRef("", jS2, 0, 1, 1, 0, 2, "data2"),
-	saSourceItemHIBDRef("", jS3, 0, 1, 1, 0, 2, "data2"),
-	saSourceItemHIBDRef("", jS4, 0, 1, 1, 0, 2, "data2"),
-	saSourceItemHIBDRef("", jS5, 0, 1, 1, 0, 2, "data2"),
-	saSourceItemHIBDRef("", jS6, 0, 1, 1, 0, 2, "data2"),
+	laSourceItemHIBRef("", jW, 0, 0, 0, 0, 2, "data1"),
+	saSourceItemHIBRef("", jQ1, 0, 1, 1, 0, 2, "data2"),
+	saSourceItemHIBRef("", jQ2, 0, 1, 1, 0, 2, "data2"),
+	saSourceItemHIBRef("", jQ3, 0, 1, 1, 0, 2, "data2"),
+	saSourceItemHIBRef("", jQ4, 0, 1, 1, 0, 2, "data2"),
+	saSourceItemHIBRef("", jS1, 0, 1, 1, 0, 2, "data2"),
+	saSourceItemHIBRef("", jS2, 0, 1, 1, 0, 2, "data2"),
+	saSourceItemHIBRef("", jS3, 0, 1, 1, 0, 2, "data2"),
+	saSourceItemHIBRef("", jS4, 0, 1, 1, 0, 2, "data2"),
+	saSourceItemHIBRef("", jS5, 0, 1, 1, 0, 2, "data2"),
+	saSourceItemHIBRef("", jS6, 0, 1, 1, 0, 2, "data2"),
 	iarSourceItem("", 0),
 }
 
@@ -538,8 +538,8 @@ func Test_GRSAddressing_Extended(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
-	checkRegister(t, engine, pkg.A5, 42, "A5")
-	checkRegister(t, engine, pkg.A6, 42, "A5")
+	checkRegister(t, engine, pkg.A5, 42)
+	checkRegister(t, engine, pkg.A6, 42)
 }
 
 //	TODO extended mode index register handling

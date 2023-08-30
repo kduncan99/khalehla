@@ -54,10 +54,10 @@ const (
 	InterruptHandlerInvalidLevelBDIStop
 )
 
-const L0BDTBaseRegister = 16
-const ICSBaseRegister = 26
+const L0BDTBaseRegister = pkg.B16
+const ICSBaseRegister = pkg.B26
 const ICSIndexRegister = pkg.EX1
-const RCSBaseRegister = 25
+const RCSBaseRegister = pkg.B25
 const RCSIndexRegister = pkg.EX0
 
 type GetOperandResult struct {

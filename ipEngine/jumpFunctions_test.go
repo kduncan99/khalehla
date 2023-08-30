@@ -50,7 +50,7 @@ func Test_LMJ_Basic(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
-	checkRegister(t, engine, pkg.X11, 0_000000_01006, "X11")
+	checkRegister(t, engine, pkg.X11, 0_000000_01006)
 }
 
 var sljBasicMode = []*tasm.SourceItem{
@@ -126,7 +126,7 @@ func Test_LMJ_Extended(t *testing.T) {
 
 	engine := ute.GetEngine()
 	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
-	checkRegister(t, engine, pkg.X11, 0_000000_01006, "X11")
+	checkRegister(t, engine, pkg.X11, 0_000000_001006)
 }
 
 var jumpBasicMode = []*tasm.SourceItem{
@@ -288,7 +288,7 @@ func Test_HLTJ_Extended(t *testing.T) {
 
 var jumpZeroExtendedPosZero = []*tasm.SourceItem{
 	segSourceItem(0),
-	laSourceItemHIU("", jU, 5, 0, 0, 0, 0),
+	laSourceItemU(jU, regA5, 0, 0),
 	jzSourceItemHIBDRef("", 5, 0, 0, 0, 0, "target"),
 	iarSourceItem("", 1),
 	iarSourceItem("target", 0),
@@ -319,7 +319,7 @@ func Test_JZ_Extended_PosZero(t *testing.T) {
 
 var jumpZeroExtendedNegZero = []*tasm.SourceItem{
 	segSourceItem(0),
-	laSourceItemU("", jXU, 5, 0, 0_777777),
+	laSourceItemU(jXU, regA5, 0, 0_777777),
 	jzSourceItemHIBDRef("", 5, 0, 0, 0, 0, "target"),
 	iarSourceItem("", 1),
 	iarSourceItem("target", 0),
@@ -350,7 +350,7 @@ func Test_JZ_Extended_NegZero(t *testing.T) {
 
 var jumpZeroExtendedNotZero = []*tasm.SourceItem{
 	segSourceItem(0),
-	laSourceItemHIU("", jU, 5, 0, 0, 0, 01),
+	laSourceItemU(jU, regA5, 0, 01),
 	jzSourceItemHIBDRef("", 5, 0, 0, 0, 0, "target"),
 	iarSourceItem("", 1),
 	iarSourceItem("target", 0),
@@ -391,18 +391,18 @@ var doubleJumpZeroExtendedMode = []*tasm.SourceItem{
 	tasm.NewSourceItem("", "w", []string{"0"}),
 
 	segSourceItem(0),
-	dlSourceItemHIBDRef("", 0, 0, 0, 0, 3, "posZero"),
+	dlSourceItemHIBRef("", 0, 0, 0, 0, 3, "posZero"),
 	djzSourceItemHIBDRef("", 0, 0, 0, 0, 0, "target1"),
 	iarSourceItem("", 1),
 
-	dlSourceItemHIBDRef("target1", 2, 0, 0, 0, 3, "negZero"),
+	dlSourceItemHIBRef("target1", 2, 0, 0, 0, 3, "negZero"),
 	djzSourceItemHIBDRef("", 2, 0, 0, 0, 0, "target2"),
 	iarSourceItem("", 2),
 
-	dlSourceItemHIBDRef("target2", 4, 0, 0, 0, 3, "notZero1"),
+	dlSourceItemHIBRef("target2", 4, 0, 0, 0, 3, "notZero1"),
 	djzSourceItemHIBDRef("", 4, 0, 0, 0, 0, "bad3"),
 
-	dlSourceItemHIBDRef("target3", 6, 0, 0, 0, 3, "notZero2"),
+	dlSourceItemHIBRef("target3", 6, 0, 0, 0, 3, "notZero2"),
 	djzSourceItemHIBDRef("", 6, 0, 0, 0, 0, "bad4"),
 	jSourceItemExtended("", 0, 0, 0, "end"),
 
@@ -436,7 +436,7 @@ func Test_DJZ_Extended_PosZero(t *testing.T) {
 
 var jumpNonZeroExtendedPosZero = []*tasm.SourceItem{
 	segSourceItem(0),
-	laSourceItemU("", jU, 5, 0, 0),
+	laSourceItemU(jU, regA5, 0, 0),
 	jnzSourceItemHIBDRef("", 5, 0, 0, 0, 0, "target"),
 	iarSourceItem("", 1),
 	iarSourceItem("target", 0),
@@ -467,7 +467,7 @@ func Test_JNZ_Extended_PosZero(t *testing.T) {
 
 var jumpNonZeroExtendedNegZero = []*tasm.SourceItem{
 	segSourceItem(0),
-	laSourceItemU("", jXU, 5, 0, 0_777777),
+	laSourceItemU(jXU, regA5, 0, 0_777777),
 	jnzSourceItemHIBDRef("", 5, 0, 0, 0, 0, "target"),
 	iarSourceItem("", 1),
 	iarSourceItem("target", 0),
@@ -498,7 +498,7 @@ func Test_JNZ_Extended_NegZero(t *testing.T) {
 
 var jumpNonZeroExtendedNotZero = []*tasm.SourceItem{
 	segSourceItem(0),
-	laSourceItemU("", jU, 5, 0, 1),
+	laSourceItemU(jU, regA5, 0, 1),
 	jnzSourceItemHIBDRef("", 5, 0, 0, 0, 0, "target"),
 	iarSourceItem("", 1),
 	iarSourceItem("target", 0),
@@ -529,13 +529,13 @@ func Test_JNZ_Extended_NotZero(t *testing.T) {
 
 var jumpPosNegExtended = []*tasm.SourceItem{
 	segSourceItem(0),
-	laSourceItemHIU("", jU, 10, 0, 0, 0, 0),
+	laSourceItemU(jU, regA10, 0, 0),
 	jpSourceItemHIBDRef("", 10, 0, 0, 0, 0, "target1"),
 	iarSourceItem("bad1", 1),
 	jnSourceItemHIBDRef("target1", 10, 0, 0, 0, 0, "bad2"),
 
 	nopItemHIBD("", 0, 0, 0, 0, 0),
-	laSourceItemU("", jXU, 10, 0, 0_444444),
+	laSourceItemU(jXU, regA10, 0, 0_444444),
 	jpSourceItemHIBDRef("", 10, 0, 0, 0, 0, "bad3"),
 	jnSourceItemHIBDRef("", 10, 0, 0, 0, 0, "end"),
 
