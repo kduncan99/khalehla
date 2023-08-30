@@ -435,10 +435,153 @@ func DoubleAddNegativeAccumulator(e *InstructionEngine) (completed bool) {
 	return result.complete
 }
 
-//	TODO AH
-//	TODO ANH
-//	TODO AT
-//	TODO ANT
+// AddHalves (AH) Performs two separate additions; (U):H1 is added to Aa:H1, with carry being applied to bit 17
+// while (U):H2 is added to Aa:H2, with carry being applied to bit 35. DR is not updated.
+func AddHalves(e *InstructionEngine) (completed bool) {
+	result := e.GetOperand(false, true, false, false, false)
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
+		ci := e.GetCurrentInstruction()
+		aReg := e.GetExecOrUserARegister(ci.GetA())
+
+		add1H1 := aReg.GetXH1()
+		add2H1 := result.source.GetXH1()
+		sumH1 := pkg.AddSimple(add1H1, add2H1)
+		if sumH1 > 0_777777 {
+			sumH1 = (sumH1 & 0_777777) + 1
+		}
+
+		add1H2 := aReg.GetXH2()
+		add2H2 := result.source.GetXH2()
+		sumH2 := pkg.AddSimple(add1H2, add2H2)
+		if sumH2 > 0_777777 {
+			sumH2 = (sumH1 & 0_777777) + 1
+		}
+
+		value := (sumH1 << 18) | sumH2
+		aReg.SetW(value)
+	}
+
+	return result.complete
+}
+
+// AddNegativeHalves (ANH) Performs two separate additions;
+// -(U):H1 is added to Aa:H1, with carry being applied to bit 17
+// while -(U):H2 is added to Aa:H2, with carry being applied to bit 35. DR is not updated.
+func AddNegativeHalves(e *InstructionEngine) (completed bool) {
+	result := e.GetOperand(false, true, false, false, false)
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
+		ci := e.GetCurrentInstruction()
+		aReg := e.GetExecOrUserARegister(ci.GetA())
+
+		add1H1 := aReg.GetXH1()
+		add2H1 := pkg.Negate(result.source.GetXH1())
+		sumH1 := pkg.AddSimple(add1H1, add2H1)
+		if sumH1 > 0_777777 {
+			sumH1 = (sumH1 & 0_777777) + 1
+		}
+
+		add1H2 := aReg.GetXH2()
+		add2H2 := pkg.Negate(result.source.GetXH2())
+		sumH2 := pkg.AddSimple(add1H2, add2H2)
+		if sumH2 > 0_777777 {
+			sumH2 = (sumH2 & 0_777777) + 1
+		}
+
+		value := (sumH1 << 18) | sumH2
+		aReg.SetW(value)
+	}
+
+	return result.complete
+}
+
+// AddThirds (AT) Performs three separate additions;
+// (U):T1 is added to Aa:T1, with carry being applied to bit 11,
+// (U):T2 is added to Aa:T2, with carry being applied to bit 23,
+// (U):T3 is added to Aa:T3, with carry being applied to bit 35. DR is not updated.
+func AddThirds(e *InstructionEngine) (completed bool) {
+	result := e.GetOperand(false, true, false, false, false)
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
+		ci := e.GetCurrentInstruction()
+		aReg := e.GetExecOrUserARegister(ci.GetA())
+
+		add1T1 := aReg.GetXT1()
+		add2T1 := result.source.GetXT1()
+		sumT1 := pkg.AddSimple(add1T1, add2T1)
+		if sumT1 > 0_7777 {
+			sumT1 = (sumT1 & 0_7777) + 1
+		}
+
+		add1T2 := aReg.GetXT2()
+		add2T2 := result.source.GetXT2()
+		sumT2 := pkg.AddSimple(add1T2, add2T2)
+		if sumT2 > 0_7777 {
+			sumT2 = (sumT2 & 0_7777) + 1
+		}
+
+		add1T3 := aReg.GetXT3()
+		add2T3 := result.source.GetXT3()
+		sumT3 := pkg.AddSimple(add1T3, add2T3)
+		if sumT3 > 0_7777 {
+			sumT3 = (sumT3 & 0_7777) + 1
+		}
+
+		value := (sumT1 << 24) | (sumT2 << 12) | sumT3
+		aReg.SetW(value)
+	}
+
+	return result.complete
+}
+
+// AddNegativeThirds (ANT) Performs three separate additions;
+// -(U):T1 is added to Aa:T1, with carry being applied to bit 11,
+// -(U):T2 is added to Aa:T2, with carry being applied to bit 23,
+// -(U):T3 is added to Aa:T3, with carry being applied to bit 35. DR is not updated.
+func AddNegativeThirds(e *InstructionEngine) (completed bool) {
+	result := e.GetOperand(false, true, false, false, false)
+	if result.interrupt != nil {
+		e.PostInterrupt(result.interrupt)
+		return false
+	} else if result.complete {
+		ci := e.GetCurrentInstruction()
+		aReg := e.GetExecOrUserARegister(ci.GetA())
+
+		add1T1 := aReg.GetXT1()
+		add2T1 := pkg.Negate(result.source.GetXT1())
+		sumT1 := pkg.AddSimple(add1T1, add2T1)
+		if sumT1 > 0_7777 {
+			sumT1 = (sumT1 & 0_7777) + 1
+		}
+
+		add1T2 := aReg.GetXT2()
+		add2T2 := pkg.Negate(result.source.GetXT2())
+		sumT2 := pkg.AddSimple(add1T2, add2T2)
+		if sumT2 > 0_7777 {
+			sumT2 = (sumT2 & 0_7777) + 1
+		}
+
+		add1T3 := aReg.GetXT3()
+		add2T3 := pkg.Negate(result.source.GetXT3())
+		sumT3 := pkg.AddSimple(add1T3, add2T3)
+		if sumT3 > 0_7777 {
+			sumT3 = (sumT3 & 0_7777) + 1
+		}
+
+		value := (sumT1 << 24) | (sumT2 << 12) | sumT3
+		aReg.SetW(value)
+	}
+
+	return result.complete
+}
+
 //	TODO ADD1
 //	TODO SUB1
 //	TODO INC

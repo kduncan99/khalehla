@@ -107,6 +107,10 @@ var basicModeFunction72Table = map[uint]func(engine *InstructionEngine) (complet
 	001: StoreLocationAndJump,
 	002: JumpPositiveAndShift,
 	003: JumpNegativeAndShift,
+	004: AddHalves,
+	005: AddNegativeHalves,
+	006: AddThirds,
+	007: AddNegativeThirds,
 	010: Execute,
 	011: ExecutiveRequest,
 	016: StoreRegisterSet,
@@ -353,6 +357,10 @@ var extendedModeFunction71Table = map[uint]func(engine *InstructionEngine) (comp
 var extendedModeFunction72Table = map[uint]func(engine *InstructionEngine) (completed bool){
 	002: JumpPositiveAndShift,
 	003: JumpNegativeAndShift,
+	004: AddHalves,
+	005: AddNegativeHalves,
+	006: AddThirds,
+	007: AddNegativeThirds,
 	016: StoreRegisterSet,
 	017: LoadRegisterSet,
 }
