@@ -704,7 +704,42 @@ func Test_DAN_Extended(t *testing.T) {
 	checkRegister(t, engine, pkg.A5, 0_210014_413002, "A5")
 }
 
-//	TODO AH
+var ahCode = []*tasm.SourceItem{
+	segSourceItem(0),
+	laSourceItemHIBDRef("", jW, regA5, 0, 0, 0, 2, "a5data"),
+	ahSourceItemHIBRef(regA5, 0, 0, 0, 2, "data"),
+	iarSourceItem("", 0),
+
+	segSourceItem(2),
+	labelDataSourceItem("a5data", []uint64{0_000123_555123}),
+	labelDataSourceItem("data", []uint64{0_000001_223000}),
+}
+
+func Test_AH_Extended(t *testing.T) {
+	sourceSet := tasm.NewSourceSet("Test", ahCode)
+	a := tasm.NewTinyAssembler()
+	a.Assemble(sourceSet)
+
+	e := tasm.Executable{}
+	e.LinkBankPerSegment(a.GetSegments(), true)
+
+	ute := NewUnitTestExecutor()
+	err := ute.Load(&e)
+	if err == nil {
+		ute.GetEngine().GetDesignatorRegister().SetBasicModeEnabled(false)
+		ute.GetEngine().GetDesignatorRegister().SetQuarterWordModeEnabled(true)
+		err = ute.Run()
+	}
+
+	if err != nil {
+		t.Fatalf("%s\n", err.Error())
+	}
+
+	engine := ute.GetEngine()
+	checkStoppedReason(t, engine, InitiateAutoRecoveryStop, 0)
+	checkRegister(t, engine, pkg.A5, 0_000124_000124, "A5")
+}
+
 //	TODO ANH
 //	TODO AT
 //	TODO ANT

@@ -5,7 +5,6 @@
 package ipEngine
 
 import (
-	"fmt"
 	"khalehla/pkg"
 )
 
@@ -424,9 +423,6 @@ func DoubleAddNegativeAccumulator(e *InstructionEngine) (completed bool) {
 		addend1 := []uint64{aReg0.GetW(), aReg1.GetW()}
 		addend2 := pkg.NegateDouble([]uint64{result.source[0].GetW(), result.source[1].GetW()})
 		sum := pkg.AddDouble(addend1, addend2)
-		fmt.Printf("add1: %012o:%012o\n", addend1[0], addend1[1]) // TODO remove
-		fmt.Printf("add2: %012o:%012o\n", addend2[0], addend2[1]) // TODO remove
-		fmt.Printf("sum:  %012o:%012o\n", sum[0], sum[1])         // TODO remove
 		aReg0.SetW(sum[0])
 		aReg1.SetW(sum[1])
 		updateDesignatorRegister(e, pkg.IsPositiveDouble(addend1), pkg.IsPositiveDouble(addend2), pkg.IsPositiveDouble(sum))

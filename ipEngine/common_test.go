@@ -37,7 +37,65 @@ const (
 
 const zero = "0"
 
-// GRS locations for registers
+// A-field/X-field values for registers
+const (
+	regX0 = iota
+	regX1
+	regX2
+	regX3
+	regX4
+	regX5
+	regX6
+	regX7
+	regX8
+	regX9
+	regX10
+	regX11
+	regX12
+	regX13
+	regX14
+	regX15
+)
+
+const (
+	regA0 = iota
+	regA1
+	regA2
+	regA3
+	regA4
+	regA5
+	regA6
+	regA7
+	regA8
+	regA9
+	regA10
+	regA11
+	regA12
+	regA13
+	regA14
+	regA15
+)
+
+const (
+	regR0 = iota
+	regR1
+	regR2
+	regR3
+	regR4
+	regR5
+	regR6
+	regR7
+	regR8
+	regR9
+	regR10
+	regR11
+	regR12
+	regR13
+	regR14
+	regR15
+)
+
+// GRS locations for registers - deprecated in favor of pkg.{regname}
 const (
 	grsX0  = 000
 	grsX1  = 001
@@ -108,6 +166,83 @@ func sourceItem(label string, operator string, operands []int) *tasm.SourceItem 
 
 func labelSourceItem(label string) *tasm.SourceItem {
 	return tasm.NewSourceItem(label, "", []string{})
+}
+
+func labelDataSourceItem(label string, values []uint64) *tasm.SourceItem {
+	var operator string
+	if len(values) == 1 {
+		operator = "w"
+	} else if len(values) == 2 {
+		operator = "hw"
+	} else if len(values) == 3 {
+		operator = "tw"
+	} else if len(values) == 4 {
+		operator = "qw"
+	} else if len(values) == 6 {
+		operator = "sw"
+	} else {
+		operator = "?"
+	}
+
+	strValues := make([]string, len(values))
+	for vx := 0; vx < len(values); vx++ {
+		strValues[vx] = fmt.Sprintf("0%o", values[vx])
+	}
+
+	return tasm.NewSourceItem(label, operator, strValues)
+}
+
+func dataSourceItem(values []uint64) *tasm.SourceItem {
+	return labelDataSourceItem("", values)
+}
+
+func fjaxuSourceItem(f int, j int, a int, x int, u int) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", f),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", u),
+	}
+	return tasm.NewSourceItem("", "fjaxu", ops)
+}
+
+func fjaxRefSourceItem(f int, j int, a int, x int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", f),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		ref,
+	}
+	return tasm.NewSourceItem("", "fjaxu", ops)
+}
+
+func fjaxhibRefSourceItem(f int, j int, a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", f),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		fmt.Sprintf("%03o", b),
+		ref,
+	}
+	return tasm.NewSourceItem("", "fjaxhibd", ops)
+}
+
+func fjaxhiRefSourceItem(f int, j int, a int, x int, h int, i int, ref string) *tasm.SourceItem {
+	ops := []string{
+		fmt.Sprintf("%03o", f),
+		fmt.Sprintf("%03o", j),
+		fmt.Sprintf("%03o", a),
+		fmt.Sprintf("%03o", x),
+		fmt.Sprintf("%03o", h),
+		fmt.Sprintf("%03o", i),
+		ref,
+	}
+	return tasm.NewSourceItem("", "fjaxhiu", ops)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -1423,10 +1558,74 @@ func danSourceItemU(label string, a int, x int, u int) *tasm.SourceItem {
 	return sourceItem(label, "fjaxu", []int{fDAN, jDAN, a, x, u})
 }
 
-//	TODO AH
-//	TODO ANH
-//	TODO AT
-//	TODO ANT
+// AH ------------------------------------------------------------------------------------------------------------------
+
+const fAH = 072
+const jAH = 004
+
+func ahSourceItemU(a int, x int, u int) *tasm.SourceItem {
+	return fjaxuSourceItem(fAH, jAH, a, x, u)
+}
+
+func ahSourceItemHIRef(a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	return fjaxhiRefSourceItem(fAH, jAH, a, x, h, i, ref)
+}
+
+func ahSourceItemHIBRef(a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	return fjaxhibRefSourceItem(fAH, jAH, a, x, h, i, b, ref)
+}
+
+// ANH -----------------------------------------------------------------------------------------------------------------
+
+const fANH = 072
+const jANH = 005
+
+func anhSourceItemU(a int, x int, u int) *tasm.SourceItem {
+	return fjaxuSourceItem(fANH, jANH, a, x, u)
+}
+
+func anhSourceItemHIRef(a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	return fjaxhiRefSourceItem(fANH, jANH, a, x, h, i, ref)
+}
+
+func anhSourceItemHIBRef(a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	return fjaxhibRefSourceItem(fANH, jANH, a, x, h, i, b, ref)
+}
+
+// AT ------------------------------------------------------------------------------------------------------------------
+
+const fAT = 072
+const jAT = 006
+
+func atSourceItemU(a int, x int, u int) *tasm.SourceItem {
+	return fjaxuSourceItem(fAT, jAT, a, x, u)
+}
+
+func atSourceItemHIRef(a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	return fjaxhiRefSourceItem(fAT, jAT, a, x, h, i, ref)
+}
+
+func atSourceItemHIBRef(a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	return fjaxhibRefSourceItem(fAT, jAT, a, x, h, i, b, ref)
+}
+
+// ANT -----------------------------------------------------------------------------------------------------------------
+
+const fANT = 072
+const jANT = 007
+
+func antSourceItemU(a int, x int, u int) *tasm.SourceItem {
+	return fjaxuSourceItem(fANT, jANT, a, x, u)
+}
+
+func antSourceItemHIRef(a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	return fjaxhiRefSourceItem(fANT, jANT, a, x, h, i, ref)
+}
+
+func antSourceItemHIBRef(a int, x int, h int, i int, b int, ref string) *tasm.SourceItem {
+	return fjaxhibRefSourceItem(fANT, jANT, a, x, h, i, b, ref)
+}
+
 //	TODO ADD1
 //	TODO SUB1
 //	TODO INC
