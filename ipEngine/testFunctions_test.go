@@ -357,7 +357,7 @@ var tepCode = []*tasm.SourceItem{
 	segSourceItem(0),
 	laSourceItemHIBRef(jW, 4, 0, 0, 0, 2, "data1"),
 	tepSourceItemHIBRef(jW, 4, 0, 0, 0, 2, "data2"),
-	jSourceItemExtended("", 0, 0, 0, "tag"),
+	jSourceItemRefExtended("tag"),
 	iarSourceItem(1),
 
 	labelSourceItem("tag"),
@@ -398,7 +398,7 @@ var topCode = []*tasm.SourceItem{
 	segSourceItem(0),
 	laSourceItemHIBRef(jW, 4, 0, 0, 0, 2, "data1"),
 	topSourceItemHIBRef(jW, 4, 0, 0, 0, 2, "data2"),
-	jSourceItemExtended("", 0, 0, 0, "tag"),
+	jSourceItemRefExtended("tag"),
 	iarSourceItem(1),
 	labelSourceItem("tag"),
 	topSourceItemHIBRef(jQ4, 4, 0, 0, 0, 2, "data2"),
@@ -438,7 +438,7 @@ var tlemCode = []*tasm.SourceItem{
 	segSourceItem(0),
 	lxSourceItemHIBRef(jW, 5, 0, 0, 0, 2, "x5content"),
 	tlemSourceItemHIBRef(jW, 5, 0, 0, 0, 2, "arm"),
-	jSourceItemExtended("", 0, 0, 0, "tag1"),
+	jSourceItemRefExtended("tag1"),
 	iarSourceItem(1),
 
 	labelSourceItem("tag1"),

@@ -1157,7 +1157,12 @@ func (e *InstructionEngine) checkAccessLimitsForAddress(
 		}
 	}
 
-	bDesc := e.baseRegisters[baseRegisterIndex].GetBankDescriptor()
+	bReg := e.baseRegisters[baseRegisterIndex]
+	if bReg.IsVoid() {
+		return pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationStorageLimits, fetchFlag)
+	}
+
+	bDesc := bReg.GetBankDescriptor()
 	if (relativeAddress < bDesc.GetLowerLimitNormalized()) ||
 		(relativeAddress > bDesc.GetUpperLimitNormalized()) {
 		return pkg.NewReferenceViolationInterrupt(pkg.ReferenceViolationStorageLimits, fetchFlag)
@@ -1425,7 +1430,7 @@ func (e *InstructionEngine) getCurrentVirtualAddress() pkg.VirtualAddress {
 		abte := e.activeBaseTable[brx]
 		return pkg.TranslateToBasicMode(abte.bankLevel, abte.bankDescriptorIndex, abte.subsetSpecification)
 	} else {
-		brx := e.getEffectiveBaseRegisterIndex()
+		brx := e.getEffectiveBaseRegisterIndex() & 017
 		abte := e.activeBaseTable[brx]
 		return pkg.NewExtendedModeVirtualAddress(abte.bankLevel, abte.bankDescriptorIndex, abte.subsetSpecification)
 	}
