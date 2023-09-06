@@ -5,34 +5,47 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="2eeead4e-311b-4d1f-9885-b85e323d7e59" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/../exec/consoles/console.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../exec/consoles/screenConsole.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../exec/exec.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../exec/logger.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../exec/runConditionWord.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../exec/runControlTable.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/encodings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.mvn/wrapper/maven-wrapper.jar" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.mvn/wrapper/maven-wrapper.properties" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mvnw" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/mvnw.cmd" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/HelloApplication.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/HelloController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/module-info.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/resources/com/bearsnake/khalehla/kdte/hello-view.fxml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Makefile" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/../go.mod" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/../go.sum" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../pkg/word36.go" beforeDir="false" afterPath="$PROJECT_DIR$/../pkg/word36.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../exec/consoles/netConsole.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../exec/messages/consoleMessages.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../exec/messages/messages.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/codeStyles/codeStyleConfig.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/uiDesigner.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/console/Console.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/console/OutputPane.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/console/Transport.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/messages/Category.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/messages/ConsoleMessage.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/messages/HeartbeatSystemMessage.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/messages/Message.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/messages/ReadOnlyConsoleMessage.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/messages/SystemMessage.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/messages/Type.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../resources/certificate.p12" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../resources/certificate.pem" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../resources/key.pem" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../cmd/temp.go" beforeDir="false" afterPath="$PROJECT_DIR$/../cmd/temp.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../exec/consoles/console.go" beforeDir="false" afterPath="$PROJECT_DIR$/../exec/consoles/console.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../exec/consoles/screenConsole.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/HelloApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/HelloApplication.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/HelloController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/module-info.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/module-info.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/com/bearsnake/khalehla/kdte/hello-view.fxml" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Interface" />
+        <option value="Enum" />
+        <option value="Class" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
@@ -53,14 +66,45 @@
   "keyToString": {
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "WebServerToolWindowFactoryState": "false",
+    "last_opened_file_path": "/Users/kurt.duncan/sandbox/Khalehla/kdte",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
+    "settings.editor.selected.configurable": "preferences.sourceCode.Java",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
+  <component name="RecentsManager">
+    <key name="MoveClassesOrPackagesDialog.RECENTS_KEY">
+      <recent name="com.bearsnake.khalehla.kdte" />
+    </key>
+    <key name="CopyClassDialog.RECENTS_KEY">
+      <recent name="com.bearsnake.khalehla.kdte.console" />
+    </key>
+  </component>
+  <component name="RunManager">
+    <configuration name="HelloApplication" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="com.bearsnake.khalehla.kdte.HelloApplication" />
+      <module name="kdte" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.bearsnake.khalehla.kdte.messages.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Application.HelloApplication" />
+      </list>
+    </recent_temporary>
+  </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
@@ -70,6 +114,8 @@
       <option name="presentableId" value="Default" />
       <updated>1693887955283</updated>
       <workItem from="1693887956366" duration="1217000" />
+      <workItem from="1693928803871" duration="323000" />
+      <workItem from="1693929193425" duration="34548000" />
     </task>
     <servers />
   </component>

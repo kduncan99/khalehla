@@ -6,4 +6,6 @@ module com.bearsnake.khalehla.kdte {
 
     opens com.bearsnake.khalehla.kdte to javafx.fxml;
     exports com.bearsnake.khalehla.kdte;
+    exports com.bearsnake.khalehla.kdte.messages;
+    opens com.bearsnake.khalehla.kdte.messages to javafx.fxml;
 }

@@ -4,11 +4,15 @@
 
 package consoles
 
+import "khalehla/exec/messages"
+
 type Console interface {
-	PollSolicited(messageId int) (response string, hasInput bool)
-	PollUnsolicited() (input string, hasInput bool)
+	ClearReadReplyMessage(messageId int) (err error)
+	IsReady() bool
+	PollSolicitedInput(messageId int) (response string, hasInput bool, err error)
+	PollUnsolicitedInput() (input string, hasInput bool)
 	Reset()
-	SendReadOnlyMessage(source string, message string)
-	SendReadReplyMessage(source string, message string, maxResponseSize int) (messageId int, err error)
-	SendStatusMessage(message1 string, message2 string)
+	SendReadOnlyMessage(message *messages.ReadOnlyMessage)
+	SendReadReplyMessage(message *messages.ReadReplyMessage)
+	SendStatusMessage(message *messages.StatusMessage)
 }
