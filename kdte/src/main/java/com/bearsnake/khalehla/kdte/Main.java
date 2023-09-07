@@ -7,24 +7,16 @@
 package com.bearsnake.khalehla.kdte;
 
 import com.bearsnake.khalehla.kdte.console.Console;
-import com.bearsnake.khalehla.kdte.messages.Message;
+import com.bearsnake.khalehla.kdte.console.ConsolePane;
 import javafx.application.Application;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.Pane;
-import javafx.scene.layout.StackPane;
-import javafx.scene.text.Font;
 import javafx.stage.Stage;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
 
 /*
   --------------------------------------------------------------------------------------
@@ -45,7 +37,7 @@ import java.util.Arrays;
   |                  |                                                                 |
   --------------------------------------------------------------------------------------
  */
-public class HelloApplication extends Application {
+public class Main extends Application {
 
     public static final String TITLE = "Khalehla DeskTop Environment";
     public static final String VERSION = "1.0";
@@ -71,6 +63,8 @@ public class HelloApplication extends Application {
         BorderPane root = new BorderPane();
 
         root.setTop(createMenu());
+        root.setCenter(new ContentPane());
+
         Scene scene = new Scene(root, 320, 240);
         stage.setTitle(TITLE + " - " + VERSION);
         stage.setScene(scene);
@@ -78,35 +72,35 @@ public class HelloApplication extends Application {
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {
-//        launch();
-        var c = new Console("Dork", "127.0.0.1", 2200);
-        c.connect();
-
-        var pendingMessage = ByteBuffer.allocate(1024);
-        while (true) {
-            var in = c.readInput();
-            if (in.length > 0) {
-                pendingMessage.put(in);
-                if (pendingMessage.position() > 8) {
-                    var slice = pendingMessage.slice(4, 4);
-                    var msgLen = slice.getInt();
-                    if (msgLen <= pendingMessage.position()) {
-                        slice = pendingMessage.slice(0, msgLen);
-                        var msg = Message.deserialize(slice);
-                        System.out.println(msg.toString());
-
-                        var remainingArray = Arrays.copyOfRange(pendingMessage.array(), msgLen, pendingMessage.position());
-                        pendingMessage.clear();
-                        pendingMessage.put(remainingArray);
-                    }
-                }
-            } else {
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException ex) {
-                    // nothing to be done
-                }
-            }
-        }
+        launch();
+//        var c = new Console("Dork", "127.0.0.1", 2200);
+//        c.connect();
+//
+//        var pendingMessage = ByteBuffer.allocate(1024);
+//        while (true) {
+//            var in = c.readInput();
+//            if (in.length > 0) {
+//                pendingMessage.put(in);
+//                if (pendingMessage.position() > 8) {
+//                    var slice = pendingMessage.slice(4, 4);
+//                    var msgLen = slice.getInt();
+//                    if (msgLen <= pendingMessage.position()) {
+//                        slice = pendingMessage.slice(0, msgLen);
+//                        var msg = Message.deserialize(slice);
+//                        System.out.println(msg.toString());
+//
+//                        var remainingArray = Arrays.copyOfRange(pendingMessage.array(), msgLen, pendingMessage.position());
+//                        pendingMessage.clear();
+//                        pendingMessage.put(remainingArray);
+//                    }
+//                }
+//            } else {
+//                try {
+//                    Thread.sleep(100);
+//                } catch (InterruptedException ex) {
+//                    // nothing to be done
+//                }
+//            }
+//        }
     }
 }

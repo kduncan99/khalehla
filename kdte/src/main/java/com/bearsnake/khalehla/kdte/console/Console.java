@@ -6,23 +6,25 @@
 
 package com.bearsnake.khalehla.kdte.console;
 
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.Pane;
 
 import java.io.IOException;
 
-public class Console extends VBox {
+public class Console {
 
-    private final String title;
     private final Transport transport;
+    private final ConsolePane pane;
 
     public Console(String title, String endPoint, int port) {
-        this.title = title;
         this.transport = new Transport(endPoint, port);
+        this.pane = new ConsolePane();
     }
 
     public void connect() throws IOException {
         this.transport.connect();
     }
+
+    public Pane getPane() { return this.pane; }
 
     public byte[] readInput() throws IOException {
         return this.transport.readInput();
