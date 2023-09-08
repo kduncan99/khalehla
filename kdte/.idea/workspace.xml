@@ -5,10 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="2eeead4e-311b-4d1f-9885-b85e323d7e59" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/NavigationPane.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/ContentPane.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/ContentPane.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/Main.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -93,7 +90,7 @@
       <workItem from="1693887956366" duration="1217000" />
       <workItem from="1693928803871" duration="323000" />
       <workItem from="1693929193425" duration="45568000" />
-      <workItem from="1694190926079" duration="1822000" />
+      <workItem from="1694190926079" duration="2161000" />
     </task>
     <servers />
   </component>
