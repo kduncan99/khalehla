@@ -30,7 +30,7 @@ import java.io.IOException;
   |   tip2           |                                                                 |
   |   production     |                                                                 |
   |                  |                                                                 |
-  | Media Libraries  |                                                                 |
+  | Media Pools      |                                                                 |
   |   local          |                                                                 |
   |   software       |                                                                 |
   |   backups        |                                                                 |
@@ -60,12 +60,14 @@ public class Main extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
+        // TODO probably should move this root crap into a separate class
         BorderPane root = new BorderPane();
 
         root.setTop(createMenu());
+        root.setLeft(new NavigationPane());
         root.setCenter(new ContentPane());
 
-        Scene scene = new Scene(root, 320, 240);
+        Scene scene = new Scene(root);
         stage.setTitle(TITLE + " - " + VERSION);
         stage.setScene(scene);
         stage.show();

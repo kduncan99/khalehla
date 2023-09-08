@@ -14,6 +14,8 @@ import javafx.scene.control.TabPane;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 
+// Container class for any specific content, especially fixed-size content which wants to be
+// vertically and horizontally centered when the overall application window expands.
 public class ContentPane extends TabPane {
 
     public ContentPane() {
