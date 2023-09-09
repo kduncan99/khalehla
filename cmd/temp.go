@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"khalehla/exec/consoles"
-	"khalehla/exec/messages"
 	"time"
 )
 
@@ -13,6 +12,6 @@ func main() {
 		time.Sleep(5 * time.Second)
 		msg := fmt.Sprintf("Time: %v", time.Now())
 		fmt.Printf("Sending: %v\n", msg)
-		c.SendReadOnlyMessage(messages.NewReadOnlyMessage("MAPPER", msg))
+		c.SendReadOnlyMessage(msg.NewReadOnlyMessage("MAPPER", msg))
 	}
 }

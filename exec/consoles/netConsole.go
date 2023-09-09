@@ -7,7 +7,7 @@ package consoles
 import (
 	"crypto/tls"
 	"fmt"
-	"khalehla/exec/messages"
+	"khalehla/exec/msg"
 	"log"
 	"net"
 	"sync"
@@ -16,7 +16,7 @@ import (
 // NetConsole implements a net server which provides console functionality to 0 or more
 // connected Console handlers (such as is found in kdte).
 type NetConsole struct {
-	pendingReadReplyMessages map[int]*messages.ReadReplyMessage
+	pendingReadReplyMessages map[int]*msg.ReadReplyMessage
 	connections              []net.Conn
 	mutex                    sync.Mutex
 	terminate                bool
@@ -24,7 +24,7 @@ type NetConsole struct {
 
 func NewNetConsole(hostAddress string, port int) Console {
 	c := &NetConsole{
-		pendingReadReplyMessages: make(map[int]*messages.ReadReplyMessage),
+		pendingReadReplyMessages: make(map[int]*msg.ReadReplyMessage),
 		connections:              make([]net.Conn, 0),
 	}
 
@@ -172,21 +172,21 @@ func (c *NetConsole) PollUnsolicitedInput() (input string, hasInput bool) {
 // Reset is invoked by the exec to cause the console to reset itself.
 // This might simply result in clearing the console screen.
 func (c *NetConsole) Reset() {
-	c.pendingReadReplyMessages = make(map[int]*messages.ReadReplyMessage)
+	c.pendingReadReplyMessages = make(map[int]*msg.ReadReplyMessage)
 	//	TODO screen stuff
 }
 
 // SendReadOnlyMessage is invoked by the exec to send a read only message to the console
-func (c *NetConsole) SendReadOnlyMessage(message *messages.ReadOnlyMessage) {
+func (c *NetConsole) SendReadOnlyMessage(message *msg.ReadOnlyMessage) {
 	c.sendMessage(message.Serialize())
 }
 
 // SendReadReplyMessage is invoked by the exec to send a read-reply message to the console
-func (c *NetConsole) SendReadReplyMessage(message *messages.ReadReplyMessage) {
+func (c *NetConsole) SendReadReplyMessage(message *msg.ReadReplyMessage) {
 	// TODO
 }
 
 // SendStatusMessage is invoked by the exec to send a status message to the console
-func (c *NetConsole) SendStatusMessage(message *messages.StatusMessage) {
+func (c *NetConsole) SendStatusMessage(message *msg.StatusMessage) {
 	// TODO
 }
