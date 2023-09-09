@@ -4,15 +4,13 @@
 
 package consoles
 
-import "khalehla/exec/msg"
-
 type Console interface {
-	ClearReadReplyMessage(messageId int) (err error)
-	IsReady() bool
-	PollSolicitedInput(messageId int) (response string, hasInput bool, err error)
-	PollUnsolicitedInput() (input string, hasInput bool)
-	Reset()
-	SendReadOnlyMessage(message *msg.ReadOnlyMessage)
-	SendReadReplyMessage(message *msg.ReadReplyMessage)
-	SendStatusMessage(message *msg.StatusMessage)
+	//ClearReadReplyMessage(messageId int) (err error)
+	//IsReady() bool
+	//PollSolicitedInput(messageId int) (response string, hasInput bool, err error)
+	//PollUnsolicitedInput() (input string, hasInput bool)
+	//Reset()
+	//SendReadOnlyMessage(message *msg.ReadOnlyMessage)
+	//SendReadReplyMessage(message *msg.ReadReplyMessage)
+	//SendStatusMessage(message *msg.StatusMessage)
 }

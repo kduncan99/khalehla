@@ -4,15 +4,7 @@
 
 package consoles
 
-import (
-	"crypto/tls"
-	"fmt"
-	"khalehla/exec/msg"
-	"log"
-	"net"
-	"sync"
-)
-
+/*
 // NetConsole implements a net server which provides console functionality to 0 or more
 // connected Console handlers (such as is found in kdte).
 type NetConsole struct {
@@ -190,3 +182,4 @@ func (c *NetConsole) SendReadReplyMessage(message *msg.ReadReplyMessage) {
 func (c *NetConsole) SendStatusMessage(message *msg.StatusMessage) {
 	// TODO
 }
+*/
