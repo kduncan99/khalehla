@@ -92,14 +92,14 @@ func FromBytesToFieldata(input []byte, output []Word36) {
 
 // FromStringToAscii converts a string of up to 4 characters to a Word36 containing 4 ASCII characters LJSF.
 func (w *Word36) FromStringToAscii(inp string) *Word36 {
-	temp := fmt.Sprintf("-%4s", inp)
+	temp := fmt.Sprintf("%-4s", inp)
 	w.FromBytesToAscii([]byte(temp))
 	return w
 }
 
 // FromStringToFieldata converts an array of up to 6 characters to a Word36 containing 6 Fieldata characters LJSF.
 func (w *Word36) FromStringToFieldata(inp string) *Word36 {
-	temp := fmt.Sprintf("-%6s", inp)
+	temp := fmt.Sprintf("%-6s", inp)
 	w.FromBytesToFieldata([]byte(temp))
 	return w
 }
@@ -111,7 +111,7 @@ func FromStringToAscii(input string, output []Word36) {
 	if tempLen&03 != 0 {
 		tempLen = (tempLen &^ 03) + 4
 	}
-	temp := fmt.Sprintf("-%*s", tempLen, input)
+	temp := fmt.Sprintf("%-*s", tempLen, input)
 	FromBytesToAscii([]byte(temp), output)
 }
 
@@ -123,7 +123,7 @@ func FromStringToFieldata(input string, output []Word36) {
 	if tempMod != 0 {
 		tempLen += 6 - tempMod
 	}
-	temp := fmt.Sprintf("-%*s", tempLen, input)
+	temp := fmt.Sprintf("%-*s", tempLen, input)
 	FromBytesToFieldata([]byte(temp), output)
 }
 
@@ -505,34 +505,75 @@ func ShiftLeftCircular(orig uint64, count uint64) uint64 {
 	return result & NegativeZero
 }
 
+// DumpWord36Buffer displays the indicated buffer to os.Stdout
+func DumpWord36Buffer(buffer []Word36, wordsPerLine int) {
+	for wx := 0; wx < len(buffer); wx += wordsPerLine {
+		offsetStr := fmt.Sprintf("%06o", wx)
+
+		octalStr := ""
+		fdStr := ""
+		asciiStr := ""
+		for wy := 0; wy < wordsPerLine; wy++ {
+			wz := wx + wy
+			if wz < len(buffer) {
+				word := buffer[wz]
+				octalStr += word.ToStringAsOctal() + " "
+				fdStr += word.ToStringAsFieldata() + " "
+				asciiStr += word.ToStringAsAsciiWithReplacementChar('.') + " "
+			} else {
+				octalStr += "             "
+				fdStr += "       "
+				asciiStr += "     "
+			}
+		}
+
+		fmt.Printf("%s:  %s %s %s\n", offsetStr, octalStr, fdStr, asciiStr)
+	}
+}
+
+// ToStringAsAscii converts one Word36 presumed to contain ASCII characters, to a 4-character string
 func (w *Word36) ToStringAsAscii() string {
-	tempVal := uint64(*w)
 	temp := make([]byte, 4)
-	temp[3] = byte(tempVal & 0377)
-	tempVal >>= 9
-	temp[2] = byte(tempVal & 0377)
-	tempVal >>= 9
-	temp[1] = byte(tempVal & 0377)
-	tempVal >>= 9
-	temp[0] = byte(tempVal)
+	temp[0] = byte(w.GetQ1())
+	temp[1] = byte(w.GetQ2())
+	temp[2] = byte(w.GetQ3())
+	temp[3] = byte(w.GetQ4())
 	return string(temp)
 }
 
-func (w *Word36) ToStringAsFieldata() string {
-	tempVal := uint64(*w)
-	temp := make([]byte, 8)
-	temp[5] = AsciiFromFieldata[tempVal&077]
-	tempVal >>= 6
-	temp[4] = AsciiFromFieldata[tempVal&077]
-	tempVal >>= 6
-	temp[3] = AsciiFromFieldata[tempVal&077]
-	tempVal >>= 6
-	temp[2] = AsciiFromFieldata[tempVal&077]
-	tempVal >>= 6
-	temp[1] = AsciiFromFieldata[tempVal&077]
-	tempVal >>= 6
-	temp[0] = AsciiFromFieldata[tempVal&077]
+// ToStringAsAsciiWithReplacementChar converts one Word36 presumed to contain ASCII characters, to a 4-character string
+// replacing any non-printing bytes with the given byte
+func (w *Word36) ToStringAsAsciiWithReplacementChar(char byte) string {
+	temp := make([]byte, 4)
+	temp[0] = byte(w.GetQ1())
+	temp[1] = byte(w.GetQ2())
+	temp[2] = byte(w.GetQ3())
+	temp[3] = byte(w.GetQ4())
+
+	for tx := 0; tx < 4; tx++ {
+		if temp[tx] < 32 || temp[tx] >= 127 {
+			temp[tx] = char
+		}
+	}
+
 	return string(temp)
+}
+
+// ToStringAsFieldata converts one Word36 presumed ton contain FIELDATA characters, to a 6-character string
+func (w *Word36) ToStringAsFieldata() string {
+	temp := make([]byte, 6)
+	temp[0] = AsciiFromFieldata[w.GetS1()]
+	temp[1] = AsciiFromFieldata[w.GetS2()]
+	temp[2] = AsciiFromFieldata[w.GetS3()]
+	temp[3] = AsciiFromFieldata[w.GetS4()]
+	temp[4] = AsciiFromFieldata[w.GetS5()]
+	temp[5] = AsciiFromFieldata[w.GetS6()]
+
+	return string(temp)
+}
+
+func (w *Word36) ToStringAsOctal() string {
+	return fmt.Sprintf("%012o", uint64(*w))
 }
 
 func (w *Word36) And(op uint64) {
@@ -591,49 +632,49 @@ func PackWord36(source []Word36, destination []byte) {
 
 // UnpackWord36 unpacks 9-byte groups into pairs of Word36 structs
 func UnpackWord36(source []byte, destination []Word36) {
-	sl := len(source)
-	if sl%9 != 0 {
+	srcLen := len(source)
+	if srcLen%9 != 0 {
 		log.Panic("source buffer length is not a multiple of 9 bytes")
 	}
 
-	if sl*2/9 > len(destination) {
+	if srcLen*2/9 > len(destination) {
 		log.Panic("destination buffer insufficient size")
 	}
 
 	dx := 0
-	for sx := 0; sx < sl; {
-		w0 := Word36(source[sx])
+	for sx := 0; sx < srcLen; {
+		w0 := uint64(source[sx])
 		w0 <<= 8
 		sx += 1
-		w0 |= Word36(source[sx])
+		w0 |= uint64(source[sx])
 		w0 <<= 8
 		sx += 1
-		w0 |= Word36(source[sx])
+		w0 |= uint64(source[sx])
 		w0 <<= 8
 		sx += 1
-		w0 |= Word36(source[sx])
-		w0 <<= 8
+		w0 |= uint64(source[sx])
+		w0 <<= 4
 		sx += 1
-		w0 |= Word36(source[sx] >> 4)
+		w0 |= uint64(source[sx] >> 4)
 
-		w1 := Word36(source[sx] & 0xF)
-		w1 <<= 4
-		sx += 1
-		w1 |= Word36(source[sx])
+		w1 := uint64(source[sx] & 0xF)
 		w1 <<= 8
 		sx += 1
-		w1 |= Word36(source[sx])
+		w1 |= uint64(source[sx])
 		w1 <<= 8
 		sx += 1
-		w1 |= Word36(source[sx])
+		w1 |= uint64(source[sx])
 		w1 <<= 8
 		sx += 1
-		w1 |= Word36(source[sx])
+		w1 |= uint64(source[sx])
+		w1 <<= 8
+		sx += 1
+		w1 |= uint64(source[sx])
+		sx += 1
 
-		destination[dx] = w0
-		dx += 1
-		destination[dx] = w1
-		dx += 1
+		destination[dx].SetW(w0)
+		destination[dx+1].SetW(w1)
+		dx += 2
 	}
 }
 
