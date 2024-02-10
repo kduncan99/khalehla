@@ -36,7 +36,7 @@ import (
 // +014,S2  Vol1 Version (we use 1)
 // +014,H2  Heads per cylinder
 // +016     Disk capacity in tracks, not including label or initial directory allocation
-// +017     Words per physical record (also prep_factor)
+// +017,H1  Words per physical record (also prep_factor)
 // +020,H2  Attributes - we just set these all to zero
 // +021     (non-canonical) total number of blocks on pack
 
@@ -220,9 +220,9 @@ func (disk *DiskDevice) doPrep(pkt *DiskIoPacket) {
 	label[014].SetS1(010) // Pretend we are DPREP
 	label[014].SetS2(1)   // VOL1 version
 	label[014].SetH2(10)  // heads per cylinder - make up something
-	label[015].SetH1(recordLength)
 	label[016].SetW(availableTracks)
-	label[017].SetW(blockCount)
+	label[017].SetH1(recordLength)
+	label[021].SetW(blockCount)
 
 	err := writeBlock(disk.file, 0, label, uint(recordLength))
 	if err != nil {
