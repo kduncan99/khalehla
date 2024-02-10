@@ -680,7 +680,7 @@ func step12(bm *BankManipulator) bool {
 //
 // For CALL to BM, X11.IS is set to 2, remaining fields undefined
 //
-//	Designator Register DB17 determines whether X(a) is exec or user register
+//	Designator Register DB17 determines whether X(a) is kexec or user register
 //
 // returns true if it completed successfully, else false indicating that an interrupt has been posted
 // and processing should be discontinued.
@@ -734,7 +734,7 @@ func step14(bm *BankManipulator) bool {
 //	    If Gate.AKI is clear, Indicator/Key.AccessKey <= Gate.AccessKey
 //	    If Gate.LP0I is clear, UR0 or ER0 <- Gate.LatentParameter0
 //	    If Gate.LP1I is clear, UR1 or ER1 <- Gate.LatentParameter1
-//	    Selection of user/exec register set is controlled by Gate.DB17 if DBI is clear, else by DR.DB17
+//	    Selection of user/kexec register set is controlled by Gate.DB17 if DBI is clear, else by DR.DB17
 //	    Move on to step 17 (steps 15 and 16 are mutually exclusive)
 //	Else move on to step 16
 //

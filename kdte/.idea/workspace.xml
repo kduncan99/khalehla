@@ -5,44 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="2eeead4e-311b-4d1f-9885-b85e323d7e59" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../bin/makeproto.sh" beforeDir="false" afterPath="$PROJECT_DIR$/../bin/makeproto.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/generated/com/bearsnake/khalehla/kdte/console/messages/ClearReadReplyMessageRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/generated/com/bearsnake/khalehla/kdte/console/messages/ClearReadReplyMessageRequestOrBuilder.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/generated/com/bearsnake/khalehla/kdte/console/messages/ConsoleService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/generated/com/bearsnake/khalehla/kdte/console/messages/Empty.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/generated/com/bearsnake/khalehla/kdte/console/messages/EmptyOrBuilder.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/generated/com/bearsnake/khalehla/kdte/console/messages/PollInputMessageResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/generated/com/bearsnake/khalehla/kdte/console/messages/PollInputMessageResponseOrBuilder.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/generated/com/bearsnake/khalehla/kdte/console/messages/ReadOnlyMessageRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/generated/com/bearsnake/khalehla/kdte/console/messages/ReadOnlyMessageRequestOrBuilder.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/generated/com/bearsnake/khalehla/kdte/console/messages/ReadReplyMessageRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/generated/com/bearsnake/khalehla/kdte/console/messages/ReadReplyMessageRequestOrBuilder.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/generated/com/bearsnake/khalehla/kdte/console/messages/SolicitedInputMessage.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/generated/com/bearsnake/khalehla/kdte/console/messages/SolicitedInputMessageOrBuilder.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/generated/com/bearsnake/khalehla/kdte/console/messages/StatusMessageRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/generated/com/bearsnake/khalehla/kdte/console/messages/StatusMessageRequestOrBuilder.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/generated/com/bearsnake/khalehla/kdte/console/messages/UnsolicitedInputMessage.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/generated/com/bearsnake/khalehla/kdte/console/messages/UnsolicitedInputMessageOrBuilder.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/NavigationPane.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/NavigationPane.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/console/messages/ClearReadReplyMessageRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/console/messages/ClearReadReplyMessageRequestOrBuilder.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/console/messages/ConsoleService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/console/messages/Empty.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/console/messages/EmptyOrBuilder.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/console/messages/PollInputMessageResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/console/messages/PollInputMessageResponseOrBuilder.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/console/messages/ReadOnlyMessageRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/console/messages/ReadOnlyMessageRequestOrBuilder.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/console/messages/ReadReplyMessageRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/console/messages/ReadReplyMessageRequestOrBuilder.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/console/messages/SolicitedInputMessage.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/console/messages/SolicitedInputMessageOrBuilder.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/console/messages/StatusMessageRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/console/messages/StatusMessageRequestOrBuilder.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/console/messages/UnsolicitedInputMessage.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/bearsnake/khalehla/kdte/console/messages/UnsolicitedInputMessageOrBuilder.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/module-info.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/module-info.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -68,9 +31,9 @@
       </MavenGeneralSettings>
     </option>
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 4
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 4
+}</component>
   <component name="ProjectId" id="2Uxj6k7jksvU2UJtwL1oV1e0DBd" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -86,7 +49,7 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "WebServerToolWindowFactoryState": "false",
-    "last_opened_file_path": "/Users/kduncan/sandbox/Khalehla/kdte",
+    "last_opened_file_path": "/Users/kduncan/sandbox/khalehla/kdte",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -139,6 +102,7 @@
       <workItem from="1693929193425" duration="45568000" />
       <workItem from="1694190926079" duration="2161000" />
       <workItem from="1694212906612" duration="7027000" />
+      <workItem from="1707010092677" duration="1553000" />
     </task>
     <servers />
   </component>

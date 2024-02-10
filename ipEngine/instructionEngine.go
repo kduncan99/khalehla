@@ -572,7 +572,7 @@ func (e *InstructionEngine) GetGeneralRegisterSet() *pkg.GeneralRegisterSet {
 // Load the value indicated in F0 as follows:
 //
 //	For Processor Privilege 0,1
-//		value is 24 bits for DR.11 (exec 24bit indexing enabled) true, else 18 bits
+//		value is 24 bits for DR.11 (kexec 24bit indexing enabled) true, else 18 bits
 //	For Processor Privilege 2,3
 //		value is 24 bits for FO.i set, else 18 bits
 //
@@ -718,7 +718,7 @@ func (e *InstructionEngine) GetOperand(
 	privilege := dReg.GetProcessorPrivilege()
 	grs := e.generalRegisterSet
 
-	// using exec base registers?
+	// using kexec base registers?
 	if !basicMode {
 		result.sourceBaseRegisterIndex = e.getEffectiveBaseRegisterIndex()
 	}

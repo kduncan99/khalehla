@@ -2,7 +2,7 @@
 // Copyright © 2023 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package exec
+package kexec
 
 import (
 	"sync"

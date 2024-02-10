@@ -14,7 +14,7 @@ import (
 // InstructionProcessor implements a (mostly) fully implementation of the 2200 engine architecture.
 // Much of the work is handled by the engine which is common to any emulator, but we provide
 // the extra wrapping that makes it a fully standalone instruction engine.
-// Generally speaking, you run a native 36-bit exec on this.
+// Generally speaking, you run a native 36-bit kexec on this.
 type InstructionProcessor struct {
 	engine    *InstructionEngine
 	mutex     sync.Mutex

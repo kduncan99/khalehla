@@ -2,16 +2,16 @@
 // Copyright © 2023 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package exec
+package types
 
 import (
 	"khalehla/pkg"
-	"sync"
 )
 
-// RunControlEntry is the portion of the canonical PCT which contains information specific to a run,
+// RunControlEntry is the portion of the canonical PCT which contains information specific to a thread,
 // but not to a program or any activities of the program.
 type RunControlEntry struct {
+	IsExec           bool
 	RunId            pkg.Word36
 	OriginalRunId    pkg.Word36
 	AccountId        []pkg.Word36
@@ -43,6 +43,7 @@ var SystemQualifier = "SYS$"
 
 // ExecRunControlEntry is the RCE for the EXEC - it always exists and is always (or should always be) in the RCT
 var ExecRunControlEntry = RunControlEntry{
+	IsExec:           true,
 	RunId:            pkg.NewFromStringToFieldata(SystemRunId, 1)[0],
 	OriginalRunId:    pkg.NewFromStringToAscii(SystemRunId, 1)[0],
 	AccountId:        pkg.NewFromStringToAscii(SystemAccountId, 2),
@@ -51,55 +52,4 @@ var ExecRunControlEntry = RunControlEntry{
 	DefaultQualifier: pkg.NewFromStringToAscii(SystemQualifier, 2),
 	ImpliedQualifier: pkg.NewFromStringToAscii(SystemQualifier, 2),
 	RunConditionWord: RunConditionWord{},
-}
-
-type RunControlTableStruct struct {
-	mutex sync.Mutex
-	table map[pkg.Word36]*RunControlEntry // key is word36 RunId (Fieldata LJSF)
-}
-
-var RunControlTable RunControlTableStruct
-
-func NewRunControlTableStruct() *RunControlTableStruct {
-	rct := RunControlTableStruct{}
-	rct.AddEntry(&ExecRunControlEntry)
-	return &rct
-}
-
-func (rct *RunControlTableStruct) AddEntry(rce *RunControlEntry) bool {
-	rct.mutex.Lock()
-	defer rct.mutex.Unlock()
-
-	_, ok := rct.table[rce.RunId]
-	if ok {
-		return false
-	}
-
-	rct.table[rce.RunId] = rce
-	return true
-}
-
-func (rct *RunControlTableStruct) FindEntry(runId *pkg.Word36) *RunControlEntry {
-	rct.mutex.Lock()
-	defer rct.mutex.Unlock()
-
-	rce, ok := rct.table[*runId]
-	if !ok {
-		return nil
-	}
-
-	return rce
-}
-
-func (rct *RunControlTableStruct) RemoveEntry(runId *pkg.Word36) bool {
-	rct.mutex.Lock()
-	defer rct.mutex.Unlock()
-
-	_, ok := rct.table[*runId]
-	if !ok {
-		return false
-	}
-
-	delete(rct.table, *runId)
-	return true
 }

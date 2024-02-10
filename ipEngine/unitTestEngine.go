@@ -176,7 +176,7 @@ func (ute *UnitTestEngine) Load(executable *tasm.Executable) error {
 	//	Set program counter to initial address
 	par.SetProgramCounter(executable.GetStartingAddress())
 
-	//	Initialize designator register
+	//	BuildConfiguration designator register
 	dr := ute.engine.GetDesignatorRegister()
 	dr.Clear()
 	dr.SetProcessorPrivilege(ute.executable.GetProcessorPrivilege())
