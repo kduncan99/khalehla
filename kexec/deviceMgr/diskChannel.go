@@ -24,7 +24,7 @@ func (ch *DiskChannel) getNodeType() NodeType {
 	return NodeTypeDisk
 }
 
-func (ch *DiskChannel) assignDevice(deviceIdentifier NodeIdentifier, device Device) error {
+func (ch *DiskChannel) AssignDevice(deviceIdentifier NodeIdentifier, device Device) error {
 	if device.getNodeType() != NodeTypeDisk {
 		return fmt.Errorf("device is not a disk")
 	}
@@ -33,7 +33,7 @@ func (ch *DiskChannel) assignDevice(deviceIdentifier NodeIdentifier, device Devi
 	return nil
 }
 
-func (ch *DiskChannel) startIo(ioPacket IoPacket) {
+func (ch *DiskChannel) StartIo(ioPacket IoPacket) {
 	ioPacket.SetIoStatus(IosInProgress)
 	if ioPacket.GetNodeType() != ch.getNodeType() {
 		ioPacket.SetIoStatus(IosInvalidNodeType)

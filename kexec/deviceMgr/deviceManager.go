@@ -69,7 +69,7 @@ func (mgr *DeviceManager) BuildConfiguration() error {
 	for cInfo := range mgr.channelDeviceMap {
 		for _, dInfo := range mgr.channelDeviceMap[cInfo] {
 			log.Printf("DevMgr:assigning %v to %v", dInfo.GetNodeName(), cInfo.GetNodeName())
-			err := cInfo.GetChannel().assignDevice(dInfo.GetNodeIdentifier(), dInfo.GetDevice())
+			err := cInfo.GetChannel().AssignDevice(dInfo.GetNodeIdentifier(), dInfo.GetDevice())
 			if err != nil {
 				log.Printf("DevMgr:%v", err)
 				errors = true
@@ -117,7 +117,7 @@ func (mgr *DeviceManager) Recover() error {
 	// 			case channelInfos.ChannelTypeDisk:
 	// 				diskInfo := dInfo.(*DiskDeviceInfo)
 	// 				pkt := deviceInfos.NewDiskIoPacketReset()
-	// 				diskInfo.GetDevice().startIo(pkt)
+	// 				diskInfo.GetDevice().StartIo(pkt)
 	// 				if pkt.GetIoStatus() != deviceInfos.IosComplete {
 	// 					// TODO console messages?
 	// 					log.Printf("DevMgr:IO error status %v", pkt.GetIoStatus())
@@ -128,7 +128,7 @@ func (mgr *DeviceManager) Recover() error {
 	// 					if diskInfo.GetInitialFileName() == nil && diskInfo.isMounted {
 	// 						log.Printf("DevMgr:dismounting media from device %v", diskInfo.GetNodeName())
 	// 						pkt = deviceInfos.NewDiskIoPacketUnmount()
-	// 						diskInfo.GetDevice().startIo(pkt)
+	// 						diskInfo.GetDevice().StartIo(pkt)
 	// 						if pkt.GetIoStatus() != deviceInfos.IosComplete {
 	// 							// TODO console messages?
 	// 							log.Printf("DevMgr:IO error status %v", pkt.GetIoStatus())
@@ -148,7 +148,7 @@ func (mgr *DeviceManager) Recover() error {
 	// 			case channelInfos.ChannelTypeTape:
 	// 				tapeInfo := dInfo.(*TapeDeviceInfo)
 	// 				pkt := deviceInfos.NewTapeIoPacketReset()
-	// 				tapeInfo.GetDevice().startIo(pkt)
+	// 				tapeInfo.GetDevice().StartIo(pkt)
 	// 				if pkt.GetIoStatus() != deviceInfos.IosComplete {
 	// 					// TODO console messages?
 	// 					log.Printf("DevMgr:IO error status %v", pkt.GetIoStatus())
@@ -159,7 +159,7 @@ func (mgr *DeviceManager) Recover() error {
 	// 					if tapeInfo.isMounted {
 	// 						log.Printf("DevMgr:dismounting media from device %v", tapeInfo.GetNodeName())
 	// 						pkt = deviceInfos.NewTapeIoPacketUnmount()
-	// 						tapeInfo.GetDevice().startIo(pkt)
+	// 						tapeInfo.GetDevice().StartIo(pkt)
 	// 						if pkt.GetIoStatus() != deviceInfos.IosComplete {
 	// 							// TODO console messages?
 	// 							log.Printf("DevMgr:IO error status %v", pkt.GetIoStatus())

@@ -91,9 +91,9 @@ const (
 // It may also manage caching, automatic mounting, or any other various activities
 // on behalf of the exec.
 type Channel interface {
-	assignDevice(deviceIdentifier NodeIdentifier, device Device) error
+	AssignDevice(deviceIdentifier NodeIdentifier, device Device) error
 	getNodeType() NodeType
-	startIo(ioPacket IoPacket)
+	StartIo(ioPacket IoPacket)
 }
 
 // Device manages real or pseudo IO operations for a particular virtual device.

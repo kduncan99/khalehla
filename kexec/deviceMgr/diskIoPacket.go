@@ -40,12 +40,13 @@ func (pkt *DiskIoPacket) SetIoStatus(ioStatus IoStatus) {
 	pkt.ioStatus = ioStatus
 }
 
-func NewDiskIoPacketMount(fileName string, writeProtected bool) *DiskIoPacket {
+func NewDiskIoPacketMount(deviceIdentifier NodeIdentifier, fileName string, writeProtected bool) *DiskIoPacket {
 	return &DiskIoPacket{
-		ioFunction:     IofMount,
-		ioStatus:       IosNotStarted,
-		fileName:       fileName,
-		writeProtected: writeProtected,
+		deviceIdentifier: deviceIdentifier,
+		ioFunction:       IofMount,
+		ioStatus:         IosNotStarted,
+		fileName:         fileName,
+		writeProtected:   writeProtected,
 	}
 }
 
