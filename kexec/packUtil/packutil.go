@@ -35,7 +35,7 @@ func DoPrep(args []string) error {
 	if err != nil || prepFactor <= 0 {
 		return fmt.Errorf("error in prepfactor argument")
 	}
-	if !deviceMgr.IsValidPrepFactor(uint(prepFactor)) {
+	if !deviceMgr.IsValidPrepFactor(deviceMgr.PrepFactor(prepFactor)) {
 		return fmt.Errorf("invalid prep factor (use 28, 56, 112, 224, 448, 896, or 1792)")
 	}
 
@@ -55,24 +55,27 @@ func DoPrep(args []string) error {
 		removable = true
 	}
 
-	dd := deviceMgr.NewDiskDevice()
-	pkt := deviceMgr.NewDiskIoPacketMount(fileName, false)
-	dd.startIo(pkt)
+	dc := deviceMgr.NewDiskChannel()
+	dd := deviceMgr.NewDiskDevice(nil)
+	ni := deviceMgr.NodeIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
+	_ = dc.AssignDevice(ni, dd)
+
+	pkt := deviceMgr.NewDiskIoPacketMount(ni, fileName, false)
+	dc.StartIo(pkt)
 	if pkt.GetIoStatus() != deviceMgr.IosComplete {
 		return fmt.Errorf("status %v returned while mounting pack file %v", pkt.GetIoStatus(), fileName)
 	}
 
-	pkt = deviceMgr.NewDiskIoPacketPrep(packName, uint(prepFactor), uint(trackCount), removable)
-	dd.startIo(pkt)
+	pkt = deviceMgr.NewDiskIoPacketPrep(ni, packName, deviceMgr.PrepFactor(prepFactor), deviceMgr.TrackCount(trackCount), removable)
+	dc.StartIo(pkt)
 	if pkt.GetIoStatus() != deviceMgr.IosComplete {
 		return fmt.Errorf("status %v returned while prepping pack file %v", pkt.GetIoStatus(), fileName)
 	}
 
-	showGeometry(dd)
-	showLabelRecord(dd)
+	showLabelRecord(dc, ni, true)
 
-	pkt = deviceMgr.NewDiskIoPacketUnmount()
-	dd.startIo(pkt)
+	pkt = deviceMgr.NewDiskIoPacketUnmount(ni)
+	dc.StartIo(pkt)
 
 	return nil
 }
@@ -83,7 +86,7 @@ func DoShow(args []string) error {
 	}
 
 	fileName := args[0]
-	if _, err := os.Stat("/path/to/whatever"); err == nil {
+	if _, err := os.Stat(fileName); err == nil {
 		// skip on down
 	} else if errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("file %v does not exist", fileName)
@@ -91,41 +94,48 @@ func DoShow(args []string) error {
 		return fmt.Errorf("cannot open file %v:%v", fileName, err)
 	}
 
-	dd := deviceMgr.NewDiskDevice()
-	pkt := deviceMgr.NewDiskIoPacketMount(fileName, false)
-	dd.startIo(pkt)
+	dc := deviceMgr.NewDiskChannel()
+	dd := deviceMgr.NewDiskDevice(nil)
+	ni := deviceMgr.NodeIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
+	_ = dc.AssignDevice(ni, dd)
+
+	pkt := deviceMgr.NewDiskIoPacketMount(ni, fileName, false)
+	dc.StartIo(pkt)
 	if !dd.IsPrepped() {
 		return fmt.Errorf("pack is not prepped")
 	}
 
-	showGeometry(dd)
-	showLabelRecord(dd)
+	showLabelRecord(dc, ni, true)
 
-	pkt = deviceMgr.NewDiskIoPacketUnmount()
-	dd.startIo(pkt)
+	pkt = deviceMgr.NewDiskIoPacketUnmount(ni)
+	dc.StartIo(pkt)
 
 	return nil
 }
 
-func showLabelRecord(diskDevice *deviceMgr.DiskDevice) {
+func showLabelRecord(channel deviceMgr.Channel, nodeId deviceMgr.NodeIdentifier, interpret bool) {
 	label := make([]pkg.Word36, 28)
-	pkt := deviceMgr.NewDiskIoPacketReadLabel(label)
-	diskDevice.startIo(pkt)
-	if pkt.GetIoStatus() == deviceMgr.IosComplete {
-		fmt.Println("Label Record:")
-		pkg.DumpWord36Buffer(label, 7)
-	} else {
+	pkt := deviceMgr.NewDiskIoPacketReadLabel(nodeId, label)
+	channel.StartIo(pkt)
+	if pkt.GetIoStatus() != deviceMgr.IosComplete {
 		fmt.Printf("Status %v returned while reading label\n", pkt.GetIoStatus())
+		return
 	}
-}
 
-func showGeometry(diskDevice *deviceMgr.DiskDevice) {
-	geom := diskDevice.GetGeometry()
-	fmt.Println("Geometry:")
-	fmt.Printf("  PrepFactor:      %v\n", geom.PrepFactor)
-	fmt.Printf("  BlockCount:      %v\n", geom.BlockCount)
-	fmt.Printf("  TrackCount:      %v\n", geom.TrackCount)
-	fmt.Printf("  BlocksPerTrack:  %v\n", geom.BlocksPerTrack)
-	fmt.Printf("  BytesPerBlock:   %v\n", geom.BytesPerBlock)
-	fmt.Printf("  SectorsPerBlock: %v\n", geom.SectorsPerBlock)
+	fmt.Println("Label Record:")
+	pkg.DumpWord36Buffer(label, 7)
+	if !interpret {
+		return
+	}
+
+	fmt.Printf("Pack Name:            %v%v\n", label[1].ToStringAsAscii(), label[2].ToStringAsAscii())
+	fmt.Printf("First Dir Track DRWA: %v\n", label[3].ToStringAsOctal())
+	fmt.Printf("Records Per Track:    %d\n", label[4].GetH1())
+	fmt.Printf("Words Per Record:     %d\n", label[4].GetH2())
+	fmt.Printf("S0+S1+HMBT+Pad:       %d words\n", label[011].GetH1())
+	fmt.Printf("Master Bit Table Len: %d words\n", label[011].GetH2())
+	fmt.Printf("VOL1 Version:         %d\n", label[014].GetS2())
+	fmt.Printf("Disk Capacity:        %d tracks\n", label[016].GetW())
+	fmt.Printf("Words Per Phys Record:%d\n", label[017].GetH1())
+	fmt.Printf("Total Blocks:         %d\n", label[021].GetW())
 }
