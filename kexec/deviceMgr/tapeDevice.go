@@ -5,6 +5,7 @@
 package deviceMgr
 
 import (
+	"khalehla/kexec/types"
 	"os"
 	"sync"
 )
@@ -22,8 +23,8 @@ func NewTapeDevice() *TapeDevice {
 	return &TapeDevice{}
 }
 
-func (tape *TapeDevice) getNodeType() NodeType {
-	return NodeTypeTape
+func (tape *TapeDevice) GetNodeType() types.NodeType {
+	return types.NodeTypeTape
 }
 
 func (tape *TapeDevice) IsMounted() bool {
@@ -44,26 +45,26 @@ func IsValidReelName(name string) bool {
 	return true
 }
 
-func (tape *TapeDevice) startIo(pkt IoPacket) {
-	pkt.SetIoStatus(IosInProgress)
+func (tape *TapeDevice) StartIo(pkt types.IoPacket) {
+	pkt.SetIoStatus(types.IosInProgress)
 
-	if pkt.GetNodeType() != tape.getNodeType() {
-		pkt.SetIoStatus(IosInvalidNodeType)
+	if pkt.GetNodeType() != tape.GetNodeType() {
+		pkt.SetIoStatus(types.IosInvalidNodeType)
 	}
 
 	switch pkt.GetIoFunction() {
-	case IofMount:
+	case types.IofMount:
 		tape.doMount(pkt.(*TapeIoPacket))
-	case IofRead:
+	case types.IofRead:
 		tape.doRead(pkt.(*TapeIoPacket))
-	case IofReset:
+	case types.IofReset:
 		tape.doReset(pkt.(*TapeIoPacket))
-	case IofUnmount:
+	case types.IofUnmount:
 		tape.doUnmount(pkt.(*TapeIoPacket))
-	case IofWrite:
+	case types.IofWrite:
 		tape.doWrite(pkt.(*TapeIoPacket))
 	default:
-		pkt.SetIoStatus(IosInvalidFunction)
+		pkt.SetIoStatus(types.IosInvalidFunction)
 	}
 }
 
@@ -71,14 +72,14 @@ func (tape *TapeDevice) doMount(pkt *TapeIoPacket) {
 	tape.mutex.Lock()
 	defer tape.mutex.Unlock()
 	// TODO
-	pkt.ioStatus = IosSystemError
+	pkt.ioStatus = types.IosSystemError
 }
 
 func (tape *TapeDevice) doRead(pkt *TapeIoPacket) {
 	tape.mutex.Lock()
 	defer tape.mutex.Unlock()
 	// TODO
-	pkt.ioStatus = IosSystemError
+	pkt.ioStatus = types.IosSystemError
 }
 
 // doReset cancels any pending IO and unmounts the media
@@ -86,19 +87,19 @@ func (tape *TapeDevice) doReset(pkt *TapeIoPacket) {
 	tape.mutex.Lock()
 	defer tape.mutex.Unlock()
 	// TODO
-	pkt.ioStatus = IosSystemError
+	pkt.ioStatus = types.IosSystemError
 }
 
 func (tape *TapeDevice) doUnmount(pkt *TapeIoPacket) {
 	tape.mutex.Lock()
 	defer tape.mutex.Unlock()
 	// TODO
-	pkt.ioStatus = IosSystemError
+	pkt.ioStatus = types.IosSystemError
 }
 
 func (tape *TapeDevice) doWrite(pkt *TapeIoPacket) {
 	tape.mutex.Lock()
 	defer tape.mutex.Unlock()
 	// TODO
-	pkt.ioStatus = IosSystemError
+	pkt.ioStatus = types.IosSystemError
 }

@@ -53,3 +53,7 @@ var ExecRunControlEntry = RunControlEntry{
 	ImpliedQualifier: pkg.NewFromStringToAscii(SystemQualifier, 2),
 	RunConditionWord: RunConditionWord{},
 }
+
+func (rce *RunControlEntry) PrintToTailSheet(message string) {
+	// TODO
+}

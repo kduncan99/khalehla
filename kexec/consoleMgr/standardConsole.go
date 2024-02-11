@@ -32,8 +32,9 @@ type StandardConsole struct {
 
 func NewStandardConsole() *StandardConsole {
 	con := &StandardConsole{
-		reader:   bufio.NewReader(os.Stdin),
-		termFlag: false,
+		activeReadReplyMessages: make(map[int]*stdConsReadReplyInfo),
+		reader:                  bufio.NewReader(os.Stdin),
+		termFlag:                false,
 	}
 
 	go con.routine()
@@ -115,20 +116,33 @@ func (con *StandardConsole) SendSystemMessages(string, string) error {
 	return nil
 }
 
-func (con *StandardConsole) SendReadReplyMessage(text string, messageId int, maxChars int) error {
+// SendReadReplyMessage attempts to send the given message after assigning it a unique identifier
+// If there are no available identifiers, we return an error.
+// The caller should, in this case, try again later.
+func (con *StandardConsole) SendReadReplyMessage(text string, maxChars int) (int, error) {
 	con.mutex.Lock()
 	defer con.mutex.Unlock()
 
+	msgId := 0
+	_, ok := con.activeReadReplyMessages[msgId]
+	for ok {
+		msgId++
+		if msgId > 9 {
+			return 0, fmt.Errorf("message id overflow")
+		}
+		_, ok = con.activeReadReplyMessages[msgId]
+	}
+
 	rr := &stdConsReadReplyInfo{
-		messageId:         messageId,
+		messageId:         msgId,
 		originalMessage:   text,
 		maxResponseLength: maxChars,
 		response:          nil,
 	}
 
-	fmt.Printf("%v-%v\n", messageId, text)
-	con.activeReadReplyMessages[messageId] = rr
-	return nil
+	fmt.Printf("%v-%v\n", msgId, text)
+	con.activeReadReplyMessages[msgId] = rr
+	return msgId, nil
 }
 
 func parseResponse(input string) (bool, int, string, error) {

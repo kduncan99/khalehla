@@ -4,11 +4,13 @@
 
 package deviceMgr
 
+import "khalehla/kexec/types"
+
 type TapeDeviceInfo struct {
 	deviceName     string
-	nodeIdentifier NodeIdentifier
+	nodeIdentifier types.NodeIdentifier
 	device         *TapeDevice
-	nodeStatus     NodeStatus
+	nodeStatus     types.NodeStatus
 	isMounted      bool
 }
 
@@ -16,7 +18,7 @@ type TapeDeviceInfo struct {
 func NewTapeDeviceInfo(deviceName string) *TapeDeviceInfo {
 	return &TapeDeviceInfo{
 		deviceName: deviceName,
-		nodeStatus: NodeStatusUp,
+		nodeStatus: types.NodeStatusUp,
 	}
 }
 
@@ -24,11 +26,11 @@ func (tdi *TapeDeviceInfo) CreateNode() {
 	tdi.device = NewTapeDevice()
 }
 
-func (tdi *TapeDeviceInfo) GetDevice() Device {
+func (tdi *TapeDeviceInfo) GetDevice() types.Device {
 	return tdi.device
 }
 
-func (tdi *TapeDeviceInfo) GetNodeIdentifier() NodeIdentifier {
+func (tdi *TapeDeviceInfo) GetNodeIdentifier() types.NodeIdentifier {
 	return tdi.nodeIdentifier
 }
 
@@ -36,12 +38,12 @@ func (tdi *TapeDeviceInfo) GetNodeName() string {
 	return tdi.deviceName
 }
 
-func (tdi *TapeDeviceInfo) GetNodeStatus() NodeStatus {
+func (tdi *TapeDeviceInfo) GetNodeStatus() types.NodeStatus {
 	return tdi.nodeStatus
 }
 
-func (tdi *TapeDeviceInfo) GetNodeType() NodeType {
-	return NodeTypeTape
+func (tdi *TapeDeviceInfo) GetNodeType() types.NodeType {
+	return types.NodeTypeTape
 }
 
 func (tdi *TapeDeviceInfo) IsMounted() bool {

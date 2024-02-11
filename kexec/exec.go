@@ -10,6 +10,7 @@ import (
 	"khalehla/kexec/deviceMgr"
 	"khalehla/kexec/types"
 	"khalehla/pkg"
+	"strings"
 )
 
 const Version = "v1.0.0"
@@ -20,15 +21,47 @@ type Exec struct {
 	runControlTable map[pkg.Word36]*types.RunControlEntry
 
 	allowRestart bool
-	stopCode     int
+	stopCode     types.StopCode
 	stopFlag     bool
+}
+
+func NewExec() {
+	e := &Exec{}
+	e.consoleMgr = consoleMgr.NewConsoleManager(e)
+	e.deviceMgr = deviceMgr.NewDeviceManager(e)
+
+	e.consoleMgr.InitializeManager()
+	e.deviceMgr.InitializeManager()
+}
+
+func (e *Exec) Close() {
+	e.deviceMgr.CloseManager()
+	e.consoleMgr.CloseManager()
+}
+
+func (e *Exec) GetConsoleManager() types.Manager {
+	return e.consoleMgr
+}
+
+func (e *Exec) GetDeviceManager() types.Manager {
+	return e.deviceMgr
+}
+
+func (e *Exec) GetStopFlag() bool {
+	return e.stopFlag
+}
+
+func (e *Exec) HandleKeyIn(source types.ConsoleIdentifier, text string) {
+	// TODO
 }
 
 func (e *Exec) InitialBoot(initMassStorage bool) error {
 	e.consoleMgr = &consoleMgr.ConsoleManager{}
-	e.deviceMgr = &deviceMgr.DeviceManager{}
+	e.consoleMgr.InitializeManager()
 
-	e.consoleMgr.Reset()
+	e.deviceMgr = &deviceMgr.DeviceManager{}
+	e.deviceMgr.InitializeManager()
+
 	e.SendExecReadOnlyMessage("KEXEC Startup - Version " + Version)
 	e.SendExecReadOnlyMessage("Building Configuration...")
 	err := e.deviceMgr.BuildConfiguration()
@@ -38,7 +71,15 @@ func (e *Exec) InitialBoot(initMassStorage bool) error {
 		return fmt.Errorf("boot failed")
 	}
 
-	// TODO
+	reply := ""
+	err = nil
+	for strings.ToUpper(reply) != "DONE" && err == nil {
+		reply, err = e.SendExecReadReplyMessage("Modify Config then answer DONE", 4)
+	}
+
+	if err != nil {
+		// TODO DIE HORRIBLY
+	}
 
 	e.allowRestart = false // TODO temporary
 	e.Stop(063)            // TODO temporary
@@ -51,10 +92,32 @@ func (e *Exec) RecoveryBoot(initMassStorage bool) error {
 }
 
 func (e *Exec) SendExecReadOnlyMessage(message string) {
-	e.consoleMgr.SendReadOnlyMessage(&types.ExecRunControlEntry, message)
+	consMsg := types.ConsoleReadOnlyMessage{
+		Source:         &types.ExecRunControlEntry,
+		Text:           message,
+		DoNotEmitRunId: true,
+	}
+	e.consoleMgr.SendReadOnlyMessage(&consMsg)
 }
 
-func (e *Exec) Stop(code int) {
+func (e *Exec) SendExecReadReplyMessage(message string, maxReplyChars int) (string, error) {
+	consMsg := types.ConsoleReadReplyMessage{
+		Source:         &types.ExecRunControlEntry,
+		Text:           message,
+		DoNotEmitRunId: true,
+		MaxReplyLength: maxReplyChars,
+	}
+
+	err := e.consoleMgr.SendReadReplyMessage(&consMsg)
+	if err != nil {
+		return "", err
+	}
+
+	return consMsg.Reply, nil
+}
+
+func (e *Exec) Stop(code types.StopCode) {
+	// TODO need to set contingency in the Exec RCE
 	if e.allowRestart {
 		e.SendExecReadOnlyMessage(fmt.Sprintf("Restarting Exec: Status Code %03o", code))
 	} else {

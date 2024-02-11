@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"khalehla/kexec/deviceMgr"
+	"khalehla/kexec/types"
 	"khalehla/pkg"
 	"os"
 	"strconv"
@@ -35,7 +36,7 @@ func DoPrep(args []string) error {
 	if err != nil || prepFactor <= 0 {
 		return fmt.Errorf("error in prepfactor argument")
 	}
-	if !deviceMgr.IsValidPrepFactor(deviceMgr.PrepFactor(prepFactor)) {
+	if !deviceMgr.IsValidPrepFactor(types.PrepFactor(prepFactor)) {
 		return fmt.Errorf("invalid prep factor (use 28, 56, 112, 224, 448, 896, or 1792)")
 	}
 
@@ -57,18 +58,18 @@ func DoPrep(args []string) error {
 
 	dc := deviceMgr.NewDiskChannel()
 	dd := deviceMgr.NewDiskDevice(nil)
-	ni := deviceMgr.NodeIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
+	ni := types.NodeIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
 	_ = dc.AssignDevice(ni, dd)
 
 	pkt := deviceMgr.NewDiskIoPacketMount(ni, fileName, false)
 	dc.StartIo(pkt)
-	if pkt.GetIoStatus() != deviceMgr.IosComplete {
+	if pkt.GetIoStatus() != types.IosComplete {
 		return fmt.Errorf("status %v returned while mounting pack file %v", pkt.GetIoStatus(), fileName)
 	}
 
-	pkt = deviceMgr.NewDiskIoPacketPrep(ni, packName, deviceMgr.PrepFactor(prepFactor), deviceMgr.TrackCount(trackCount), removable)
+	pkt = deviceMgr.NewDiskIoPacketPrep(ni, packName, types.PrepFactor(prepFactor), types.TrackCount(trackCount), removable)
 	dc.StartIo(pkt)
-	if pkt.GetIoStatus() != deviceMgr.IosComplete {
+	if pkt.GetIoStatus() != types.IosComplete {
 		return fmt.Errorf("status %v returned while prepping pack file %v", pkt.GetIoStatus(), fileName)
 	}
 
@@ -96,7 +97,7 @@ func DoShow(args []string) error {
 
 	dc := deviceMgr.NewDiskChannel()
 	dd := deviceMgr.NewDiskDevice(nil)
-	ni := deviceMgr.NodeIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
+	ni := types.NodeIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
 	_ = dc.AssignDevice(ni, dd)
 
 	pkt := deviceMgr.NewDiskIoPacketMount(ni, fileName, false)
@@ -113,11 +114,11 @@ func DoShow(args []string) error {
 	return nil
 }
 
-func showLabelRecord(channel deviceMgr.Channel, nodeId deviceMgr.NodeIdentifier, interpret bool) {
+func showLabelRecord(channel types.Channel, nodeId types.NodeIdentifier, interpret bool) {
 	label := make([]pkg.Word36, 28)
 	pkt := deviceMgr.NewDiskIoPacketReadLabel(nodeId, label)
 	channel.StartIo(pkt)
-	if pkt.GetIoStatus() != deviceMgr.IosComplete {
+	if pkt.GetIoStatus() != types.IosComplete {
 		fmt.Printf("Status %v returned while reading label\n", pkt.GetIoStatus())
 		return
 	}

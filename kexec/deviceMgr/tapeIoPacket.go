@@ -4,56 +4,58 @@
 
 package deviceMgr
 
+import "khalehla/kexec/types"
+
 type TapeIoPacket struct {
-	deviceIdentifier NodeIdentifier
-	ioFunction       IoFunction
-	ioStatus         IoStatus
+	deviceIdentifier types.NodeIdentifier
+	ioFunction       types.IoFunction
+	ioStatus         types.IoStatus
 	fileName         string // for mount
 	writeProtected   bool   // for mount
 }
 
-func (pkt *TapeIoPacket) GetDeviceIdentifier() NodeIdentifier {
+func (pkt *TapeIoPacket) GetDeviceIdentifier() types.NodeIdentifier {
 	return pkt.deviceIdentifier
 }
 
-func (pkt *TapeIoPacket) GetNodeType() NodeType {
-	return NodeTypeTape
+func (pkt *TapeIoPacket) GetNodeType() types.NodeType {
+	return types.NodeTypeTape
 }
 
-func (pkt *TapeIoPacket) GetIoFunction() IoFunction {
+func (pkt *TapeIoPacket) GetIoFunction() types.IoFunction {
 	return pkt.ioFunction
 }
 
-func (pkt *TapeIoPacket) GetIoStatus() IoStatus {
+func (pkt *TapeIoPacket) GetIoStatus() types.IoStatus {
 	return pkt.ioStatus
 }
 
-func (pkt *TapeIoPacket) SetIoStatus(ioStatus IoStatus) {
+func (pkt *TapeIoPacket) SetIoStatus(ioStatus types.IoStatus) {
 	pkt.ioStatus = ioStatus
 }
 
-func NewTapeIoPacketMount(deviceIdentifier NodeIdentifier, fileName string, writeProtected bool) *TapeIoPacket {
+func NewTapeIoPacketMount(deviceIdentifier types.NodeIdentifier, fileName string, writeProtected bool) *TapeIoPacket {
 	return &TapeIoPacket{
 		deviceIdentifier: deviceIdentifier,
-		ioFunction:       IofMount,
-		ioStatus:         IosNotStarted,
+		ioFunction:       types.IofMount,
+		ioStatus:         types.IosNotStarted,
 		fileName:         fileName,
 		writeProtected:   writeProtected,
 	}
 }
 
-func NewTapeIoPacketReset(deviceIdentifier NodeIdentifier) *TapeIoPacket {
+func NewTapeIoPacketReset(deviceIdentifier types.NodeIdentifier) *TapeIoPacket {
 	return &TapeIoPacket{
 		deviceIdentifier: deviceIdentifier,
-		ioFunction:       IofReset,
-		ioStatus:         IosNotStarted,
+		ioFunction:       types.IofReset,
+		ioStatus:         types.IosNotStarted,
 	}
 }
 
-func NewTapeIoPacketUnmount(deviceIdentifier NodeIdentifier) *TapeIoPacket {
+func NewTapeIoPacketUnmount(deviceIdentifier types.NodeIdentifier) *TapeIoPacket {
 	return &TapeIoPacket{
 		deviceIdentifier: deviceIdentifier,
-		ioFunction:       IofUnmount,
-		ioStatus:         IosNotStarted,
+		ioFunction:       types.IofUnmount,
+		ioStatus:         types.IosNotStarted,
 	}
 }

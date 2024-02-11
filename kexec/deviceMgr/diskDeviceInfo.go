@@ -4,16 +4,19 @@
 
 package deviceMgr
 
-import "khalehla/pkg"
+import (
+	"khalehla/kexec/types"
+	"khalehla/pkg"
+)
 
 // -------------------------------------------------------------------------------------
 
 type DiskDeviceInfo struct {
 	deviceName      string
-	nodeIdentifier  NodeIdentifier
+	nodeIdentifier  types.NodeIdentifier
 	initialFileName *string
 	device          *DiskDevice
-	nodeStatus      NodeStatus
+	nodeStatus      types.NodeStatus
 	isAccessible    bool // can only be true if status is UP, RV, or SU and the device is assigned to at least one channel
 	isMounted       bool
 	isPrepped       bool
@@ -25,8 +28,8 @@ type DiskDeviceInfo struct {
 func NewDiskDeviceInfo(deviceName string, initialFileName *string) *DiskDeviceInfo {
 	return &DiskDeviceInfo{
 		deviceName:      deviceName,
-		nodeIdentifier:  NodeIdentifier(pkg.NewFromStringToFieldata(deviceName, 1)[0]),
-		nodeStatus:      NodeStatusUp,
+		nodeIdentifier:  types.NodeIdentifier(pkg.NewFromStringToFieldata(deviceName, 1)[0]),
+		nodeStatus:      types.NodeStatusUp,
 		isAccessible:    false,
 		initialFileName: initialFileName,
 		isMounted:       false,
@@ -39,7 +42,7 @@ func (ddi *DiskDeviceInfo) CreateNode() {
 	ddi.device = NewDiskDevice(ddi.initialFileName)
 }
 
-func (ddi *DiskDeviceInfo) GetDevice() Device {
+func (ddi *DiskDeviceInfo) GetDevice() types.Device {
 	return ddi.device
 }
 
@@ -47,7 +50,7 @@ func (ddi *DiskDeviceInfo) GetInitialFileName() *string {
 	return ddi.initialFileName
 }
 
-func (ddi *DiskDeviceInfo) GetNodeIdentifier() NodeIdentifier {
+func (ddi *DiskDeviceInfo) GetNodeIdentifier() types.NodeIdentifier {
 	return ddi.nodeIdentifier
 }
 
@@ -55,12 +58,12 @@ func (ddi *DiskDeviceInfo) GetNodeName() string {
 	return ddi.deviceName
 }
 
-func (ddi *DiskDeviceInfo) GetNodeStatus() NodeStatus {
+func (ddi *DiskDeviceInfo) GetNodeStatus() types.NodeStatus {
 	return ddi.nodeStatus
 }
 
-func (ddi *DiskDeviceInfo) GetNodeType() NodeType {
-	return NodeTypeDisk
+func (ddi *DiskDeviceInfo) GetNodeType() types.NodeType {
+	return types.NodeTypeDisk
 }
 
 func (ddi *DiskDeviceInfo) IsAccessible() bool {

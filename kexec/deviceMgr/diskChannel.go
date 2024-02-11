@@ -6,26 +6,27 @@ package deviceMgr
 
 import (
 	"fmt"
+	"khalehla/kexec/types"
 )
 
 // DiskChannel routes IOs to the appropriate deviceInfos which it manages.
 // Some day in the future we may add caching, perhaps in a CacheDiskChannel.
 type DiskChannel struct {
-	devices map[NodeIdentifier]*DiskDevice
+	devices map[types.NodeIdentifier]*DiskDevice
 }
 
 func NewDiskChannel() *DiskChannel {
 	return &DiskChannel{
-		devices: make(map[NodeIdentifier]*DiskDevice),
+		devices: make(map[types.NodeIdentifier]*DiskDevice),
 	}
 }
 
-func (ch *DiskChannel) getNodeType() NodeType {
-	return NodeTypeDisk
+func (ch *DiskChannel) GetNodeType() types.NodeType {
+	return types.NodeTypeDisk
 }
 
-func (ch *DiskChannel) AssignDevice(deviceIdentifier NodeIdentifier, device Device) error {
-	if device.getNodeType() != NodeTypeDisk {
+func (ch *DiskChannel) AssignDevice(deviceIdentifier types.NodeIdentifier, device types.Device) error {
+	if device.GetNodeType() != types.NodeTypeDisk {
 		return fmt.Errorf("device is not a disk")
 	}
 
@@ -33,18 +34,18 @@ func (ch *DiskChannel) AssignDevice(deviceIdentifier NodeIdentifier, device Devi
 	return nil
 }
 
-func (ch *DiskChannel) StartIo(ioPacket IoPacket) {
-	ioPacket.SetIoStatus(IosInProgress)
-	if ioPacket.GetNodeType() != ch.getNodeType() {
-		ioPacket.SetIoStatus(IosInvalidNodeType)
+func (ch *DiskChannel) StartIo(ioPacket types.IoPacket) {
+	ioPacket.SetIoStatus(types.IosInProgress)
+	if ioPacket.GetNodeType() != ch.GetNodeType() {
+		ioPacket.SetIoStatus(types.IosInvalidNodeType)
 		return
 	}
 
 	dev, ok := ch.devices[ioPacket.GetDeviceIdentifier()]
 	if !ok {
-		ioPacket.SetIoStatus(IosDeviceNotAttached)
+		ioPacket.SetIoStatus(types.IosDeviceNotAttached)
 		return
 	}
 
-	dev.startIo(ioPacket)
+	dev.StartIo(ioPacket)
 }

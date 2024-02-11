@@ -4,57 +4,60 @@
 
 package deviceMgr
 
-import "khalehla/pkg"
+import (
+	"khalehla/kexec/types"
+	"khalehla/pkg"
+)
 
 type DiskIoPacket struct {
-	deviceIdentifier NodeIdentifier
-	ioFunction       IoFunction
-	ioStatus         IoStatus
-	blockId          BlockId      // for read, write
-	buffer           []pkg.Word36 // for read, readLabel, write
-	packName         string       // for prep
-	prepFactor       PrepFactor   // for prep
-	trackCount       TrackCount   // for prep
-	removable        bool         // for prep
-	fileName         string       // for mount
-	writeProtected   bool         // for mount
+	deviceIdentifier types.NodeIdentifier
+	ioFunction       types.IoFunction
+	ioStatus         types.IoStatus
+	blockId          types.BlockId    // for read, write
+	buffer           []pkg.Word36     // for read, readLabel, write
+	packName         string           // for prep
+	prepFactor       types.PrepFactor // for prep
+	trackCount       types.TrackCount // for prep
+	removable        bool             // for prep
+	fileName         string           // for mount
+	writeProtected   bool             // for mount
 }
 
-func (pkt *DiskIoPacket) GetDeviceIdentifier() NodeIdentifier {
+func (pkt *DiskIoPacket) GetDeviceIdentifier() types.NodeIdentifier {
 	return pkt.deviceIdentifier
 }
 
-func (pkt *DiskIoPacket) GetNodeType() NodeType {
-	return NodeTypeDisk
+func (pkt *DiskIoPacket) GetNodeType() types.NodeType {
+	return types.NodeTypeDisk
 }
 
-func (pkt *DiskIoPacket) GetIoFunction() IoFunction {
+func (pkt *DiskIoPacket) GetIoFunction() types.IoFunction {
 	return pkt.ioFunction
 }
 
-func (pkt *DiskIoPacket) GetIoStatus() IoStatus {
+func (pkt *DiskIoPacket) GetIoStatus() types.IoStatus {
 	return pkt.ioStatus
 }
 
-func (pkt *DiskIoPacket) SetIoStatus(ioStatus IoStatus) {
+func (pkt *DiskIoPacket) SetIoStatus(ioStatus types.IoStatus) {
 	pkt.ioStatus = ioStatus
 }
 
-func NewDiskIoPacketMount(deviceIdentifier NodeIdentifier, fileName string, writeProtected bool) *DiskIoPacket {
+func NewDiskIoPacketMount(deviceIdentifier types.NodeIdentifier, fileName string, writeProtected bool) *DiskIoPacket {
 	return &DiskIoPacket{
 		deviceIdentifier: deviceIdentifier,
-		ioFunction:       IofMount,
-		ioStatus:         IosNotStarted,
+		ioFunction:       types.IofMount,
+		ioStatus:         types.IosNotStarted,
 		fileName:         fileName,
 		writeProtected:   writeProtected,
 	}
 }
 
-func NewDiskIoPacketPrep(deviceIdentifier NodeIdentifier, packName string, prepFactor PrepFactor, trackCount TrackCount, removable bool) *DiskIoPacket {
+func NewDiskIoPacketPrep(deviceIdentifier types.NodeIdentifier, packName string, prepFactor types.PrepFactor, trackCount types.TrackCount, removable bool) *DiskIoPacket {
 	return &DiskIoPacket{
 		deviceIdentifier: deviceIdentifier,
-		ioFunction:       IofPrep,
-		ioStatus:         IosNotStarted,
+		ioFunction:       types.IofPrep,
+		ioStatus:         types.IosNotStarted,
 		packName:         packName,
 		prepFactor:       prepFactor,
 		trackCount:       trackCount,
@@ -62,46 +65,46 @@ func NewDiskIoPacketPrep(deviceIdentifier NodeIdentifier, packName string, prepF
 	}
 }
 
-func NewDiskIoPacketRead(deviceIdentifier NodeIdentifier, blockId BlockId, buffer []pkg.Word36) *DiskIoPacket {
+func NewDiskIoPacketRead(deviceIdentifier types.NodeIdentifier, blockId types.BlockId, buffer []pkg.Word36) *DiskIoPacket {
 	return &DiskIoPacket{
 		deviceIdentifier: deviceIdentifier,
-		ioFunction:       IofRead,
-		ioStatus:         IosNotStarted,
+		ioFunction:       types.IofRead,
+		ioStatus:         types.IosNotStarted,
 		blockId:          blockId,
 		buffer:           buffer,
 	}
 }
 
-func NewDiskIoPacketReadLabel(deviceIdentifier NodeIdentifier, buffer []pkg.Word36) *DiskIoPacket {
+func NewDiskIoPacketReadLabel(deviceIdentifier types.NodeIdentifier, buffer []pkg.Word36) *DiskIoPacket {
 	return &DiskIoPacket{
 		deviceIdentifier: deviceIdentifier,
-		ioFunction:       IofReadLabel,
-		ioStatus:         IosNotStarted,
+		ioFunction:       types.IofReadLabel,
+		ioStatus:         types.IosNotStarted,
 		buffer:           buffer,
 	}
 }
 
-func NewDiskIoPacketReset(deviceIdentifier NodeIdentifier) *DiskIoPacket {
+func NewDiskIoPacketReset(deviceIdentifier types.NodeIdentifier) *DiskIoPacket {
 	return &DiskIoPacket{
 		deviceIdentifier: deviceIdentifier,
-		ioFunction:       IofReset,
-		ioStatus:         IosNotStarted,
+		ioFunction:       types.IofReset,
+		ioStatus:         types.IosNotStarted,
 	}
 }
 
-func NewDiskIoPacketUnmount(deviceIdentifier NodeIdentifier) *DiskIoPacket {
+func NewDiskIoPacketUnmount(deviceIdentifier types.NodeIdentifier) *DiskIoPacket {
 	return &DiskIoPacket{
 		deviceIdentifier: deviceIdentifier,
-		ioFunction:       IofUnmount,
-		ioStatus:         IosNotStarted,
+		ioFunction:       types.IofUnmount,
+		ioStatus:         types.IosNotStarted,
 	}
 }
 
-func NewDiskIoPacketWrite(deviceIdentifier NodeIdentifier, blockId BlockId, buffer []pkg.Word36) *DiskIoPacket {
+func NewDiskIoPacketWrite(deviceIdentifier types.NodeIdentifier, blockId types.BlockId, buffer []pkg.Word36) *DiskIoPacket {
 	return &DiskIoPacket{
 		deviceIdentifier: deviceIdentifier,
-		ioFunction:       IofWrite,
-		ioStatus:         IosNotStarted,
+		ioFunction:       types.IofWrite,
+		ioStatus:         types.IosNotStarted,
 		blockId:          blockId,
 		buffer:           buffer,
 	}

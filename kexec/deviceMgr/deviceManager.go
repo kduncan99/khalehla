@@ -6,15 +6,38 @@ package deviceMgr
 
 import (
 	"fmt"
+	"khalehla/kexec/types"
 	"log"
 )
 
 // DeviceManager handles the inventory of pseudo-hardware channelInfos and deviceInfos
 type DeviceManager struct {
-	channelInfos     map[NodeIdentifier]ChannelInfo // this is loaded from the config
-	deviceInfos      map[NodeIdentifier]DeviceInfo  // this is loaded from the config
-	channelDeviceMap map[ChannelInfo][]DeviceInfo   // this is loaded from the config
-	deviceChannelMap map[DeviceInfo][]ChannelInfo   // this is built dynamically from the config
+	exec             types.IExec
+	channelInfos     map[types.NodeIdentifier]types.ChannelInfo // this is loaded from the config
+	deviceInfos      map[types.NodeIdentifier]types.DeviceInfo  // this is loaded from the config
+	channelDeviceMap map[types.ChannelInfo][]types.DeviceInfo   // this is loaded from the config
+	deviceChannelMap map[types.DeviceInfo][]types.ChannelInfo   // this is built dynamically from the config
+}
+
+func NewDeviceManager(exec types.IExec) *DeviceManager {
+	return &DeviceManager{
+		exec: exec,
+	}
+}
+
+func (mgr *DeviceManager) CloseManager() {
+	// nothing to do for now
+}
+
+func (mgr *DeviceManager) InitializeManager() {
+	mgr.channelInfos = make(map[types.NodeIdentifier]types.ChannelInfo)
+	mgr.deviceInfos = make(map[types.NodeIdentifier]types.DeviceInfo)
+	mgr.channelDeviceMap = make(map[types.ChannelInfo][]types.DeviceInfo)
+	mgr.deviceChannelMap = make(map[types.DeviceInfo][]types.ChannelInfo)
+}
+
+func (mgr *DeviceManager) ResetManager() {
+	// nothing to do for now
 }
 
 // BuildConfiguration reads the configuration with respect to pseudo-hardware deviceInfos,
@@ -31,28 +54,23 @@ func (mgr *DeviceManager) BuildConfiguration() error {
 	fn := "fixed0.pack"
 	disk0 := &DiskDeviceInfo{
 		deviceName:      "DISK0",
-		nodeStatus:      NodeStatusUp,
+		nodeStatus:      types.NodeStatusUp,
 		initialFileName: &fn,
 	}
 
 	fn = "fixed1.pack"
 	disk1 := &DiskDeviceInfo{
 		deviceName:      "DISK1",
-		nodeStatus:      NodeStatusUp,
+		nodeStatus:      types.NodeStatusUp,
 		initialFileName: &fn,
 	}
-
-	mgr.channelInfos = make(map[NodeIdentifier]ChannelInfo)
-	mgr.deviceInfos = make(map[NodeIdentifier]DeviceInfo)
-	mgr.channelDeviceMap = make(map[ChannelInfo][]DeviceInfo)
-	mgr.deviceChannelMap = make(map[DeviceInfo][]ChannelInfo)
 
 	mgr.channelInfos[chan0.nodeIdentifier] = chan0
 	mgr.deviceInfos[disk0.nodeIdentifier] = disk0
 	mgr.deviceInfos[disk1.nodeIdentifier] = disk1
-	mgr.channelDeviceMap[chan0] = []DeviceInfo{disk0, disk1}
-	mgr.deviceChannelMap[disk0] = []ChannelInfo{chan0}
-	mgr.deviceChannelMap[disk1] = []ChannelInfo{chan0}
+	mgr.channelDeviceMap[chan0] = []types.DeviceInfo{disk0, disk1}
+	mgr.deviceChannelMap[disk0] = []types.ChannelInfo{chan0}
+	mgr.deviceChannelMap[disk1] = []types.ChannelInfo{chan0}
 
 	// Create channelInfos
 	for _, cInfo := range mgr.channelInfos {
@@ -92,19 +110,19 @@ func (mgr *DeviceManager) BuildConfiguration() error {
 	return nil
 }
 
-// Initialize is invoked after the operator has been allowed to modify the config.
+// InitializeDevices is invoked after the operator has been allowed to modify the config.
 // Devices may be UP, DN, RV, or SU.
 // We don't mess with tape devices - they were freshly created, thus they are not mounted.
 // For disk devices, some (maybe all) are pre-mounted thus we can (if the device is not DN and is accessible)
 // probe the device to try to read VOL1, S0, S1, and maybe some other interesting bits.
-func (mgr *DeviceManager) Initialize() error {
+func (mgr *DeviceManager) InitializeDevices() error {
 	// TODO
 	return nil
 }
 
-// Recover is an alternative to BuildConfiguration, and is used when the exec is re-starting.
+// RecoverDevices is an alternative to BuildConfiguration, and is used when the exec is re-starting.
 // It is expected that the deviceInfos all need to be reset, and that some mountable need to be unmounted.
-func (mgr *DeviceManager) Recover() error {
+func (mgr *DeviceManager) RecoverDevices() error {
 	// Reset all the deviceInfos
 	errors := false
 	// for cInfo := range mgr.channelDeviceMap {
@@ -213,7 +231,7 @@ func IsValidPackName(name string) bool {
 	return true
 }
 
-func IsValidPrepFactor(prepFactor PrepFactor) bool {
+func IsValidPrepFactor(prepFactor types.PrepFactor) bool {
 	return prepFactor == 28 || prepFactor == 56 || prepFactor == 112 || prepFactor == 224 ||
 		prepFactor == 448 || prepFactor == 896 || prepFactor == 1792
 }
