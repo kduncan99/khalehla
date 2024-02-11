@@ -6,18 +6,19 @@ package deviceMgr
 
 import (
 	"fmt"
+	"io"
 	"khalehla/kexec/types"
 )
 
 // DiskChannel routes IOs to the appropriate deviceInfos which it manages.
 // Some day in the future we may add caching, perhaps in a CacheDiskChannel.
 type DiskChannel struct {
-	devices map[types.NodeIdentifier]*DiskDevice
+	devices map[types.DeviceIdentifier]*DiskDevice
 }
 
 func NewDiskChannel() *DiskChannel {
 	return &DiskChannel{
-		devices: make(map[types.NodeIdentifier]*DiskDevice),
+		devices: make(map[types.DeviceIdentifier]*DiskDevice),
 	}
 }
 
@@ -25,7 +26,7 @@ func (ch *DiskChannel) GetNodeType() types.NodeType {
 	return types.NodeTypeDisk
 }
 
-func (ch *DiskChannel) AssignDevice(deviceIdentifier types.NodeIdentifier, device types.Device) error {
+func (ch *DiskChannel) AssignDevice(deviceIdentifier types.DeviceIdentifier, device types.Device) error {
 	if device.GetNodeType() != types.NodeTypeDisk {
 		return fmt.Errorf("device is not a disk")
 	}
@@ -48,4 +49,8 @@ func (ch *DiskChannel) StartIo(ioPacket types.IoPacket) {
 	}
 
 	dev.StartIo(ioPacket)
+}
+
+func (ch *DiskChannel) Dump(destination io.Writer, indent string) {
+	// TODO
 }

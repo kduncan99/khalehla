@@ -5,20 +5,23 @@
 package deviceMgr
 
 import (
+	"io"
 	"khalehla/kexec/types"
 	"khalehla/pkg"
 )
 
 type DiskChannelInfo struct {
-	channelName    string
-	nodeIdentifier types.NodeIdentifier
-	channel        *DiskChannel
+	channelName       string
+	channelIdentifier types.ChannelIdentifier
+	channel           *DiskChannel
+	deviceInfos       []*DiskDeviceInfo
 }
 
 func NewDiskChannelInfo(channelName string) *DiskChannelInfo {
 	return &DiskChannelInfo{
-		channelName:    channelName,
-		nodeIdentifier: types.NodeIdentifier(pkg.NewFromStringToFieldata(channelName, 1)[0]),
+		channelName:       channelName,
+		channelIdentifier: types.ChannelIdentifier(pkg.NewFromStringToFieldata(channelName, 1)[0]),
+		deviceInfos:       make([]*DiskDeviceInfo, 0),
 	}
 }
 
@@ -30,8 +33,24 @@ func (dci *DiskChannelInfo) GetChannel() types.Channel {
 	return dci.channel
 }
 
+func (dci *DiskChannelInfo) GetChannelIdentifier() types.ChannelIdentifier {
+	return dci.channelIdentifier
+}
+
+func (dci *DiskChannelInfo) GetChannelName() string {
+	return dci.channelName
+}
+
+func (dci *DiskChannelInfo) GetDeviceInfos() []types.DeviceInfo {
+	result := make([]types.DeviceInfo, len(dci.deviceInfos))
+	for dx, di := range dci.deviceInfos {
+		result[dx] = di
+	}
+	return result
+}
+
 func (dci *DiskChannelInfo) GetNodeIdentifier() types.NodeIdentifier {
-	return dci.nodeIdentifier
+	return types.NodeIdentifier(dci.channelIdentifier)
 }
 
 func (dci *DiskChannelInfo) GetNodeName() string {
@@ -44,4 +63,8 @@ func (dci *DiskChannelInfo) GetNodeStatus() types.NodeStatus {
 
 func (dci *DiskChannelInfo) GetNodeType() types.NodeType {
 	return types.NodeTypeDisk
+}
+
+func (dci *DiskChannelInfo) Dump(dest io.Writer, indent string) {
+	// TODO
 }

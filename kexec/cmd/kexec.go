@@ -6,9 +6,13 @@ package main
 
 import (
 	"khalehla/kexec"
+	"os"
+	"time"
 )
 
 func main() {
-	e := kexec.Exec{}
+	e := kexec.NewExec()
 	_ = e.InitialBoot(true)
+	time.Sleep(2 * time.Second)
+	e.Dump(os.Stdout)
 }

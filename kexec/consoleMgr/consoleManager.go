@@ -6,6 +6,7 @@ package consoleMgr
 
 import (
 	"fmt"
+	"io"
 	"khalehla/kexec/types"
 	"khalehla/pkg"
 	"log"
@@ -58,7 +59,7 @@ func (mgr *ConsoleManager) InitializeManager() {
 	mgr.queuedReadReply = make(map[int]*readReplyTracker)
 
 	mgr.primaryConsole = NewStandardConsole()
-	mgr.primaryConsoleId = 0
+	mgr.primaryConsoleId = types.ConsoleIdentifier(pkg.NewFromStringToFieldata("SYSCON", 1)[0])
 	mgr.consoles[mgr.primaryConsoleId] = mgr.primaryConsole
 
 	go mgr.thread()
@@ -407,4 +408,80 @@ func (mgr *ConsoleManager) thread() {
 	mgr.mutex.Unlock()
 
 	mgr.threadIsActive = false
+}
+
+func (mgr *ConsoleManager) Dump(dest io.Writer, indent string) {
+	_, _ = fmt.Fprintf(dest, "%vConsoleManager ----------------------------------------------------\n", indent)
+
+	_, _ = fmt.Fprintf(dest, "%v  threadIsActive:  %v\n", indent, mgr.threadIsActive)
+	_, _ = fmt.Fprintf(dest, "%v  terminateThread: %v\n", indent, mgr.terminateThread)
+	_, _ = fmt.Fprintf(dest, "%v  Consoles:\n", indent)
+	primaryStr := ""
+	for consId, cons := range mgr.consoles {
+		if consId == mgr.primaryConsoleId {
+			primaryStr = " (Primary)"
+		} else {
+			primaryStr = ""
+		}
+
+		consoleId := pkg.Word36(consId)
+		_, _ = fmt.Fprintf(dest, "%v    %v%v\n", indent, consoleId.ToStringAsFieldata(), primaryStr)
+		cons.Dump(dest, indent+"  ")
+	}
+
+	_, _ = fmt.Fprintf(dest, "%v  QueuedReadOnly:\n", indent)
+	for _, msg := range mgr.queuedReadOnly {
+		str := "[" + msg.Source.RunId.ToStringAsFieldata() + "] " + msg.Text
+
+		if msg.DoNotEmitRunId {
+			str += " !emitRunId "
+		}
+
+		if msg.RunId != nil {
+			str += " RunId:" + *msg.RunId + " "
+		}
+
+		if msg.Routing != nil {
+			consId := pkg.Word36(*msg.Routing)
+			str += " Routing:" + consId.ToStringAsFieldata() + " "
+		}
+		_, _ = fmt.Fprintf(dest, "%v    %v\n", indent, str)
+	}
+
+	_, _ = fmt.Fprintf(dest, "%v  QueuedReadReply:\n", indent)
+	for tid, tracker := range mgr.queuedReadReply {
+		str := fmt.Sprintf("tid:%v hasReply:%v canceled:%v retry:%v",
+			tid, tracker.hasReply, tracker.isCanceled, tracker.retryLater)
+		if tracker.replyConsole != nil {
+			consId := pkg.Word36(*tracker.replyConsole)
+			str += " repCons:" + consId.ToStringAsFieldata()
+		}
+		_, _ = fmt.Fprintf(dest, "%v    %v\n", indent, str)
+
+		msg := tracker.message
+		str = "[ " + msg.Source.RunId.ToStringAsFieldata() + "] " + msg.Text
+
+		if msg.DoNotEmitRunId {
+			str += " !emitRunId "
+		}
+
+		if msg.RunId != nil {
+			str += " RunId:" + *msg.RunId + " "
+		}
+
+		if msg.Routing != nil {
+			consId := pkg.Word36(*msg.Routing)
+			str += " Routing:" + consId.ToStringAsFieldata() + " "
+		}
+
+		str += fmt.Sprintf("max:%v   ", msg.MaxReplyLength)
+
+		if msg.DoNotLogReply {
+			str += " !logReply"
+		} else {
+			str += " reply:" + msg.Reply
+		}
+
+		_, _ = fmt.Fprintf(dest, "%v      %v\n", indent, str)
+	}
 }

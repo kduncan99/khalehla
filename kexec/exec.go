@@ -6,8 +6,10 @@ package kexec
 
 import (
 	"fmt"
+	"io"
 	"khalehla/kexec/consoleMgr"
 	"khalehla/kexec/deviceMgr"
+	"khalehla/kexec/keyinMgr"
 	"khalehla/kexec/types"
 	"khalehla/pkg"
 	"strings"
@@ -16,8 +18,10 @@ import (
 const Version = "v1.0.0"
 
 type Exec struct {
-	consoleMgr      *consoleMgr.ConsoleManager
-	deviceMgr       *deviceMgr.DeviceManager
+	consoleMgr *consoleMgr.ConsoleManager
+	deviceMgr  *deviceMgr.DeviceManager
+	keyinMgr   *keyinMgr.KeyinManager
+
 	runControlTable map[pkg.Word36]*types.RunControlEntry
 
 	allowRestart bool
@@ -25,13 +29,13 @@ type Exec struct {
 	stopFlag     bool
 }
 
-func NewExec() {
+func NewExec() *Exec {
 	e := &Exec{}
 	e.consoleMgr = consoleMgr.NewConsoleManager(e)
 	e.deviceMgr = deviceMgr.NewDeviceManager(e)
+	e.keyinMgr = keyinMgr.NewKeyinManager(e)
 
-	e.consoleMgr.InitializeManager()
-	e.deviceMgr.InitializeManager()
+	return e
 }
 
 func (e *Exec) Close() {
@@ -56,11 +60,9 @@ func (e *Exec) HandleKeyIn(source types.ConsoleIdentifier, text string) {
 }
 
 func (e *Exec) InitialBoot(initMassStorage bool) error {
-	e.consoleMgr = &consoleMgr.ConsoleManager{}
 	e.consoleMgr.InitializeManager()
-
-	e.deviceMgr = &deviceMgr.DeviceManager{}
 	e.deviceMgr.InitializeManager()
+	e.keyinMgr.InitializeManager()
 
 	e.SendExecReadOnlyMessage("KEXEC Startup - Version " + Version)
 	e.SendExecReadOnlyMessage("Building Configuration...")
@@ -126,4 +128,18 @@ func (e *Exec) Stop(code types.StopCode) {
 
 	e.stopFlag = true
 	e.stopCode = code
+}
+
+func (e *Exec) Dump(dest io.Writer) {
+	_, _ = fmt.Fprintf(dest, "Exec Dump ----------------------------------------------------\n")
+
+	_, _ = fmt.Fprintf(dest, "  Stopped:       %v\n", e.stopFlag)
+	_, _ = fmt.Fprintf(dest, "  StopCode:      %03o\n", e.stopCode)
+	_, _ = fmt.Fprintf(dest, "  Allow Restart: %v\n", e.allowRestart)
+
+	e.consoleMgr.Dump(dest, "")
+	e.deviceMgr.Dump(dest, "")
+	e.keyinMgr.Dump(dest, "")
+
+	// TODO run control table, etc
 }

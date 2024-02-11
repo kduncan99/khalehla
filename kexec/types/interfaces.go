@@ -4,11 +4,16 @@
 
 package types
 
+import (
+	"io"
+)
+
 // Channel manages async communication with the various deviceInfos assigned to it.
 // It may also manage caching, automatic mounting, or any other various activities
 // on behalf of the exec.
 type Channel interface {
-	AssignDevice(deviceIdentifier NodeIdentifier, device Device) error
+	AssignDevice(deviceIdentifier DeviceIdentifier, device Device) error
+	Dump(destination io.Writer, indent string)
 	GetNodeType() NodeType
 	StartIo(ioPacket IoPacket)
 }
@@ -16,7 +21,11 @@ type Channel interface {
 // ChannelInfo is intended primarily as a means of documenting the use of a more generic NodeInfo
 type ChannelInfo interface {
 	CreateNode()
+	Dump(destination io.Writer, indent string)
 	GetChannel() Channel
+	GetChannelName() string
+	GetChannelIdentifier() ChannelIdentifier
+	GetDeviceInfos() []DeviceInfo
 	GetNodeIdentifier() NodeIdentifier
 	GetNodeName() string
 	GetNodeStatus() NodeStatus
@@ -29,6 +38,7 @@ type ChannelInfo interface {
 type Console interface {
 	ClearReadReplyMessage(messageId int) error
 	Close()
+	Dump(destination io.Writer, indent string)
 	PollSolicitedInput() (*string, int, error)
 	PollUnsolicitedInput() (*string, error)
 	IsConnected() bool
@@ -41,6 +51,7 @@ type Console interface {
 // Device manages real or pseudo IO operations for a particular virtual device.
 // It may do so synchronously or asynchronously
 type Device interface {
+	Dump(destination io.Writer, indent string)
 	GetNodeType() NodeType
 	StartIo(ioPacket IoPacket)
 }
@@ -48,7 +59,11 @@ type Device interface {
 // DeviceInfo is intended primarily as a means of documenting the use of a more generic NodeInfo
 type DeviceInfo interface {
 	CreateNode()
+	Dump(destination io.Writer, indent string)
+	GetChannelInfos() []ChannelInfo
 	GetDevice() Device
+	GetDeviceIdentifier() DeviceIdentifier
+	GetDeviceName() string
 	GetNodeIdentifier() NodeIdentifier
 	GetNodeName() string
 	GetNodeStatus() NodeStatus
@@ -61,6 +76,7 @@ type DeviceInfo interface {
 // IExec is the interface for the Exec, placed here to avoid package import cycles
 type IExec interface {
 	Close()
+	Dump(destination io.Writer)
 	GetConsoleManager() Manager
 	GetDeviceManager() Manager
 	GetStopFlag() bool
@@ -70,17 +86,22 @@ type IExec interface {
 // IoPacket contains all the information necessary for a Channel to route an IO operation,
 // and for a device to perform that IO operation.
 type IoPacket interface {
-	GetDeviceIdentifier() NodeIdentifier
+	GetDeviceIdentifier() DeviceIdentifier
 	GetNodeType() NodeType
 	GetIoFunction() IoFunction
 	GetIoStatus() IoStatus
 	SetIoStatus(ioStatus IoStatus)
 }
 
+type KeyinHandler interface {
+	Dump(destination io.Writer, indent string)
+}
+
 // Manager is one of the top-level exec managers.
 // They may have a goroutine operating for them.
 type Manager interface {
 	CloseManager()
+	Dump(destination io.Writer, indent string)
 	InitializeManager()
 	ResetManager()
 }

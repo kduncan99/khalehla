@@ -7,6 +7,7 @@ package consoleMgr
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"sync"
@@ -213,4 +214,18 @@ func (con *StandardConsole) routine() {
 	fmt.Println()
 	fmt.Println()
 	fmt.Println("** CONSOLE CLOSED **")
+}
+
+func (con *StandardConsole) Dump(dest io.Writer, indent string) {
+	_, _ = fmt.Fprintf(dest, "%vtermFlag:%v\n", indent, con.termFlag)
+	if con.pendingUnsolicitedInput != nil {
+		_, _ = fmt.Fprintf(dest, "%vpending input:%v\n", indent, con.pendingUnsolicitedInput)
+	}
+	if con.pendingReadReply != nil {
+		_, _ = fmt.Fprintf(dest, "%vpending reply:%v\n", indent, con.pendingReadReply)
+	}
+	for _, msg := range con.activeReadReplyMessages {
+		_, _ = fmt.Fprintf(dest, "%vid:%v text:%v maxLen:%v resp:%v\n",
+			indent, msg.messageId, msg.originalMessage, msg.maxResponseLength, msg.response)
+	}
 }

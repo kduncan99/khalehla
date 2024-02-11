@@ -5,36 +5,39 @@
 package deviceMgr
 
 import (
+	"fmt"
+	"io"
 	"khalehla/kexec/types"
 	"khalehla/pkg"
 )
 
-// -------------------------------------------------------------------------------------
-
 type DiskDeviceInfo struct {
-	deviceName      string
-	nodeIdentifier  types.NodeIdentifier
-	initialFileName *string
-	device          *DiskDevice
-	nodeStatus      types.NodeStatus
-	isAccessible    bool // can only be true if status is UP, RV, or SU and the device is assigned to at least one channel
-	isMounted       bool
-	isPrepped       bool
-	isFixed         bool
+	deviceName       string
+	deviceIdentifier types.DeviceIdentifier
+	initialFileName  *string
+	device           *DiskDevice
+	nodeStatus       types.NodeStatus
+	isAccessible     bool // can only be true if status is UP, RV, or SU and the device is assigned to at least one channel
+	isMounted        bool
+	packName         string // only if isMounted
+	isPrepped        bool
+	isFixed          bool
+	channelInfos     []*DiskChannelInfo
 }
 
 // NewDiskDeviceInfo creates a new struct
 // deviceName is required, but initialFileName can be set to nil if the device is not to be initially mounted
 func NewDiskDeviceInfo(deviceName string, initialFileName *string) *DiskDeviceInfo {
 	return &DiskDeviceInfo{
-		deviceName:      deviceName,
-		nodeIdentifier:  types.NodeIdentifier(pkg.NewFromStringToFieldata(deviceName, 1)[0]),
-		nodeStatus:      types.NodeStatusUp,
-		isAccessible:    false,
-		initialFileName: initialFileName,
-		isMounted:       false,
-		isPrepped:       false,
-		isFixed:         false,
+		deviceName:       deviceName,
+		deviceIdentifier: types.DeviceIdentifier(pkg.NewFromStringToFieldata(deviceName, 1)[0]),
+		nodeStatus:       types.NodeStatusUp,
+		isAccessible:     false,
+		initialFileName:  initialFileName,
+		isMounted:        false,
+		isPrepped:        false,
+		isFixed:          false,
+		channelInfos:     make([]*DiskChannelInfo, 0),
 	}
 }
 
@@ -42,8 +45,24 @@ func (ddi *DiskDeviceInfo) CreateNode() {
 	ddi.device = NewDiskDevice(ddi.initialFileName)
 }
 
+func (ddi *DiskDeviceInfo) GetChannelInfos() []types.ChannelInfo {
+	result := make([]types.ChannelInfo, len(ddi.channelInfos))
+	for cx, ci := range ddi.channelInfos {
+		result[cx] = ci
+	}
+	return result
+}
+
 func (ddi *DiskDeviceInfo) GetDevice() types.Device {
 	return ddi.device
+}
+
+func (ddi *DiskDeviceInfo) GetDeviceIdentifier() types.DeviceIdentifier {
+	return ddi.deviceIdentifier
+}
+
+func (ddi *DiskDeviceInfo) GetDeviceName() string {
+	return ddi.deviceName
 }
 
 func (ddi *DiskDeviceInfo) GetInitialFileName() *string {
@@ -51,7 +70,7 @@ func (ddi *DiskDeviceInfo) GetInitialFileName() *string {
 }
 
 func (ddi *DiskDeviceInfo) GetNodeIdentifier() types.NodeIdentifier {
-	return ddi.nodeIdentifier
+	return types.NodeIdentifier(ddi.deviceIdentifier)
 }
 
 func (ddi *DiskDeviceInfo) GetNodeName() string {
@@ -84,4 +103,32 @@ func (ddi *DiskDeviceInfo) IsPrepped() bool {
 
 func (ddi *DiskDeviceInfo) SetIsAccessible(isAccessible bool) {
 	ddi.isAccessible = isAccessible
+}
+
+func (ddi *DiskDeviceInfo) Dump(dest io.Writer, indent string) {
+	did := pkg.Word36(ddi.deviceIdentifier)
+	str := fmt.Sprintf("%v id:%v %v\n",
+		ddi.deviceName, did.ToStringAsOctal(), GetNodeStatusString(ddi.nodeStatus, ddi.isAccessible))
+	if ddi.isMounted {
+		str += " pack:" + ddi.packName
+	}
+
+	if ddi.isPrepped {
+		str += "PREPPED"
+		if ddi.isFixed {
+			str += " FIXED"
+		} else {
+			str += " REM"
+		}
+	}
+
+	str += " channels:"
+	for _, chInfo := range ddi.channelInfos {
+		chId := pkg.Word36(chInfo.channelIdentifier)
+		str += " " + chId.ToStringAsFieldata()
+	}
+
+	_, _ = fmt.Fprintf(dest, "%v%v", indent, str)
+
+	ddi.device.Dump(dest, indent+"  ")
 }

@@ -7,15 +7,15 @@ package deviceMgr
 import "khalehla/kexec/types"
 
 type TapeIoPacket struct {
-	deviceIdentifier types.NodeIdentifier
-	ioFunction       types.IoFunction
-	ioStatus         types.IoStatus
-	fileName         string // for mount
-	writeProtected   bool   // for mount
+	deviceId       types.DeviceIdentifier
+	ioFunction     types.IoFunction
+	ioStatus       types.IoStatus
+	fileName       string // for mount
+	writeProtected bool   // for mount
 }
 
-func (pkt *TapeIoPacket) GetDeviceIdentifier() types.NodeIdentifier {
-	return pkt.deviceIdentifier
+func (pkt *TapeIoPacket) GetDeviceIdentifier() types.DeviceIdentifier {
+	return pkt.deviceId
 }
 
 func (pkt *TapeIoPacket) GetNodeType() types.NodeType {
@@ -34,28 +34,28 @@ func (pkt *TapeIoPacket) SetIoStatus(ioStatus types.IoStatus) {
 	pkt.ioStatus = ioStatus
 }
 
-func NewTapeIoPacketMount(deviceIdentifier types.NodeIdentifier, fileName string, writeProtected bool) *TapeIoPacket {
+func NewTapeIoPacketMount(deviceId types.DeviceIdentifier, fileName string, writeProtected bool) *TapeIoPacket {
 	return &TapeIoPacket{
-		deviceIdentifier: deviceIdentifier,
-		ioFunction:       types.IofMount,
-		ioStatus:         types.IosNotStarted,
-		fileName:         fileName,
-		writeProtected:   writeProtected,
+		deviceId:       deviceId,
+		ioFunction:     types.IofMount,
+		ioStatus:       types.IosNotStarted,
+		fileName:       fileName,
+		writeProtected: writeProtected,
 	}
 }
 
-func NewTapeIoPacketReset(deviceIdentifier types.NodeIdentifier) *TapeIoPacket {
+func NewTapeIoPacketReset(deviceId types.DeviceIdentifier) *TapeIoPacket {
 	return &TapeIoPacket{
-		deviceIdentifier: deviceIdentifier,
-		ioFunction:       types.IofReset,
-		ioStatus:         types.IosNotStarted,
+		deviceId:   deviceId,
+		ioFunction: types.IofReset,
+		ioStatus:   types.IosNotStarted,
 	}
 }
 
-func NewTapeIoPacketUnmount(deviceIdentifier types.NodeIdentifier) *TapeIoPacket {
+func NewTapeIoPacketUnmount(deviceId types.DeviceIdentifier) *TapeIoPacket {
 	return &TapeIoPacket{
-		deviceIdentifier: deviceIdentifier,
-		ioFunction:       types.IofUnmount,
-		ioStatus:         types.IosNotStarted,
+		deviceId:   deviceId,
+		ioFunction: types.IofUnmount,
+		ioStatus:   types.IosNotStarted,
 	}
 }

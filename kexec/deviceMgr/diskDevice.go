@@ -6,6 +6,7 @@ package deviceMgr
 
 import (
 	"fmt"
+	"io"
 	"khalehla/kexec/types"
 	"khalehla/pkg"
 	"log"
@@ -526,7 +527,7 @@ func (disk *DiskDevice) probeGeometry() error {
 	return nil
 }
 
-func dump(buffer []byte) {
+func dumpBuffer(buffer []byte) {
 	fmt.Println("Byte Buffer:")
 	incr := 32
 	for bx := 0; bx < len(buffer); bx += incr {
@@ -586,4 +587,8 @@ func writeTrack(file *os.File, wordAddress uint64, data []pkg.Word36, recordLeng
 	}
 
 	return nil
+}
+
+func (disk *DiskDevice) Dump(destination io.Writer, indent string) {
+	// TODO
 }

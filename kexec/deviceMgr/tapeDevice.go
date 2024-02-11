@@ -5,6 +5,7 @@
 package deviceMgr
 
 import (
+	"io"
 	"khalehla/kexec/types"
 	"os"
 	"sync"
@@ -102,4 +103,8 @@ func (tape *TapeDevice) doWrite(pkt *TapeIoPacket) {
 	defer tape.mutex.Unlock()
 	// TODO
 	pkt.ioStatus = types.IosSystemError
+}
+
+func (tape *TapeDevice) Dump(destination io.Writer, indent string) {
+	// TODO
 }
