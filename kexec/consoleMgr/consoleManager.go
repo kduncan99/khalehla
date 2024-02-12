@@ -31,7 +31,8 @@ type ConsoleManager struct {
 	primaryConsole   types.Console
 	primaryConsoleId types.ConsoleIdentifier
 	terminateThread  bool
-	threadIsActive   bool
+	threadStarted    bool
+	threadStopped    bool
 	mutex            sync.Mutex
 	queuedReadOnly   []*types.ConsoleReadOnlyMessage
 	queuedReadReply  map[int]*readReplyTracker
@@ -43,14 +44,14 @@ func NewConsoleManager(exec types.IExec) *ConsoleManager {
 	}
 }
 
-// IsActive indicates whether the goRoutine is active
-func (mgr *ConsoleManager) IsActive() bool {
-	return mgr.threadIsActive
+// IsDone indicates whether the goRoutine is active
+func (mgr *ConsoleManager) IsDone() bool {
+	return mgr.threadStopped
 }
 
-// CloseManager is invoked when the exec is stopping... for any reason. It tells the goRoutine to stop.
+// CloseManager is invoked when the exec is stopping... for any reason. It tells the goRoutine to threadStop.
 func (mgr *ConsoleManager) CloseManager() {
-	mgr.terminateThread = true
+	mgr.threadStop()
 }
 
 func (mgr *ConsoleManager) InitializeManager() {
@@ -62,22 +63,15 @@ func (mgr *ConsoleManager) InitializeManager() {
 	mgr.primaryConsoleId = types.ConsoleIdentifier(pkg.NewFromStringToFieldata("SYSCON", 1)[0])
 	mgr.consoles[mgr.primaryConsoleId] = mgr.primaryConsole
 
-	go mgr.thread()
+	mgr.threadStart()
 }
 
 // ResetManager clears out any artifacts left over by a previous exec session,
 // and prepares the console for normal operations
 func (mgr *ConsoleManager) ResetManager() {
+	mgr.threadStop()
+
 	mgr.mutex.Lock()
-	defer mgr.mutex.Unlock()
-
-	if mgr.threadIsActive {
-		mgr.terminateThread = true
-		for mgr.threadIsActive {
-			time.Sleep(1 * time.Second)
-		}
-	}
-
 	if mgr.consoles == nil {
 		// create a single new std console
 		mgr.consoles = make(map[types.ConsoleIdentifier]types.Console)
@@ -91,8 +85,9 @@ func (mgr *ConsoleManager) ResetManager() {
 			}
 		}
 	}
+	mgr.mutex.Unlock()
 
-	go mgr.thread()
+	mgr.threadStart()
 }
 
 // SendReadOnlyMessage queues a RO message and returns immediately.
@@ -375,7 +370,7 @@ func (mgr *ConsoleManager) newReadReplyTracker(message *types.ConsoleReadReplyMe
 
 // thread is the main routine for the console manager goRoutine
 func (mgr *ConsoleManager) thread() {
-	mgr.threadIsActive = true
+	mgr.threadStarted = true
 
 	retryCounter := 0
 	for !mgr.terminateThread {
@@ -407,13 +402,33 @@ func (mgr *ConsoleManager) thread() {
 	}
 	mgr.mutex.Unlock()
 
-	mgr.threadIsActive = false
+	mgr.threadStarted = false
+}
+
+func (mgr *ConsoleManager) threadStart() {
+	mgr.terminateThread = false
+	if !mgr.threadStarted {
+		go mgr.thread()
+		for !mgr.threadStarted {
+			time.Sleep(25 * time.Millisecond)
+		}
+	}
+}
+
+func (mgr *ConsoleManager) threadStop() {
+	if mgr.threadStarted {
+		mgr.terminateThread = true
+		for !mgr.threadStopped {
+			time.Sleep(25 * time.Millisecond)
+		}
+	}
 }
 
 func (mgr *ConsoleManager) Dump(dest io.Writer, indent string) {
 	_, _ = fmt.Fprintf(dest, "%vConsoleManager ----------------------------------------------------\n", indent)
 
-	_, _ = fmt.Fprintf(dest, "%v  threadIsActive:  %v\n", indent, mgr.threadIsActive)
+	_, _ = fmt.Fprintf(dest, "%v  threadStarted:  %v\n", indent, mgr.threadStarted)
+	_, _ = fmt.Fprintf(dest, "%v  threadStopped:  %v\n", indent, mgr.threadStopped)
 	_, _ = fmt.Fprintf(dest, "%v  terminateThread: %v\n", indent, mgr.terminateThread)
 	_, _ = fmt.Fprintf(dest, "%v  Consoles:\n", indent)
 	primaryStr := ""

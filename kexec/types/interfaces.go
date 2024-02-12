@@ -79,8 +79,11 @@ type IExec interface {
 	Dump(destination io.Writer)
 	GetConsoleManager() Manager
 	GetDeviceManager() Manager
+	GetKeyinManager() Manager
 	GetStopFlag() bool
 	HandleKeyIn(source ConsoleIdentifier, text string)
+	SendExecReadOnlyMessage(message string)
+	SendExecReadReplyMessage(message string, maxReplyChars int) (string, error)
 }
 
 // IoPacket contains all the information necessary for a Channel to route an IO operation,
@@ -94,7 +97,12 @@ type IoPacket interface {
 }
 
 type KeyinHandler interface {
+	Abort()
+	CheckSyntax() bool
 	Dump(destination io.Writer, indent string)
+	Invoke()
+	IsAllowed() bool
+	IsDone() bool
 }
 
 // Manager is one of the top-level exec managers.

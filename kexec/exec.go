@@ -51,12 +51,16 @@ func (e *Exec) GetDeviceManager() types.Manager {
 	return e.deviceMgr
 }
 
+func (e *Exec) GetKeyinManager() types.Manager {
+	return e.keyinMgr
+}
+
 func (e *Exec) GetStopFlag() bool {
 	return e.stopFlag
 }
 
 func (e *Exec) HandleKeyIn(source types.ConsoleIdentifier, text string) {
-	// TODO
+	e.keyinMgr.PostKeyin(source, text)
 }
 
 func (e *Exec) InitialBoot(initMassStorage bool) error {

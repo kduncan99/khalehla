@@ -147,7 +147,7 @@ func (con *StandardConsole) SendReadReplyMessage(text string, maxChars int) (int
 }
 
 func parseResponse(input string) (bool, int, string, error) {
-	if len(input) >= 0 && input[0] >= '0' && input[1] <= '9' {
+	if len(input) >= 0 && input[0] >= '0' && input[0] <= '9' {
 		msgId := int(input[0] - '0')
 		if len(input) == 1 {
 			return true, msgId, "", nil
