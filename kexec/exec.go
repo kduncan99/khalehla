@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"io"
 	"khalehla/kexec/consoleMgr"
-	"khalehla/kexec/deviceMgr"
 	"khalehla/kexec/keyinMgr"
+	"khalehla/kexec/nodeMgr"
 	"khalehla/kexec/types"
 	"khalehla/pkg"
 	"strings"
@@ -19,7 +19,7 @@ const Version = "v1.0.0"
 
 type Exec struct {
 	consoleMgr *consoleMgr.ConsoleManager
-	deviceMgr  *deviceMgr.DeviceManager
+	nodeMgr    *nodeMgr.NodeManager
 	keyinMgr   *keyinMgr.KeyinManager
 
 	runControlTable map[pkg.Word36]*types.RunControlEntry
@@ -32,14 +32,15 @@ type Exec struct {
 func NewExec() *Exec {
 	e := &Exec{}
 	e.consoleMgr = consoleMgr.NewConsoleManager(e)
-	e.deviceMgr = deviceMgr.NewDeviceManager(e)
 	e.keyinMgr = keyinMgr.NewKeyinManager(e)
+	e.nodeMgr = nodeMgr.NewNodeManager(e)
 
 	return e
 }
 
 func (e *Exec) Close() {
-	e.deviceMgr.CloseManager()
+	e.keyinMgr.CloseManager()
+	e.nodeMgr.CloseManager()
 	e.consoleMgr.CloseManager()
 }
 
@@ -47,12 +48,12 @@ func (e *Exec) GetConsoleManager() types.Manager {
 	return e.consoleMgr
 }
 
-func (e *Exec) GetDeviceManager() types.Manager {
-	return e.deviceMgr
-}
-
 func (e *Exec) GetKeyinManager() types.Manager {
 	return e.keyinMgr
+}
+
+func (e *Exec) GetNodeManager() types.Manager {
+	return e.nodeMgr
 }
 
 func (e *Exec) GetStopFlag() bool {
@@ -65,12 +66,12 @@ func (e *Exec) HandleKeyIn(source types.ConsoleIdentifier, text string) {
 
 func (e *Exec) InitialBoot(initMassStorage bool) error {
 	e.consoleMgr.InitializeManager()
-	e.deviceMgr.InitializeManager()
+	e.nodeMgr.InitializeManager()
 	e.keyinMgr.InitializeManager()
 
 	e.SendExecReadOnlyMessage("KEXEC Startup - Version " + Version)
 	e.SendExecReadOnlyMessage("Building Configuration...")
-	err := e.deviceMgr.BuildConfiguration()
+	err := e.nodeMgr.BuildConfiguration()
 	if err != nil {
 		e.SendExecReadOnlyMessage("Error:" + err.Error())
 		e.Stop(1) // TODO put a real stop code here - error in configuration
@@ -142,7 +143,7 @@ func (e *Exec) Dump(dest io.Writer) {
 	_, _ = fmt.Fprintf(dest, "  Allow Restart: %v\n", e.allowRestart)
 
 	e.consoleMgr.Dump(dest, "")
-	e.deviceMgr.Dump(dest, "")
+	e.nodeMgr.Dump(dest, "")
 	e.keyinMgr.Dump(dest, "")
 
 	// TODO run control table, etc

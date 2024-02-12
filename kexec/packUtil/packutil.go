@@ -7,7 +7,7 @@ package packUtil
 import (
 	"errors"
 	"fmt"
-	"khalehla/kexec/deviceMgr"
+	"khalehla/kexec/nodeMgr"
 	"khalehla/kexec/types"
 	"khalehla/pkg"
 	"os"
@@ -28,7 +28,7 @@ func DoPrep(args []string) error {
 	fileName := args[0]
 
 	packName := args[1]
-	if !deviceMgr.IsValidPackName(packName) {
+	if !nodeMgr.IsValidPackName(packName) {
 		return fmt.Errorf("invalid pack name")
 	}
 
@@ -36,7 +36,7 @@ func DoPrep(args []string) error {
 	if err != nil || prepFactor <= 0 {
 		return fmt.Errorf("error in prepfactor argument")
 	}
-	if !deviceMgr.IsValidPrepFactor(types.PrepFactor(prepFactor)) {
+	if !nodeMgr.IsValidPrepFactor(types.PrepFactor(prepFactor)) {
 		return fmt.Errorf("invalid prep factor (use 28, 56, 112, 224, 448, 896, or 1792)")
 	}
 
@@ -56,18 +56,18 @@ func DoPrep(args []string) error {
 		removable = true
 	}
 
-	dc := deviceMgr.NewDiskChannel()
-	dd := deviceMgr.NewDiskDevice(nil)
+	dc := nodeMgr.NewDiskChannel()
+	dd := nodeMgr.NewDiskDevice(nil)
 	ni := types.NodeIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
 	_ = dc.AssignDevice(ni, dd)
 
-	pkt := deviceMgr.NewDiskIoPacketMount(ni, fileName, false)
+	pkt := nodeMgr.NewDiskIoPacketMount(ni, fileName, false)
 	dc.StartIo(pkt)
 	if pkt.GetIoStatus() != types.IosComplete {
 		return fmt.Errorf("status %v returned while mounting pack file %v", pkt.GetIoStatus(), fileName)
 	}
 
-	pkt = deviceMgr.NewDiskIoPacketPrep(ni, packName, types.PrepFactor(prepFactor), types.TrackCount(trackCount), removable)
+	pkt = nodeMgr.NewDiskIoPacketPrep(ni, packName, types.PrepFactor(prepFactor), types.TrackCount(trackCount), removable)
 	dc.StartIo(pkt)
 	if pkt.GetIoStatus() != types.IosComplete {
 		return fmt.Errorf("status %v returned while prepping pack file %v", pkt.GetIoStatus(), fileName)
@@ -75,7 +75,7 @@ func DoPrep(args []string) error {
 
 	showLabelRecord(dc, ni, true)
 
-	pkt = deviceMgr.NewDiskIoPacketUnmount(ni)
+	pkt = nodeMgr.NewDiskIoPacketUnmount(ni)
 	dc.StartIo(pkt)
 
 	return nil
@@ -95,12 +95,12 @@ func DoShow(args []string) error {
 		return fmt.Errorf("cannot open file %v:%v", fileName, err)
 	}
 
-	dc := deviceMgr.NewDiskChannel()
-	dd := deviceMgr.NewDiskDevice(nil)
+	dc := nodeMgr.NewDiskChannel()
+	dd := nodeMgr.NewDiskDevice(nil)
 	ni := types.NodeIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
 	_ = dc.AssignDevice(ni, dd)
 
-	pkt := deviceMgr.NewDiskIoPacketMount(ni, fileName, false)
+	pkt := nodeMgr.NewDiskIoPacketMount(ni, fileName, false)
 	dc.StartIo(pkt)
 	if !dd.IsPrepped() {
 		return fmt.Errorf("pack is not prepped")
@@ -108,7 +108,7 @@ func DoShow(args []string) error {
 
 	showLabelRecord(dc, ni, true)
 
-	pkt = deviceMgr.NewDiskIoPacketUnmount(ni)
+	pkt = nodeMgr.NewDiskIoPacketUnmount(ni)
 	dc.StartIo(pkt)
 
 	return nil
@@ -116,7 +116,7 @@ func DoShow(args []string) error {
 
 func showLabelRecord(channel types.Channel, nodeId types.NodeIdentifier, interpret bool) {
 	label := make([]pkg.Word36, 28)
-	pkt := deviceMgr.NewDiskIoPacketReadLabel(nodeId, label)
+	pkt := nodeMgr.NewDiskIoPacketReadLabel(nodeId, label)
 	channel.StartIo(pkt)
 	if pkt.GetIoStatus() != types.IosComplete {
 		fmt.Printf("Status %v returned while reading label\n", pkt.GetIoStatus())

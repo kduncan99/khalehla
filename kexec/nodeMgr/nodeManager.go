@@ -2,7 +2,7 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package deviceMgr
+package nodeMgr
 
 import (
 	"fmt"
@@ -11,29 +11,29 @@ import (
 	"log"
 )
 
-// DeviceManager handles the inventory of pseudo-hardware channelInfos and deviceInfos
-type DeviceManager struct {
+// NodeManager handles the inventory of pseudo-hardware channelInfos and deviceInfos
+type NodeManager struct {
 	exec         types.IExec
 	channelInfos map[types.ChannelIdentifier]types.ChannelInfo // this is loaded from the config
 	deviceInfos  map[types.DeviceIdentifier]types.DeviceInfo   // this is loaded from the config
 }
 
-func NewDeviceManager(exec types.IExec) *DeviceManager {
-	return &DeviceManager{
+func NewNodeManager(exec types.IExec) *NodeManager {
+	return &NodeManager{
 		exec: exec,
 	}
 }
 
-func (mgr *DeviceManager) CloseManager() {
+func (mgr *NodeManager) CloseManager() {
 	// nothing to do for now
 }
 
-func (mgr *DeviceManager) InitializeManager() {
+func (mgr *NodeManager) InitializeManager() {
 	mgr.channelInfos = make(map[types.ChannelIdentifier]types.ChannelInfo)
 	mgr.deviceInfos = make(map[types.DeviceIdentifier]types.DeviceInfo)
 }
 
-func (mgr *DeviceManager) ResetManager() {
+func (mgr *NodeManager) ResetManager() {
 	// nothing to do for now
 }
 
@@ -41,7 +41,7 @@ func (mgr *DeviceManager) ResetManager() {
 // instantiating that configuration along the way.
 // This must happen very early in Exec startup, before the operator is allowed to modify the config.
 // Thus, we can assume all devices are UP.
-func (mgr *DeviceManager) BuildConfiguration() error {
+func (mgr *NodeManager) BuildConfiguration() error {
 	// read configuration
 	// TODO from a data file or database or something
 	chan0 := NewDiskChannelInfo("CHDISK")
@@ -132,19 +132,84 @@ func (mgr *DeviceManager) BuildConfiguration() error {
 	return nil
 }
 
+func (mgr *NodeManager) GetChannelInfos() []types.ChannelInfo {
+	var result = make([]types.ChannelInfo, len(mgr.channelInfos))
+	for cx, chInfo := range mgr.channelInfos {
+		result[cx] = chInfo
+	}
+	return result
+}
+
+func (mgr *NodeManager) GetDeviceInfos() []types.DeviceInfo {
+	var result = make([]types.DeviceInfo, len(mgr.deviceInfos))
+	for dx, devInfo := range mgr.deviceInfos {
+		result[dx] = devInfo
+	}
+	return result
+}
+
+func (mgr *NodeManager) getNodeStatusStringForChannel(chInfo types.ChannelInfo) string {
+	return chInfo.GetChannelName() + " " + GetNodeStatusString(chInfo.GetNodeStatus(), true)
+}
+
+func (mgr *NodeManager) getNodeStatusStringForDevice(devInfo types.DeviceInfo) string {
+	str := devInfo.GetDeviceName() + " " + GetNodeStatusString(devInfo.GetNodeStatus(), devInfo.IsAccessible())
+
+	switch devInfo.GetNodeType() {
+	case types.NodeTypeDisk:
+		diskInfo := devInfo.(*DiskDeviceInfo)
+		if diskInfo.IsMounted() {
+			// TODO
+			//	DISK0 UP [NA] [* [F|R] PACKID packName
+			//	So we need a lot of additional information in devInfo
+		}
+	case types.NodeTypeTape:
+		tapeInfo := devInfo.(*TapeDeviceInfo)
+		if tapeInfo.IsMounted() {
+			// TODO
+			//  TAPE0 UP[,ACS][,CTL][,PM] [NA] [* RUNID runid REEL reel [RING|NORING] [POS [LOST|j[+|-]k]]]
+			//	reel can be L-BLNK for labeled blank or U-BLNK for unlabeled blank
+			//	j is number of files extended
+			//	k is number of blocks extended + forward, or - backward
+			//	So we need a lot of additional information in devInfo
+		}
+	}
+
+	return str
+}
+
+func (mgr *NodeManager) GetNodeStatusStringForNode(nodeName string) (string, error) {
+	var nodeInfo types.NodeInfo
+	for _, chInfo := range mgr.channelInfos {
+		if nodeName == chInfo.GetNodeName() {
+			return mgr.getNodeStatusStringForChannel(chInfo), nil
+		}
+	}
+
+	if nodeInfo == nil {
+		for _, devInfo := range mgr.deviceInfos {
+			if nodeName == devInfo.GetNodeName() {
+				return mgr.getNodeStatusStringForDevice(devInfo), nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("not found")
+}
+
 // InitializeDevices is invoked after the operator has been allowed to modify the config.
 // Devices may be UP, DN, RV, or SU.
 // We don't mess with tape devices - they were freshly created, thus they are not mounted.
 // For disk devices, some (maybe all) are pre-mounted thus we can (if the device is not DN and is accessible)
 // probe the device to try to read VOL1, S0, S1, and maybe some other interesting bits.
-func (mgr *DeviceManager) InitializeDevices() error {
+func (mgr *NodeManager) InitializeDevices() error {
 	// TODO
 	return nil
 }
 
 // RecoverDevices is an alternative to BuildConfiguration, and is used when the exec is re-starting.
 // It is expected that the deviceInfos all need to be reset, and that some mountable need to be unmounted.
-func (mgr *DeviceManager) RecoverDevices() error {
+func (mgr *NodeManager) RecoverDevices() error {
 	// Reset all the deviceInfos
 	errors := false
 	// for cInfo := range mgr.channelDeviceMap {
@@ -231,14 +296,14 @@ func (mgr *DeviceManager) RecoverDevices() error {
 	return nil
 }
 
-func (mgr *DeviceManager) probeMountedDisks() error {
+func (mgr *NodeManager) probeMountedDisks() error {
 	return nil
 }
 
 func GetNodeStatusString(status types.NodeStatus, isAccessible bool) string {
 	accStr := ""
 	if !isAccessible {
-		accStr = "/NA"
+		accStr = " NA"
 	}
 
 	switch status {
@@ -253,6 +318,24 @@ func GetNodeStatusString(status types.NodeStatus, isAccessible bool) string {
 	}
 
 	return ""
+}
+
+func IsValidNodeName(name string) bool {
+	if len(name) < 1 || len(name) > 6 {
+		return false
+	}
+
+	if name[0] < 'A' || name[0] > 'Z' {
+		return false
+	}
+
+	for nx := 1; nx < len(name); nx++ {
+		if (name[nx] < 'A' || name[nx] > 'Z') && (name[nx] < '0' || name[nx] > '9') {
+			return false
+		}
+	}
+
+	return true
 }
 
 func IsValidPackName(name string) bool {
@@ -278,8 +361,8 @@ func IsValidPrepFactor(prepFactor types.PrepFactor) bool {
 		prepFactor == 448 || prepFactor == 896 || prepFactor == 1792
 }
 
-func (mgr *DeviceManager) Dump(dest io.Writer, indent string) {
-	_, _ = fmt.Fprintf(dest, "%vDeviceManager ----------------------------------------------------\n", indent)
+func (mgr *NodeManager) Dump(dest io.Writer, indent string) {
+	_, _ = fmt.Fprintf(dest, "%vNodeManager ----------------------------------------------------\n", indent)
 
 	for _, chInfo := range mgr.channelInfos {
 		_, _ = fmt.Fprintf(dest, "%v  Channel %v:\n", indent, chInfo.GetChannelName())

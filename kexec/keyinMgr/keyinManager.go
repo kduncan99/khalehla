@@ -80,6 +80,8 @@ func (mgr *KeyinManager) handleKeyin(source types.ConsoleIdentifier, text string
 	switch command {
 	case "D":
 		kh = NewDKeyinHandler(mgr.exec, source, options, args)
+	case "FS":
+		kh = NewFSKeyinHandler(mgr.exec, source, options, args)
 	}
 
 	if kh != nil {

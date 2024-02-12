@@ -78,8 +78,8 @@ type IExec interface {
 	Close()
 	Dump(destination io.Writer)
 	GetConsoleManager() Manager
-	GetDeviceManager() Manager
 	GetKeyinManager() Manager
+	GetNodeManager() Manager
 	GetStopFlag() bool
 	HandleKeyIn(source ConsoleIdentifier, text string)
 	SendExecReadOnlyMessage(message string)

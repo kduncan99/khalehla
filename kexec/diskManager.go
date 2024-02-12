@@ -4,17 +4,17 @@
 
 package kexec
 
-// func DiskMgrLoadDevices(config *deviceMgr.DeviceManager) error {
+// func DiskMgrLoadDevices(config *nodeMgr.DeviceManager) error {
 // 	for _, dd := range config.diskDevices {
-// 		dd.deviceStatus = deviceMgr.NodeStatusUp
-// 		dd.device = deviceMgr.NewDiskDevice()
-// 		pkt := deviceMgr.NewDiskIoPacketMount(dd.fileName, false)
+// 		dd.deviceStatus = nodeMgr.NodeStatusUp
+// 		dd.device = nodeMgr.NewDiskDevice()
+// 		pkt := nodeMgr.NewDiskIoPacketMount(dd.fileName, false)
 // 		dd.device.StartIo(pkt)
-// 		if pkt.GetIoStatus() != deviceMgr.IosComplete {
+// 		if pkt.GetIoStatus() != nodeMgr.IosComplete {
 // 			log.Printf("%v Cannot mount pack - IOStatus=%v", dd.deviceName, pkt.GetIoStatus())
 // 			ConsoleMgrWriteRaw(fmt.Sprintf("%s Pack cannot be mounted", dd.deviceName))
 // 			ConsoleMgrWriteRaw(fmt.Sprintf("%s DN", dd.deviceName))
-// 			dd.deviceStatus = deviceMgr.NodeStatusDown
+// 			dd.deviceStatus = nodeMgr.NodeStatusDown
 // 			continue
 // 		}
 //
@@ -35,19 +35,19 @@ package kexec
 // }
 
 // DiskMgrInitializeFixed iterates over the fixed packs, building up an empty fixed storage pool.
-// func DiskMgrInitializeFixed(config *deviceMgr.DeviceManager) error {
+// func DiskMgrInitializeFixed(config *nodeMgr.DeviceManager) error {
 // 	devs := 0
 // 	tracks := 0
 // 	for _, dd := range config.diskDevices {
-// 		if dd.deviceStatus == deviceMgr.NodeStatusUp {
+// 		if dd.deviceStatus == nodeMgr.NodeStatusUp {
 // 			buffer := make([]pkg.Word36, 28)
-// 			pkt := deviceMgr.NewDiskIoPacketReadLabel(buffer)
+// 			pkt := nodeMgr.NewDiskIoPacketReadLabel(buffer)
 // 			dd.device.StartIo(pkt)
-// 			if pkt.GetIoStatus() != deviceMgr.IosComplete {
+// 			if pkt.GetIoStatus() != nodeMgr.IosComplete {
 // 				log.Printf("%v cannot read pack label", dd.deviceName)
 // 				ConsoleMgrWriteRaw(fmt.Sprintf("%s Cannot read pack label", dd.deviceName))
 // 				ConsoleMgrWriteRaw(fmt.Sprintf("%s DN", dd.deviceName))
-// 				dd.deviceStatus = deviceMgr.NodeStatusDown
+// 				dd.deviceStatus = nodeMgr.NodeStatusDown
 // 				continue
 // 			}
 //
@@ -73,20 +73,20 @@ package kexec
 // 	return nil
 // }
 
-// func DiskMgrRecoverFixed(config *deviceMgr.DeviceManager) error {
+// func DiskMgrRecoverFixed(config *nodeMgr.DeviceManager) error {
 // 	devs := 0
 // 	allocated := 0
 // 	recovered := 0
 // 	for _, dd := range config.diskDevices {
-// 		if dd.deviceStatus == deviceMgr.NodeStatusUp {
+// 		if dd.deviceStatus == nodeMgr.NodeStatusUp {
 // 			buffer := make([]pkg.Word36, 28)
-// 			pkt := deviceMgr.NewDiskIoPacketReadLabel(buffer)
+// 			pkt := nodeMgr.NewDiskIoPacketReadLabel(buffer)
 // 			dd.device.StartIo(pkt)
-// 			if pkt.GetIoStatus() != deviceMgr.IosComplete {
+// 			if pkt.GetIoStatus() != nodeMgr.IosComplete {
 // 				log.Printf("%v cannot read pack label", dd.deviceName)
 // 				ConsoleMgrWriteRaw(fmt.Sprintf("%s Cannot read pack label", dd.deviceName))
 // 				ConsoleMgrWriteRaw(fmt.Sprintf("%s DN", dd.deviceName))
-// 				dd.deviceStatus = deviceMgr.NodeStatusDown
+// 				dd.deviceStatus = nodeMgr.NodeStatusDown
 // 				continue
 // 			}
 //
