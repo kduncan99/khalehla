@@ -9,6 +9,7 @@ import (
 	"io"
 	"khalehla/kexec/types"
 	"strings"
+	"time"
 )
 
 type DKeyinHandler struct {
@@ -38,17 +39,11 @@ func (kh *DKeyinHandler) Abort() {
 }
 
 func (kh *DKeyinHandler) CheckSyntax() bool {
-	// Accepted:
-	//		D
-	//		D,UTC
-	//		D SHIFT
-	if len(kh.options) != 0 {
-		if kh.options != "UTC" || len(kh.arguments) != 0 {
-			return false
-		}
+	if len(kh.options) != 0 || len(kh.arguments) != 0 {
+		return false
 	}
 
-	if len(kh.arguments) != 0 && kh.arguments != "SHIFT" {
+	if len(kh.arguments) != 0 {
 		return false
 	}
 
@@ -80,9 +75,12 @@ func (kh *DKeyinHandler) Dump(dest io.Writer, indent string) {
 func (kh *DKeyinHandler) thread() {
 	kh.threadStarted = true
 
-	// TODO
-	kh.exec.SendExecReadOnlyMessage("YOU ARE A DUMMY")
-	// TODO end
+	str := "The current date and time is "
+	t := time.Now()
+	zoneName, _ := t.Zone()
+	str += fmt.Sprintf("%v %02v %03v %04v %02v:%02v:%02v %v",
+		t.Weekday(), t.Day(), t.Month(), t.Year(), t.Hour(), t.Minute(), t.Second(), zoneName)
+	kh.exec.SendExecReadOnlyMessage(str)
 
 	kh.threadStopped = true
 }

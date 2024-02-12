@@ -1,0 +1,35 @@
+
+DAD table entry
+device-relative addresses are word-addressable, word 0-n on the device
+
+Each fixed pack is identified by a unique LDAT index.  This index is
+assigned on initial boot (JK13) and is preserved across all recovery
+boots.
+
+Every 9th directory track (beginning with the 1st -- track 0) has a DAS
+in sector 0 of the track.  This DAS acts as a directory-track-sector
+in-use bitmap for up to 9 directory tracks.
+The 1st 3 words in the DAS entry contain LDATIndex in word 0:H1, and
+bitmap in words 1/2.  Bitmap is high-order 32 bits of each word.
+The subsequent 3-word entries are word 0==device-relative word address of
+the corresponding directory track (which will NOT have a DAS), and bitmap.
+If DRWA is negative, the entry is not in use.  Word+27 indicates the next
+directory track with a DAS (DRWA).  If negative, no such track exists.
+
+Directory item addresses are MFD-file-relative.
+	S1 =	descriptor bits
+	S2/S3 =	LDAT Index of entry (zero for removable)
+	S4/S5 =	MFD-file-relative track address
+	S6 =	sector ID
+This means there is a max of 4095 directory tracks per unit.
+
+Since removable MFD's are isolated, LDAT Index field for REM MFD items
+is always zero.
+
+Word 0 of directory items:
+Bit 0 (U bit) - if not set, word 0 contains a link to next sector
+Bit 1 - main item
+Bit 2 - lead item
+Bit 3 - search item
+If bits 1-3 are clear, sector is DAD table, or words 1-n of main item,
+or word 1 of lead item.
