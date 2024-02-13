@@ -7,12 +7,13 @@ package kexec
 import (
 	"fmt"
 	"io"
+	"khalehla/kexec/config"
 	"khalehla/kexec/consoleMgr"
 	"khalehla/kexec/facilitiesMgr"
 	"khalehla/kexec/keyinMgr"
+	"khalehla/kexec/mfdMgr"
 	"khalehla/kexec/nodeMgr"
 	"khalehla/kexec/types"
-	"khalehla/pkg"
 	"strings"
 )
 
@@ -22,20 +23,40 @@ type Exec struct {
 	consoleMgr *consoleMgr.ConsoleManager
 	facMgr     *facilitiesMgr.FacilitiesManager
 	keyinMgr   *keyinMgr.KeyinManager
+	mfdMgr     *mfdMgr.MFDManager
 	nodeMgr    *nodeMgr.NodeManager
 
-	runControlTable map[pkg.Word36]*types.RunControlEntry
+	runControlEntry *types.RunControlEntry
+	runControlTable map[string]*types.RunControlEntry // indexed by runid
 
 	allowRestart bool
+	phase        types.ExecPhase
 	stopCode     types.StopCode
 	stopFlag     bool
 }
 
-func NewExec() *Exec {
+func NewExec(cfg *config.Configuration) *Exec {
 	e := &Exec{}
 	e.consoleMgr = consoleMgr.NewConsoleManager(e)
+	e.facMgr = facilitiesMgr.NewFacilitiesManager(e)
 	e.keyinMgr = keyinMgr.NewKeyinManager(e)
+	e.mfdMgr = mfdMgr.NewMFDManager(e)
 	e.nodeMgr = nodeMgr.NewNodeManager(e)
+	e.phase = types.ExecPhaseNotStarted
+
+	// ExecRunControlEntry is the RCE for the EXEC - it always exists and is always (or should always be) in the RCT
+	e.runControlEntry = types.NewRunControlEntry(
+		cfg.SystemRunId,
+		cfg.SystemRunId,
+		cfg.SystemAccountId,
+		cfg.SystemProjectId,
+		cfg.SystemUserId)
+	e.runControlEntry.DefaultQualifier = cfg.SystemQualifier
+	e.runControlEntry.ImpliedQualifier = cfg.SystemQualifier
+	e.runControlEntry.IsExec = true
+
+	e.runControlTable = make(map[string]*types.RunControlEntry)
+	e.runControlTable[e.runControlEntry.RunId] = e.runControlEntry
 
 	return e
 }
@@ -62,6 +83,14 @@ func (e *Exec) GetNodeManager() types.Manager {
 	return e.nodeMgr
 }
 
+func (e *Exec) GetPhase() types.ExecPhase {
+	return e.phase
+}
+
+func (e *Exec) GetStopCode() types.StopCode {
+	return e.stopCode
+}
+
 func (e *Exec) GetStopFlag() bool {
 	return e.stopFlag
 }
@@ -71,6 +100,8 @@ func (e *Exec) HandleKeyIn(source types.ConsoleIdentifier, text string) {
 }
 
 func (e *Exec) InitialBoot(initMassStorage bool) error {
+	e.phase = types.ExecPhaseInitializing
+
 	// we need the console before anything else, and then the keyin manager right after that
 	err := e.consoleMgr.InitializeManager()
 	if err != nil {
@@ -118,7 +149,7 @@ func (e *Exec) RecoveryBoot(initMassStorage bool) error {
 
 func (e *Exec) SendExecReadOnlyMessage(message string) {
 	consMsg := types.ConsoleReadOnlyMessage{
-		Source:         &types.ExecRunControlEntry,
+		Source:         e.runControlEntry,
 		Text:           message,
 		DoNotEmitRunId: true,
 	}
@@ -127,7 +158,7 @@ func (e *Exec) SendExecReadOnlyMessage(message string) {
 
 func (e *Exec) SendExecReadReplyMessage(message string, maxReplyChars int) (string, error) {
 	consMsg := types.ConsoleReadReplyMessage{
-		Source:         &types.ExecRunControlEntry,
+		Source:         e.runControlEntry,
 		Text:           message,
 		DoNotEmitRunId: true,
 		MaxReplyLength: maxReplyChars,
@@ -151,6 +182,7 @@ func (e *Exec) Stop(code types.StopCode) {
 
 	e.stopFlag = true
 	e.stopCode = code
+	e.phase = types.ExecPhaseStopped
 }
 
 func (e *Exec) Dump(dest io.Writer) {

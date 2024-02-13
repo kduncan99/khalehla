@@ -6,6 +6,7 @@ package types
 
 import (
 	"io"
+	"time"
 )
 
 // Channel manages async communication with the various deviceInfos assigned to it.
@@ -26,10 +27,12 @@ type ChannelInfo interface {
 	GetChannelName() string
 	GetChannelIdentifier() ChannelIdentifier
 	GetDeviceInfos() []DeviceInfo
+	GetNodeCategory() NodeCategory
 	GetNodeIdentifier() NodeIdentifier
 	GetNodeName() string
 	GetNodeStatus() NodeStatus
 	GetNodeType() NodeType
+	IsAccessible() bool
 }
 
 // Console is a unit which actually acts as an operating system console endpoint.
@@ -65,6 +68,7 @@ type DeviceInfo interface {
 	GetDevice() Device
 	GetDeviceIdentifier() DeviceIdentifier
 	GetDeviceName() string
+	GetNodeCategory() NodeCategory
 	GetNodeIdentifier() NodeIdentifier
 	GetNodeName() string
 	GetNodeStatus() NodeStatus
@@ -81,6 +85,13 @@ type DeviceReadyListener interface {
 	NotifyDeviceReady(DeviceInfo, bool)
 }
 
+type FacilitiesItem interface {
+	GetInternalFileName() string
+	GetFileName() string
+	GetQualifier() string
+	GetEquipmentCode() uint
+}
+
 // IExec is the interface for the Exec, placed here to avoid package import cycles
 type IExec interface {
 	Close()
@@ -89,6 +100,8 @@ type IExec interface {
 	GetFacilitiesManager() Manager
 	GetKeyinManager() Manager
 	GetNodeManager() Manager
+	GetPhase() ExecPhase
+	GetStopCode() StopCode
 	GetStopFlag() bool
 	HandleKeyIn(source ConsoleIdentifier, text string)
 	SendExecReadOnlyMessage(message string)
@@ -109,7 +122,10 @@ type IoPacket interface {
 type KeyinHandler interface {
 	Abort()
 	CheckSyntax() bool
-	Dump(destination io.Writer, indent string)
+	GetCommand() string
+	GetOptions() string
+	GetArguments() string
+	GetTimeFinished() time.Time
 	Invoke()
 	IsAllowed() bool
 	IsDone() bool
@@ -120,15 +136,18 @@ type KeyinHandler interface {
 type Manager interface {
 	CloseManager()
 	Dump(destination io.Writer, indent string)
-	InitializeManager() error
-	ResetManager() error
+	InitializeManager() error // manager must stop the exec if it returns an error
+	IsInitialized() bool
+	ResetManager() error // manager must stop the exec if it returns an error
 }
 
 // NodeInfo contains all the exec-managed information regarding a particular node
 type NodeInfo interface {
 	CreateNode()
+	GetNodeCategory() NodeCategory
 	GetNodeIdentifier() NodeIdentifier
 	GetNodeName() string
 	GetNodeStatus() NodeStatus
 	GetNodeType() NodeType
+	IsAccessible() bool
 }

@@ -27,13 +27,14 @@ type readReplyTracker struct {
 // ConsoleManager handles all things related to console interaction
 type ConsoleManager struct {
 	exec             types.IExec
-	consoles         map[types.ConsoleIdentifier]types.Console
-	primaryConsole   types.Console
-	primaryConsoleId types.ConsoleIdentifier
+	mutex            sync.Mutex
+	isInitialized    bool
 	terminateThread  bool
 	threadStarted    bool
 	threadStopped    bool
-	mutex            sync.Mutex
+	consoles         map[types.ConsoleIdentifier]types.Console
+	primaryConsole   types.Console
+	primaryConsoleId types.ConsoleIdentifier
 	queuedReadOnly   []*types.ConsoleReadOnlyMessage
 	queuedReadReply  map[int]*readReplyTracker
 }
@@ -52,6 +53,7 @@ func (mgr *ConsoleManager) IsDone() bool {
 // CloseManager is invoked when the exec is stopping... for any reason. It tells the goRoutine to threadStop.
 func (mgr *ConsoleManager) CloseManager() {
 	mgr.threadStop()
+	mgr.isInitialized = false
 }
 
 func (mgr *ConsoleManager) InitializeManager() error {
@@ -66,7 +68,12 @@ func (mgr *ConsoleManager) InitializeManager() error {
 	// TODO Load net console configuration
 
 	mgr.threadStart()
+	mgr.isInitialized = true
 	return nil
+}
+
+func (mgr *ConsoleManager) IsInitialized() bool {
+	return mgr.isInitialized
 }
 
 // ResetManager clears out any artifacts left over by a previous exec session,
@@ -91,6 +98,7 @@ func (mgr *ConsoleManager) ResetManager() error {
 	mgr.mutex.Unlock()
 
 	mgr.threadStart()
+	mgr.isInitialized = true
 	return nil
 }
 
@@ -98,7 +106,7 @@ func (mgr *ConsoleManager) ResetManager() error {
 // The ConsoleManager thread will handle actually sending the message to all the consoles if/as appropriate.
 func (mgr *ConsoleManager) SendReadOnlyMessage(message *types.ConsoleReadOnlyMessage) {
 	// Log it and put it in the RCE tail sheet (unless it is the Exec)
-	log.Printf("%v*%v", message.Source.RunId.ToStringAsFieldata(), message.Text)
+	log.Printf("%v*%v", message.Source.RunId, message.Text)
 	if !message.Source.IsExec {
 		message.Source.PrintToTailSheet(message.Text)
 	}
@@ -113,7 +121,7 @@ func (mgr *ConsoleManager) SendReadOnlyMessage(message *types.ConsoleReadOnlyMes
 // During the waiting period, the ConsoleManager thread will send the message, then poll for a reply as necessary.
 func (mgr *ConsoleManager) SendReadReplyMessage(message *types.ConsoleReadReplyMessage) error {
 	// Log it and put it in the RCE tail sheet (unless it is the Exec)
-	log.Printf("*-%v:%v", message.Source.RunId.ToStringAsFieldata(), message.Text)
+	log.Printf("*-%v:%v", message.Source.RunId, message.Text)
 	if !message.Source.IsExec {
 		message.Source.PrintToTailSheet(message.Text)
 	}
@@ -162,7 +170,7 @@ func (mgr *ConsoleManager) checkForReadOnlyMessages() bool {
 		// Construct output text
 		text := ""
 		if !msg.DoNotEmitRunId {
-			text = msg.Source.RunId.ToStringAsFieldata() + "*"
+			text = msg.Source.RunId + "*"
 		}
 		text += msg.Text
 
@@ -214,7 +222,7 @@ func (mgr *ConsoleManager) checkForReadReplyMessages() bool {
 			// Construct output text
 			text := ""
 			if !tracker.message.DoNotEmitRunId {
-				text = tracker.message.Source.RunId.ToStringAsFieldata() + "*"
+				text = tracker.message.Source.RunId + "*"
 			}
 			text += tracker.message.Text
 
@@ -433,8 +441,9 @@ func (mgr *ConsoleManager) threadStop() {
 func (mgr *ConsoleManager) Dump(dest io.Writer, indent string) {
 	_, _ = fmt.Fprintf(dest, "%vConsoleManager ----------------------------------------------------\n", indent)
 
-	_, _ = fmt.Fprintf(dest, "%v  threadStarted:  %v\n", indent, mgr.threadStarted)
-	_, _ = fmt.Fprintf(dest, "%v  threadStopped:  %v\n", indent, mgr.threadStopped)
+	_, _ = fmt.Fprintf(dest, "%v  initialized:     %v\n", indent, mgr.isInitialized)
+	_, _ = fmt.Fprintf(dest, "%v  threadStarted:   %v\n", indent, mgr.threadStarted)
+	_, _ = fmt.Fprintf(dest, "%v  threadStopped:   %v\n", indent, mgr.threadStopped)
 	_, _ = fmt.Fprintf(dest, "%v  terminateThread: %v\n", indent, mgr.terminateThread)
 	_, _ = fmt.Fprintf(dest, "%v  Consoles:\n", indent)
 	primaryStr := ""
@@ -452,7 +461,7 @@ func (mgr *ConsoleManager) Dump(dest io.Writer, indent string) {
 
 	_, _ = fmt.Fprintf(dest, "%v  QueuedReadOnly:\n", indent)
 	for _, msg := range mgr.queuedReadOnly {
-		str := "[" + msg.Source.RunId.ToStringAsFieldata() + "] " + msg.Text
+		str := "[" + msg.Source.RunId + "] " + msg.Text
 
 		if msg.DoNotEmitRunId {
 			str += " !emitRunId "
@@ -480,7 +489,7 @@ func (mgr *ConsoleManager) Dump(dest io.Writer, indent string) {
 		_, _ = fmt.Fprintf(dest, "%v    %v\n", indent, str)
 
 		msg := tracker.message
-		str = "[ " + msg.Source.RunId.ToStringAsFieldata() + "] " + msg.Text
+		str = "[ " + msg.Source.RunId + "] " + msg.Text
 
 		if msg.DoNotEmitRunId {
 			str += " !emitRunId "

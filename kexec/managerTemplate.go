@@ -15,6 +15,7 @@ import (
 type FooManager struct {
 	exec            types.IExec
 	mutex           sync.Mutex
+	isInitialized   bool
 	terminateThread bool
 	threadStarted   bool
 	threadStopped   bool
@@ -29,11 +30,17 @@ func NewFooManager(exec types.IExec) *FooManager {
 // CloseManager is invoked when the exec is stopping
 func (mgr *FooManager) CloseManager() {
 	mgr.threadStop()
+	mgr.isInitialized = false
 }
 
 func (mgr *FooManager) InitializeManager() error {
 	mgr.threadStart()
+	mgr.isInitialized = true
 	return nil
+}
+
+func (mgr *FooManager) IsInitialized() bool {
+	return mgr.isInitialized
 }
 
 // ResetManager clears out any artifacts left over by a previous exec session,
@@ -79,7 +86,8 @@ func (mgr *FooManager) Dump(dest io.Writer, indent string) {
 
 	// TODO
 
-	_, _ = fmt.Fprintf(dest, "%v  threadStarted:  %v\n", indent, mgr.threadStarted)
-	_, _ = fmt.Fprintf(dest, "%v  threadStopped:  %v\n", indent, mgr.threadStopped)
+	_, _ = fmt.Fprintf(dest, "%v  initialized:     %v\n", indent, mgr.isInitialized)
+	_, _ = fmt.Fprintf(dest, "%v  threadStarted:   %v\n", indent, mgr.threadStarted)
+	_, _ = fmt.Fprintf(dest, "%v  threadStopped:   %v\n", indent, mgr.threadStopped)
 	_, _ = fmt.Fprintf(dest, "%v  terminateThread: %v\n", indent, mgr.terminateThread)
 }

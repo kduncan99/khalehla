@@ -7,7 +7,6 @@ package nodeMgr
 import (
 	"fmt"
 	"io"
-	"khalehla/kexec/facilitiesMgr"
 	"khalehla/kexec/types"
 	"log"
 	"sync"
@@ -25,6 +24,7 @@ const (
 type NodeManager struct {
 	exec            types.IExec
 	mutex           sync.Mutex
+	isInitialized   bool
 	terminateThread bool
 	threadStarted   bool
 	threadStopped   bool
@@ -43,6 +43,7 @@ func NewNodeManager(exec types.IExec) *NodeManager {
 
 func (mgr *NodeManager) CloseManager() {
 	mgr.threadStop()
+	mgr.isInitialized = false
 }
 
 // InitializeManager reads the configuration with respect to pseudo-hardware deviceInfos,
@@ -138,11 +139,17 @@ func (mgr *NodeManager) InitializeManager() error {
 	}
 
 	if errors {
+		mgr.exec.Stop(types.StopInitializationSystemConfigurationError)
 		return fmt.Errorf("init error")
 	}
 
 	mgr.threadStart()
+	mgr.isInitialized = true
 	return nil
+}
+
+func (mgr *NodeManager) IsInitialized() bool {
+	return mgr.isInitialized
 }
 
 func (mgr *NodeManager) ResetManager() error {
@@ -151,39 +158,44 @@ func (mgr *NodeManager) ResetManager() error {
 
 	// TODO should we do anything here?
 
+	mgr.isInitialized = true
 	return nil
 }
 
 func (mgr *NodeManager) GetChannelInfos() []types.ChannelInfo {
 	var result = make([]types.ChannelInfo, len(mgr.channelInfos))
-	for cx, chInfo := range mgr.channelInfos {
+	cx := 0
+	for _, chInfo := range mgr.channelInfos {
 		result[cx] = chInfo
+		cx++
 	}
 	return result
 }
 
 func (mgr *NodeManager) GetDeviceInfos() []types.DeviceInfo {
 	var result = make([]types.DeviceInfo, len(mgr.deviceInfos))
-	for dx, devInfo := range mgr.deviceInfos {
+	dx := 0
+	for _, devInfo := range mgr.deviceInfos {
 		result[dx] = devInfo
+		dx++
 	}
 	return result
 }
 
-func (mgr *NodeManager) GetNodeStatusStringForNode(nodeName string) (string, error) {
+func (mgr *NodeManager) GetNodeInfo(nodeName string) (types.NodeInfo, error) {
 	for _, chInfo := range mgr.channelInfos {
 		if nodeName == chInfo.GetNodeName() {
-			return GetNodeStatusString(chInfo.GetNodeStatus(), true), nil
+			return chInfo, nil
 		}
 	}
 
 	for _, devInfo := range mgr.deviceInfos {
 		if nodeName == devInfo.GetNodeName() {
-			return GetNodeStatusString(devInfo.GetNodeStatus(), true), nil
+			return devInfo, nil
 		}
 	}
 
-	return "", fmt.Errorf("not found")
+	return nil, fmt.Errorf("not found")
 }
 
 func GetNodeStatusString(status types.NodeStatus, isAccessible bool) string {
@@ -339,7 +351,7 @@ func (mgr *NodeManager) thread() {
 		}
 		mgr.mutex.Unlock()
 
-		fm := mgr.exec.GetFacilitiesManager().(*facilitiesMgr.FacilitiesManager)
+		fm := mgr.exec.GetFacilitiesManager().(types.DeviceReadyListener)
 		for devInfo, isReady := range updates {
 			fm.NotifyDeviceReady(devInfo, isReady)
 		}
@@ -370,13 +382,16 @@ func (mgr *NodeManager) threadStop() {
 func (mgr *NodeManager) Dump(dest io.Writer, indent string) {
 	_, _ = fmt.Fprintf(dest, "%vNodeManager ----------------------------------------------------\n", indent)
 
+	_, _ = fmt.Fprintf(dest, "%v  initialized:     %v\n", indent, mgr.isInitialized)
+	_, _ = fmt.Fprintf(dest, "%v  threadStarted:   %v\n", indent, mgr.threadStarted)
+	_, _ = fmt.Fprintf(dest, "%v  threadStopped:   %v\n", indent, mgr.threadStopped)
+	_, _ = fmt.Fprintf(dest, "%v  terminateThread: %v\n", indent, mgr.terminateThread)
+
 	for _, chInfo := range mgr.channelInfos {
-		_, _ = fmt.Fprintf(dest, "%v  Channel %v:\n", indent, chInfo.GetChannelName())
 		chInfo.Dump(dest, indent+"  ")
 	}
 
 	for _, devInfo := range mgr.deviceInfos {
-		_, _ = fmt.Fprintf(dest, "%v  Device %v:\n", indent, devInfo.GetDeviceName())
 		devInfo.Dump(dest, indent+"  ")
 	}
 }

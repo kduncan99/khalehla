@@ -20,6 +20,7 @@ type DKeyinHandler struct {
 	terminateThread bool
 	threadStarted   bool
 	threadStopped   bool
+	timeFinished    time.Time
 }
 
 func NewDKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, options string, arguments string) *DKeyinHandler {
@@ -48,6 +49,22 @@ func (kh *DKeyinHandler) CheckSyntax() bool {
 	}
 
 	return true
+}
+
+func (kh *DKeyinHandler) GetCommand() string {
+	return "D"
+}
+
+func (kh *DKeyinHandler) GetOptions() string {
+	return kh.options
+}
+
+func (kh *DKeyinHandler) GetArguments() string {
+	return kh.arguments
+}
+
+func (kh *DKeyinHandler) GetTimeFinished() time.Time {
+	return kh.timeFinished
 }
 
 func (kh *DKeyinHandler) Invoke() {
@@ -83,4 +100,5 @@ func (kh *DKeyinHandler) thread() {
 	kh.exec.SendExecReadOnlyMessage(str)
 
 	kh.threadStopped = true
+	kh.timeFinished = time.Now()
 }

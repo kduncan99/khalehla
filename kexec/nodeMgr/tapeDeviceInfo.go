@@ -55,6 +55,10 @@ func (tdi *TapeDeviceInfo) GetDeviceName() string {
 	return tdi.deviceName
 }
 
+func (tdi *TapeDeviceInfo) GetNodeCategory() types.NodeCategory {
+	return types.NodeCategoryDevice
+}
+
 func (tdi *TapeDeviceInfo) GetNodeIdentifier() types.NodeIdentifier {
 	return types.NodeIdentifier(tdi.deviceIdentifier)
 }
@@ -89,15 +93,14 @@ func (tdi *TapeDeviceInfo) SetIsReady(flag bool) {
 
 func (tdi *TapeDeviceInfo) Dump(dest io.Writer, indent string) {
 	did := pkg.Word36(tdi.deviceIdentifier)
-	str := fmt.Sprintf("%v id:%v %v ready:%v\n",
+	str := fmt.Sprintf("%v id:0%v %v ready:%v",
 		tdi.deviceName, did.ToStringAsOctal(), GetNodeStatusString(tdi.nodeStatus, tdi.isAccessible), tdi.isReady)
 	str += " channels:"
 	for _, chInfo := range tdi.channelInfos {
-		chId := pkg.Word36(chInfo.channelIdentifier)
-		str += " " + chId.ToStringAsFieldata()
+		str += " " + chInfo.GetChannelName()
 	}
 
-	_, _ = fmt.Fprintf(dest, "%v%v", indent, str)
+	_, _ = fmt.Fprintf(dest, "%v%v\n", indent, str)
 
 	tdi.device.Dump(dest, indent+"  ")
 }

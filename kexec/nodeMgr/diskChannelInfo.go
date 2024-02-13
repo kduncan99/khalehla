@@ -5,6 +5,7 @@
 package nodeMgr
 
 import (
+	"fmt"
 	"io"
 	"khalehla/kexec/types"
 	"khalehla/pkg"
@@ -53,6 +54,10 @@ func (dci *DiskChannelInfo) GetNodeIdentifier() types.NodeIdentifier {
 	return types.NodeIdentifier(dci.channelIdentifier)
 }
 
+func (dci *DiskChannelInfo) GetNodeCategory() types.NodeCategory {
+	return types.NodeCategoryChannel
+}
+
 func (dci *DiskChannelInfo) GetNodeName() string {
 	return dci.channelName
 }
@@ -65,6 +70,19 @@ func (dci *DiskChannelInfo) GetNodeType() types.NodeType {
 	return types.NodeTypeDisk
 }
 
+func (dci *DiskChannelInfo) IsAccessible() bool {
+	return true
+}
+
 func (dci *DiskChannelInfo) Dump(dest io.Writer, indent string) {
-	// TODO
+	str := fmt.Sprintf("%v %v",
+		dci.channelName, GetNodeStatusString(types.NodeStatusUp, true))
+	str += " devices:"
+	for _, devInfo := range dci.deviceInfos {
+		str += " " + devInfo.GetNodeName()
+	}
+
+	_, _ = fmt.Fprintf(dest, "%v%v\n", indent, str)
+
+	dci.channel.Dump(dest, indent+"  ")
 }

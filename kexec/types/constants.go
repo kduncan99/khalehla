@@ -40,6 +40,12 @@ const (
 )
 
 const (
+	_ NodeCategory = iota
+	NodeCategoryChannel
+	NodeCategoryDevice
+)
+
+const (
 	_ NodeStatus = iota
 	NodeStatusUp
 	NodeStatusReserved
@@ -51,6 +57,13 @@ const (
 	_ NodeType = iota
 	NodeTypeDisk
 	NodeTypeTape
+)
+
+const (
+	ExecPhaseNotStarted ExecPhase = iota
+	ExecPhaseInitializing
+	ExecPhaseRunning
+	ExecPhaseStopped
 )
 
 const (

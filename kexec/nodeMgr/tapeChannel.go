@@ -44,7 +44,7 @@ func (ch *TapeChannel) StartIo(ioPacket types.IoPacket) {
 
 	dev, ok := ch.devices[ioPacket.GetDeviceIdentifier()]
 	if !ok {
-		ioPacket.SetIoStatus(types.IosDeviceNotAttached)
+		ioPacket.SetIoStatus(types.IosDeviceIsNotAccessible)
 		return
 	}
 

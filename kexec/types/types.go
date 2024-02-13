@@ -36,11 +36,13 @@ type TrackCount uint
 
 // pseudo-enumeration types
 
+type ExecPhase uint
 type IoFunction uint
 type IoStatus uint
-type StopCode uint
+type NodeCategory uint
 type NodeStatus uint
 type NodeType uint
+type StopCode uint
 
 // DiskPackGeometry describes various useful attributes of a particular prepped disk pack
 type DiskPackGeometry struct {

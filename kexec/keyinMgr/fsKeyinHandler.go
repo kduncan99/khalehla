@@ -6,10 +6,11 @@ package keyinMgr
 
 import (
 	"fmt"
-	"io"
+	"khalehla/kexec/facilitiesMgr"
 	"khalehla/kexec/nodeMgr"
 	"khalehla/kexec/types"
 	"strings"
+	"time"
 )
 
 /*
@@ -44,6 +45,7 @@ type FSKeyinHandler struct {
 	terminateThread bool
 	threadStarted   bool
 	threadStopped   bool
+	timeFinished    time.Time
 }
 
 func NewFSKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, options string, arguments string) *FSKeyinHandler {
@@ -83,6 +85,22 @@ func (kh *FSKeyinHandler) CheckSyntax() bool {
 	return true
 }
 
+func (kh *FSKeyinHandler) GetCommand() string {
+	return "FS"
+}
+
+func (kh *FSKeyinHandler) GetOptions() string {
+	return kh.options
+}
+
+func (kh *FSKeyinHandler) GetArguments() string {
+	return kh.arguments
+}
+
+func (kh *FSKeyinHandler) GetTimeFinished() time.Time {
+	return kh.timeFinished
+}
+
 func (kh *FSKeyinHandler) Invoke() {
 	if !kh.threadStarted {
 		go kh.thread()
@@ -97,28 +115,7 @@ func (kh *FSKeyinHandler) IsAllowed() bool {
 	return true
 }
 
-func (kh *FSKeyinHandler) Dump(dest io.Writer, indent string) {
-	_, _ = fmt.Fprintf(dest, "%vFS KEYIN ----------------------------------------------------\n", indent)
-
-	_, _ = fmt.Fprintf(dest, "%v  threadStarted:  %v\n", indent, kh.threadStarted)
-	_, _ = fmt.Fprintf(dest, "%v  threadStopped:  %v\n", indent, kh.threadStopped)
-	_, _ = fmt.Fprintf(dest, "%v  terminateThread: %v\n", indent, kh.terminateThread)
-}
-
-func (kh *FSKeyinHandler) handleComponentList() {
-	nm := kh.exec.GetNodeManager().(*nodeMgr.NodeManager)
-	names := strings.Split(kh.arguments, ",")
-	statStrings := make([]string, len(names))
-	var err error
-	for nx, name := range names {
-		statStrings[nx], err = nm.GetNodeStatusStringForNode(strings.ToUpper(name))
-		if err != nil {
-			msg := fmt.Sprintf("FS KEYIN - %v DOES NOT EXIST, INPUT IGNORED", name)
-			kh.exec.SendExecReadOnlyMessage(msg)
-			return
-		}
-	}
-
+func (kh *FSKeyinHandler) emitStatusStrings(statStrings []string) {
 	for sx := 0; sx < len(statStrings); {
 		str := statStrings[sx]
 		sx++
@@ -132,14 +129,93 @@ func (kh *FSKeyinHandler) handleComponentList() {
 	}
 }
 
+func (kh *FSKeyinHandler) getStatusStringForNode(nodeInfo types.NodeInfo) string {
+	fm := kh.exec.GetFacilitiesManager().(*facilitiesMgr.FacilitiesManager)
+	str := nodeInfo.GetNodeName() + " "
+	str += nodeMgr.GetNodeStatusString(nodeInfo.GetNodeStatus(), nodeInfo.IsAccessible())
+	if nodeInfo.GetNodeCategory() == types.NodeCategoryDevice {
+		devInfo := nodeInfo.(types.DeviceInfo)
+		if fm.IsInitialized() {
+			str += " " + fm.GetDeviceStatusDetail(devInfo)
+		}
+	}
+	return str
+}
+
+func (kh *FSKeyinHandler) handleAllForChannel() {
+	nm := kh.exec.GetNodeManager().(*nodeMgr.NodeManager)
+	statStrings := make([]string, 0)
+	chName := strings.ToUpper(kh.arguments)
+	nodeInfo, err := nm.GetNodeInfo(chName)
+	if err != nil {
+		msg := fmt.Sprintf("FS KEYIN - %v DOES NOT EXIST, INPUT IGNORED", chName)
+		kh.exec.SendExecReadOnlyMessage(msg)
+		return
+	}
+	statStrings = append(statStrings, kh.getStatusStringForNode(nodeInfo))
+
+	if nodeInfo.GetNodeCategory() == types.NodeCategoryChannel {
+		chInfo := nodeInfo.(types.ChannelInfo)
+		devInfos := chInfo.GetDeviceInfos()
+		for _, di := range devInfos {
+			statStrings = append(statStrings, kh.getStatusStringForNode(di))
+		}
+	}
+
+	kh.emitStatusStrings(statStrings)
+}
+
+func (kh *FSKeyinHandler) handleAllOf(nodeCategory types.NodeCategory, nodeType types.NodeType) {
+	nm := kh.exec.GetNodeManager().(*nodeMgr.NodeManager)
+	statStrings := make([]string, 0)
+	if nodeCategory == types.NodeCategoryChannel || nodeCategory == 0 {
+		for _, chInfo := range nm.GetChannelInfos() {
+			if nodeType == chInfo.GetNodeType() || nodeType == 0 {
+				statStrings = append(statStrings, kh.getStatusStringForNode(chInfo))
+			}
+		}
+	}
+
+	if nodeCategory == types.NodeCategoryDevice || nodeCategory == 0 {
+		for _, devInfo := range nm.GetDeviceInfos() {
+			if nodeType == devInfo.GetNodeType() || nodeType == 0 {
+				statStrings = append(statStrings, kh.getStatusStringForNode(devInfo))
+			}
+		}
+	}
+
+	kh.emitStatusStrings(statStrings)
+}
+
+func (kh *FSKeyinHandler) handleComponentList() {
+	nm := kh.exec.GetNodeManager().(*nodeMgr.NodeManager)
+	names := strings.Split(kh.arguments, ",")
+	statStrings := make([]string, len(names))
+	for nx, name := range names {
+		ni, err := nm.GetNodeInfo(strings.ToUpper(name))
+		if err != nil {
+			msg := fmt.Sprintf("FS KEYIN - %v DOES NOT EXIST, INPUT IGNORED", name)
+			kh.exec.SendExecReadOnlyMessage(msg)
+			return
+		}
+
+		statStrings[nx] = kh.getStatusStringForNode(ni)
+	}
+
+	kh.emitStatusStrings(statStrings)
+}
+
 func (kh *FSKeyinHandler) handleOption() {
 	switch kh.options {
 	case "ALL":
-		// TODO
+		kh.handleAllForChannel()
+		return
 	case "CM":
-		// TODO
+		kh.handleAllOf(types.NodeCategoryChannel, 0)
+		return
 	case "DISK":
-		// TODO
+		kh.handleAllOf(types.NodeCategoryDevice, types.NodeTypeDisk)
+		return
 	case "FDISK":
 		// TODO
 	case "MS":
@@ -149,7 +225,8 @@ func (kh *FSKeyinHandler) handleOption() {
 	case "RDISK":
 		// TODO
 	case "TAPE":
-		// TODO
+		kh.handleAllOf(types.NodeCategoryDevice, types.NodeTypeTape)
+		return
 	}
 
 	msg := fmt.Sprintf("FS KEYIN - %v OPTION DOES NOT EXIST, INPUT IGNORED", kh.options)
@@ -166,4 +243,5 @@ func (kh *FSKeyinHandler) thread() {
 	}
 
 	kh.threadStopped = true
+	kh.timeFinished = time.Now()
 }

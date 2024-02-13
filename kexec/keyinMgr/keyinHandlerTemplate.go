@@ -5,13 +5,12 @@
 package keyinMgr
 
 import (
-	"fmt"
-	"io"
 	"khalehla/kexec/types"
 	"strings"
+	"time"
 )
 
-type FooKeyinHandler struct {
+type FOOKeyinHandler struct {
 	exec            types.IExec
 	source          types.ConsoleIdentifier
 	options         string
@@ -19,10 +18,11 @@ type FooKeyinHandler struct {
 	terminateThread bool
 	threadStarted   bool
 	threadStopped   bool
+	timeFinished    time.Time
 }
 
-func NewFooKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, options string, arguments string) *FooKeyinHandler {
-	return &FooKeyinHandler{
+func NewFOOKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, options string, arguments string) *FOOKeyinHandler {
+	return &FOOKeyinHandler{
 		exec:            exec,
 		source:          source,
 		options:         strings.ToUpper(options),
@@ -33,11 +33,11 @@ func NewFooKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, option
 	}
 }
 
-func (kh *FooKeyinHandler) Abort() {
+func (kh *FOOKeyinHandler) Abort() {
 	kh.terminateThread = true
 }
 
-func (kh *FooKeyinHandler) CheckSyntax() bool {
+func (kh *FOOKeyinHandler) CheckSyntax() bool {
 	// Accepted:
 	//		D
 	//		D,UTC
@@ -46,29 +46,37 @@ func (kh *FooKeyinHandler) CheckSyntax() bool {
 	return true
 }
 
-func (kh *FooKeyinHandler) Invoke() {
+func (kh *FOOKeyinHandler) GetCommand() string {
+	return "FOO"
+}
+
+func (kh *FOOKeyinHandler) GetOptions() string {
+	return kh.options
+}
+
+func (kh *FOOKeyinHandler) GetArguments() string {
+	return kh.arguments
+}
+
+func (kh *FOOKeyinHandler) GetTimeFinished() time.Time {
+	return kh.timeFinished
+}
+
+func (kh *FOOKeyinHandler) Invoke() {
 	if !kh.threadStarted {
 		go kh.thread()
 	}
 }
 
-func (kh *FooKeyinHandler) IsDone() bool {
+func (kh *FOOKeyinHandler) IsDone() bool {
 	return kh.threadStopped
 }
 
-func (kh *FooKeyinHandler) IsAllowed() bool {
+func (kh *FOOKeyinHandler) IsAllowed() bool {
 	return true
 }
 
-func (kh *FooKeyinHandler) Dump(dest io.Writer, indent string) {
-	_, _ = fmt.Fprintf(dest, "%vFOO KEYIN ----------------------------------------------------\n", indent)
-
-	_, _ = fmt.Fprintf(dest, "%v  threadStarted:  %v\n", indent, kh.threadStarted)
-	_, _ = fmt.Fprintf(dest, "%v  threadStopped:  %v\n", indent, kh.threadStopped)
-	_, _ = fmt.Fprintf(dest, "%v  terminateThread: %v\n", indent, kh.terminateThread)
-}
-
-func (kh *FooKeyinHandler) thread() {
+func (kh *FOOKeyinHandler) thread() {
 	kh.threadStarted = true
 
 	// TODO
@@ -76,4 +84,5 @@ func (kh *FooKeyinHandler) thread() {
 	// TODO end
 
 	kh.threadStopped = true
+	kh.timeFinished = time.Now()
 }

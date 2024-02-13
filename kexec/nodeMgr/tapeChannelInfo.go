@@ -5,6 +5,7 @@
 package nodeMgr
 
 import (
+	"fmt"
 	"io"
 	"khalehla/kexec/types"
 	"khalehla/pkg"
@@ -49,6 +50,10 @@ func (tci *TapeChannelInfo) GetDeviceInfos() []types.DeviceInfo {
 	return result
 }
 
+func (tci *TapeChannelInfo) GetNodeCategory() types.NodeCategory {
+	return types.NodeCategoryChannel
+}
+
 func (tci *TapeChannelInfo) GetNodeIdentifier() types.NodeIdentifier {
 	return types.NodeIdentifier(tci.channelIdentifier)
 }
@@ -65,6 +70,19 @@ func (tci *TapeChannelInfo) GetNodeType() types.NodeType {
 	return types.NodeTypeTape
 }
 
+func (tci *TapeChannelInfo) IsAccessible() bool {
+	return true
+}
+
 func (tci *TapeChannelInfo) Dump(dest io.Writer, indent string) {
-	// TODO
+	str := fmt.Sprintf("%v %v",
+		tci.channelName, GetNodeStatusString(types.NodeStatusUp, true))
+	str += " devices:"
+	for _, devInfo := range tci.deviceInfos {
+		str += " " + devInfo.GetNodeName()
+	}
+
+	_, _ = fmt.Fprintf(dest, "%v%v\n", indent, str)
+
+	tci.channel.Dump(dest, indent+"  ")
 }

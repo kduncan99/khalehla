@@ -22,11 +22,12 @@ type keyinInfo struct {
 type KeyinManager struct {
 	exec            types.IExec
 	mutex           sync.Mutex
-	postedKeyins    []*keyinInfo
+	isInitialized   bool
 	terminateThread bool
 	threadStarted   bool
 	threadStopped   bool
-	keyinHandlers   []types.KeyinHandler
+	postedKeyins    []*keyinInfo
+	pendingHandlers []types.KeyinHandler
 }
 
 func NewKeyinManager(exec types.IExec) *KeyinManager {
@@ -38,11 +39,17 @@ func NewKeyinManager(exec types.IExec) *KeyinManager {
 // CloseManager is invoked when the exec is stopping
 func (mgr *KeyinManager) CloseManager() {
 	mgr.threadStop()
+	mgr.isInitialized = false
 }
 
 func (mgr *KeyinManager) InitializeManager() error {
 	mgr.threadStart()
+	mgr.isInitialized = true
 	return nil
+}
+
+func (mgr *KeyinManager) IsInitialized() bool {
+	return mgr.isInitialized
 }
 
 // ResetManager clears out any artifacts left over by a previous exec session,
@@ -50,6 +57,7 @@ func (mgr *KeyinManager) InitializeManager() error {
 func (mgr *KeyinManager) ResetManager() error {
 	mgr.threadStop()
 	mgr.threadStart()
+	mgr.isInitialized = true
 	return nil
 }
 
@@ -65,8 +73,8 @@ func (mgr *KeyinManager) PostKeyin(source types.ConsoleIdentifier, text string) 
 	mgr.postedKeyins = append(mgr.postedKeyins, ki)
 }
 
-func (mgr *KeyinManager) handleKeyin(source types.ConsoleIdentifier, text string) {
-	split := strings.SplitN(text, " ", 2)
+func (mgr *KeyinManager) scheduleKeyinHandler(ki *keyinInfo) {
+	split := strings.SplitN(ki.text, " ", 2)
 	subSplit := strings.SplitN(split[0], ",", 2)
 	command := strings.ToUpper(subSplit[0])
 	options := ""
@@ -78,27 +86,27 @@ func (mgr *KeyinManager) handleKeyin(source types.ConsoleIdentifier, text string
 		args = split[1]
 	}
 
-	var kh types.KeyinHandler
+	var handler types.KeyinHandler
 	switch command {
 	case "D":
-		kh = NewDKeyinHandler(mgr.exec, source, options, args)
+		handler = NewDKeyinHandler(mgr.exec, ki.source, options, args)
 	case "FS":
-		kh = NewFSKeyinHandler(mgr.exec, source, options, args)
+		handler = NewFSKeyinHandler(mgr.exec, ki.source, options, args)
 	}
 
-	if kh != nil {
-		if !kh.CheckSyntax() {
+	if handler != nil {
+		if !handler.CheckSyntax() {
 			mgr.exec.SendExecReadOnlyMessage(fmt.Sprintf("%v KEYIN HAS SYNTAX ERROR, INPUT IGNORED", command))
 			return
 		}
 
-		if !kh.IsAllowed() {
+		if !handler.IsAllowed() {
 			mgr.exec.SendExecReadOnlyMessage(fmt.Sprintf("%v KEYIN NOT ALLOWED", command))
 			return
 		}
 
-		mgr.keyinHandlers = append(mgr.keyinHandlers, kh)
-		kh.Invoke()
+		mgr.pendingHandlers = append(mgr.pendingHandlers, handler)
+		handler.Invoke()
 		return
 	}
 
@@ -112,9 +120,9 @@ func (mgr *KeyinManager) checkPosted() {
 	defer mgr.mutex.Unlock()
 
 	if len(mgr.postedKeyins) > 0 {
-		top := mgr.postedKeyins[0]
+		ki := mgr.postedKeyins[0]
 		mgr.postedKeyins = mgr.postedKeyins[1:]
-		mgr.handleKeyin(top.source, top.text)
+		mgr.scheduleKeyinHandler(ki)
 	}
 }
 
@@ -123,13 +131,13 @@ func (mgr *KeyinManager) prune() {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
-	for len(mgr.keyinHandlers) > 0 {
-		front := mgr.keyinHandlers[0]
-		if !front.IsDone() {
-			break
+	now := time.Now()
+	for phx, handler := range mgr.pendingHandlers {
+		if handler.IsDone() && now.Sub(handler.GetTimeFinished()).Seconds() > 60 {
+			mgr.pendingHandlers = append(mgr.pendingHandlers[:phx], mgr.pendingHandlers[phx+1:]...)
+		} else {
+			phx++
 		}
-
-		mgr.keyinHandlers = mgr.keyinHandlers[1:]
 	}
 }
 
@@ -172,7 +180,27 @@ func (mgr *KeyinManager) threadStop() {
 func (mgr *KeyinManager) Dump(dest io.Writer, indent string) {
 	_, _ = fmt.Fprintf(dest, "%vKeyinManager ----------------------------------------------------\n", indent)
 
-	_, _ = fmt.Fprintf(dest, "%v  threadStarted:  %v\n", indent, mgr.threadStarted)
-	_, _ = fmt.Fprintf(dest, "%v  threadStopped:  %v\n", indent, mgr.threadStopped)
+	_, _ = fmt.Fprintf(dest, "%v  initialized:     %v\n", indent, mgr.isInitialized)
+	_, _ = fmt.Fprintf(dest, "%v  threadStarted:   %v\n", indent, mgr.threadStarted)
+	_, _ = fmt.Fprintf(dest, "%v  threadStopped:   %v\n", indent, mgr.threadStopped)
 	_, _ = fmt.Fprintf(dest, "%v  terminateThread: %v\n", indent, mgr.terminateThread)
+
+	_, _ = fmt.Fprintf(dest, "%v  Recent or Pending Keyins:\n", indent)
+	for _, kh := range mgr.pendingHandlers {
+		var msg string
+		if kh.IsDone() {
+			msg = "DONE: "
+		} else {
+			msg = "PEND: "
+		}
+
+		msg += kh.GetCommand()
+		if len(kh.GetOptions()) > 0 {
+			msg += "," + kh.GetOptions()
+		}
+		if len(kh.GetArguments()) > 0 {
+			msg += " " + kh.GetArguments()
+		}
+		_, _ = fmt.Fprintf(dest, "%v    %v\n", indent, msg)
+	}
 }

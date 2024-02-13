@@ -62,6 +62,10 @@ func (ddi *DiskDeviceInfo) GetInitialFileName() *string {
 	return ddi.initialFileName
 }
 
+func (ddi *DiskDeviceInfo) GetNodeCategory() types.NodeCategory {
+	return types.NodeCategoryDevice
+}
+
 func (ddi *DiskDeviceInfo) GetNodeIdentifier() types.NodeIdentifier {
 	return types.NodeIdentifier(ddi.deviceIdentifier)
 }
@@ -96,16 +100,15 @@ func (ddi *DiskDeviceInfo) SetIsReady(flag bool) {
 
 func (ddi *DiskDeviceInfo) Dump(dest io.Writer, indent string) {
 	did := pkg.Word36(ddi.deviceIdentifier)
-	str := fmt.Sprintf("%v id:%v %v ready:%v\n",
+	str := fmt.Sprintf("%v id:0%v %v ready:%v",
 		ddi.deviceName, did.ToStringAsOctal(), GetNodeStatusString(ddi.nodeStatus, ddi.isAccessible), ddi.isReady)
 
 	str += " channels:"
 	for _, chInfo := range ddi.channelInfos {
-		chId := pkg.Word36(chInfo.channelIdentifier)
-		str += " " + chId.ToStringAsFieldata()
+		str += " " + chInfo.GetChannelName()
 	}
 
-	_, _ = fmt.Fprintf(dest, "%v%v", indent, str)
+	_, _ = fmt.Fprintf(dest, "%v%v\n", indent, str)
 
 	ddi.device.Dump(dest, indent+"  ")
 }
