@@ -19,12 +19,7 @@ type DiskDeviceInfo struct {
 	nodeStatus       types.NodeStatus
 	channelInfos     []*DiskChannelInfo
 	isAccessible     bool // can only be true if status is UP, RV, or SU and the device is assigned to at least one channel
-	isReady          bool
-	packName         string // only if device is ready, read by probeDisk
-	isPrepped        bool   // as above
-	isFixed          bool   // as above
-	ldatIndex        int
-	geometry         *types.DiskPackGeometry // as above
+	isReady          bool // cached version of device.IsReady() - when there is a mismatch, we need to do something
 }
 
 // NewDiskDeviceInfo creates a new struct
@@ -67,10 +62,6 @@ func (ddi *DiskDeviceInfo) GetInitialFileName() *string {
 	return ddi.initialFileName
 }
 
-func (ddi *DiskDeviceInfo) GetLDATIndex() int {
-	return ddi.ldatIndex
-}
-
 func (ddi *DiskDeviceInfo) GetNodeIdentifier() types.NodeIdentifier {
 	return types.NodeIdentifier(ddi.deviceIdentifier)
 }
@@ -91,31 +82,22 @@ func (ddi *DiskDeviceInfo) IsAccessible() bool {
 	return ddi.isAccessible
 }
 
-func (ddi *DiskDeviceInfo) IsFixed() bool {
-	return ddi.isFixed
+func (ddi *DiskDeviceInfo) IsReady() bool {
+	return ddi.isReady
 }
 
-func (ddi *DiskDeviceInfo) IsPrepped() bool {
-	return ddi.isPrepped
+func (ddi *DiskDeviceInfo) SetIsAccessible(flag bool) {
+	ddi.isAccessible = flag
 }
 
-func (ddi *DiskDeviceInfo) SetIsAccessible(isAccessible bool) {
-	ddi.isAccessible = isAccessible
+func (ddi *DiskDeviceInfo) SetIsReady(flag bool) {
+	ddi.isReady = flag
 }
 
 func (ddi *DiskDeviceInfo) Dump(dest io.Writer, indent string) {
 	did := pkg.Word36(ddi.deviceIdentifier)
-	str := fmt.Sprintf("%v id:%v %v\n",
-		ddi.deviceName, did.ToStringAsOctal(), GetNodeStatusString(ddi.nodeStatus, ddi.isAccessible))
-
-	if ddi.isPrepped {
-		str += "PREPPED"
-		if ddi.isFixed {
-			str += " FIXED"
-		} else {
-			str += " REM"
-		}
-	}
+	str := fmt.Sprintf("%v id:%v %v ready:%v\n",
+		ddi.deviceName, did.ToStringAsOctal(), GetNodeStatusString(ddi.nodeStatus, ddi.isAccessible), ddi.isReady)
 
 	str += " channels:"
 	for _, chInfo := range ddi.channelInfos {

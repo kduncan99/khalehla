@@ -54,7 +54,7 @@ func (mgr *ConsoleManager) CloseManager() {
 	mgr.threadStop()
 }
 
-func (mgr *ConsoleManager) InitializeManager() {
+func (mgr *ConsoleManager) InitializeManager() error {
 	mgr.consoles = make(map[types.ConsoleIdentifier]types.Console)
 	mgr.queuedReadOnly = make([]*types.ConsoleReadOnlyMessage, 0)
 	mgr.queuedReadReply = make(map[int]*readReplyTracker)
@@ -63,12 +63,15 @@ func (mgr *ConsoleManager) InitializeManager() {
 	mgr.primaryConsoleId = types.ConsoleIdentifier(pkg.NewFromStringToFieldata("SYSCON", 1)[0])
 	mgr.consoles[mgr.primaryConsoleId] = mgr.primaryConsole
 
+	// TODO Load net console configuration
+
 	mgr.threadStart()
+	return nil
 }
 
 // ResetManager clears out any artifacts left over by a previous exec session,
 // and prepares the console for normal operations
-func (mgr *ConsoleManager) ResetManager() {
+func (mgr *ConsoleManager) ResetManager() error {
 	mgr.threadStop()
 
 	mgr.mutex.Lock()
@@ -88,6 +91,7 @@ func (mgr *ConsoleManager) ResetManager() {
 	mgr.mutex.Unlock()
 
 	mgr.threadStart()
+	return nil
 }
 
 // SendReadOnlyMessage queues a RO message and returns immediately.
@@ -374,6 +378,8 @@ func (mgr *ConsoleManager) thread() {
 
 	retryCounter := 0
 	for !mgr.terminateThread {
+		// TODO check for any new net console connections... ?
+
 		result := mgr.checkForReadOnlyMessages()
 		result = result || mgr.checkForReadReplyMessages()
 		result = result || mgr.checkForSolicitedInput()

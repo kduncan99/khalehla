@@ -40,15 +40,17 @@ func (mgr *KeyinManager) CloseManager() {
 	mgr.threadStop()
 }
 
-func (mgr *KeyinManager) InitializeManager() {
+func (mgr *KeyinManager) InitializeManager() error {
 	mgr.threadStart()
+	return nil
 }
 
 // ResetManager clears out any artifacts left over by a previous exec session,
 // and prepares the console for normal operations
-func (mgr *KeyinManager) ResetManager() {
+func (mgr *KeyinManager) ResetManager() error {
 	mgr.threadStop()
 	mgr.threadStart()
+	return nil
 }
 
 // PostKeyin queues the given keyin info and returns immediately to avoid deadlocks

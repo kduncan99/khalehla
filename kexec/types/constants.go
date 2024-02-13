@@ -21,8 +21,10 @@ const (
 	IosInProgress
 	IosComplete
 	IosSystemError
+	IosInternalError // usually means the Exec fell over
 
-	IosDeviceNotAttached
+	IosDeviceDoesNotExist
+	IosDeviceIsNotAccessible
 	IosInvalidFunction
 	IosNilBuffer
 	IosInvalidBufferSize

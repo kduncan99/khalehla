@@ -2,7 +2,7 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package kexec
+package facilitiesMgr
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-type FooManager struct {
+type FacilitiesManager struct {
 	exec            types.IExec
 	mutex           sync.Mutex
 	terminateThread bool
@@ -20,31 +20,35 @@ type FooManager struct {
 	threadStopped   bool
 }
 
-func NewFooManager(exec types.IExec) *FooManager {
-	return &FooManager{
+func NewFacilitiesManager(exec types.IExec) *FacilitiesManager {
+	return &FacilitiesManager{
 		exec: exec,
 	}
 }
 
 // CloseManager is invoked when the exec is stopping
-func (mgr *FooManager) CloseManager() {
+func (mgr *FacilitiesManager) CloseManager() {
 	mgr.threadStop()
 }
 
-func (mgr *FooManager) InitializeManager() error {
+func (mgr *FacilitiesManager) InitializeManager() error {
 	mgr.threadStart()
 	return nil
 }
 
 // ResetManager clears out any artifacts left over by a previous exec session,
 // and prepares the console for normal operations
-func (mgr *FooManager) ResetManager() error {
+func (mgr *FacilitiesManager) ResetManager() error {
 	mgr.threadStop()
 	mgr.threadStart()
 	return nil
 }
 
-func (mgr *FooManager) thread() {
+func (mgr *FacilitiesManager) NotifyDeviceReady(deviceInfo types.DeviceInfo, isReady bool) {
+	// TODO
+}
+
+func (mgr *FacilitiesManager) thread() {
 	mgr.threadStarted = true
 
 	for !mgr.terminateThread {
@@ -55,7 +59,7 @@ func (mgr *FooManager) thread() {
 	mgr.threadStopped = true
 }
 
-func (mgr *FooManager) threadStart() {
+func (mgr *FacilitiesManager) threadStart() {
 	mgr.terminateThread = false
 	if !mgr.threadStarted {
 		go mgr.thread()
@@ -65,7 +69,7 @@ func (mgr *FooManager) threadStart() {
 	}
 }
 
-func (mgr *FooManager) threadStop() {
+func (mgr *FacilitiesManager) threadStop() {
 	if mgr.threadStarted {
 		mgr.terminateThread = true
 		for !mgr.threadStopped {
@@ -74,8 +78,8 @@ func (mgr *FooManager) threadStop() {
 	}
 }
 
-func (mgr *FooManager) Dump(dest io.Writer, indent string) {
-	_, _ = fmt.Fprintf(dest, "%vFooManager ----------------------------------------------------\n", indent)
+func (mgr *FacilitiesManager) Dump(dest io.Writer, indent string) {
+	_, _ = fmt.Fprintf(dest, "%vFacilitiesManager ----------------------------------------------------\n", indent)
 
 	// TODO
 

@@ -16,10 +16,9 @@ type TapeDeviceInfo struct {
 	deviceIdentifier types.DeviceIdentifier
 	device           *TapeDevice
 	nodeStatus       types.NodeStatus
-	isAccessible     bool // can only be true if status is UP, RV, or SU and the device is assigned to at least one channel
-	isMounted        bool
-	reelName         string // only if isMounted
 	channelInfos     []*TapeChannelInfo
+	isAccessible     bool // can only be true if status is UP, RV, or SU and the device is assigned to at least one channel
+	isReady          bool // cached version of device.IsReady() - when there is a mismatch, we need to do something
 }
 
 // NewTapeDeviceInfo creates a new struct
@@ -76,21 +75,22 @@ func (tdi *TapeDeviceInfo) IsAccessible() bool {
 	return tdi.isAccessible
 }
 
-func (tdi *TapeDeviceInfo) IsMounted() bool {
-	return tdi.isMounted
+func (tdi *TapeDeviceInfo) IsReady() bool {
+	return tdi.isReady
 }
 
-func (tdi *TapeDeviceInfo) SetIsAccessible(isAccessible bool) {
-	tdi.isAccessible = isAccessible
+func (tdi *TapeDeviceInfo) SetIsAccessible(flag bool) {
+	tdi.isAccessible = flag
+}
+
+func (tdi *TapeDeviceInfo) SetIsReady(flag bool) {
+	tdi.isReady = flag
 }
 
 func (tdi *TapeDeviceInfo) Dump(dest io.Writer, indent string) {
 	did := pkg.Word36(tdi.deviceIdentifier)
-	str := fmt.Sprintf("%v id:%v %v\n",
-		tdi.deviceName, did.ToStringAsOctal(), GetNodeStatusString(tdi.nodeStatus, tdi.isAccessible))
-	if tdi.isMounted {
-		str += " volume:" + tdi.reelName
-	}
+	str := fmt.Sprintf("%v id:%v %v ready:%v\n",
+		tdi.deviceName, did.ToStringAsOctal(), GetNodeStatusString(tdi.nodeStatus, tdi.isAccessible), tdi.isReady)
 	str += " channels:"
 	for _, chInfo := range tdi.channelInfos {
 		chId := pkg.Word36(chInfo.channelIdentifier)

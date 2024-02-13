@@ -70,7 +70,15 @@ type DeviceInfo interface {
 	GetNodeStatus() NodeStatus
 	GetNodeType() NodeType
 	IsAccessible() bool
+	IsReady() bool
 	SetIsAccessible(bool)
+	SetIsReady(flag bool)
+}
+
+// DeviceReadyListener
+// any entity which needs to be notified of devices going ready or not ready implements this
+type DeviceReadyListener interface {
+	NotifyDeviceReady(DeviceInfo, bool)
 }
 
 // IExec is the interface for the Exec, placed here to avoid package import cycles
@@ -78,12 +86,14 @@ type IExec interface {
 	Close()
 	Dump(destination io.Writer)
 	GetConsoleManager() Manager
+	GetFacilitiesManager() Manager
 	GetKeyinManager() Manager
 	GetNodeManager() Manager
 	GetStopFlag() bool
 	HandleKeyIn(source ConsoleIdentifier, text string)
 	SendExecReadOnlyMessage(message string)
 	SendExecReadReplyMessage(message string, maxReplyChars int) (string, error)
+	Stop(code StopCode)
 }
 
 // IoPacket contains all the information necessary for a Channel to route an IO operation,
@@ -110,8 +120,8 @@ type KeyinHandler interface {
 type Manager interface {
 	CloseManager()
 	Dump(destination io.Writer, indent string)
-	InitializeManager()
-	ResetManager()
+	InitializeManager() error
+	ResetManager() error
 }
 
 // NodeInfo contains all the exec-managed information regarding a particular node

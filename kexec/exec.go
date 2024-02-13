@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"khalehla/kexec/consoleMgr"
+	"khalehla/kexec/facilitiesMgr"
 	"khalehla/kexec/keyinMgr"
 	"khalehla/kexec/nodeMgr"
 	"khalehla/kexec/types"
@@ -19,8 +20,9 @@ const Version = "v1.0.0"
 
 type Exec struct {
 	consoleMgr *consoleMgr.ConsoleManager
-	nodeMgr    *nodeMgr.NodeManager
+	facMgr     *facilitiesMgr.FacilitiesManager
 	keyinMgr   *keyinMgr.KeyinManager
+	nodeMgr    *nodeMgr.NodeManager
 
 	runControlTable map[pkg.Word36]*types.RunControlEntry
 
@@ -48,6 +50,10 @@ func (e *Exec) GetConsoleManager() types.Manager {
 	return e.consoleMgr
 }
 
+func (e *Exec) GetFacilitiesManager() types.Manager {
+	return e.facMgr
+}
+
 func (e *Exec) GetKeyinManager() types.Manager {
 	return e.keyinMgr
 }
@@ -65,27 +71,39 @@ func (e *Exec) HandleKeyIn(source types.ConsoleIdentifier, text string) {
 }
 
 func (e *Exec) InitialBoot(initMassStorage bool) error {
-	e.consoleMgr.InitializeManager()
-	e.nodeMgr.InitializeManager()
-	e.keyinMgr.InitializeManager()
+	// we need the console before anything else, and then the keyin manager right after that
+	err := e.consoleMgr.InitializeManager()
+	if err != nil {
+		return err
+	}
+
+	err = e.keyinMgr.InitializeManager()
+	if err != nil {
+		return err
+	}
 
 	e.SendExecReadOnlyMessage("KEXEC Startup - Version " + Version)
+
+	// now let's have the disks and tapes
 	e.SendExecReadOnlyMessage("Building Configuration...")
-	err := e.nodeMgr.BuildConfiguration()
+	err = e.nodeMgr.InitializeManager()
 	if err != nil {
-		e.SendExecReadOnlyMessage("Error:" + err.Error())
-		e.Stop(1) // TODO put a real stop code here - error in configuration
-		return fmt.Errorf("boot failed")
+		return err
 	}
 
+	// Let the operator adjust the configuration
 	reply := ""
-	err = nil
 	for strings.ToUpper(reply) != "DONE" && err == nil {
 		reply, err = e.SendExecReadReplyMessage("Modify Config then answer DONE", 4)
+		if err != nil {
+			return err
+		}
 	}
 
+	// spin up facilities
+	err = e.facMgr.InitializeManager()
 	if err != nil {
-		// TODO DIE HORRIBLY
+		return err
 	}
 
 	e.allowRestart = false // TODO temporary
@@ -143,8 +161,9 @@ func (e *Exec) Dump(dest io.Writer) {
 	_, _ = fmt.Fprintf(dest, "  Allow Restart: %v\n", e.allowRestart)
 
 	e.consoleMgr.Dump(dest, "")
-	e.nodeMgr.Dump(dest, "")
 	e.keyinMgr.Dump(dest, "")
+	e.nodeMgr.Dump(dest, "")
+	e.facMgr.Dump(dest, "")
 
 	// TODO run control table, etc
 }
