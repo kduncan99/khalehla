@@ -87,6 +87,10 @@ func (e *Exec) GetPhase() types.ExecPhase {
 	return e.phase
 }
 
+func (e *Exec) GetRunControlEntry() *types.RunControlEntry {
+	return e.runControlEntry
+}
+
 func (e *Exec) GetStopCode() types.StopCode {
 	return e.stopCode
 }

@@ -182,7 +182,7 @@ func (mgr *NodeManager) GetDeviceInfos() []types.DeviceInfo {
 	return result
 }
 
-func (mgr *NodeManager) GetNodeInfo(nodeName string) (types.NodeInfo, error) {
+func (mgr *NodeManager) GetNodeInfoByName(nodeName string) (types.NodeInfo, error) {
 	for _, chInfo := range mgr.channelInfos {
 		if nodeName == chInfo.GetNodeName() {
 			return chInfo, nil
@@ -191,6 +191,22 @@ func (mgr *NodeManager) GetNodeInfo(nodeName string) (types.NodeInfo, error) {
 
 	for _, devInfo := range mgr.deviceInfos {
 		if nodeName == devInfo.GetNodeName() {
+			return devInfo, nil
+		}
+	}
+
+	return nil, fmt.Errorf("not found")
+}
+
+func (mgr *NodeManager) GetNodeInfoByIdentifier(nodeId types.NodeIdentifier) (types.NodeInfo, error) {
+	for _, chInfo := range mgr.channelInfos {
+		if nodeId == chInfo.GetNodeIdentifier() {
+			return chInfo, nil
+		}
+	}
+
+	for _, devInfo := range mgr.deviceInfos {
+		if nodeId == devInfo.GetNodeIdentifier() {
 			return devInfo, nil
 		}
 	}

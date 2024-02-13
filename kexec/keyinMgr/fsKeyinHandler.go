@@ -136,7 +136,7 @@ func (kh *FSKeyinHandler) getStatusStringForNode(nodeInfo types.NodeInfo) string
 	if nodeInfo.GetNodeCategory() == types.NodeCategoryDevice {
 		devInfo := nodeInfo.(types.DeviceInfo)
 		if fm.IsInitialized() {
-			str += " " + fm.GetDeviceStatusDetail(devInfo)
+			str += " " + fm.GetDeviceStatusDetail(devInfo.GetDeviceIdentifier())
 		}
 	}
 	return str
@@ -146,7 +146,7 @@ func (kh *FSKeyinHandler) handleAllForChannel() {
 	nm := kh.exec.GetNodeManager().(*nodeMgr.NodeManager)
 	statStrings := make([]string, 0)
 	chName := strings.ToUpper(kh.arguments)
-	nodeInfo, err := nm.GetNodeInfo(chName)
+	nodeInfo, err := nm.GetNodeInfoByName(chName)
 	if err != nil {
 		msg := fmt.Sprintf("FS KEYIN - %v DOES NOT EXIST, INPUT IGNORED", chName)
 		kh.exec.SendExecReadOnlyMessage(msg)
@@ -192,7 +192,7 @@ func (kh *FSKeyinHandler) handleComponentList() {
 	names := strings.Split(kh.arguments, ",")
 	statStrings := make([]string, len(names))
 	for nx, name := range names {
-		ni, err := nm.GetNodeInfo(strings.ToUpper(name))
+		ni, err := nm.GetNodeInfoByName(strings.ToUpper(name))
 		if err != nil {
 			msg := fmt.Sprintf("FS KEYIN - %v DOES NOT EXIST, INPUT IGNORED", name)
 			kh.exec.SendExecReadOnlyMessage(msg)

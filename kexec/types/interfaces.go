@@ -101,6 +101,7 @@ type IExec interface {
 	GetKeyinManager() Manager
 	GetNodeManager() Manager
 	GetPhase() ExecPhase
+	GetRunControlEntry() *RunControlEntry
 	GetStopCode() StopCode
 	GetStopFlag() bool
 	HandleKeyIn(source ConsoleIdentifier, text string)
