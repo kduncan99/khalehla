@@ -28,13 +28,13 @@ import (
 // +000     "VOL1" - ASCII
 // +001     pack-id - ASCII LJSF
 // +002,H1  pack-id continued - ASCII LJSF
-// +003     sector address of first directory track
+// +003     device-relative address of first directory track
 // +004,H1  records per track (1792 / prep_factor)
 // +004,H2  words per record (prep_factor)
 // +005,H2  reserved size in tracks (for DRS) - we don't do DRS
 // +011,H1  Length of S0 + S1 + HMBT + pad to the next physical record boundary in words
 // +011,H2  Master bit table length (HMBT, SMBT) in words
-// +014,S1  020
+// +014,S1  Prepped-by: 010:Workstation Utility 020:TPREP, 040:DPREP
 // +014,S2  Vol1 Version (we use 1)
 // +014,H2  Heads per cylinder
 // +016     Disk capacity in tracks, not including label or initial directory allocation
@@ -54,18 +54,20 @@ var bytesPerBlockMap = map[types.PrepFactor]uint{
 }
 
 type DiskDevice struct {
-	fileName     *string
-	file         *os.File
-	writeProtect bool
-	packName     string
-	geometry     *types.DiskPackGeometry
-	mutex        sync.Mutex
-	buffer       []byte
+	fileName         *string
+	file             *os.File
+	isReady          bool
+	isWriteProtected bool
+	packName         string
+	geometry         *types.DiskPackGeometry
+	mutex            sync.Mutex
+	buffer           []byte
 }
 
 func NewDiskDevice(initialFileName *string) *DiskDevice {
 	return &DiskDevice{
-		fileName: initialFileName,
+		fileName:         initialFileName,
+		isWriteProtected: true,
 	}
 }
 
@@ -83,6 +85,22 @@ func (disk *DiskDevice) IsMounted() bool {
 
 func (disk *DiskDevice) IsPrepped() bool {
 	return disk.geometry != nil
+}
+
+func (disk *DiskDevice) IsReady() bool {
+	return disk.isReady
+}
+
+func (disk *DiskDevice) IsWriteProtected() bool {
+	return disk.isWriteProtected
+}
+
+func (disk *DiskDevice) SetIsReady(flag bool) {
+	disk.isReady = flag
+}
+
+func (disk *DiskDevice) SetIsWriteProtected(flag bool) {
+	disk.isWriteProtected = flag
 }
 
 func (disk *DiskDevice) StartIo(pkt types.IoPacket) {
@@ -129,7 +147,7 @@ func (disk *DiskDevice) doMount(pkt *DiskIoPacket) {
 
 	// At this point, the pack is now mounted. It may not be prepped, but that is okay.
 	disk.file = f
-	disk.writeProtect = pkt.writeProtected
+	disk.isWriteProtected = pkt.writeProtected
 	pkt.SetIoStatus(types.IosComplete)
 
 	err = disk.probeGeometry()
@@ -219,7 +237,7 @@ func (disk *DiskDevice) doPrep(pkt *DiskIoPacket) {
 	label[5].SetW(0) // no DRS tracks
 	label[011].SetH1(paddedMBTWordCount)
 	label[011].SetH2(mbtWordCount)
-	label[014].SetS1(010) // Pretend we are DPREP
+	label[014].SetS1(010) // Pretend we are a workstation utility
 	label[014].SetS2(1)   // VOL1 version
 	label[014].SetH2(10)  // heads per cylinder - make up something
 	label[016].SetW(availableTracks)
@@ -252,7 +270,6 @@ func (disk *DiskDevice) doPrep(pkt *DiskIoPacket) {
 		s1[5].SetS1(040)
 	}
 	s1[5].SetH2(mbtWordCount)
-	s1[7].SetW(0) // Normally we'd set this to timestamp, but it is TDATE$, and we don't want to do that
 	s1[010].SetT1(blocksPerTrack)
 	s1[010].SetS3(1) // Sector 1 version
 	s1[010].SetT3(recordLength)
@@ -452,7 +469,7 @@ func (disk *DiskDevice) doWrite(pkt *DiskIoPacket) {
 		return
 	}
 
-	if disk.writeProtect {
+	if disk.isWriteProtected {
 		pkt.SetIoStatus(types.IosWriteProtected)
 		return
 	}
@@ -515,12 +532,13 @@ func (disk *DiskDevice) probeGeometry() error {
 
 	disk.packName = packName
 	disk.geometry = &types.DiskPackGeometry{
-		PrepFactor:      prepFactor,
-		BlockCount:      blockCount,
-		BlocksPerTrack:  blocksPerTrack,
-		TrackCount:      trackCount,
-		SectorsPerBlock: sectorsPerBlock,
-		BytesPerBlock:   bytesPerBlock,
+		PrepFactor:           prepFactor,
+		BlockCount:           blockCount,
+		BlocksPerTrack:       blocksPerTrack,
+		TrackCount:           trackCount,
+		SectorsPerBlock:      sectorsPerBlock,
+		BytesPerBlock:        bytesPerBlock,
+		FirstDirTrackBlockId: 1792 / blocksPerTrack,
 	}
 	disk.buffer = make([]byte, bytesPerBlockMap[prepFactor])
 

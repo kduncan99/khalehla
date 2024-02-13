@@ -44,12 +44,13 @@ type NodeType uint
 
 // DiskPackGeometry describes various useful attributes of a particular prepped disk pack
 type DiskPackGeometry struct {
-	PrepFactor      PrepFactor // number of words contained in a physical record, packed
-	TrackCount      TrackCount // number of tracks on the pack
-	BlockCount      BlockCount // number of blocks on the pack (may not be track-aligned)
-	SectorsPerBlock uint       // number of software sectors (28 words per) in a physical block
-	BlocksPerTrack  uint       // physical blocks required to contain one software track (1792 words)
-	BytesPerBlock   uint       // bytes required for a block containing packed word36 structs, rounded to power of 2
+	PrepFactor           PrepFactor // number of words contained in a physical record, packed
+	TrackCount           TrackCount // number of tracks on the pack
+	BlockCount           BlockCount // number of blocks on the pack (may not be track-aligned)
+	SectorsPerBlock      uint       // number of software sectors (28 words per) in a physical block
+	BlocksPerTrack       uint       // physical blocks required to contain one software track (1792 words)
+	BytesPerBlock        uint       // bytes required for a block containing packed word36 structs, rounded to power of 2
+	FirstDirTrackBlockId uint       // block ID of the block containing the first sector of the first directory track
 }
 
 type ConsoleReadOnlyMessage struct {

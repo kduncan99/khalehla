@@ -14,14 +14,17 @@ import (
 // This is a very simple pseudo tape device
 
 type TapeDevice struct {
-	fileName     *string
-	file         *os.File
-	writeProtect bool
-	mutex        sync.Mutex
+	fileName         *string
+	file             *os.File
+	isReady          bool
+	isWriteProtected bool
+	mutex            sync.Mutex
 }
 
 func NewTapeDevice() *TapeDevice {
-	return &TapeDevice{}
+	return &TapeDevice{
+		isWriteProtected: true,
+	}
 }
 
 func (tape *TapeDevice) GetNodeType() types.NodeType {
@@ -30,6 +33,22 @@ func (tape *TapeDevice) GetNodeType() types.NodeType {
 
 func (tape *TapeDevice) IsMounted() bool {
 	return tape.file != nil
+}
+
+func (tape *TapeDevice) IsReady() bool {
+	return tape.isReady
+}
+
+func (tape *TapeDevice) IsWriteProtected() bool {
+	return tape.isWriteProtected
+}
+
+func (tape *TapeDevice) SetIsReady(flag bool) {
+	tape.isReady = flag
+}
+
+func (tape *TapeDevice) SetIsWriteProtected(flag bool) {
+	tape.isWriteProtected = flag
 }
 
 func IsValidReelName(name string) bool {

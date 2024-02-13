@@ -53,6 +53,7 @@ type Console interface {
 type Device interface {
 	Dump(destination io.Writer, indent string)
 	GetNodeType() NodeType
+	IsReady() bool
 	StartIo(ioPacket IoPacket)
 }
 
@@ -69,7 +70,6 @@ type DeviceInfo interface {
 	GetNodeStatus() NodeStatus
 	GetNodeType() NodeType
 	IsAccessible() bool
-	IsMounted() bool
 	SetIsAccessible(bool)
 }
 

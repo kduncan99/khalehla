@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"khalehla/kexec/types"
+	"khalehla/pkg"
 	"log"
 )
 
@@ -94,10 +95,10 @@ func (mgr *NodeManager) BuildConfiguration() error {
 			dchInfo := cInfo.(*DiskChannelInfo)
 			for _, dInfo := range dchInfo.deviceInfos {
 				did := dInfo.GetDeviceIdentifier()
-				log.Printf("DevMgr:assigning %v to %v", dInfo.GetDeviceName(), cInfo.GetNodeName())
+				log.Printf("NodeMgr:assigning %v to %v", dInfo.GetDeviceName(), cInfo.GetNodeName())
 				err := mgr.channelInfos[cid].GetChannel().AssignDevice(did, mgr.deviceInfos[did].GetDevice())
 				if err != nil {
-					log.Printf("DevMgr:%v", err)
+					log.Printf("NodeMgr:%v", err)
 					errors = true
 				} else {
 					dInfo.SetIsAccessible(true)
@@ -107,10 +108,10 @@ func (mgr *NodeManager) BuildConfiguration() error {
 			tchInfo := cInfo.(*TapeChannelInfo)
 			for _, dInfo := range tchInfo.deviceInfos {
 				did := dInfo.GetDeviceIdentifier()
-				log.Printf("DevMgr:assigning %v to %v", dInfo.GetDeviceName(), cInfo.GetNodeName())
+				log.Printf("NodeMgr:assigning %v to %v", dInfo.GetDeviceName(), cInfo.GetNodeName())
 				err := mgr.channelInfos[cid].GetChannel().AssignDevice(did, mgr.deviceInfos[did].GetDevice())
 				if err != nil {
-					log.Printf("DevMgr:%v", err)
+					log.Printf("NodeMgr:%v", err)
 					errors = true
 				} else {
 					dInfo.SetIsAccessible(true)
@@ -121,15 +122,19 @@ func (mgr *NodeManager) BuildConfiguration() error {
 
 	for _, dInfo := range mgr.deviceInfos {
 		if !dInfo.IsAccessible() {
-			log.Printf("DevMgr:%v is not accessible", dInfo.GetNodeName())
+			log.Printf("NodeMgr:%v is not accessible", dInfo.GetNodeName())
 		}
 	}
 
 	if errors {
-		return fmt.Errorf("deviceManager encountered 1 or more errors during initialization")
+		return fmt.Errorf("errors during initialization")
 	}
 
 	return nil
+}
+
+func (mgr *NodeManager) ForceUnitAttention() {
+	// TODO
 }
 
 func (mgr *NodeManager) GetChannelInfos() []types.ChannelInfo {
@@ -158,7 +163,7 @@ func (mgr *NodeManager) getNodeStatusStringForDevice(devInfo types.DeviceInfo) s
 	switch devInfo.GetNodeType() {
 	case types.NodeTypeDisk:
 		diskInfo := devInfo.(*DiskDeviceInfo)
-		if diskInfo.IsMounted() {
+		if diskInfo.isReady {
 			// TODO
 			//	DISK0 UP [NA] [* [F|R] PACKID packName
 			//	So we need a lot of additional information in devInfo
@@ -216,7 +221,7 @@ func (mgr *NodeManager) RecoverDevices() error {
 	// 	for addr := range mgr.channelDeviceMap[cInfo] {
 	// 		dInfo := mgr.channelDeviceMap[cInfo][addr]
 	// 		if dInfo.GetDeviceStatus() == NodeStatusUp {
-	// 			log.Printf("DevMgr:resetting device %v", dInfo.GetNodeName())
+	// 			log.Printf("NodeMgr:resetting device %v", dInfo.GetNodeName())
 	//
 	// 			switch cInfo.GetChannelType() {
 	// 			case channelInfos.ChannelTypeDisk:
@@ -225,20 +230,20 @@ func (mgr *NodeManager) RecoverDevices() error {
 	// 				diskInfo.GetDevice().StartIo(pkt)
 	// 				if pkt.GetIoStatus() != deviceInfos.IosComplete {
 	// 					// TODO console messages?
-	// 					log.Printf("DevMgr:IO error status %v", pkt.GetIoStatus())
+	// 					log.Printf("NodeMgr:IO error status %v", pkt.GetIoStatus())
 	// 					diskInfo.nodeStatus = NodeStatusDown
-	// 					log.Printf("DevMgr:Marking Device %v DN", diskInfo.GetNodeName())
+	// 					log.Printf("NodeMgr:Marking Device %v DN", diskInfo.GetNodeName())
 	// 				} else {
 	// 					// should we unmount?
 	// 					if diskInfo.GetInitialFileName() == nil && diskInfo.isMounted {
-	// 						log.Printf("DevMgr:dismounting media from device %v", diskInfo.GetNodeName())
+	// 						log.Printf("NodeMgr:dismounting media from device %v", diskInfo.GetNodeName())
 	// 						pkt = deviceInfos.NewDiskIoPacketUnmount()
 	// 						diskInfo.GetDevice().StartIo(pkt)
 	// 						if pkt.GetIoStatus() != deviceInfos.IosComplete {
 	// 							// TODO console messages?
-	// 							log.Printf("DevMgr:IO error status %v", pkt.GetIoStatus())
+	// 							log.Printf("NodeMgr:IO error status %v", pkt.GetIoStatus())
 	// 							diskInfo.nodeStatus = NodeStatusDown
-	// 							log.Printf("DevMgr:Marking Device %v DN", diskInfo.GetNodeName())
+	// 							log.Printf("NodeMgr:Marking Device %v DN", diskInfo.GetNodeName())
 	// 						}
 	//
 	// 						diskInfo.isMounted = false
@@ -256,20 +261,20 @@ func (mgr *NodeManager) RecoverDevices() error {
 	// 				tapeInfo.GetDevice().StartIo(pkt)
 	// 				if pkt.GetIoStatus() != deviceInfos.IosComplete {
 	// 					// TODO console messages?
-	// 					log.Printf("DevMgr:IO error status %v", pkt.GetIoStatus())
+	// 					log.Printf("NodeMgr:IO error status %v", pkt.GetIoStatus())
 	// 					tapeInfo.nodeStatus = NodeStatusDown
-	// 					log.Printf("DevMgr:Marking Device %v DN", tapeInfo.GetNodeName())
+	// 					log.Printf("NodeMgr:Marking Device %v DN", tapeInfo.GetNodeName())
 	// 				} else {
 	// 					// should we unmount?
 	// 					if tapeInfo.isMounted {
-	// 						log.Printf("DevMgr:dismounting media from device %v", tapeInfo.GetNodeName())
+	// 						log.Printf("NodeMgr:dismounting media from device %v", tapeInfo.GetNodeName())
 	// 						pkt = deviceInfos.NewTapeIoPacketUnmount()
 	// 						tapeInfo.GetDevice().StartIo(pkt)
 	// 						if pkt.GetIoStatus() != deviceInfos.IosComplete {
 	// 							// TODO console messages?
-	// 							log.Printf("DevMgr:IO error status %v", pkt.GetIoStatus())
+	// 							log.Printf("NodeMgr:IO error status %v", pkt.GetIoStatus())
 	// 							tapeInfo.nodeStatus = NodeStatusDown
-	// 							log.Printf("DevMgr:Marking Device %v DN", tapeInfo.GetNodeName())
+	// 							log.Printf("NodeMgr:Marking Device %v DN", tapeInfo.GetNodeName())
 	// 						}
 	//
 	// 						tapeInfo.isMounted = false
@@ -290,14 +295,113 @@ func (mgr *NodeManager) RecoverDevices() error {
 	}
 
 	if errors {
-		return fmt.Errorf("deviceManager encountered 1 or more errors during initialization")
+		return fmt.Errorf("errors during initialization")
 	}
 
 	return nil
 }
 
-func (mgr *NodeManager) probeMountedDisks() error {
+// probeDiskDevice reads VOL1 from the disk device, updating the various pack-specific
+// elements of the device info struct as appropriate.
+// If we return an error, it means the label could not be read or was invalid,
+// and some higher-level code should mark this device DN.
+func (mgr *NodeManager) probeDiskDevice(info *DiskDeviceInfo) error {
+	// read label and s1
+	// For uninitialized packs, s1:05,H1 0 means removable, 0400000 means fixed
+	// For initialized packs, s1:05,H1 for fixed packs, contains the (non-zero) LDAT
+	info.isReady = false
+	info.packName = ""
+	info.isPrepped = false
+	info.isFixed = false
+	info.geometry = nil
+
+	if !info.device.isReady {
+		log.Printf("NodeMgr:Cannot probe %v device not ready", info.GetDeviceName())
+		return fmt.Errorf("not ready")
+	}
+
+	if !info.isAccessible {
+		log.Printf("NodeMgr:Cannot probe %v device not accessible", info.GetDeviceName())
+		return fmt.Errorf("not accessible")
+	}
+
+	// read label
+	var label = make([]pkg.Word36, 28)
+	chInfo, _ := mgr.selectChannelForDevice(info)
+	pkt := NewDiskIoPacketReadLabel(info.deviceIdentifier, label)
+	chInfo.GetChannel().StartIo(pkt)
+	if pkt.ioStatus != types.IosComplete {
+		log.Printf("NodeMgr:Failed to probe %v IO status = %v", info.GetDeviceName(), pkt.ioStatus)
+		return fmt.Errorf("io error")
+	}
+
+	if label[0].ToStringAsAscii() != "VOL1" {
+		log.Printf("NodeMgr:No VOL1 label on device %v", info.GetDeviceName())
+		return fmt.Errorf("no VOL1")
+	}
+
+	// read block containing S1, then set s1 variable to refer to the slice of the resulting block
+	// which actually represents S1.
+	geometry := info.device.GetGeometry()
+	dirBlock := make([]pkg.Word36, geometry.PrepFactor)
+	dirBlockId := types.BlockId(geometry.FirstDirTrackBlockId)
+	if geometry.PrepFactor == 28 {
+		dirBlockId++
+	}
+
+	pkt = NewDiskIoPacketRead(info.deviceIdentifier, dirBlockId, dirBlock)
+	chInfo.GetChannel().StartIo(pkt)
+	if pkt.ioStatus != types.IosComplete {
+		log.Printf("NodeMgr:Failed to probe %v IO status = %v", info.GetDeviceName(), pkt.ioStatus)
+		return fmt.Errorf("io error")
+	}
+
+	var s1 []pkg.Word36
+	if geometry.PrepFactor == 28 {
+		s1 = dirBlock
+	} else {
+		s1 = dirBlock[28:56]
+	}
+
+	ldatIndex := int(s1[5].GetH1())
+	if ldatIndex == 0 {
+		info.isFixed = false
+		info.ldatIndex = ldatIndex
+	} else if ldatIndex == 0_400000 {
+		info.isFixed = true
+		info.ldatIndex = 0
+	} else {
+		info.isFixed = true
+		info.ldatIndex = ldatIndex
+	}
+
+	info.packName = label[1].ToStringAsAscii() + label[2].ToStringAsAscii()
+	info.packName = info.packName[0:6]
+	info.isPrepped = true
+	info.geometry = info.device.GetGeometry()
+	info.isReady = true
+
 	return nil
+}
+
+func (mgr *NodeManager) probeTapeDevice(info *TapeDeviceInfo) {
+	// TODO
+}
+
+func (mgr *NodeManager) probeMountedDisks() error {
+	// TODO
+	return nil
+}
+
+func (mgr *NodeManager) selectChannelForDevice(devInfo types.DeviceInfo) (types.ChannelInfo, error) {
+	// TODO implement round-robin strategy... will require some intelligence
+	//	for now, just pick the first in the list
+	cInfos := devInfo.GetChannelInfos()
+	if len(cInfos) == 0 {
+		return nil, fmt.Errorf("not accessible")
+	} else {
+		return cInfos[0], nil
+	}
 }
 
 func GetNodeStatusString(status types.NodeStatus, isAccessible bool) string {

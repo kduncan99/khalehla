@@ -17,12 +17,14 @@ type DiskDeviceInfo struct {
 	initialFileName  *string
 	device           *DiskDevice
 	nodeStatus       types.NodeStatus
-	isAccessible     bool // can only be true if status is UP, RV, or SU and the device is assigned to at least one channel
-	isMounted        bool
-	packName         string // only if isMounted
-	isPrepped        bool
-	isFixed          bool
 	channelInfos     []*DiskChannelInfo
+	isAccessible     bool // can only be true if status is UP, RV, or SU and the device is assigned to at least one channel
+	isReady          bool
+	packName         string // only if device is ready, read by probeDisk
+	isPrepped        bool   // as above
+	isFixed          bool   // as above
+	ldatIndex        int
+	geometry         *types.DiskPackGeometry // as above
 }
 
 // NewDiskDeviceInfo creates a new struct
@@ -32,11 +34,7 @@ func NewDiskDeviceInfo(deviceName string, initialFileName *string) *DiskDeviceIn
 		deviceName:       deviceName,
 		deviceIdentifier: types.DeviceIdentifier(pkg.NewFromStringToFieldata(deviceName, 1)[0]),
 		nodeStatus:       types.NodeStatusUp,
-		isAccessible:     false,
 		initialFileName:  initialFileName,
-		isMounted:        false,
-		isPrepped:        false,
-		isFixed:          false,
 		channelInfos:     make([]*DiskChannelInfo, 0),
 	}
 }
@@ -69,6 +67,10 @@ func (ddi *DiskDeviceInfo) GetInitialFileName() *string {
 	return ddi.initialFileName
 }
 
+func (ddi *DiskDeviceInfo) GetLDATIndex() int {
+	return ddi.ldatIndex
+}
+
 func (ddi *DiskDeviceInfo) GetNodeIdentifier() types.NodeIdentifier {
 	return types.NodeIdentifier(ddi.deviceIdentifier)
 }
@@ -93,10 +95,6 @@ func (ddi *DiskDeviceInfo) IsFixed() bool {
 	return ddi.isFixed
 }
 
-func (ddi *DiskDeviceInfo) IsMounted() bool {
-	return ddi.isMounted
-}
-
 func (ddi *DiskDeviceInfo) IsPrepped() bool {
 	return ddi.isPrepped
 }
@@ -109,9 +107,6 @@ func (ddi *DiskDeviceInfo) Dump(dest io.Writer, indent string) {
 	did := pkg.Word36(ddi.deviceIdentifier)
 	str := fmt.Sprintf("%v id:%v %v\n",
 		ddi.deviceName, did.ToStringAsOctal(), GetNodeStatusString(ddi.nodeStatus, ddi.isAccessible))
-	if ddi.isMounted {
-		str += " pack:" + ddi.packName
-	}
 
 	if ddi.isPrepped {
 		str += "PREPPED"
