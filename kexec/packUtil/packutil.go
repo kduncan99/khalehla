@@ -58,24 +58,24 @@ func DoPrep(args []string) error {
 
 	dc := nodeMgr.NewDiskChannel()
 	dd := nodeMgr.NewDiskDevice(nil)
-	ni := types.NodeIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
-	_ = dc.AssignDevice(ni, dd)
+	devId := types.DeviceIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
+	_ = dc.AssignDevice(devId, dd)
 
-	pkt := nodeMgr.NewDiskIoPacketMount(ni, fileName, false)
+	pkt := nodeMgr.NewDiskIoPacketMount(devId, fileName, false)
 	dc.StartIo(pkt)
 	if pkt.GetIoStatus() != types.IosComplete {
 		return fmt.Errorf("status %v returned while mounting pack file %v", pkt.GetIoStatus(), fileName)
 	}
 
-	pkt = nodeMgr.NewDiskIoPacketPrep(ni, packName, types.PrepFactor(prepFactor), types.TrackCount(trackCount), removable)
+	pkt = nodeMgr.NewDiskIoPacketPrep(devId, packName, types.PrepFactor(prepFactor), types.TrackCount(trackCount), removable)
 	dc.StartIo(pkt)
 	if pkt.GetIoStatus() != types.IosComplete {
 		return fmt.Errorf("status %v returned while prepping pack file %v", pkt.GetIoStatus(), fileName)
 	}
 
-	showLabelRecord(dc, ni, true)
+	showLabelRecord(dc, devId, true)
 
-	pkt = nodeMgr.NewDiskIoPacketUnmount(ni)
+	pkt = nodeMgr.NewDiskIoPacketUnmount(devId)
 	dc.StartIo(pkt)
 
 	return nil
@@ -97,26 +97,26 @@ func DoShow(args []string) error {
 
 	dc := nodeMgr.NewDiskChannel()
 	dd := nodeMgr.NewDiskDevice(nil)
-	ni := types.NodeIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
-	_ = dc.AssignDevice(ni, dd)
+	devId := types.DeviceIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
+	_ = dc.AssignDevice(devId, dd)
 
-	pkt := nodeMgr.NewDiskIoPacketMount(ni, fileName, false)
+	pkt := nodeMgr.NewDiskIoPacketMount(devId, fileName, false)
 	dc.StartIo(pkt)
 	if !dd.IsPrepped() {
 		return fmt.Errorf("pack is not prepped")
 	}
 
-	showLabelRecord(dc, ni, true)
+	showLabelRecord(dc, devId, true)
 
-	pkt = nodeMgr.NewDiskIoPacketUnmount(ni)
+	pkt = nodeMgr.NewDiskIoPacketUnmount(devId)
 	dc.StartIo(pkt)
 
 	return nil
 }
 
-func showLabelRecord(channel types.Channel, nodeId types.NodeIdentifier, interpret bool) {
+func showLabelRecord(channel types.Channel, devId types.DeviceIdentifier, interpret bool) {
 	label := make([]pkg.Word36, 28)
-	pkt := nodeMgr.NewDiskIoPacketReadLabel(nodeId, label)
+	pkt := nodeMgr.NewDiskIoPacketReadLabel(devId, label)
 	channel.StartIo(pkt)
 	if pkt.GetIoStatus() != types.IosComplete {
 		fmt.Printf("Status %v returned while reading label\n", pkt.GetIoStatus())
@@ -133,8 +133,6 @@ func showLabelRecord(channel types.Channel, nodeId types.NodeIdentifier, interpr
 	fmt.Printf("First Dir Track DRWA: %v\n", label[3].ToStringAsOctal())
 	fmt.Printf("Records Per Track:    %d\n", label[4].GetH1())
 	fmt.Printf("Words Per Record:     %d\n", label[4].GetH2())
-	fmt.Printf("S0+S1+HMBT+Pad:       %d words\n", label[011].GetH1())
-	fmt.Printf("Master Bit Table Len: %d words\n", label[011].GetH2())
 	fmt.Printf("VOL1 Version:         %d\n", label[014].GetS2())
 	fmt.Printf("Disk Capacity:        %d tracks\n", label[016].GetW())
 	fmt.Printf("Words Per Phys Record:%d\n", label[017].GetH1())
