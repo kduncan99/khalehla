@@ -242,6 +242,8 @@ func (mgr *FacilitiesManager) diskBecameReady(deviceId types.DeviceIdentifier) {
 			}
 			return
 		}
+
+		packAttr.IsPrepped = true
 	}
 }
 

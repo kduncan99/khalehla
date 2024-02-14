@@ -201,7 +201,7 @@ func (disk *DiskDevice) doPrep(pkt *DiskIoPacket) {
 	dirTrackAddr := uint64(1792) // we set this to the device-relative word address of the initial directory track
 
 	// create initial label and write it
-	label := make([]pkg.Word36, recordLength)
+	label := make([]pkg.Word36, 28)
 	pkg.FromStringToAscii("VOL1", label[0:1])
 	pkg.FromStringToAscii(pkt.packName, label[1:3])
 	label[2].SetH2(0)
@@ -216,7 +216,9 @@ func (disk *DiskDevice) doPrep(pkt *DiskIoPacket) {
 	label[017].SetH1(recordLength)
 	label[021].SetW(blockCount)
 
-	err := writeBlock(disk.file, 0, label, uint(recordLength))
+	buffer := make([]byte, 128)
+	pkg.PackWord36(label, buffer[:126])
+	_, err := disk.file.WriteAt(buffer, 0)
 	if err != nil {
 		log.Printf("Error writing label:%v\n", err)
 		pkt.SetIoStatus(types.IosSystemError)
@@ -249,11 +251,23 @@ func (disk *DiskDevice) doPrep(pkt *DiskIoPacket) {
 	s1[010].SetT3(recordLength)
 
 	// Write the initial directory track
-	err = writeTrack(disk.file, dirTrackAddr, dirTrack, uint(recordLength))
-	if err != nil {
-		log.Printf("Error writing label:%v\n", err)
-		pkt.SetIoStatus(types.IosSystemError)
-		return
+	wx := 0
+	wLen := int(recordLength)
+	offset := int64(8192)
+	ioLen := int64(bytesPerBlockMap[types.PrepFactor(recordLength)])
+	buffer = make([]byte, ioLen)
+	byteCount := wLen * 9 / 2
+	for wx < 1792 {
+		pkg.PackWord36(dirTrack[wx:wx+wLen], buffer[0:byteCount])
+		_, err := disk.file.WriteAt(buffer, offset)
+		if err != nil {
+			log.Printf("Error writing directory track:%v\n", err)
+			pkt.SetIoStatus(types.IosSystemError)
+			return
+		}
+
+		wx += wLen
+		offset += ioLen
 	}
 
 	err = disk.probeGeometry()
@@ -293,14 +307,14 @@ func (disk *DiskDevice) doRead(pkt *DiskIoPacket) {
 		return
 	}
 
-	offset := int64(pkt.blockId) * int64(bytesPerBlockMap[disk.geometry.PrepFactor])
+	offset := int64(pkt.blockId) * int64(disk.geometry.PaddedBytesPerBlock)
 	_, err := disk.file.ReadAt(disk.buffer, offset)
 	if err != nil {
-		log.Printf("%v\n", err)
+		log.Printf("Read Error:%v\n", err)
 		pkt.SetIoStatus(types.IosSystemError)
 		return
 	}
-	pkg.UnpackWord36(disk.buffer, pkt.buffer)
+	pkg.UnpackWord36(disk.buffer[:disk.geometry.BytesPerBlock], pkt.buffer)
 
 	pkt.ioStatus = types.IosComplete
 }
@@ -402,11 +416,11 @@ func (disk *DiskDevice) doWrite(pkt *DiskIoPacket) {
 		return
 	}
 
-	pkg.PackWord36(pkt.buffer, disk.buffer)
+	pkg.PackWord36(pkt.buffer, disk.buffer[:disk.geometry.BytesPerBlock])
 	offset := int64(pkt.blockId) * int64(bytesPerBlockMap[disk.geometry.PrepFactor])
 	_, err := disk.file.WriteAt(disk.buffer, offset)
 	if err != nil {
-		log.Printf("%v\n", err)
+		log.Printf("Write Error:%v\n", err)
 		pkt.SetIoStatus(types.IosSystemError)
 		return
 	}
@@ -459,12 +473,15 @@ func (disk *DiskDevice) doWriteLabel(pkt *DiskIoPacket) {
 func (disk *DiskDevice) probeGeometry() error {
 	disk.geometry = nil
 
-	label := make([]pkg.Word36, 28)
-	err := readBlock(disk.file, 0, label, 28)
+	buffer := make([]byte, 128)
+	_, err := disk.file.ReadAt(buffer, 0)
 	if err != nil {
 		log.Printf("Cannot read disk label - assuming pack is not prepped\n")
 		return err
 	}
+
+	label := make([]pkg.Word36, 28)
+	pkg.UnpackWord36(buffer[:126], label)
 
 	str := label[0].ToStringAsAscii()
 	if str != "VOL1" {
@@ -486,7 +503,8 @@ func (disk *DiskDevice) probeGeometry() error {
 	blocksPerTrack := uint(1792 / prepFactor)
 	trackCount := types.TrackCount(blockCount / types.BlockCount(blocksPerTrack))
 	sectorsPerBlock := uint(prepFactor / 28)
-	bytesPerBlock := bytesPerBlockMap[prepFactor]
+	bytesPerBlock := uint(prepFactor) * 9 / 2
+	paddedBytesPerBlock := bytesPerBlockMap[prepFactor]
 
 	disk.packName = packName
 	disk.geometry = &types.DiskPackGeometry{
@@ -496,6 +514,7 @@ func (disk *DiskDevice) probeGeometry() error {
 		TrackCount:           trackCount,
 		SectorsPerBlock:      sectorsPerBlock,
 		BytesPerBlock:        bytesPerBlock,
+		PaddedBytesPerBlock:  paddedBytesPerBlock,
 		FirstDirTrackBlockId: 1792 / blocksPerTrack,
 	}
 	disk.buffer = make([]byte, bytesPerBlockMap[prepFactor])
@@ -520,68 +539,20 @@ func dumpBuffer(buffer []byte) {
 	}
 }
 
-func readBlock(file *os.File, wordAddress uint64, data []pkg.Word36, recordLength uint) error {
-	bufLen := recordLength * 9 / 2
-	buf := make([]byte, bufLen)
-	blockId := wordAddress / uint64(recordLength)
-	offset := int64(blockId * uint64(bytesPerBlockMap[types.PrepFactor(recordLength)]))
-	//fmt.Printf("readBlock blkId:%v addr:%v\n", blockId, wordAddress) // TODO remove
-	_, err := file.ReadAt(buf, offset)
-	if err != nil {
-		return err
-	}
-	//dumpBuffer(buf) // TODO remove
-
-	pkg.UnpackWord36(buf, data)
-	//pkg.DumpWord36Buffer(data, 7) // TODO remove
-	return nil
-}
-
-func writeBlock(file *os.File, wordAddress uint64, data []pkg.Word36, recordLength uint) error {
-	bufLen := recordLength * 9 / 2
-	buf := make([]byte, bufLen)
-	blockId := wordAddress / uint64(recordLength)
-	offset := int64(blockId * uint64(bytesPerBlockMap[types.PrepFactor(recordLength)]))
-	//fmt.Printf("writeBlock blkId:%v addr:%v\n", blockId, wordAddress) // TODO remove
-	//pkg.DumpWord36Buffer(data, 7)                                     // TODO remove
-	pkg.PackWord36(data, buf)
-	//dumpBuffer(buf) // TODO remove
-	_, err := file.WriteAt(buf, offset)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func writeTrack(file *os.File, wordAddress uint64, data []pkg.Word36, recordLength uint) error {
-	blocksPerTrack := 1792 / recordLength
-	addr := wordAddress
-	dx := 0
-	for bx := 0; bx < int(blocksPerTrack); bx++ {
-		err := writeBlock(file, addr, data[dx:dx+int(recordLength)], recordLength)
-		if err != nil {
-			return err
-		}
-		addr += uint64(recordLength)
-		dx += int(recordLength)
-	}
-
-	return nil
-}
-
 func (disk *DiskDevice) Dump(dest io.Writer, indent string) {
 	str := fmt.Sprintf("Rdy:%v WProt:%v pack:%v file:%v\n",
 		disk.isReady, disk.isWriteProtected, disk.packName, disk.fileName)
 	_, _ = fmt.Fprintf(dest, "%v%v", indent, str)
 
 	if disk.geometry != nil {
-		str := fmt.Sprintf("  prep:%v trks:%v blks:%v sec/blk:%v blk/trk:%v bytes/blk:%v\n",
+		str := fmt.Sprintf("  prep:%v trks:%v blks:%v sec/blk:%v blk/trk:%v bytes/blk:%v padded:%v\n",
 			disk.geometry.PrepFactor,
 			disk.geometry.TrackCount,
 			disk.geometry.BlockCount,
 			disk.geometry.SectorsPerBlock,
 			disk.geometry.BlocksPerTrack,
-			disk.geometry.BytesPerBlock)
+			disk.geometry.BytesPerBlock,
+			disk.geometry.PaddedBytesPerBlock)
 		_, _ = fmt.Fprintf(dest, "%v%v", indent, str)
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"khalehla/kexec/types"
 	"khalehla/pkg"
 	"log"
+	"os"
 )
 
 // initializeMassStorage handles MFD initialization for what is effectively a JK13 boot.
@@ -25,7 +26,7 @@ func (mgr *MFDManager) initializeMassStorage() error {
 	for devId, ready := range queue {
 		if ready {
 			devInfo, err := nm.GetNodeInfoByIdentifier(types.NodeIdentifier(devId))
-			if err != nil && devInfo.GetNodeType() == types.NodeTypeDisk {
+			if err == nil && devInfo.GetNodeType() == types.NodeTypeDisk {
 				disks = append(disks, devInfo.(*nodeMgr.DiskDeviceInfo))
 			}
 		}
@@ -61,10 +62,9 @@ func (mgr *MFDManager) initializeMassStorage() error {
 
 			// Read sector 1 of the initial directory track.
 			// This is a little messy due to the potential of problematic block sizes.
-			blocksPerTrack := attr.PackAttrs.Label[4].GetH1()
 			wordsPerBlock := attr.PackAttrs.Label[4].GetH2()
 			dirTrackWordAddr := attr.PackAttrs.Label[03].GetW()
-			dirTrackBlockId := types.BlockId(dirTrackWordAddr / blocksPerTrack)
+			dirTrackBlockId := types.BlockId(dirTrackWordAddr / wordsPerBlock)
 			if wordsPerBlock == 28 {
 				dirTrackBlockId++
 			}
@@ -97,6 +97,7 @@ func (mgr *MFDManager) initializeMassStorage() error {
 				removableDisks[ddInfo] = attr
 			} else {
 				fixedDisks[ddInfo] = attr
+				attr.PackAttrs.IsFixed = true
 			}
 		}
 	}
@@ -127,6 +128,7 @@ func (mgr *MFDManager) initializeMassStorage() error {
 func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.DiskAttributes) error {
 	// make sure there are no pack name conflicts
 	// TODO
+	os.Exit(1) // TODO remove
 
 	nextLdatIndex := uint(1)
 	totalTracks := uint64(0)

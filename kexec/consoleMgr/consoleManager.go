@@ -161,43 +161,41 @@ func (mgr *ConsoleManager) checkForReadOnlyMessages() bool {
 	if len(mgr.queuedReadOnly) > 0 {
 		msg := mgr.queuedReadOnly[0]
 		mgr.queuedReadOnly = mgr.queuedReadOnly[1:]
-		if !mgr.exec.GetStopFlag() {
-			// Construct output text
-			text := ""
-			if !msg.DoNotEmitRunId {
-				text = msg.Source.RunId + "*"
-			}
-			text += msg.Text
+		// Construct output text
+		text := ""
+		if !msg.DoNotEmitRunId {
+			text = msg.Source.RunId + "*"
+		}
+		text += msg.Text
 
-			// If it has routing, try to send it to the indicated console
-			if msg.Routing != nil {
-				cons, ok := mgr.consoles[*msg.Routing]
-				if ok {
-					err := cons.SendReadOnlyMessage(text)
-					if err == nil {
-						return true
-					}
-
-					// lose the console, and drop through
-					mgr.dropConsole(*msg.Routing)
-				}
-
-				// routing was desired, but could not be fulfilled.
-				// send it to the primary console instead
-				_ = mgr.primaryConsole.SendReadOnlyMessage(text)
-				return true
-			}
-
-			// No routing - send it to all the consoles
-			for consId, cons := range mgr.consoles {
+		// If it has routing, try to send it to the indicated console
+		if msg.Routing != nil {
+			cons, ok := mgr.consoles[*msg.Routing]
+			if ok {
 				err := cons.SendReadOnlyMessage(text)
-				if err != nil {
-					mgr.dropConsole(consId)
+				if err == nil {
+					return true
 				}
+
+				// lose the console, and drop through
+				mgr.dropConsole(*msg.Routing)
 			}
 
+			// routing was desired, but could not be fulfilled.
+			// send it to the primary console instead
+			_ = mgr.primaryConsole.SendReadOnlyMessage(text)
 			return true
 		}
+
+		// No routing - send it to all the consoles
+		for consId, cons := range mgr.consoles {
+			err := cons.SendReadOnlyMessage(text)
+			if err != nil {
+				mgr.dropConsole(consId)
+			}
+		}
+
+		return true
 	}
 
 	return false
