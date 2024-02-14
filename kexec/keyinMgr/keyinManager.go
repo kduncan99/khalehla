@@ -90,6 +90,8 @@ func (mgr *KeyinManager) scheduleKeyinHandler(ki *keyinInfo) {
 	switch command {
 	case "D":
 		handler = NewDKeyinHandler(mgr.exec, ki.source, options, args)
+	case "DU":
+		handler = NewDUKeyinHandler(mgr.exec, ki.source, options, args)
 	case "FS":
 		handler = NewFSKeyinHandler(mgr.exec, ki.source, options, args)
 	}

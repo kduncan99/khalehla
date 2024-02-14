@@ -85,12 +85,12 @@ type DeviceReadyListener interface {
 	NotifyDeviceReady(DeviceInfo, bool)
 }
 
-// type FacilitiesItem interface {
-// 	GetInternalFileName() string
-// 	GetFileName() string
-// 	GetQualifier() string
-// 	GetEquipmentCode() uint
-// }
+type FacilitiesItem interface {
+	GetInternalFileName() string
+	GetFileName() string
+	GetQualifier() string
+	GetEquipmentCode() uint
+}
 
 type IConsoleManager interface {
 	CloseManager()
