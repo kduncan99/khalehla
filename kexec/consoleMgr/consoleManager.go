@@ -161,7 +161,7 @@ func (mgr *ConsoleManager) checkForReadOnlyMessages() bool {
 	if len(mgr.queuedReadOnly) > 0 {
 		msg := mgr.queuedReadOnly[0]
 		mgr.queuedReadOnly = mgr.queuedReadOnly[1:]
-		if mgr.exec.GetPhase() <= types.ExecPhaseRunning {
+		if !mgr.exec.GetStopFlag() {
 			// Construct output text
 			text := ""
 			if !msg.DoNotEmitRunId {
@@ -213,12 +213,11 @@ func (mgr *ConsoleManager) checkForReadReplyMessages() bool {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
-	for trackerId, tracker := range mgr.queuedReadReply {
-		if mgr.exec.GetPhase() > types.ExecPhaseRunning {
+	for _, tracker := range mgr.queuedReadReply {
+		if mgr.exec.GetStopFlag() {
 			if !tracker.hasReply {
 				tracker.isCanceled = true
 			}
-			delete(mgr.queuedReadReply, trackerId)
 			continue
 		}
 

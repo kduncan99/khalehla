@@ -7,7 +7,6 @@ package main
 import (
 	"khalehla/kexec"
 	"khalehla/kexec/config"
-	"os"
 	"time"
 )
 
@@ -15,6 +14,7 @@ func main() {
 	cfg := &config.Configuration{}
 	e := kexec.NewExec(cfg)
 	_ = e.InitialBoot(true)
-	time.Sleep(2 * time.Second)
-	e.Dump(os.Stdout)
+	for !e.GetStopFlag() {
+		time.Sleep(250 * time.Millisecond)
+	}
 }

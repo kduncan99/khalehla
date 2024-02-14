@@ -151,7 +151,6 @@ func (e *Exec) InitialBoot(initMassStorage bool) error {
 	}
 
 	e.allowRestart = false // TODO temporary
-	e.Stop(063)            // TODO temporary
 	return nil
 }
 
