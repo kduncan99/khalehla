@@ -8,22 +8,25 @@ import (
 	"fmt"
 	"io"
 	"khalehla/kexec/types"
+	"khalehla/pkg"
 	"sync"
 	"time"
 )
 
 type MFDManager struct {
-	exec            types.IExec
-	mutex           sync.Mutex
-	isInitialized   bool
-	terminateThread bool
-	threadStarted   bool
-	threadStopped   bool
+	exec                         types.IExec
+	mutex                        sync.Mutex
+	isInitialized                bool
+	terminateThread              bool
+	threadStarted                bool
+	threadStopped                bool
+	deviceReadyNotificationQueue map[types.DeviceIdentifier]bool
 }
 
 func NewMFDManager(exec types.IExec) *MFDManager {
 	return &MFDManager{
-		exec: exec,
+		exec:                         exec,
+		deviceReadyNotificationQueue: make(map[types.DeviceIdentifier]bool),
 	}
 }
 
@@ -52,6 +55,13 @@ func (mgr *MFDManager) ResetManager() error {
 	mgr.threadStart()
 	mgr.isInitialized = true
 	return nil
+}
+
+func (mgr *MFDManager) NotifyDeviceReady(deviceInfo types.DeviceInfo, isReady bool) {
+	// post it, and let the tread deal with it later
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+	mgr.deviceReadyNotificationQueue[deviceInfo.GetDeviceIdentifier()] = isReady
 }
 
 func (mgr *MFDManager) thread() {
@@ -94,4 +104,9 @@ func (mgr *MFDManager) Dump(dest io.Writer, indent string) {
 
 	// TODO
 
+	_, _ = fmt.Fprintf(dest, "%v  Queued device-ready notifications:\n", indent)
+	for devId, ready := range mgr.deviceReadyNotificationQueue {
+		wId := pkg.Word36(devId)
+		_, _ = fmt.Fprintf(dest, "%v    devId:0%v ready:%v", indent, wId.ToStringAsOctal(), ready)
+	}
 }

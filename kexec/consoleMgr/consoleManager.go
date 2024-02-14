@@ -101,7 +101,7 @@ func (mgr *ConsoleManager) ResetManager() error {
 // The ConsoleManager thread will handle actually sending the message to all the consoles if/as appropriate.
 func (mgr *ConsoleManager) SendReadOnlyMessage(message *types.ConsoleReadOnlyMessage) {
 	// Log it and put it in the RCE tail sheet (unless it is the Exec)
-	log.Printf("%v*%v", message.Source.RunId, message.Text)
+	log.Printf("ConsMgr:Queueing %v*%v", message.Source.RunId, message.Text)
 	if !message.Source.IsExec {
 		message.Source.PrintToTailSheet(message.Text)
 	}
@@ -116,7 +116,7 @@ func (mgr *ConsoleManager) SendReadOnlyMessage(message *types.ConsoleReadOnlyMes
 // During the waiting period, the ConsoleManager thread will send the message, then poll for a reply as necessary.
 func (mgr *ConsoleManager) SendReadReplyMessage(message *types.ConsoleReadReplyMessage) error {
 	// Log it and put it in the RCE tail sheet (unless it is the Exec)
-	log.Printf("*-%v:%v", message.Source.RunId, message.Text)
+	log.Printf("ConsMgr:Queueing n-%v:%v", message.Source.RunId, message.Text)
 	if !message.Source.IsExec {
 		message.Source.PrintToTailSheet(message.Text)
 	}
@@ -296,7 +296,8 @@ func (mgr *ConsoleManager) checkForSolicitedInput() bool {
 			}
 
 			if !tracker.message.DoNotLogReply {
-				log.Printf("ConsMgr:%v %v", msgId, reply)
+				consw36 := pkg.Word36(consId)
+				log.Printf("ConsMgr:%v %v %v", consw36.ToStringAsFieldata(), msgId, *reply)
 				tracker.message.Source.PrintToTailSheet(fmt.Sprintf("%v %v", msgId, reply))
 			}
 

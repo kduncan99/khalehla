@@ -24,6 +24,7 @@ const (
 	IosInternalError // usually means the Exec fell over
 
 	IosDeviceDoesNotExist
+	IosDeviceIsDown
 	IosDeviceIsNotAccessible
 	IosInvalidFunction
 	IosNilBuffer

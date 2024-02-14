@@ -110,6 +110,7 @@ type IExec interface {
 	GetConsoleManager() IConsoleManager
 	GetFacilitiesManager() IFacilitiesManager
 	GetKeyinManager() IKeyinManager
+	GetMFDManager() IMFDManager
 	GetNodeManager() INodeManager
 	GetPhase() ExecPhase
 	GetRunControlEntry() *RunControlEntry
@@ -129,6 +130,7 @@ type IFacilitiesManager interface {
 	ResetManager() error // manager must stop the exec if it returns an error
 	AssignDiskDeviceToExec(deviceId DeviceIdentifier) error
 	GetDeviceStatusDetail(deviceId DeviceIdentifier) string
+	IsDeviceAssigned(deviceId DeviceIdentifier) bool
 	NotifyDeviceReady(deviceInfo DeviceInfo, isReady bool)
 }
 
@@ -147,6 +149,7 @@ type IMFDManager interface {
 	InitializeManager() error // manager must stop the exec if it returns an error
 	IsInitialized() bool
 	ResetManager() error // manager must stop the exec if it returns an error
+	NotifyDeviceReady(deviceInfo DeviceInfo, isReady bool)
 }
 
 type INodeManager interface {
@@ -160,6 +163,7 @@ type INodeManager interface {
 	GetNodeInfoByName(nodeName string) (NodeInfo, error)
 	GetNodeInfoByIdentifier(nodeId NodeIdentifier) (NodeInfo, error)
 	RouteIo(ioPacket IoPacket)
+	SetNodeStatus(nodeId NodeIdentifier, status NodeStatus) error
 }
 
 // IoPacket contains all the information necessary for a Channel to route an IO operation,
@@ -197,6 +201,7 @@ type Manager interface {
 // NodeInfo contains all the exec-managed information regarding a particular node
 type NodeInfo interface {
 	CreateNode()
+	Dump(destination io.Writer, indent string)
 	GetNodeCategory() NodeCategory
 	GetNodeIdentifier() NodeIdentifier
 	GetNodeName() string

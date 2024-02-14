@@ -78,13 +78,19 @@ func (mgr *FacilitiesManager) CloseManager() {
 func (mgr *FacilitiesManager) InitializeManager() error {
 	// create inventory based on nodeMgr
 	nm := mgr.exec.GetNodeManager()
+	mm := mgr.exec.GetMFDManager()
 	for _, devInfo := range nm.GetDeviceInfos() {
+		devId := devInfo.GetDeviceIdentifier()
 		switch devInfo.GetNodeType() {
 		case types.NodeTypeDisk:
-			mgr.inventory.disks[devInfo.GetDeviceIdentifier()] = diskAttributes{}
+			mgr.inventory.disks[devId] = diskAttributes{}
+			if devInfo.GetNodeStatus() != types.NodeStatusDown && devInfo.IsReady() {
+				mm.NotifyDeviceReady(devInfo, true)
+			}
 		case types.NodeTypeTape:
-			mgr.inventory.tapes[devInfo.GetDeviceIdentifier()] = tapeAttributes{}
+			mgr.inventory.tapes[devId] = tapeAttributes{}
 		}
+
 	}
 
 	mgr.threadStart()
@@ -172,6 +178,20 @@ func (mgr *FacilitiesManager) GetDeviceStatusDetail(deviceId types.DeviceIdentif
 	return str
 }
 
+func (mgr *FacilitiesManager) IsDeviceAssigned(deviceId types.DeviceIdentifier) bool {
+	dAttr, ok := mgr.inventory.disks[deviceId]
+	if ok {
+		return dAttr.assignedTo != nil
+	}
+
+	tAttr, ok := mgr.inventory.tapes[deviceId]
+	if ok {
+		return tAttr.assignedTo != nil
+	}
+
+	return false
+}
+
 func (mgr *FacilitiesManager) NotifyDeviceReady(deviceInfo types.DeviceInfo, isReady bool) {
 	// queue this for the thread to pick up
 	mgr.mutex.Lock()
@@ -183,47 +203,63 @@ func (mgr *FacilitiesManager) diskBecameReady(deviceId types.DeviceIdentifier) {
 	// Device became ready - any pack attributes we have, are obsolete, so reload them
 	log.Printf("FacMgr:Disk %v became ready", deviceId)
 
-	dm := mgr.exec.GetNodeManager()
-	ni, err := dm.GetNodeInfoByIdentifier(types.NodeIdentifier(deviceId))
+	nm := mgr.exec.GetNodeManager()
+	ni, err := nm.GetNodeInfoByIdentifier(types.NodeIdentifier(deviceId))
 	if err != nil {
 		mgr.exec.Stop(types.StopFacilitiesComplex)
 	}
 
+	diskAttr := mgr.inventory.disks[deviceId]
+	diskAttr.packAttributes = nil
+
 	// we only care if the unit is UP, SU, or RV (i.e., not DN)
-	if ni.GetNodeStatus() == types.NodeStatusDown {
-		return
-	}
+	devStat := ni.GetNodeStatus()
+	if devStat != types.NodeStatusDown {
+		packAttr := &packAttributes{}
+		packAttr.label = make([]pkg.Word36, 28)
+		ioPkt := nodeMgr.NewDiskIoPacketReadLabel(deviceId, packAttr.label)
+		nm.RouteIo(ioPkt)
+		ioStat := ioPkt.GetIoStatus()
+		if ioStat == types.IosInternalError {
+			return
+		} else if ioStat != types.IosComplete {
+			log.Printf("FacMgr:IO Error reading label disk:%v status:%v", deviceId, ioStat)
+			consMsg := fmt.Sprintf("%v IO ERROR Reading Pack Label - Status=%v", ni.GetNodeName(), ioStat)
+			mgr.exec.SendExecReadOnlyMessage(consMsg)
+			// if unit is UP or SU, tell node manager to DN the unit
+			if devStat == types.NodeStatusUp || devStat == types.NodeStatusSuspended {
+				_ = nm.SetNodeStatus(types.NodeIdentifier(deviceId), types.NodeStatusDown)
+			}
+			return
+		}
 
-	label := make([]pkg.Word36, 28)
-	ioPkt := nodeMgr.NewDiskIoPacketReadLabel(deviceId, label)
-	dm.RouteIo(ioPkt)
-	ioStat := ioPkt.GetIoStatus()
-	if ioStat == types.IosInternalError {
-		return
-	} else if ioStat != types.IosComplete {
-		log.Printf("FacMgr:IO Error reading label disk:%v status:%v", deviceId, ioStat)
-		consMsg := fmt.Sprintf("%v IO ERROR Reading Pack Label - Status=%v", ni.GetNodeName(), ioStat)
-		mgr.exec.SendExecReadOnlyMessage(consMsg)
-		// TODO tell node manager to DN the unit
-		return
-	}
+		mgr.mutex.Lock()
+		diskAttr := mgr.inventory.disks[deviceId]
+		diskAttr.packAttributes = packAttr
+		mgr.mutex.Unlock()
 
-	if label[0].ToStringAsAscii() != "VOL1" {
-		consMsg := fmt.Sprintf("%v Pack has no VOL1 label", ni.GetNodeName())
-		mgr.exec.SendExecReadOnlyMessage(consMsg)
-		// TODO tell node manager to DN the unit
-		return
-	}
+		if packAttr.label[0].ToStringAsAscii() != "VOL1" {
+			consMsg := fmt.Sprintf("%v Pack has no VOL1 label", ni.GetNodeName())
+			mgr.exec.SendExecReadOnlyMessage(consMsg)
+			// if unit is UP or SU, tell node manager to DN the unit
+			if devStat == types.NodeStatusUp || devStat == types.NodeStatusSuspended {
+				_ = nm.SetNodeStatus(types.NodeIdentifier(deviceId), types.NodeStatusDown)
+			}
+			return
+		}
 
-	packName := (label[1].ToStringAsAscii() + label[2].ToStringAsAscii())[0:6]
-	if !nodeMgr.IsValidPackName(packName) {
-		consMsg := fmt.Sprintf("%v Invalid pack ID in VOL1 label", ni.GetNodeName())
-		mgr.exec.SendExecReadOnlyMessage(consMsg)
-		// TODO tell node manager to DN the unit
-		return
+		packName := (packAttr.label[1].ToStringAsAscii() + packAttr.label[2].ToStringAsAscii())[0:6]
+		packAttr.packName = packName
+		if !nodeMgr.IsValidPackName(packName) {
+			consMsg := fmt.Sprintf("%v Invalid pack ID in VOL1 label", ni.GetNodeName())
+			mgr.exec.SendExecReadOnlyMessage(consMsg)
+			// if unit is UP or SU, tell node manager to DN the unit
+			if devStat == types.NodeStatusUp || devStat == types.NodeStatusSuspended {
+				_ = nm.SetNodeStatus(types.NodeIdentifier(deviceId), types.NodeStatusDown)
+			}
+			return
+		}
 	}
-
-	// TODO much more to do here, but we need to stop doing MBTs first...
 }
 
 func (mgr *FacilitiesManager) tapeBecameReady(deviceId types.DeviceIdentifier) {
@@ -286,6 +322,42 @@ func (mgr *FacilitiesManager) Dump(dest io.Writer, indent string) {
 	_, _ = fmt.Fprintf(dest, "%v  threadStopped:   %v\n", indent, mgr.threadStopped)
 	_, _ = fmt.Fprintf(dest, "%v  terminateThread: %v\n", indent, mgr.terminateThread)
 
-	// TODO
+	nm := mgr.exec.GetNodeManager()
+	_, _ = fmt.Fprintf(dest, "%v  Disk units:\n", indent)
+	for deviceId, diskAttr := range mgr.inventory.disks {
+		nodeInfo, _ := nm.GetNodeInfoByIdentifier(types.NodeIdentifier(deviceId))
+		str := nodeInfo.GetNodeName()
+		if diskAttr.assignedTo != nil {
+			str += "* " + diskAttr.assignedTo.RunId
+		}
+		if diskAttr.packAttributes != nil {
+			packAttr := diskAttr.packAttributes
+			str += fmt.Sprintf(" PACK-ID:%v Prepped:%v Fixed:%v",
+				packAttr.packName, packAttr.isPrepped, packAttr.isFixed)
+		}
 
+		_, _ = fmt.Fprintf(dest, "%s    %s\n", indent, str)
+	}
+
+	_, _ = fmt.Fprintf(dest, "%v  Tape units:\n", indent)
+	for deviceId, tapeAttr := range mgr.inventory.tapes {
+		nodeInfo, _ := nm.GetNodeInfoByIdentifier(types.NodeIdentifier(deviceId))
+		str := nodeInfo.GetNodeName()
+		if tapeAttr.assignedTo != nil {
+			str += "* " + tapeAttr.assignedTo.RunId
+		}
+		if tapeAttr.reelAttributes != nil {
+			str += fmt.Sprintf(" REEL-ID:%v Labeled:%v",
+				tapeAttr.reelAttributes.reelNumber,
+				tapeAttr.reelAttributes.isLabeled)
+		}
+
+		_, _ = fmt.Fprintf(dest, "%s    %s\n", indent, str)
+	}
+
+	_, _ = fmt.Fprintf(dest, "%v  Queued device-ready notifications:\n", indent)
+	for devId, ready := range mgr.deviceReadyNotificationQueue {
+		wId := pkg.Word36(devId)
+		_, _ = fmt.Fprintf(dest, "%v    devId:0%v ready:%v", indent, wId.ToStringAsOctal(), ready)
+	}
 }

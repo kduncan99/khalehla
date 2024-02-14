@@ -141,8 +141,13 @@ func (e *Exec) InitialBoot(initMassStorage bool) error {
 		}
 	}
 
-	// spin up facilities
+	// spin up facilities, then the MFD
 	err = e.facMgr.InitializeManager()
+	if err != nil {
+		return err
+	}
+
+	err = e.mfdMgr.InitializeManager()
 	if err != nil {
 		return err
 	}
@@ -206,6 +211,7 @@ func (e *Exec) Dump(dest io.Writer) {
 	e.keyinMgr.Dump(dest, "")
 	e.nodeMgr.Dump(dest, "")
 	e.facMgr.Dump(dest, "")
+	e.mfdMgr.Dump(dest, "")
 
 	// TODO run control table, etc
 }

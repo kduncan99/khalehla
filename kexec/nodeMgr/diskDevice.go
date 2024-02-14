@@ -145,6 +145,8 @@ func (disk *DiskDevice) doMount(pkt *DiskIoPacket) {
 		return
 	}
 
+	disk.isReady = true
+
 	// At this point, the pack is now mounted. It may not be prepped, but that is okay.
 	disk.file = f
 	disk.isWriteProtected = pkt.writeProtected

@@ -28,6 +28,7 @@ type NodeManager struct {
 	terminateThread bool
 	threadStarted   bool
 	threadStopped   bool
+	nodeInfos       map[types.NodeIdentifier]types.NodeInfo       // all nodes
 	channelInfos    map[types.ChannelIdentifier]types.ChannelInfo // this is loaded from the config
 	deviceInfos     map[types.DeviceIdentifier]types.DeviceInfo   // this is loaded from the config
 	strategy        selectionStrategy                             // strategy used for selecting a channel fo IO
@@ -51,6 +52,7 @@ func (mgr *NodeManager) CloseManager() {
 // This must happen very early in Exec startup, before the operator is allowed to modify the config.
 // Thus, we can assume all devices are UP.
 func (mgr *NodeManager) InitializeManager() error {
+	mgr.nodeInfos = make(map[types.NodeIdentifier]types.NodeInfo)
 	mgr.channelInfos = make(map[types.ChannelIdentifier]types.ChannelInfo)
 	mgr.deviceInfos = make(map[types.DeviceIdentifier]types.DeviceInfo)
 
@@ -86,6 +88,13 @@ func (mgr *NodeManager) InitializeManager() error {
 	disk2.channelInfos = []*DiskChannelInfo{chan0}
 	tape0.channelInfos = []*TapeChannelInfo{chan1}
 	tape1.channelInfos = []*TapeChannelInfo{chan1}
+
+	for chId, chInfo := range mgr.channelInfos {
+		mgr.nodeInfos[types.NodeIdentifier(chId)] = chInfo
+	}
+	for devId, devInfo := range mgr.deviceInfos {
+		mgr.nodeInfos[types.NodeIdentifier(devId)] = devInfo
+	}
 	// TODO End TODOs
 
 	// Create channels
@@ -162,57 +171,7 @@ func (mgr *NodeManager) ResetManager() error {
 	return nil
 }
 
-func (mgr *NodeManager) GetChannelInfos() []types.ChannelInfo {
-	var result = make([]types.ChannelInfo, len(mgr.channelInfos))
-	cx := 0
-	for _, chInfo := range mgr.channelInfos {
-		result[cx] = chInfo
-		cx++
-	}
-	return result
-}
-
-func (mgr *NodeManager) GetDeviceInfos() []types.DeviceInfo {
-	var result = make([]types.DeviceInfo, len(mgr.deviceInfos))
-	dx := 0
-	for _, devInfo := range mgr.deviceInfos {
-		result[dx] = devInfo
-		dx++
-	}
-	return result
-}
-
-func (mgr *NodeManager) GetNodeInfoByName(nodeName string) (types.NodeInfo, error) {
-	for _, chInfo := range mgr.channelInfos {
-		if nodeName == chInfo.GetNodeName() {
-			return chInfo, nil
-		}
-	}
-
-	for _, devInfo := range mgr.deviceInfos {
-		if nodeName == devInfo.GetNodeName() {
-			return devInfo, nil
-		}
-	}
-
-	return nil, fmt.Errorf("not found")
-}
-
-func (mgr *NodeManager) GetNodeInfoByIdentifier(nodeId types.NodeIdentifier) (types.NodeInfo, error) {
-	for _, chInfo := range mgr.channelInfos {
-		if nodeId == chInfo.GetNodeIdentifier() {
-			return chInfo, nil
-		}
-	}
-
-	for _, devInfo := range mgr.deviceInfos {
-		if nodeId == devInfo.GetNodeIdentifier() {
-			return devInfo, nil
-		}
-	}
-
-	return nil, fmt.Errorf("not found")
-}
+// -----------------------------------------------------------
 
 func GetNodeStatusString(status types.NodeStatus, isAccessible bool) string {
 	accStr := ""
@@ -275,6 +234,58 @@ func IsValidPrepFactor(prepFactor types.PrepFactor) bool {
 		prepFactor == 448 || prepFactor == 896 || prepFactor == 1792
 }
 
+func (mgr *NodeManager) GetChannelInfos() []types.ChannelInfo {
+	var result = make([]types.ChannelInfo, len(mgr.channelInfos))
+	cx := 0
+	for _, chInfo := range mgr.channelInfos {
+		result[cx] = chInfo
+		cx++
+	}
+	return result
+}
+
+func (mgr *NodeManager) GetDeviceInfos() []types.DeviceInfo {
+	var result = make([]types.DeviceInfo, len(mgr.deviceInfos))
+	dx := 0
+	for _, devInfo := range mgr.deviceInfos {
+		result[dx] = devInfo
+		dx++
+	}
+	return result
+}
+
+func (mgr *NodeManager) GetNodeInfoByName(nodeName string) (types.NodeInfo, error) {
+	for _, chInfo := range mgr.channelInfos {
+		if nodeName == chInfo.GetNodeName() {
+			return chInfo, nil
+		}
+	}
+
+	for _, devInfo := range mgr.deviceInfos {
+		if nodeName == devInfo.GetNodeName() {
+			return devInfo, nil
+		}
+	}
+
+	return nil, fmt.Errorf("not found")
+}
+
+func (mgr *NodeManager) GetNodeInfoByIdentifier(nodeId types.NodeIdentifier) (types.NodeInfo, error) {
+	for _, chInfo := range mgr.channelInfos {
+		if nodeId == chInfo.GetNodeIdentifier() {
+			return chInfo, nil
+		}
+	}
+
+	for _, devInfo := range mgr.deviceInfos {
+		if nodeId == devInfo.GetNodeIdentifier() {
+			return devInfo, nil
+		}
+	}
+
+	return nil, fmt.Errorf("not found")
+}
+
 // RouteIo handles all disk and tape IO for the exec
 func (mgr *NodeManager) RouteIo(ioPacket types.IoPacket) {
 	if ioPacket == nil {
@@ -297,6 +308,11 @@ func (mgr *NodeManager) RouteIo(ioPacket types.IoPacket) {
 		return
 	}
 
+	if devInfo.GetNodeStatus() == types.NodeStatusDown {
+		ioPacket.SetIoStatus(types.IosDeviceIsDown)
+		return
+	}
+
 	chInfo, err := mgr.selectChannelForDevice(devInfo)
 	if err != nil {
 		ioPacket.SetIoStatus(types.IosInternalError)
@@ -307,6 +323,101 @@ func (mgr *NodeManager) RouteIo(ioPacket types.IoPacket) {
 	ioPacket.SetIoStatus(types.IosInProgress)
 	chInfo.GetChannel().StartIo(ioPacket)
 }
+
+func (mgr *NodeManager) SetNodeStatus(nodeId types.NodeIdentifier, status types.NodeStatus) error {
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
+	ni, ok := mgr.nodeInfos[nodeId]
+	if !ok {
+		return fmt.Errorf("node not found")
+	}
+
+	// TODO should we be sending NotifyDeviceReady to various listeners?
+	//	Only makes sense for disk really, and we have FA keyin for that
+
+	// for now, we do not allow changing status of anything except devices
+	if ni.GetNodeCategory() != types.NodeCategoryDevice {
+		return fmt.Errorf("not allowed")
+	}
+
+	devInfo := ni.(types.DeviceInfo)
+	stopExec := false
+	switch status {
+	case types.NodeStatusDown:
+		if ni.GetNodeType() == types.NodeTypeDisk {
+			ddInfo := ni.(*DiskDeviceInfo)
+			ddInfo.nodeStatus = status
+			stopExec = mgr.exec.GetFacilitiesManager().IsDeviceAssigned(devInfo.GetDeviceIdentifier())
+			break
+		} else if ni.GetNodeType() == types.NodeTypeTape {
+			// reset the tape device (unmounts it as part of the process)
+			tdInfo := ni.(*TapeDeviceInfo)
+			ioPkt := NewTapeIoPacketReset(devInfo.GetDeviceIdentifier())
+			chInfo, err := mgr.selectChannelForDevice(tdInfo)
+			if err != nil {
+				chInfo.GetChannel().StartIo(ioPkt)
+			}
+
+			tdInfo.nodeStatus = status
+
+			if mgr.exec.GetFacilitiesManager().IsDeviceAssigned(tdInfo.GetDeviceIdentifier()) {
+				// TODO - tell Exec to abort the run to which the thing was assigned
+			}
+			break
+		}
+
+		// anything other than disk or tape
+		return fmt.Errorf("not allowed")
+
+	case types.NodeStatusReserved:
+		if ni.GetNodeType() == types.NodeTypeDisk {
+			ddInfo := ni.(*DiskDeviceInfo)
+			ddInfo.nodeStatus = status
+		} else if ni.GetNodeType() == types.NodeTypeTape {
+			tdInfo := ni.(*TapeDeviceInfo)
+			tdInfo.nodeStatus = status
+		}
+
+		// anything other than disk or tape
+		return fmt.Errorf("not allowed")
+
+	case types.NodeStatusSuspended:
+		if ni.GetNodeType() == types.NodeTypeDisk {
+			ddInfo := ni.(*DiskDeviceInfo)
+			ddInfo.nodeStatus = status
+			break
+		}
+
+		// anything other than disk or tape
+		return fmt.Errorf("not allowed")
+
+	case types.NodeStatusUp:
+		if ni.GetNodeType() == types.NodeTypeDisk {
+			ddInfo := ni.(*DiskDeviceInfo)
+			ddInfo.nodeStatus = status
+		} else if ni.GetNodeType() == types.NodeTypeTape {
+			tdInfo := ni.(*TapeDeviceInfo)
+			tdInfo.nodeStatus = status
+		}
+
+		// anything other than disk or tape
+		return fmt.Errorf("not allowed")
+
+	default:
+		return fmt.Errorf("internal error")
+	}
+
+	msg := ni.GetNodeName() + " " + GetNodeStatusString(ni.GetNodeStatus(), ni.IsAccessible())
+	mgr.exec.SendExecReadOnlyMessage(msg)
+	if stopExec {
+		mgr.exec.Stop(types.StopConsoleResponseRequiresReboot)
+	}
+
+	return nil
+}
+
+// -----------------------------------------------------------
 
 // selectChannelForDevice chooses the *best* channel to be used for accessing the device.
 // THIS MUST BE CALLED UNDER LOCK
@@ -348,6 +459,8 @@ func (mgr *NodeManager) selectChannelForDevice(devInfo types.DeviceInfo) (types.
 	return nil, fmt.Errorf("internal error")
 }
 
+// -----------------------------------------------------------
+
 func (mgr *NodeManager) thread() {
 	mgr.threadStarted = true
 
@@ -368,8 +481,10 @@ func (mgr *NodeManager) thread() {
 		mgr.mutex.Unlock()
 
 		fm := mgr.exec.GetFacilitiesManager()
+		mm := mgr.exec.GetMFDManager()
 		for devInfo, isReady := range updates {
 			fm.NotifyDeviceReady(devInfo, isReady)
+			mm.NotifyDeviceReady(devInfo, isReady)
 		}
 	}
 
@@ -403,11 +518,7 @@ func (mgr *NodeManager) Dump(dest io.Writer, indent string) {
 	_, _ = fmt.Fprintf(dest, "%v  threadStopped:   %v\n", indent, mgr.threadStopped)
 	_, _ = fmt.Fprintf(dest, "%v  terminateThread: %v\n", indent, mgr.terminateThread)
 
-	for _, chInfo := range mgr.channelInfos {
-		chInfo.Dump(dest, indent+"  ")
-	}
-
-	for _, devInfo := range mgr.deviceInfos {
-		devInfo.Dump(dest, indent+"  ")
+	for _, ni := range mgr.nodeInfos {
+		ni.Dump(dest, indent+"  ")
 	}
 }
