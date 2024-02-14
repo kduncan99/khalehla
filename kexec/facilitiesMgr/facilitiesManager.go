@@ -15,37 +15,15 @@ import (
 	"time"
 )
 
-type diskAttributes struct {
-	assignedTo     *types.RunControlEntry
-	packAttributes *packAttributes
-}
-
-type packAttributes struct {
-	label     []pkg.Word36
-	isPrepped bool
-	isFixed   bool
-	packName  string
-}
-
-type tapeAttributes struct {
-	assignedTo     *types.RunControlEntry
-	reelAttributes *reelAttributes
-}
-
-type reelAttributes struct {
-	reelNumber string
-	isLabeled  bool
-}
-
 type inventory struct {
-	disks map[types.DeviceIdentifier]diskAttributes
-	tapes map[types.DeviceIdentifier]tapeAttributes
+	disks map[types.DeviceIdentifier]*types.DiskAttributes
+	tapes map[types.DeviceIdentifier]*types.TapeAttributes
 }
 
 func newInventory() *inventory {
 	return &inventory{
-		disks: make(map[types.DeviceIdentifier]diskAttributes),
-		tapes: make(map[types.DeviceIdentifier]tapeAttributes),
+		disks: make(map[types.DeviceIdentifier]*types.DiskAttributes),
+		tapes: make(map[types.DeviceIdentifier]*types.TapeAttributes),
 	}
 }
 
@@ -82,9 +60,9 @@ func (mgr *FacilitiesManager) InitializeManager() error {
 		devId := devInfo.GetDeviceIdentifier()
 		switch devInfo.GetNodeType() {
 		case types.NodeTypeDisk:
-			mgr.inventory.disks[devId] = diskAttributes{}
+			mgr.inventory.disks[devId] = &types.DiskAttributes{}
 		case types.NodeTypeTape:
-			mgr.inventory.tapes[devId] = tapeAttributes{}
+			mgr.inventory.tapes[devId] = &types.TapeAttributes{}
 		}
 
 	}
@@ -121,14 +99,14 @@ func (mgr *FacilitiesManager) AssignDiskDeviceToExec(deviceId types.DeviceIdenti
 		return fmt.Errorf(msg)
 	}
 
-	if diskAttr.assignedTo != nil {
-		msg := fmt.Sprintf("Device %v is already assigned to %v", deviceId, diskAttr.assignedTo.RunId)
+	if diskAttr.AssignedTo != nil {
+		msg := fmt.Sprintf("Device %v is already assigned to %v", deviceId, diskAttr.AssignedTo.RunId)
 		log.Println(msg)
 		mgr.exec.Stop(types.StopFacilitiesComplex)
 		return fmt.Errorf(msg)
 	}
 
-	diskAttr.assignedTo = mgr.exec.GetRunControlEntry()
+	diskAttr.AssignedTo = mgr.exec.GetRunControlEntry()
 	return nil
 }
 
@@ -143,28 +121,28 @@ func (mgr *FacilitiesManager) GetDeviceStatusDetail(deviceId types.DeviceIdentif
 		da, ok := mgr.inventory.disks[deviceId]
 		if ok {
 			//	[[*] [R|F] PACKID pack-id]
-			if da.assignedTo != nil {
+			if da.AssignedTo != nil {
 				str += "* "
 			} else {
 				str += "  "
 			}
 
-			if da.packAttributes != nil && da.packAttributes.isPrepped {
-				if da.packAttributes.isFixed {
+			if da.PackAttrs != nil && da.PackAttrs.IsPrepped {
+				if da.PackAttrs.IsFixed {
 					str += "F "
 				} else {
 					str += "R "
 				}
 
-				str += "PACKID " + da.packAttributes.packName
+				str += "PACKID " + da.PackAttrs.PackName
 			}
 		}
 
 		// ta, ok := mgr.inventory.tapes[deviceId]
 		// if ok {
-		//	if ta.assignedTo != nil {
+		//	if ta.AssignedTo != nil {
 		//		//	[* RUNID run-id REEL reel [RING|NORING] [POS [*]ffff[+|-][*]bbbbbb | POS LOST]]
-		//		str += "* RUNID " + ta.assignedTo.RunId + " REEL " + ta.reelNumber
+		//		str += "* RUNID " + ta.AssignedTo.RunId + " REEL " + ta.reelNumber
 		//		// TODO RING | NORING
 		//		// TODO POS
 		//	}
@@ -174,15 +152,24 @@ func (mgr *FacilitiesManager) GetDeviceStatusDetail(deviceId types.DeviceIdentif
 	return str
 }
 
+func (mgr *FacilitiesManager) GetDiskAttributes(deviceId types.DeviceIdentifier) (*types.DiskAttributes, error) {
+	attr, ok := mgr.inventory.disks[deviceId]
+	if ok {
+		return attr, nil
+	} else {
+		return nil, fmt.Errorf("not found")
+	}
+}
+
 func (mgr *FacilitiesManager) IsDeviceAssigned(deviceId types.DeviceIdentifier) bool {
 	dAttr, ok := mgr.inventory.disks[deviceId]
 	if ok {
-		return dAttr.assignedTo != nil
+		return dAttr.AssignedTo != nil
 	}
 
 	tAttr, ok := mgr.inventory.tapes[deviceId]
 	if ok {
-		return tAttr.assignedTo != nil
+		return tAttr.AssignedTo != nil
 	}
 
 	return false
@@ -206,14 +193,14 @@ func (mgr *FacilitiesManager) diskBecameReady(deviceId types.DeviceIdentifier) {
 	}
 
 	diskAttr := mgr.inventory.disks[deviceId]
-	diskAttr.packAttributes = nil
+	diskAttr.PackAttrs = nil
 
 	// we only care if the unit is UP, SU, or RV (i.e., not DN)
 	devStat := ni.GetNodeStatus()
 	if devStat != types.NodeStatusDown {
-		packAttr := &packAttributes{}
-		packAttr.label = make([]pkg.Word36, 28)
-		ioPkt := nodeMgr.NewDiskIoPacketReadLabel(deviceId, packAttr.label)
+		packAttr := &types.PackAttributes{}
+		packAttr.Label = make([]pkg.Word36, 28)
+		ioPkt := nodeMgr.NewDiskIoPacketReadLabel(deviceId, packAttr.Label)
 		nm.RouteIo(ioPkt)
 		ioStat := ioPkt.GetIoStatus()
 		if ioStat == types.IosInternalError {
@@ -231,10 +218,10 @@ func (mgr *FacilitiesManager) diskBecameReady(deviceId types.DeviceIdentifier) {
 
 		mgr.mutex.Lock()
 		diskAttr := mgr.inventory.disks[deviceId]
-		diskAttr.packAttributes = packAttr
+		diskAttr.PackAttrs = packAttr
 		mgr.mutex.Unlock()
 
-		if packAttr.label[0].ToStringAsAscii() != "VOL1" {
+		if packAttr.Label[0].ToStringAsAscii() != "VOL1" {
 			consMsg := fmt.Sprintf("%v Pack has no VOL1 label", ni.GetNodeName())
 			mgr.exec.SendExecReadOnlyMessage(consMsg)
 			// if unit is UP or SU, tell node manager to DN the unit
@@ -244,8 +231,8 @@ func (mgr *FacilitiesManager) diskBecameReady(deviceId types.DeviceIdentifier) {
 			return
 		}
 
-		packName := (packAttr.label[1].ToStringAsAscii() + packAttr.label[2].ToStringAsAscii())[0:6]
-		packAttr.packName = packName
+		packName := (packAttr.Label[1].ToStringAsAscii() + packAttr.Label[2].ToStringAsAscii())[0:6]
+		packAttr.PackName = packName
 		if !nodeMgr.IsValidPackName(packName) {
 			consMsg := fmt.Sprintf("%v Invalid pack ID in VOL1 label", ni.GetNodeName())
 			mgr.exec.SendExecReadOnlyMessage(consMsg)
@@ -326,13 +313,13 @@ func (mgr *FacilitiesManager) Dump(dest io.Writer, indent string) {
 	for deviceId, diskAttr := range mgr.inventory.disks {
 		nodeInfo, _ := nm.GetNodeInfoByIdentifier(types.NodeIdentifier(deviceId))
 		str := nodeInfo.GetNodeName()
-		if diskAttr.assignedTo != nil {
-			str += "* " + diskAttr.assignedTo.RunId
+		if diskAttr.AssignedTo != nil {
+			str += "* " + diskAttr.AssignedTo.RunId
 		}
-		if diskAttr.packAttributes != nil {
-			packAttr := diskAttr.packAttributes
+		if diskAttr.PackAttrs != nil {
+			packAttr := diskAttr.PackAttrs
 			str += fmt.Sprintf(" PACK-ID:%v Prepped:%v Fixed:%v",
-				packAttr.packName, packAttr.isPrepped, packAttr.isFixed)
+				packAttr.PackName, packAttr.IsPrepped, packAttr.IsFixed)
 		}
 
 		_, _ = fmt.Fprintf(dest, "%s    %s\n", indent, str)
@@ -342,13 +329,13 @@ func (mgr *FacilitiesManager) Dump(dest io.Writer, indent string) {
 	for deviceId, tapeAttr := range mgr.inventory.tapes {
 		nodeInfo, _ := nm.GetNodeInfoByIdentifier(types.NodeIdentifier(deviceId))
 		str := nodeInfo.GetNodeName()
-		if tapeAttr.assignedTo != nil {
-			str += "* " + tapeAttr.assignedTo.RunId
+		if tapeAttr.AssignedTo != nil {
+			str += "* " + tapeAttr.AssignedTo.RunId
 		}
-		if tapeAttr.reelAttributes != nil {
+		if tapeAttr.ReelAttrs != nil {
 			str += fmt.Sprintf(" REEL-ID:%v Labeled:%v",
-				tapeAttr.reelAttributes.reelNumber,
-				tapeAttr.reelAttributes.isLabeled)
+				tapeAttr.ReelAttrs.ReelNumber,
+				tapeAttr.ReelAttrs.IsLabeled)
 		}
 
 		_, _ = fmt.Fprintf(dest, "%s    %s\n", indent, str)

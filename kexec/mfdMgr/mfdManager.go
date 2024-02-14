@@ -9,6 +9,7 @@ import (
 	"io"
 	"khalehla/kexec/types"
 	"khalehla/pkg"
+	"log"
 	"sync"
 	"time"
 )
@@ -20,13 +21,18 @@ type MFDManager struct {
 	terminateThread              bool
 	threadStarted                bool
 	threadStopped                bool
+	msInitialize                 bool
 	deviceReadyNotificationQueue map[types.DeviceIdentifier]bool
+	directoryTracks              map[uint64][]pkg.Word36 // key is MFD-relative sector address
+	fixedLDAT                    map[uint]types.DeviceIdentifier
 }
 
 func NewMFDManager(exec types.IExec) *MFDManager {
 	return &MFDManager{
 		exec:                         exec,
 		deviceReadyNotificationQueue: make(map[types.DeviceIdentifier]bool),
+		directoryTracks:              make(map[uint64][]pkg.Word36),
+		fixedLDAT:                    make(map[uint]types.DeviceIdentifier),
 	}
 }
 
@@ -37,7 +43,27 @@ func (mgr *MFDManager) CloseManager() {
 }
 
 func (mgr *MFDManager) InitializeManager() error {
-	// TODO
+	var err error
+	if mgr.msInitialize {
+		replies := []string{"Y", "N"}
+		msg := "Mass Storage will be Initialized - Do You Want To Continue? Y/N"
+		reply, err := mgr.exec.SendExecRestrictedReadReplyMessage(msg, replies)
+		if err != nil {
+			return err
+		} else if reply != "Y" {
+			mgr.exec.Stop(types.StopConsoleResponseRequiresReboot)
+			return fmt.Errorf("boot canceled")
+		}
+
+		err = mgr.initializeMassStorage()
+	} else {
+		err = mgr.recoverMassStorage()
+	}
+
+	if err != nil {
+		log.Println("MFDMgr:Cannot continue boot")
+		return err
+	}
 
 	mgr.threadStart()
 	mgr.isInitialized = true
@@ -62,6 +88,12 @@ func (mgr *MFDManager) NotifyDeviceReady(deviceInfo types.DeviceInfo, isReady bo
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 	mgr.deviceReadyNotificationQueue[deviceInfo.GetDeviceIdentifier()] = isReady
+}
+
+// SetMSInitialize sets or clears the flag which indicates whether to initialze
+// mass-storage upon initialization. Invoke this before calling Initialize.
+func (mgr *MFDManager) SetMSInitialize(flag bool) {
+	mgr.msInitialize = flag
 }
 
 func (mgr *MFDManager) thread() {

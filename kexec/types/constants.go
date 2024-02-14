@@ -13,6 +13,7 @@ const (
 	IofReadLabel
 	IofUnmount
 	IofWrite
+	IofWriteLabel
 )
 
 const (

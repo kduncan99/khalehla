@@ -73,3 +73,27 @@ type ConsoleReadReplyMessage struct {
 	MaxReplyLength int
 	Reply          string
 }
+
+// Things created and managed by FacilitiesManager
+
+type DiskAttributes struct {
+	AssignedTo *RunControlEntry
+	PackAttrs  *PackAttributes
+}
+
+type PackAttributes struct {
+	Label     []pkg.Word36
+	IsPrepped bool
+	IsFixed   bool
+	PackName  string
+}
+
+type TapeAttributes struct {
+	AssignedTo *RunControlEntry
+	ReelAttrs  *ReelAttributes
+}
+
+type ReelAttributes struct {
+	ReelNumber string
+	IsLabeled  bool
+}

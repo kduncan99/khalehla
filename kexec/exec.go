@@ -145,6 +145,7 @@ func (e *Exec) InitialBoot(initMassStorage bool) error {
 		return err
 	}
 
+	e.mfdMgr.SetMSInitialize(true)
 	err = e.mfdMgr.InitializeManager()
 	if err != nil {
 		return err
@@ -219,7 +220,7 @@ func (e *Exec) SendExecRestrictedReadReplyMessage(message string, accepted []str
 		}
 	}
 
-	return consMsg.Reply, nil
+	return strings.ToUpper(consMsg.Reply), nil
 }
 
 func (e *Exec) Stop(code types.StopCode) {

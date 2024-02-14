@@ -109,3 +109,12 @@ func NewDiskIoPacketWrite(deviceId types.DeviceIdentifier, blockId types.BlockId
 		buffer:     buffer,
 	}
 }
+
+func NewDiskIoPacketWriteLabel(deviceId types.DeviceIdentifier, buffer []pkg.Word36) *DiskIoPacket {
+	return &DiskIoPacket{
+		deviceId:   deviceId,
+		ioFunction: types.IofWriteLabel,
+		ioStatus:   types.IosNotStarted,
+		buffer:     buffer,
+	}
+}

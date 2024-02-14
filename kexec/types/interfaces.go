@@ -119,6 +119,7 @@ type IExec interface {
 	HandleKeyIn(source ConsoleIdentifier, text string)
 	SendExecReadOnlyMessage(message string)
 	SendExecReadReplyMessage(message string, maxReplyChars int) (string, error)
+	SendExecRestrictedReadReplyMessage(message string, accepted []string) (string, error)
 	Stop(code StopCode)
 }
 
@@ -130,6 +131,7 @@ type IFacilitiesManager interface {
 	ResetManager() error // manager must stop the exec if it returns an error
 	AssignDiskDeviceToExec(deviceId DeviceIdentifier) error
 	GetDeviceStatusDetail(deviceId DeviceIdentifier) string
+	GetDiskAttributes(deviceId DeviceIdentifier) (*DiskAttributes, error)
 	IsDeviceAssigned(deviceId DeviceIdentifier) bool
 	NotifyDeviceReady(deviceInfo DeviceInfo, isReady bool)
 }
@@ -149,6 +151,7 @@ type IMFDManager interface {
 	InitializeManager() error // manager must stop the exec if it returns an error
 	IsInitialized() bool
 	ResetManager() error // manager must stop the exec if it returns an error
+	SetMSInitialize(flag bool)
 	NotifyDeviceReady(deviceInfo DeviceInfo, isReady bool)
 }
 
