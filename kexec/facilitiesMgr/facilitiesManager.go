@@ -78,15 +78,11 @@ func (mgr *FacilitiesManager) CloseManager() {
 func (mgr *FacilitiesManager) InitializeManager() error {
 	// create inventory based on nodeMgr
 	nm := mgr.exec.GetNodeManager()
-	mm := mgr.exec.GetMFDManager()
 	for _, devInfo := range nm.GetDeviceInfos() {
 		devId := devInfo.GetDeviceIdentifier()
 		switch devInfo.GetNodeType() {
 		case types.NodeTypeDisk:
 			mgr.inventory.disks[devId] = diskAttributes{}
-			if devInfo.GetNodeStatus() != types.NodeStatusDown && devInfo.IsReady() {
-				mm.NotifyDeviceReady(devInfo, true)
-			}
 		case types.NodeTypeTape:
 			mgr.inventory.tapes[devId] = tapeAttributes{}
 		}
@@ -273,9 +269,13 @@ func (mgr *FacilitiesManager) thread() {
 	for !mgr.terminateThread {
 		time.Sleep(10 * time.Millisecond)
 
-		mgr.mutex.Lock()
 		// any device ready notifications?
-		for devId, flag := range mgr.deviceReadyNotificationQueue {
+		mgr.mutex.Lock()
+		queue := mgr.deviceReadyNotificationQueue
+		mgr.deviceReadyNotificationQueue = make(map[types.DeviceIdentifier]bool)
+		mgr.mutex.Unlock()
+
+		for devId, flag := range queue {
 			if flag {
 				_, ok := mgr.inventory.disks[devId]
 				if ok {
@@ -289,7 +289,6 @@ func (mgr *FacilitiesManager) thread() {
 				}
 			}
 		}
-		mgr.mutex.Unlock()
 	}
 
 	mgr.threadStopped = true
@@ -358,6 +357,6 @@ func (mgr *FacilitiesManager) Dump(dest io.Writer, indent string) {
 	_, _ = fmt.Fprintf(dest, "%v  Queued device-ready notifications:\n", indent)
 	for devId, ready := range mgr.deviceReadyNotificationQueue {
 		wId := pkg.Word36(devId)
-		_, _ = fmt.Fprintf(dest, "%v    devId:0%v ready:%v", indent, wId.ToStringAsOctal(), ready)
+		_, _ = fmt.Fprintf(dest, "%v    devId:0%v ready:%v\n", indent, wId.ToStringAsOctal(), ready)
 	}
 }

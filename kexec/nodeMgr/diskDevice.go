@@ -65,10 +65,18 @@ type DiskDevice struct {
 }
 
 func NewDiskDevice(initialFileName *string) *DiskDevice {
-	return &DiskDevice{
+	dd := &DiskDevice{
 		fileName:         initialFileName,
 		isWriteProtected: true,
 	}
+
+	if initialFileName != nil {
+		pkt := NewDiskIoPacketMount(0, *initialFileName, false)
+		dd.doMount(pkt)
+		dd.isReady = pkt.GetIoStatus() == types.IosComplete
+	}
+
+	return dd
 }
 
 func (disk *DiskDevice) GetNodeType() types.NodeType {
@@ -513,6 +521,19 @@ func writeTrack(file *os.File, wordAddress uint64, data []pkg.Word36, recordLeng
 	return nil
 }
 
-func (disk *DiskDevice) Dump(destination io.Writer, indent string) {
-	// TODO
+func (disk *DiskDevice) Dump(dest io.Writer, indent string) {
+	str := fmt.Sprintf("Rdy:%v WProt:%v pack:%v file:%v\n",
+		disk.isReady, disk.isWriteProtected, disk.packName, disk.fileName)
+	_, _ = fmt.Fprintf(dest, "%v%v", indent, str)
+
+	if disk.geometry != nil {
+		str := fmt.Sprintf("  prep:%v trks:%v blks:%v sec/blk:%v blk/trk:%v bytes/blk:%v\n",
+			disk.geometry.PrepFactor,
+			disk.geometry.TrackCount,
+			disk.geometry.BlockCount,
+			disk.geometry.SectorsPerBlock,
+			disk.geometry.BlocksPerTrack,
+			disk.geometry.BytesPerBlock)
+		_, _ = fmt.Fprintf(dest, "%v%v", indent, str)
+	}
 }

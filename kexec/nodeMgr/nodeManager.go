@@ -64,12 +64,12 @@ func (mgr *NodeManager) InitializeManager() error {
 	mgr.channelInfos[chan0.channelIdentifier] = chan0
 	mgr.channelInfos[chan1.channelIdentifier] = chan1
 
-	fn := "disk0.pack"
-	disk0 := NewDiskDeviceInfo("DISK0", &fn)
-	fn = "disk1.pack"
-	disk1 := NewDiskDeviceInfo("DISK1", &fn)
-	fn = "disk2.pack"
-	disk2 := NewDiskDeviceInfo("DISK2", &fn)
+	fn1 := "resources/fix000.pack"
+	disk0 := NewDiskDeviceInfo("DISK0", &fn1)
+	fn2 := "resources/fix001.pack"
+	disk1 := NewDiskDeviceInfo("DISK1", &fn2)
+	fn3 := "resources/fix002.pack"
+	disk2 := NewDiskDeviceInfo("DISK2", &fn3)
 
 	tape0 := NewTapeDeviceInfo("TAPE0")
 	tape1 := NewTapeDeviceInfo("TAPE1")
@@ -465,7 +465,7 @@ func (mgr *NodeManager) thread() {
 	mgr.threadStarted = true
 
 	for !mgr.terminateThread {
-		time.Sleep(time.Second)
+		time.Sleep(25 * time.Millisecond)
 
 		// Check devices to see if any have become ready or not ready since our last poll.
 		// Make a list while we are under lock, then unlock and notify the appropriate authorities

@@ -107,6 +107,6 @@ func (mgr *MFDManager) Dump(dest io.Writer, indent string) {
 	_, _ = fmt.Fprintf(dest, "%v  Queued device-ready notifications:\n", indent)
 	for devId, ready := range mgr.deviceReadyNotificationQueue {
 		wId := pkg.Word36(devId)
-		_, _ = fmt.Fprintf(dest, "%v    devId:0%v ready:%v", indent, wId.ToStringAsOctal(), ready)
+		_, _ = fmt.Fprintf(dest, "%v    devId:0%v ready:%v\n", indent, wId.ToStringAsOctal(), ready)
 	}
 }
