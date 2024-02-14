@@ -478,13 +478,15 @@ func readBlock(file *os.File, wordAddress uint64, data []pkg.Word36, recordLengt
 }
 
 func writeBlock(file *os.File, wordAddress uint64, data []pkg.Word36, recordLength uint) error {
-	buf := make([]byte, recordLength*9/2)
+	bufLen := recordLength * 9 / 2
+	buf := make([]byte, bufLen)
 	blockId := wordAddress / uint64(recordLength)
+	offset := int64(blockId * uint64(bytesPerBlockMap[types.PrepFactor(recordLength)]))
 	//fmt.Printf("writeBlock blkId:%v addr:%v\n", blockId, wordAddress) // TODO remove
 	//pkg.DumpWord36Buffer(data, 7)                                     // TODO remove
 	pkg.PackWord36(data, buf)
 	//dumpBuffer(buf) // TODO remove
-	_, err := file.WriteAt(buf, int64(blockId*uint64(recordLength)))
+	_, err := file.WriteAt(buf, offset)
 	if err != nil {
 		return err
 	}
