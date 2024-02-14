@@ -133,12 +133,10 @@ func (e *Exec) InitialBoot(initMassStorage bool) error {
 	}
 
 	// Let the operator adjust the configuration
-	reply := ""
-	for strings.ToUpper(reply) != "DONE" && err == nil {
-		reply, err = e.SendExecReadReplyMessage("Modify Config then answer DONE", 4)
-		if err != nil {
-			return err
-		}
+	accepted := []string{"DONE"}
+	_, err = e.SendExecRestrictedReadReplyMessage("Modify Config then answer DONE", accepted)
+	if err != nil {
+		return err
 	}
 
 	// spin up facilities, then the MFD
@@ -187,6 +185,44 @@ func (e *Exec) SendExecReadReplyMessage(message string, maxReplyChars int) (stri
 	return consMsg.Reply, nil
 }
 
+func (e *Exec) SendExecRestrictedReadReplyMessage(message string, accepted []string) (string, error) {
+	if len(accepted) == 0 {
+		return "", fmt.Errorf("bad accepted list")
+	}
+
+	maxReplyLen := 0
+	for _, acceptString := range accepted {
+		if maxReplyLen < len(acceptString) {
+			maxReplyLen = len(acceptString)
+		}
+	}
+
+	consMsg := types.ConsoleReadReplyMessage{
+		Source:         e.runControlEntry,
+		Text:           message,
+		DoNotEmitRunId: true,
+		MaxReplyLength: maxReplyLen,
+	}
+
+	done := false
+	for !done {
+		err := e.consoleMgr.SendReadReplyMessage(&consMsg)
+		if err != nil {
+			return "", err
+		}
+
+		resp := strings.ToUpper(consMsg.Reply)
+		for _, acceptString := range accepted {
+			if acceptString == resp {
+				done = true
+				break
+			}
+		}
+	}
+
+	return consMsg.Reply, nil
+}
+
 func (e *Exec) Stop(code types.StopCode) {
 	// TODO need to set contingency in the Exec RCE
 	if e.allowRestart {
@@ -203,6 +239,7 @@ func (e *Exec) Stop(code types.StopCode) {
 func (e *Exec) Dump(dest io.Writer) {
 	_, _ = fmt.Fprintf(dest, "Exec Dump ----------------------------------------------------\n")
 
+	_, _ = fmt.Fprintf(dest, "  Phase:         %v\n", e.phase)
 	_, _ = fmt.Fprintf(dest, "  Stopped:       %v\n", e.stopFlag)
 	_, _ = fmt.Fprintf(dest, "  StopCode:      %03o\n", e.stopCode)
 	_, _ = fmt.Fprintf(dest, "  Allow Restart: %v\n", e.allowRestart)

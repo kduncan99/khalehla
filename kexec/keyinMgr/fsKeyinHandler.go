@@ -47,7 +47,7 @@ type FSKeyinHandler struct {
 	timeFinished    time.Time
 }
 
-func NewFSKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, options string, arguments string) *FSKeyinHandler {
+func NewFSKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, options string, arguments string) types.KeyinHandler {
 	return &FSKeyinHandler{
 		exec:            exec,
 		source:          source,

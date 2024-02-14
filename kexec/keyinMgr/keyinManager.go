@@ -13,6 +13,13 @@ import (
 	"time"
 )
 
+var handlerTable = map[string]func(types.IExec, types.ConsoleIdentifier, string, string) types.KeyinHandler{
+	"$!": NewStopKeyinHandler,
+	"D":  NewDKeyinHandler,
+	"DU": NewDUKeyinHandler,
+	"FS": NewFSKeyinHandler,
+}
+
 type keyinInfo struct {
 	source types.ConsoleIdentifier
 	text   string
@@ -86,17 +93,9 @@ func (mgr *KeyinManager) scheduleKeyinHandler(ki *keyinInfo) {
 		args = split[1]
 	}
 
-	var handler types.KeyinHandler
-	switch command {
-	case "D":
-		handler = NewDKeyinHandler(mgr.exec, ki.source, options, args)
-	case "DU":
-		handler = NewDUKeyinHandler(mgr.exec, ki.source, options, args)
-	case "FS":
-		handler = NewFSKeyinHandler(mgr.exec, ki.source, options, args)
-	}
-
-	if handler != nil {
+	newHandler, ok := handlerTable[command]
+	if ok {
+		handler := newHandler(mgr.exec, ki.source, options, args)
 		if !handler.CheckSyntax() {
 			mgr.exec.SendExecReadOnlyMessage(fmt.Sprintf("%v KEYIN HAS SYNTAX ERROR, INPUT IGNORED", command))
 			return

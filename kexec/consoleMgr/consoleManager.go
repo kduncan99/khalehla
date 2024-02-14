@@ -161,42 +161,43 @@ func (mgr *ConsoleManager) checkForReadOnlyMessages() bool {
 	if len(mgr.queuedReadOnly) > 0 {
 		msg := mgr.queuedReadOnly[0]
 		mgr.queuedReadOnly = mgr.queuedReadOnly[1:]
+		if mgr.exec.GetPhase() <= types.ExecPhaseRunning {
+			// Construct output text
+			text := ""
+			if !msg.DoNotEmitRunId {
+				text = msg.Source.RunId + "*"
+			}
+			text += msg.Text
 
-		// Construct output text
-		text := ""
-		if !msg.DoNotEmitRunId {
-			text = msg.Source.RunId + "*"
-		}
-		text += msg.Text
+			// If it has routing, try to send it to the indicated console
+			if msg.Routing != nil {
+				cons, ok := mgr.consoles[*msg.Routing]
+				if ok {
+					err := cons.SendReadOnlyMessage(text)
+					if err == nil {
+						return true
+					}
 
-		// If it has routing, try to send it to the indicated console
-		if msg.Routing != nil {
-			cons, ok := mgr.consoles[*msg.Routing]
-			if ok {
-				err := cons.SendReadOnlyMessage(text)
-				if err == nil {
-					return true
+					// lose the console, and drop through
+					mgr.dropConsole(*msg.Routing)
 				}
 
-				// lose the console, and drop through
-				mgr.dropConsole(*msg.Routing)
+				// routing was desired, but could not be fulfilled.
+				// send it to the primary console instead
+				_ = mgr.primaryConsole.SendReadOnlyMessage(text)
+				return true
 			}
 
-			// routing was desired, but could not be fulfilled.
-			// send it to the primary console instead
-			_ = mgr.primaryConsole.SendReadOnlyMessage(text)
+			// No routing - send it to all the consoles
+			for consId, cons := range mgr.consoles {
+				err := cons.SendReadOnlyMessage(text)
+				if err != nil {
+					mgr.dropConsole(consId)
+				}
+			}
+
 			return true
 		}
-
-		// No routing - send it to all the consoles
-		for consId, cons := range mgr.consoles {
-			err := cons.SendReadOnlyMessage(text)
-			if err != nil {
-				mgr.dropConsole(consId)
-			}
-		}
-
-		return true
 	}
 
 	return false
@@ -212,7 +213,15 @@ func (mgr *ConsoleManager) checkForReadReplyMessages() bool {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
-	for _, tracker := range mgr.queuedReadReply {
+	for trackerId, tracker := range mgr.queuedReadReply {
+		if mgr.exec.GetPhase() > types.ExecPhaseRunning {
+			if !tracker.hasReply {
+				tracker.isCanceled = true
+			}
+			delete(mgr.queuedReadReply, trackerId)
+			continue
+		}
+
 		if tracker.replyConsole == nil && !tracker.retryLater {
 			// Construct output text
 			text := ""
