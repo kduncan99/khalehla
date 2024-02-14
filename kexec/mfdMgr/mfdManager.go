@@ -54,10 +54,6 @@ func (mgr *MFDManager) ResetManager() error {
 	return nil
 }
 
-func (mgr *MFDManager) NotifyDeviceReady(deviceInfo types.DeviceInfo, isReady bool) {
-	// TODO
-}
-
 func (mgr *MFDManager) thread() {
 	mgr.threadStarted = true
 

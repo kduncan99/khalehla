@@ -85,21 +85,32 @@ type DeviceReadyListener interface {
 	NotifyDeviceReady(DeviceInfo, bool)
 }
 
-type FacilitiesItem interface {
-	GetInternalFileName() string
-	GetFileName() string
-	GetQualifier() string
-	GetEquipmentCode() uint
+// type FacilitiesItem interface {
+// 	GetInternalFileName() string
+// 	GetFileName() string
+// 	GetQualifier() string
+// 	GetEquipmentCode() uint
+// }
+
+type IConsoleManager interface {
+	CloseManager()
+	Dump(destination io.Writer, indent string)
+	InitializeManager() error // manager must stop the exec if it returns an error
+	IsInitialized() bool
+	ResetManager() error // manager must stop the exec if it returns an error
+	SendReadOnlyMessage(message *ConsoleReadOnlyMessage)
+	SendReadReplyMessage(message *ConsoleReadReplyMessage) error
+	SendSystemMessages(message1 string, message2 string)
 }
 
 // IExec is the interface for the Exec, placed here to avoid package import cycles
 type IExec interface {
 	Close()
 	Dump(destination io.Writer)
-	GetConsoleManager() Manager
-	GetFacilitiesManager() Manager
-	GetKeyinManager() Manager
-	GetNodeManager() Manager
+	GetConsoleManager() IConsoleManager
+	GetFacilitiesManager() IFacilitiesManager
+	GetKeyinManager() IKeyinManager
+	GetNodeManager() INodeManager
 	GetPhase() ExecPhase
 	GetRunControlEntry() *RunControlEntry
 	GetStopCode() StopCode
@@ -108,6 +119,47 @@ type IExec interface {
 	SendExecReadOnlyMessage(message string)
 	SendExecReadReplyMessage(message string, maxReplyChars int) (string, error)
 	Stop(code StopCode)
+}
+
+type IFacilitiesManager interface {
+	CloseManager()
+	Dump(destination io.Writer, indent string)
+	InitializeManager() error // manager must stop the exec if it returns an error
+	IsInitialized() bool
+	ResetManager() error // manager must stop the exec if it returns an error
+	AssignDiskDeviceToExec(deviceId DeviceIdentifier) error
+	GetDeviceStatusDetail(deviceId DeviceIdentifier) string
+	NotifyDeviceReady(deviceInfo DeviceInfo, isReady bool)
+}
+
+type IKeyinManager interface {
+	CloseManager()
+	Dump(destination io.Writer, indent string)
+	InitializeManager() error // manager must stop the exec if it returns an error
+	IsInitialized() bool
+	ResetManager() error // manager must stop the exec if it returns an error
+	PostKeyin(source ConsoleIdentifier, text string)
+}
+
+type IMFDManager interface {
+	CloseManager()
+	Dump(destination io.Writer, indent string)
+	InitializeManager() error // manager must stop the exec if it returns an error
+	IsInitialized() bool
+	ResetManager() error // manager must stop the exec if it returns an error
+}
+
+type INodeManager interface {
+	CloseManager()
+	Dump(destination io.Writer, indent string)
+	InitializeManager() error // manager must stop the exec if it returns an error
+	IsInitialized() bool
+	ResetManager() error // manager must stop the exec if it returns an error
+	GetChannelInfos() []ChannelInfo
+	GetDeviceInfos() []DeviceInfo
+	GetNodeInfoByName(nodeName string) (NodeInfo, error)
+	GetNodeInfoByIdentifier(nodeId NodeIdentifier) (NodeInfo, error)
+	RouteIo(ioPacket IoPacket)
 }
 
 // IoPacket contains all the information necessary for a Channel to route an IO operation,

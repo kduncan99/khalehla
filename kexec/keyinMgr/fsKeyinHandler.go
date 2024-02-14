@@ -6,7 +6,6 @@ package keyinMgr
 
 import (
 	"fmt"
-	"khalehla/kexec/facilitiesMgr"
 	"khalehla/kexec/nodeMgr"
 	"khalehla/kexec/types"
 	"strings"
@@ -130,7 +129,7 @@ func (kh *FSKeyinHandler) emitStatusStrings(statStrings []string) {
 }
 
 func (kh *FSKeyinHandler) getStatusStringForNode(nodeInfo types.NodeInfo) string {
-	fm := kh.exec.GetFacilitiesManager().(*facilitiesMgr.FacilitiesManager)
+	fm := kh.exec.GetFacilitiesManager()
 	str := nodeInfo.GetNodeName() + " "
 	str += nodeMgr.GetNodeStatusString(nodeInfo.GetNodeStatus(), nodeInfo.IsAccessible())
 	if nodeInfo.GetNodeCategory() == types.NodeCategoryDevice {
@@ -143,7 +142,7 @@ func (kh *FSKeyinHandler) getStatusStringForNode(nodeInfo types.NodeInfo) string
 }
 
 func (kh *FSKeyinHandler) handleAllForChannel() {
-	nm := kh.exec.GetNodeManager().(*nodeMgr.NodeManager)
+	nm := kh.exec.GetNodeManager()
 	statStrings := make([]string, 0)
 	chName := strings.ToUpper(kh.arguments)
 	nodeInfo, err := nm.GetNodeInfoByName(chName)
@@ -166,7 +165,7 @@ func (kh *FSKeyinHandler) handleAllForChannel() {
 }
 
 func (kh *FSKeyinHandler) handleAllOf(nodeCategory types.NodeCategory, nodeType types.NodeType) {
-	nm := kh.exec.GetNodeManager().(*nodeMgr.NodeManager)
+	nm := kh.exec.GetNodeManager()
 	statStrings := make([]string, 0)
 	if nodeCategory == types.NodeCategoryChannel || nodeCategory == 0 {
 		for _, chInfo := range nm.GetChannelInfos() {
@@ -188,7 +187,7 @@ func (kh *FSKeyinHandler) handleAllOf(nodeCategory types.NodeCategory, nodeType 
 }
 
 func (kh *FSKeyinHandler) handleComponentList() {
-	nm := kh.exec.GetNodeManager().(*nodeMgr.NodeManager)
+	nm := kh.exec.GetNodeManager()
 	names := strings.Split(kh.arguments, ",")
 	statStrings := make([]string, len(names))
 	for nx, name := range names {

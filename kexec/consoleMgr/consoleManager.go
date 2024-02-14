@@ -45,11 +45,6 @@ func NewConsoleManager(exec types.IExec) *ConsoleManager {
 	}
 }
 
-// IsDone indicates whether the goRoutine is active
-func (mgr *ConsoleManager) IsDone() bool {
-	return mgr.threadStopped
-}
-
 // CloseManager is invoked when the exec is stopping... for any reason. It tells the goRoutine to threadStop.
 func (mgr *ConsoleManager) CloseManager() {
 	mgr.threadStop()

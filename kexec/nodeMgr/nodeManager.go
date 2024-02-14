@@ -367,7 +367,7 @@ func (mgr *NodeManager) thread() {
 		}
 		mgr.mutex.Unlock()
 
-		fm := mgr.exec.GetFacilitiesManager().(types.DeviceReadyListener)
+		fm := mgr.exec.GetFacilitiesManager()
 		for devInfo, isReady := range updates {
 			fm.NotifyDeviceReady(devInfo, isReady)
 		}

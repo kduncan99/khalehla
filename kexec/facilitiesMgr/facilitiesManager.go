@@ -77,7 +77,7 @@ func (mgr *FacilitiesManager) CloseManager() {
 
 func (mgr *FacilitiesManager) InitializeManager() error {
 	// create inventory based on nodeMgr
-	nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
+	nm := mgr.exec.GetNodeManager()
 	for _, devInfo := range nm.GetDeviceInfos() {
 		switch devInfo.GetNodeType() {
 		case types.NodeTypeDisk:
@@ -158,15 +158,15 @@ func (mgr *FacilitiesManager) GetDeviceStatusDetail(deviceId types.DeviceIdentif
 			}
 		}
 
-		//ta, ok := mgr.inventory.tapes[deviceId]
-		//if ok {
+		// ta, ok := mgr.inventory.tapes[deviceId]
+		// if ok {
 		//	if ta.assignedTo != nil {
 		//		//	[* RUNID run-id REEL reel [RING|NORING] [POS [*]ffff[+|-][*]bbbbbb | POS LOST]]
 		//		str += "* RUNID " + ta.assignedTo.RunId + " REEL " + ta.reelNumber
 		//		// TODO RING | NORING
 		//		// TODO POS
 		//	}
-		//}
+		// }
 	}
 
 	return str
@@ -183,7 +183,7 @@ func (mgr *FacilitiesManager) diskBecameReady(deviceId types.DeviceIdentifier) {
 	// Device became ready - any pack attributes we have, are obsolete, so reload them
 	log.Printf("FacMgr:Disk %v became ready", deviceId)
 
-	dm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
+	dm := mgr.exec.GetNodeManager()
 	ni, err := dm.GetNodeInfoByIdentifier(types.NodeIdentifier(deviceId))
 	if err != nil {
 		mgr.exec.Stop(types.StopFacilitiesComplex)

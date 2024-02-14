@@ -20,11 +20,11 @@ import (
 const Version = "v1.0.0"
 
 type Exec struct {
-	consoleMgr *consoleMgr.ConsoleManager
-	facMgr     *facilitiesMgr.FacilitiesManager
-	keyinMgr   *keyinMgr.KeyinManager
-	mfdMgr     *mfdMgr.MFDManager
-	nodeMgr    *nodeMgr.NodeManager
+	consoleMgr types.IConsoleManager
+	facMgr     types.IFacilitiesManager
+	keyinMgr   types.IKeyinManager
+	mfdMgr     types.IMFDManager
+	nodeMgr    types.INodeManager
 
 	runControlEntry *types.RunControlEntry
 	runControlTable map[string]*types.RunControlEntry // indexed by runid
@@ -63,23 +63,29 @@ func NewExec(cfg *config.Configuration) *Exec {
 
 func (e *Exec) Close() {
 	e.keyinMgr.CloseManager()
+	e.facMgr.CloseManager()
+	e.mfdMgr.CloseManager()
 	e.nodeMgr.CloseManager()
 	e.consoleMgr.CloseManager()
 }
 
-func (e *Exec) GetConsoleManager() types.Manager {
+func (e *Exec) GetConsoleManager() types.IConsoleManager {
 	return e.consoleMgr
 }
 
-func (e *Exec) GetFacilitiesManager() types.Manager {
+func (e *Exec) GetFacilitiesManager() types.IFacilitiesManager {
 	return e.facMgr
 }
 
-func (e *Exec) GetKeyinManager() types.Manager {
+func (e *Exec) GetKeyinManager() types.IKeyinManager {
 	return e.keyinMgr
 }
 
-func (e *Exec) GetNodeManager() types.Manager {
+func (e *Exec) GetMFDManager() types.IMFDManager {
+	return e.mfdMgr
+}
+
+func (e *Exec) GetNodeManager() types.INodeManager {
 	return e.nodeMgr
 }
 
