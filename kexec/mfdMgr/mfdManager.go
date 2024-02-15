@@ -45,16 +45,6 @@ func (mgr *MFDManager) CloseManager() {
 func (mgr *MFDManager) InitializeManager() error {
 	var err error
 	if mgr.msInitialize {
-		replies := []string{"Y", "N"}
-		msg := "Mass Storage will be Initialized - Do You Want To Continue? Y/N"
-		reply, err := mgr.exec.SendExecRestrictedReadReplyMessage(msg, replies)
-		if err != nil {
-			return err
-		} else if reply != "Y" {
-			mgr.exec.Stop(types.StopConsoleResponseRequiresReboot)
-			return fmt.Errorf("boot canceled")
-		}
-
 		err = mgr.initializeMassStorage()
 	} else {
 		err = mgr.recoverMassStorage()

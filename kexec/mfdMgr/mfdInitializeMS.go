@@ -10,7 +10,6 @@ import (
 	"khalehla/kexec/types"
 	"khalehla/pkg"
 	"log"
-	"os"
 )
 
 // initializeMassStorage handles MFD initialization for what is effectively a JK13 boot.
@@ -102,9 +101,6 @@ func (mgr *MFDManager) initializeMassStorage() error {
 		}
 	}
 
-	msg := fmt.Sprintf("Fixed Disk Pool = %v Devices", len(disks))
-	mgr.exec.SendExecReadOnlyMessage(msg)
-
 	// Go do the work
 	mgr.directoryTracks = make(map[uint64][]pkg.Word36)
 	mgr.fixedLDAT = make(map[uint]types.DeviceIdentifier)
@@ -126,9 +122,21 @@ func (mgr *MFDManager) initializeMassStorage() error {
 }
 
 func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.DiskAttributes) error {
+	msg := fmt.Sprintf("Fixed Disk Pool = %v Devices", len(disks))
+	mgr.exec.SendExecReadOnlyMessage(msg)
+
+	replies := []string{"Y", "N"}
+	msg = "Mass Storage will be Initialized - Do You Want To Continue? Y/N"
+	reply, err := mgr.exec.SendExecRestrictedReadReplyMessage(msg, replies)
+	if err != nil {
+		return err
+	} else if reply != "Y" {
+		mgr.exec.Stop(types.StopConsoleResponseRequiresReboot)
+		return fmt.Errorf("boot canceled")
+	}
+
 	// make sure there are no pack name conflicts
 	// TODO
-	os.Exit(1) // TODO remove
 
 	nextLdatIndex := uint(1)
 	totalTracks := uint64(0)
@@ -136,6 +144,9 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.
 		// Assign an LDAT to the pack, update the pack label, then rewrite the label
 		ldatIndex := nextLdatIndex
 		nextLdatIndex++
+
+		// Assign the unit
+		_ = mgr.exec.GetFacilitiesManager().AssignDiskDeviceToExec(diskInfo.GetDeviceIdentifier())
 
 		// Rewrite first directory track to the pack
 		dirTrack := make([]pkg.Word36, 1792)
@@ -182,7 +193,7 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.
 				err = true
 			}
 
-			blocksLeft++
+			blocksLeft--
 			subSetStart += int(recordLength)
 		}
 
@@ -198,7 +209,7 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.
 		totalTracks += availableTracks
 	}
 
-	msg := fmt.Sprintf("MS Initialized - %v Tracks Available", totalTracks)
+	msg = fmt.Sprintf("MS Initialized - %v Tracks Available", totalTracks)
 	mgr.exec.SendExecReadOnlyMessage(msg)
 	return nil
 }

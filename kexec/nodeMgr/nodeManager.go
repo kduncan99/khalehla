@@ -70,6 +70,8 @@ func (mgr *NodeManager) InitializeManager() error {
 	disk1 := NewDiskDeviceInfo("DISK1", &fn2)
 	fn3 := "resources/fix002.pack"
 	disk2 := NewDiskDeviceInfo("DISK2", &fn3)
+	fn4 := "resources/rem000.pack"
+	disk3 := NewDiskDeviceInfo("DISK3", &fn4)
 
 	tape0 := NewTapeDeviceInfo("TAPE0")
 	tape1 := NewTapeDeviceInfo("TAPE1")
@@ -77,15 +79,17 @@ func (mgr *NodeManager) InitializeManager() error {
 	mgr.deviceInfos[disk0.deviceIdentifier] = disk0
 	mgr.deviceInfos[disk1.deviceIdentifier] = disk1
 	mgr.deviceInfos[disk2.deviceIdentifier] = disk2
+	mgr.deviceInfos[disk3.deviceIdentifier] = disk3
 	mgr.deviceInfos[tape0.deviceIdentifier] = tape0
 	mgr.deviceInfos[tape1.deviceIdentifier] = tape1
 
-	chan0.deviceInfos = []*DiskDeviceInfo{disk0, disk1, disk2}
+	chan0.deviceInfos = []*DiskDeviceInfo{disk0, disk1, disk2, disk3}
 	chan1.deviceInfos = []*TapeDeviceInfo{tape0, tape1}
 
 	disk0.channelInfos = []*DiskChannelInfo{chan0}
 	disk1.channelInfos = []*DiskChannelInfo{chan0}
 	disk2.channelInfos = []*DiskChannelInfo{chan0}
+	disk3.channelInfos = []*DiskChannelInfo{chan0}
 	tape0.channelInfos = []*TapeChannelInfo{chan1}
 	tape1.channelInfos = []*TapeChannelInfo{chan1}
 

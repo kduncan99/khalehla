@@ -120,7 +120,7 @@ func (kh *FSKeyinHandler) emitStatusStrings(statStrings []string) {
 		sx++
 		if !strings.ContainsRune(str, '*') {
 			if sx < len(statStrings) && !strings.ContainsRune(statStrings[sx], '*') {
-				str = fmt.Sprintf("%-20s%s", str, statStrings[sx])
+				str = fmt.Sprintf("%-30s%s", str, statStrings[sx])
 				sx++
 			}
 		}
