@@ -62,6 +62,7 @@ type DiskDevice struct {
 	geometry         *types.DiskPackGeometry
 	mutex            sync.Mutex
 	buffer           []byte
+	Verbose          bool
 }
 
 func NewDiskDevice(initialFileName *string) *DiskDevice {
@@ -138,9 +139,17 @@ func (disk *DiskDevice) StartIo(pkt types.IoPacket) {
 	default:
 		pkt.SetIoStatus(types.IosInvalidFunction)
 	}
+
+	if disk.Verbose {
+		log.Printf("  ioStatus:%v", pkt.GetIoStatus())
+	}
 }
 
 func (disk *DiskDevice) doMount(pkt *DiskIoPacket) {
+	if disk.Verbose {
+		log.Printf("doMount fName:%v", pkt.fileName)
+	}
+
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
@@ -170,6 +179,10 @@ func (disk *DiskDevice) doMount(pkt *DiskIoPacket) {
 }
 
 func (disk *DiskDevice) doPrep(pkt *DiskIoPacket) {
+	if disk.Verbose {
+		log.Printf("doPrep prepF:%v tracks:%v", pkt.prepFactor, pkt.trackCount)
+	}
+
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
@@ -202,8 +215,8 @@ func (disk *DiskDevice) doPrep(pkt *DiskIoPacket) {
 
 	// create initial label and write it
 	label := make([]pkg.Word36, 28)
-	pkg.FromStringToAscii("VOL1", label[0:1])
-	pkg.FromStringToAscii(pkt.packName, label[1:3])
+	pkg.FromStringToAsciiWithOffset("VOL1", label, 0, 1)
+	pkg.FromStringToAsciiWithOffset(pkt.packName, label, 1, 2)
 	label[2].SetH2(0)
 	label[3].SetW(dirTrackAddr)
 	label[4].SetH1(blocksPerTrack)
@@ -218,6 +231,11 @@ func (disk *DiskDevice) doPrep(pkt *DiskIoPacket) {
 
 	buffer := make([]byte, 128)
 	pkg.PackWord36(label, buffer[:126])
+	if disk.Verbose {
+		pkg.DumpWord36Buffer(label, 7)
+		log.Printf("  WriteAt offset=%v len=%v", 0, len(disk.buffer))
+	}
+
 	_, err := disk.file.WriteAt(buffer, 0)
 	if err != nil {
 		log.Printf("Error writing label:%v\n", err)
@@ -259,6 +277,10 @@ func (disk *DiskDevice) doPrep(pkt *DiskIoPacket) {
 	byteCount := wLen * 9 / 2
 	for wx < 1792 {
 		pkg.PackWord36(dirTrack[wx:wx+wLen], buffer[0:byteCount])
+		if disk.Verbose {
+			log.Printf("  WriteAt offset=%v len=%v", offset, len(disk.buffer))
+		}
+
 		_, err := disk.file.WriteAt(buffer, offset)
 		if err != nil {
 			log.Printf("Error writing directory track:%v\n", err)
@@ -279,6 +301,10 @@ func (disk *DiskDevice) doPrep(pkt *DiskIoPacket) {
 }
 
 func (disk *DiskDevice) doRead(pkt *DiskIoPacket) {
+	if disk.Verbose {
+		log.Printf("doRead blkId:%v", pkt.blockId)
+	}
+
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
@@ -308,6 +334,10 @@ func (disk *DiskDevice) doRead(pkt *DiskIoPacket) {
 	}
 
 	offset := int64(pkt.blockId) * int64(disk.geometry.PaddedBytesPerBlock)
+	if disk.Verbose {
+		log.Printf("  ReadAt offset=%v len=%v", offset, len(disk.buffer))
+	}
+
 	_, err := disk.file.ReadAt(disk.buffer, offset)
 	if err != nil {
 		log.Printf("Read Error:%v\n", err)
@@ -315,11 +345,18 @@ func (disk *DiskDevice) doRead(pkt *DiskIoPacket) {
 		return
 	}
 	pkg.UnpackWord36(disk.buffer[:disk.geometry.BytesPerBlock], pkt.buffer)
+	if disk.Verbose {
+		pkg.DumpWord36Buffer(pkt.buffer, 7)
+	}
 
 	pkt.ioStatus = types.IosComplete
 }
 
 func (disk *DiskDevice) doReadLabel(pkt *DiskIoPacket) {
+	if disk.Verbose {
+		log.Printf("doReadLabel blkId:%v", pkt.blockId)
+	}
+
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
@@ -343,6 +380,10 @@ func (disk *DiskDevice) doReadLabel(pkt *DiskIoPacket) {
 		return
 	}
 
+	if disk.Verbose {
+		log.Printf("  ReadAt offset=%v len=%v", 0, len(disk.buffer))
+	}
+
 	_, err := disk.file.ReadAt(disk.buffer, 0)
 	if err != nil {
 		log.Printf("%v\n", err)
@@ -356,6 +397,10 @@ func (disk *DiskDevice) doReadLabel(pkt *DiskIoPacket) {
 
 // doReset cancels any pending IOs. It is a NOP for us.
 func (disk *DiskDevice) doReset(pkt *DiskIoPacket) {
+	if disk.Verbose {
+		log.Printf("doReset")
+	}
+
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
@@ -364,6 +409,10 @@ func (disk *DiskDevice) doReset(pkt *DiskIoPacket) {
 }
 
 func (disk *DiskDevice) doUnmount(pkt *DiskIoPacket) {
+	if disk.Verbose {
+		log.Printf("doRead Unmount")
+	}
+
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
@@ -383,6 +432,10 @@ func (disk *DiskDevice) doUnmount(pkt *DiskIoPacket) {
 }
 
 func (disk *DiskDevice) doWrite(pkt *DiskIoPacket) {
+	if disk.Verbose {
+		log.Printf("doWrite blkId:%v", pkt.blockId)
+	}
+
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
@@ -429,6 +482,10 @@ func (disk *DiskDevice) doWrite(pkt *DiskIoPacket) {
 }
 
 func (disk *DiskDevice) doWriteLabel(pkt *DiskIoPacket) {
+	if disk.Verbose {
+		log.Printf("doWriteLabel")
+	}
+
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
@@ -457,6 +514,10 @@ func (disk *DiskDevice) doWriteLabel(pkt *DiskIoPacket) {
 		return
 	}
 
+	if disk.Verbose {
+		pkg.DumpWord36Buffer(pkt.buffer, 7)
+	}
+
 	pkg.PackWord36(pkt.buffer, disk.buffer)
 	_, err := disk.file.WriteAt(disk.buffer, 0)
 	if err != nil {
@@ -471,9 +532,17 @@ func (disk *DiskDevice) doWriteLabel(pkt *DiskIoPacket) {
 // do this any time we need to read the geometry from a (hopefully) prepped pack.
 // we will pretend the prep factor is 28 - this will work for block 0
 func (disk *DiskDevice) probeGeometry() error {
+	if disk.Verbose {
+		log.Printf("probeGeometry()")
+	}
+
 	disk.geometry = nil
 
 	buffer := make([]byte, 128)
+	if disk.Verbose {
+		log.Printf("  ReadAt offset=%v len=%v", 0, len(disk.buffer))
+	}
+
 	_, err := disk.file.ReadAt(buffer, 0)
 	if err != nil {
 		log.Printf("Cannot read disk label - assuming pack is not prepped\n")
@@ -482,6 +551,9 @@ func (disk *DiskDevice) probeGeometry() error {
 
 	label := make([]pkg.Word36, 28)
 	pkg.UnpackWord36(buffer[:126], label)
+	if disk.Verbose {
+		pkg.DumpWord36Buffer(label, 7)
+	}
 
 	str := label[0].ToStringAsAscii()
 	if str != "VOL1" {
