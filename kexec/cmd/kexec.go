@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	cfg := &config.Configuration{}
+	cfg := config.NewConfiguration()
 	cfg.LogIOs = true
 
 	e := kexec.NewExec(cfg)

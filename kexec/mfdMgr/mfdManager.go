@@ -11,7 +11,6 @@ import (
 	"khalehla/kexec/types"
 	"khalehla/pkg"
 	"log"
-	"strings"
 	"sync"
 	"time"
 )
@@ -27,30 +26,6 @@ import (
 // This address does not relate to the location on the pack where the track resides (other than the LDAT portion).
 // The first directory track on any fixed pack is locatable via the VOL1 label for the pack, and all
 // subsequent tracks exist on a forward-linked list.
-//
-// The entire fixed MFD is kept loaded in core, arranged in blocks.
-// A sector address is converted to pack/unit-relative-block-id by developing a mask for each pack.
-// The pack-mask has bits set corresponding to the record length indicating the number of sectors contained in a
-// pack record, and is equal to sectors-per-record minus 1.
-// e.g., for prep factor 28, there is 1 sector per physical record, and the pack-mask is 000.
-//       for prep factor 112, there are 4 sectors per physical record, and the pack-mask is 003.
-//       for prep factor 1792, there are 64 sectors per physical record, and the pack-mask is 077.
-// There are three components to looking up an MFD sector in the cache table.
-// 		The MFD-relative-LDAT (mrLDATIndex) is equal to MFD-relative-sector >> 18
-//  	The MFD-relative-block (mrBlockId) is equal to MFD-relative-LDAT & 0777777 & ^pack-mask
-//			Note that these values are *not* monotonically increasing - there may be gaps depending upon
-//			the pack prep factor.
-// 		The MFD-relative-sector (mrSectorId) is equal to MFD-relative-sector & pack-mask
-//
-// TODO the following is not entirely correct - fix it
-// The MFD blocks are accessible first in a map keyed by mrLDATIndex -> pack descriptor.
-// The pack descriptor contains information such as whether allocation is allowed on the pack, and the block size
-// of the pack - and it contains a map of blocks keyed by MFD-relative block ID to a block descriptor.
-// The block descriptors are accessible via a map keyed by mrBlockId -> block descriptor.
-// The block descriptor contains the corresponding physical pack-relative block-id,
-// a flag indicating whether the block needs to be persisted to disk,
-// and an array of Word36 entities containing the data for the MFD block.
-// Finally, the 28-word MFD sector is located within that block, at the offset indicated by 28 * mrSectorId.
 //
 // Lookup Table
 // Since we have the entire MFD in core, we do not persist lookup table entries in the MFD.
@@ -69,13 +44,12 @@ import (
 //	U000 lead item 1 (U==0), main item sector {n}, DAD table
 
 type fixedPackDescriptor struct {
-	deviceId         types.DeviceIdentifier
-	packAttributes   *types.PackAttributes // created and maintained by facMgr
-	wordsPerBlock    types.PrepFactor
-	canAllocate      bool // true if pack is UP, false if it is SU
-	packMask         uint64
-	trackDescriptors map[types.MFDTrackId]fixedTrackDescriptor
-	fixedFeeSpace    *packFreeSpaceTable
+	deviceId       types.DeviceIdentifier
+	packAttributes *types.PackAttributes // created and maintained by facMgr
+	wordsPerBlock  types.PrepFactor
+	canAllocate    bool // true if pack is UP, false if it is SU
+	packMask       uint64
+	fixedFeeSpace  *packFreeSpaceTable
 }
 
 func newFixedPackDescriptor(
@@ -85,24 +59,13 @@ func newFixedPackDescriptor(
 	recordLength := packAttrs.Label[04].GetH2()
 	trackCount := packAttrs.Label[016].GetW()
 	return &fixedPackDescriptor{
-		deviceId:         deviceId,
-		packAttributes:   packAttrs,
-		wordsPerBlock:    types.PrepFactor(recordLength),
-		canAllocate:      allocatable,
-		packMask:         (recordLength / 28) - 1,
-		trackDescriptors: make(map[types.MFDTrackId]fixedTrackDescriptor),
-		fixedFeeSpace:    newPackFreeSpaceTable(types.TrackCount(trackCount)),
+		deviceId:       deviceId,
+		packAttributes: packAttrs,
+		wordsPerBlock:  types.PrepFactor(recordLength),
+		canAllocate:    allocatable,
+		packMask:       (recordLength / 28) - 1,
+		fixedFeeSpace:  newPackFreeSpaceTable(types.TrackCount(trackCount)),
 	}
-}
-
-type fixedTrackDescriptor struct {
-	blockDescriptors map[types.MFDBlockId]fixedBlockDescriptor
-}
-
-type fixedBlockDescriptor struct {
-	packRelativeBlockId types.BlockId
-	needToPersist       bool
-	data                []pkg.Word36
 }
 
 type MFDManager struct {
@@ -113,19 +76,24 @@ type MFDManager struct {
 	threadStarted                bool
 	threadStopped                bool
 	msInitialize                 bool
+	mfdFileMainItem0Address      types.MFDRelativeAddress
+	cachedTracks                 map[types.MFDRelativeAddress][]pkg.Word36 // key is MFD addr of first sector in track
+	dirtyBlocks                  map[types.MFDRelativeAddress]bool         // 00llllttttss address of block containing the dirty sector
 	deviceReadyNotificationQueue map[types.DeviceIdentifier]bool
-	fixedLDAT                    map[types.LDATIndex]*fixedPackDescriptor
-	needsPersist                 bool // true if any block in fixedLDAT needs to be persisted
-	fixedLookupTable             map[string]types.MFDRelativeAddress
-	fileAllocations              fileAllocationTable
+	fixedPackDescriptors         map[types.LDATIndex]*fixedPackDescriptor
+	fixedLookupTable             map[string]map[string]types.MFDRelativeAddress
+	fileAllocations              *fileAllocationTable
 }
 
 func NewMFDManager(exec types.IExec) *MFDManager {
 	return &MFDManager{
 		exec:                         exec,
+		cachedTracks:                 make(map[types.MFDRelativeAddress][]pkg.Word36),
+		dirtyBlocks:                  make(map[types.MFDRelativeAddress]bool),
 		deviceReadyNotificationQueue: make(map[types.DeviceIdentifier]bool),
-		fixedLDAT:                    make(map[types.LDATIndex]*fixedPackDescriptor),
-		fixedLookupTable:             make(map[string]types.MFDRelativeAddress),
+		fixedPackDescriptors:         make(map[types.LDATIndex]*fixedPackDescriptor),
+		fixedLookupTable:             make(map[string]map[string]types.MFDRelativeAddress),
+		fileAllocations:              newFileAllocationTable(),
 	}
 }
 
@@ -188,37 +156,9 @@ func composeMFDAddress(ldatIndex types.LDATIndex, trackId types.MFDTrackId, sect
 }
 
 // establishNewMFDTrack puts structures in place for a new cached MFD track.
-// Marks the blocks in the track to be persisted, but does NOT update any other portion of the MFD.
-// mfdAddress is the MFD-relative address of the first sector of the track.
-// trackAddress is the device-relative-word-address of the physical block corresponding to the first
-// sector of the track.
-func (mgr *MFDManager) establishNewMFDTrack(ldatIndex types.LDATIndex, mfdTrackId types.MFDTrackId, trackAddress types.DeviceRelativeWordAddress) error {
-	pDesc, ok := mgr.fixedLDAT[ldatIndex]
-	if !ok {
-		log.Printf("MFDMgr:internal error establishNewMFDTrack ldatIndex:%v is unknown", ldatIndex)
-		mgr.exec.Stop(types.StopDirectoryErrors)
-		return fmt.Errorf("internal error")
-	}
-
-	tDesc := fixedTrackDescriptor{
-		blockDescriptors: make(map[types.MFDBlockId]fixedBlockDescriptor),
-	}
-
-	blocksPerTrack := 1792 / pDesc.wordsPerBlock
-	blockId := types.MFDBlockId(0)
-	packRelativeBlockId := types.BlockId(uint64(trackAddress) / uint64(pDesc.wordsPerBlock))
-	for bx := 0; bx < int(blocksPerTrack); bx++ {
-		bd := fixedBlockDescriptor{}
-		bd.needToPersist = true
-		bd.packRelativeBlockId = packRelativeBlockId
-		bd.data = make([]pkg.Word36, pDesc.wordsPerBlock)
-		tDesc.blockDescriptors[blockId] = bd
-		blockId++
-		packRelativeBlockId++
-	}
-
-	pDesc.trackDescriptors[mfdTrackId] = tDesc
-	return nil
+func (mgr *MFDManager) establishNewMFDTrack(ldatIndex types.LDATIndex, mfdTrackId types.MFDTrackId) {
+	mfdAddr := composeMFDAddress(ldatIndex, mfdTrackId, 0)
+	mgr.cachedTracks[mfdAddr] = make([]pkg.Word36, 1792)
 }
 
 func getLDATIndexFromMFDAddress(address types.MFDRelativeAddress) types.LDATIndex {
@@ -233,81 +173,123 @@ func getMFDSectorIdFromMFDAddress(address types.MFDRelativeAddress) types.MFDSec
 	return types.MFDSectorId(address & 077)
 }
 
-// getMFDSector returns a slice corresponding to the portion of the MFD block which represents the
-// indicated sector.
-func (mgr *MFDManager) getMFDSector(address types.MFDRelativeAddress, markPersist bool) ([]pkg.Word36, error) {
-	ldatIndex := getLDATIndexFromMFDAddress(address)
-	pDesc, ok := mgr.fixedLDAT[ldatIndex]
+// getMFDAddressForBlock takes a given MFD-relative sector address and normalizes it to
+// the first sector in the block containing the given sector.
+func (mgr *MFDManager) getMFDAddressForBlock(address types.MFDRelativeAddress) types.MFDRelativeAddress {
+	ldat := getLDATIndexFromMFDAddress(address)
+	mask := mgr.fixedPackDescriptors[ldat].packMask
+	return types.MFDRelativeAddress(uint64(address) & ^mask)
+}
+
+// getMFDBlock returns a slice corresponding to all the sectors in the physical block
+// containing the sector represented by the given address. Used for reading/writing MFD blocks.
+func (mgr *MFDManager) getMFDBlock(address types.MFDRelativeAddress) ([]pkg.Word36, error) {
+	ldatAndTrack := address & 0_007777_777700
+	data, ok := mgr.cachedTracks[ldatAndTrack]
 	if !ok {
-		log.Printf("MFDMgr:internal error establishNewMFDTrack ldatIndex:%v is unknown", ldatIndex)
+		log.Printf("MFDMgr:getMFDBlock address:%v is not in cache", address)
 		mgr.exec.Stop(types.StopDirectoryErrors)
 		return nil, fmt.Errorf("internal error")
 	}
 
-	trackId := getMFDTrackIdFromMFDAddress(address)
-	tDesc := pDesc.trackDescriptors[trackId]
+	ldat := getLDATIndexFromMFDAddress(address)
+	sector := getMFDSectorIdFromMFDAddress(address)
+	mask := mgr.fixedPackDescriptors[ldat].packMask
+	baseSectorId := uint64(sector) & ^mask
 
-	sectorId := getMFDSectorIdFromMFDAddress(address)
-	sectorsPerBlock := pDesc.wordsPerBlock / 28
-	blockId := types.MFDBlockId(uint(sectorId) / uint(sectorsPerBlock))
-	sectorOffset := uint(sectorId) % uint(sectorsPerBlock)
-
-	start := sectorOffset * 28
-	end := start + 28
-	bDesc := tDesc.blockDescriptors[blockId]
-	sector := bDesc.data[start:end]
-	bDesc.needToPersist = markPersist
-
-	return sector, nil
+	start := 28 * baseSectorId
+	end := start + uint64(mgr.fixedPackDescriptors[ldat].wordsPerBlock)
+	return data[start:end], nil
 }
 
-// markMFDSectorForPersist marks the block which contains the indicated sector to be persisted
-func (mgr *MFDManager) markMFDSectorForPersist(address types.MFDRelativeAddress) error {
-	ldatIndex := getLDATIndexFromMFDAddress(address)
-	pDesc, ok := mgr.fixedLDAT[ldatIndex]
+// getMFDSector returns a slice corresponding to the portion of the MFD block which represents the indicated sector.
+// CALL UNDER LOCK
+func (mgr *MFDManager) getMFDSector(address types.MFDRelativeAddress) ([]pkg.Word36, error) {
+	ldatAndTrack := address & 0_007777_777700
+	data, ok := mgr.cachedTracks[ldatAndTrack]
 	if !ok {
-		log.Printf("MFDMgr:internal error establishNewMFDTrack ldatIndex:%v is unknown", ldatIndex)
+		log.Printf("MFDMgr:getMFDSector address:%v is not in cache", address)
 		mgr.exec.Stop(types.StopDirectoryErrors)
-		return fmt.Errorf("internal error")
+		return nil, fmt.Errorf("internal error")
 	}
 
-	trackId := getMFDTrackIdFromMFDAddress(address)
-	tDesc := pDesc.trackDescriptors[trackId]
-
 	sectorId := getMFDSectorIdFromMFDAddress(address)
-	sectorsPerBlock := pDesc.wordsPerBlock / 28
-	blockId := types.MFDBlockId(uint(sectorId) / uint(sectorsPerBlock))
+	start := 28 * sectorId
+	end := start + 28
+	return data[start:end], nil
+}
 
-	bDesc := tDesc.blockDescriptors[blockId]
-	bDesc.needToPersist = true
-	return nil
+func (mgr *MFDManager) markSectorDirty(address types.MFDRelativeAddress) {
+	blockAddr := mgr.getMFDAddressForBlock(address)
+	mgr.dirtyBlocks[blockAddr] = true
+}
+
+func (mgr *MFDManager) writeLookupTableEntry(qualifier string, filename string, leadItem0Addr types.MFDRelativeAddress) {
+	_, ok := mgr.fixedLookupTable[qualifier]
+	if !ok {
+		mgr.fixedLookupTable[qualifier] = make(map[string]types.MFDRelativeAddress)
+	}
+	mgr.fixedLookupTable[qualifier][filename] = leadItem0Addr
 }
 
 // ----------------------------------------------------------------
 
 func (mgr *MFDManager) threadPersist() {
+	// iterate over dirty block addresses
 	mgr.mutex.Lock()
-	defer mgr.mutex.Unlock()
-
-	nm := mgr.exec.GetNodeManager()
-	for ldat, packDesc := range mgr.fixedLDAT {
-		for _, trackDesc := range packDesc.trackDescriptors {
-			for blkId, blockDesc := range trackDesc.blockDescriptors {
-				if blockDesc.needToPersist {
-					pkt := nodeMgr.NewDiskIoPacketWrite(packDesc.deviceId, blockDesc.packRelativeBlockId, blockDesc.data)
-					nm.RouteIo(pkt)
-					ioStat := pkt.GetIoStatus()
-					if ioStat != types.IosComplete {
-						log.Printf("MFDMgr:Cannot write directory block LDAT:%v mfdBlkId:%v packBlkId:%v ioStat:%v",
-							ldat, blkId, blockDesc.packRelativeBlockId, ioStat)
-						mgr.exec.Stop(types.StopInternalExecIOFailed)
-						return
-					}
-
-					blockDesc.needToPersist = false
-				}
-			}
+	if len(mgr.dirtyBlocks) > 0 {
+		var blockAddr types.MFDRelativeAddress
+		for key, _ := range mgr.dirtyBlocks {
+			blockAddr = key
+			break
 		}
+
+		delete(mgr.dirtyBlocks, blockAddr)
+		mgr.mutex.Unlock()
+
+		block, err := mgr.getMFDBlock(blockAddr)
+		if err != nil {
+			log.Printf("MFDMgr:cannot find MFD block for dirty block address:%012o", blockAddr)
+			mgr.exec.Stop(types.StopDirectoryErrors)
+			return
+		}
+
+		mfdTrackId := getMFDTrackIdFromMFDAddress(blockAddr)
+		mfdSectorId := getMFDSectorIdFromMFDAddress(blockAddr)
+
+		ldat, devTrackId, err := mgr.convertFileRelativeTrackId(mgr.mfdFileMainItem0Address, types.TrackId(mfdTrackId))
+		if err != nil {
+			log.Printf("MFDMgr:error converting mfdaddr:%012o trackId:%06v", mgr.mfdFileMainItem0Address, mfdTrackId)
+			mgr.exec.Stop(types.StopDirectoryErrors)
+			return
+		} else if ldat == 0_400000 {
+			log.Printf("MFDMgr:error converting mfdaddr:%012o trackId:%06v track not allocated",
+				mgr.mfdFileMainItem0Address, mfdTrackId)
+			mgr.exec.Stop(types.StopDirectoryErrors)
+			return
+		}
+
+		packDesc, ok := mgr.fixedPackDescriptors[ldat]
+		if !ok {
+			log.Printf("MFDMgr:threadPersist cannot find packDesc for ldat:%04v", ldat)
+			mgr.exec.Stop(types.StopDirectoryErrors)
+			return
+		}
+
+		blocksPerTrack := 1792 / packDesc.wordsPerBlock
+		sectorsPerBlock := packDesc.wordsPerBlock / 28
+		devBlockId := uint64(devTrackId) * uint64(blocksPerTrack)
+		devBlockId += uint64(mfdSectorId) / uint64(sectorsPerBlock)
+		ioPkt := nodeMgr.NewDiskIoPacketRead(packDesc.deviceId, types.BlockId(devBlockId), block)
+		mgr.exec.GetNodeManager().RouteIo(ioPkt)
+		ioStat := ioPkt.GetIoStatus()
+		if ioStat != types.IosComplete {
+			log.Printf("MFDMgr:IO error writing MFD block status=%v", ioStat)
+			mgr.exec.Stop(types.StopInternalExecIOFailed)
+			return
+		}
+
+		mgr.mutex.Lock()
 	}
 }
 
@@ -316,12 +298,7 @@ func (mgr *MFDManager) thread() {
 
 	for !mgr.terminateThread {
 		time.Sleep(25 * time.Millisecond)
-
-		if mgr.needsPersist {
-			// TODO
-			mgr.needsPersist = false
-		}
-
+		mgr.threadPersist()
 		// TODO - anything else?
 	}
 
@@ -356,10 +333,9 @@ func (mgr *MFDManager) Dump(dest io.Writer, indent string) {
 	_, _ = fmt.Fprintf(dest, "%v  terminateThread: %v\n", indent, mgr.terminateThread)
 
 	_, _ = fmt.Fprintf(dest, "%v  init MS:         %v\n", indent, mgr.msInitialize)
-	_, _ = fmt.Fprintf(dest, "%v  needs Persist:   %v\n", indent, mgr.needsPersist)
 
 	_, _ = fmt.Fprintf(dest, "%v  Fixed Packs:\n", indent)
-	for ldat, packDesc := range mgr.fixedLDAT {
+	for ldat, packDesc := range mgr.fixedPackDescriptors {
 		_, _ = fmt.Fprintf(dest, "%v    ldat=%04o %s alloc=%v mask=%06o\n",
 			indent,
 			ldat,
@@ -367,29 +343,29 @@ func (mgr *MFDManager) Dump(dest io.Writer, indent string) {
 			packDesc.canAllocate,
 			packDesc.packMask)
 
-		_, _ = fmt.Fprintf(dest, "%v      Block Descriptors:\n", indent)
-		for trkId, trackDesc := range packDesc.trackDescriptors {
-			for blkId, blockDesc := range trackDesc.blockDescriptors {
-				_, _ = fmt.Fprintf(dest, "%v        mfdTrkId:%04o mfdBlkId:%04o packBlkId:%v dirty:%v\n",
-					indent,
-					trkId,
-					blkId,
-					blockDesc.packRelativeBlockId,
-					blockDesc.needToPersist)
-			}
-		}
-
 		_, _ = fmt.Fprintf(dest, "    %v      FreeSpace trackId  trackCount\n", indent)
 		for _, fsRegion := range packDesc.fixedFeeSpace.content {
 			_, _ = fmt.Fprintf(dest, "%v               %7v  %10v\n", indent, fsRegion.trackId, fsRegion.trackCount)
 		}
 	}
 
+	_, _ = fmt.Fprintf(dest, "%v  MFD Cache:\n", indent)
+	for addr, data := range mgr.cachedTracks {
+		_, _ = fmt.Fprintf(dest, "%v    mfdAddr:%012o\n", indent, addr)
+		pkg.DumpWord36Buffer(data, 7)
+	}
+
+	_, _ = fmt.Fprintf(dest, "%v  Dirty cache blocks:\n", indent)
+	for addr, _ := range mgr.dirtyBlocks {
+		_, _ = fmt.Fprintf(dest, "%v    %012o\n", indent, addr)
+	}
+
 	_, _ = fmt.Fprintf(dest, "%v  Fixed Lookup Table:\n", indent)
-	for str, addr := range mgr.fixedLookupTable {
-		split := strings.Split(str, ":")
-		qualFile := split[0] + ":" + split[1]
-		_, _ = fmt.Fprintf(dest, "%v    %-25s  %012o\n", indent, qualFile, addr)
+	for qual, sub := range mgr.fixedLookupTable {
+		for file, addr := range sub {
+			qualFile := qual + "*" + file
+			_, _ = fmt.Fprintf(dest, "%v    %-25s  %012o\n", indent, qualFile, addr)
+		}
 	}
 
 	_, _ = fmt.Fprintf(dest, "%v  Queued device-ready notifications:\n", indent)

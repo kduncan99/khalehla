@@ -10,7 +10,6 @@ import (
 	"khalehla/kexec/types"
 	"khalehla/pkg"
 	"log"
-	"os"
 	"time"
 )
 
@@ -24,16 +23,14 @@ func (mgr *MFDManager) bootstrapMFDFile() error {
 	leadAddr0 := composeMFDAddress(1, 0, 2)
 	mainAddr0 := composeMFDAddress(1, 0, 3)
 	mainAddr1 := composeMFDAddress(1, 0, 4)
-	dadAddr0 := composeMFDAddress(1, 0, 5)
 
-	dasSector0, _ := mgr.getMFDSector(dasAddr0, true)
-	leadItem0, _ := mgr.getMFDSector(leadAddr0, true)
-	mainItem0, _ := mgr.getMFDSector(mainAddr0, true)
-	mainItem1, _ := mgr.getMFDSector(mainAddr1, true)
-	dadItem0, _ := mgr.getMFDSector(dadAddr0, true)
+	dasSector0, _ := mgr.getMFDSector(dasAddr0)
+	leadItem0, _ := mgr.getMFDSector(leadAddr0)
+	mainItem0, _ := mgr.getMFDSector(mainAddr0)
+	mainItem1, _ := mgr.getMFDSector(mainAddr1)
 
-	// allocate sectors 2, 3, and 4 in the DAS
-	dasSector0[01].Or(0_160000_000000)
+	// allocate sectors 2, 3, 4, and 5 in the DAS
+	dasSector0[01].Or(0_170000_000000)
 
 	swTimeNow := types.GetSWTimeFromSystemTime(time.Now())
 
@@ -55,7 +52,7 @@ func (mgr *MFDManager) bootstrapMFDFile() error {
 	leadItem0[013].SetW(uint64(mainAddr0))
 
 	// populate main items
-	mainItem0[0].SetW(0_200000_000000 | uint64(dadAddr0))
+	mainItem0[0].SetW(0_200000_000000)
 	pkg.FromStringToFieldataWithOffset(cfg.SystemQualifier, mainItem0, 1, 2)
 	pkg.FromStringToFieldataWithOffset("MFD$$", mainItem0, 3, 2)
 	pkg.FromStringToFieldataWithOffset(cfg.SystemProjectId, mainItem0, 5, 2)
@@ -84,14 +81,30 @@ func (mgr *MFDManager) bootstrapMFDFile() error {
 	mainItem1[07].SetT3(1) // abs f-cycle
 	// TODO what are disk pack entries for? do we need them?
 
-	// populate DAD item for MFD
-	dadItem0[00].SetW(0_400000_000000)   // next DAD table (none)
-	dadItem0[01].SetW(uint64(mainAddr0)) // link back to main item
-	dadItem0[02].SetW(0)                 // file-relative first word
+	// populate DAD items for MFD
+	// TODO
+	//  actually, can we populate this from the existing file allocation table?
+	//  if so, maybe we can tolerate more fixed packs...
+	//  note that our limit for 1 DAD entry is 4 packs, not 8, since we'd have to do hole DAD entries...
+
+	mgr.mfdFileMainItem0Address = mainAddr0
+
+	mgr.markSectorDirty(dasAddr0)
+	mgr.markSectorDirty(leadAddr0)
+	mgr.markSectorDirty(mainAddr0)
+	mgr.markSectorDirty(mainAddr1)
 
 	// Update lookup table
-	lookupKey := cfg.SystemQualifier + ":MFD$$" // TODO decide how we're going to key this table for real
-	mgr.fixedLookupTable[lookupKey] = leadAddr0
+	mgr.writeLookupTableEntry(cfg.SystemQualifier, "MFD$$", leadAddr0)
+
+	// Create FAT
+	_, err := mgr.loadFileAllocationEntry(mainAddr0)
+	if err != nil {
+		return fmt.Errorf("cannot load FAT for MFD")
+	}
+
+	// Set file assigned here, in MFD item, in facmgr, wherever it makes sense
+	//TODO
 
 	return nil
 }
@@ -185,17 +198,13 @@ func (mgr *MFDManager) initializeMassStorage() error {
 		}
 	}
 
-	// Go do the work
-	mgr.fixedLDAT = make(map[types.LDATIndex]*fixedPackDescriptor)
-	mgr.fixedLookupTable = make(map[string]types.MFDRelativeAddress)
-
 	err := mgr.initializeFixed(fixedDisks)
 	if err != nil {
 		return err
 	}
 
 	// Make sure we have at least one fixed pack after the previous shenanigans
-	if len(mgr.fixedLDAT) == 0 {
+	if len(mgr.fixedPackDescriptors) == 0 {
 		mgr.exec.SendExecReadOnlyMessage("No Fixed Disks - Cannot Continue Initialization")
 		mgr.exec.Stop(types.StopInitializationSystemConfigurationError)
 		return fmt.Errorf("boot canceled")
@@ -211,6 +220,10 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.
 
 	if len(disks) == 0 {
 		return nil
+	} else if len(disks) > 8 {
+		mgr.exec.SendExecReadOnlyMessage("Max of 8 fixed packs allowed for initial boot")
+		mgr.exec.Stop(types.StopInitializationSystemConfigurationError)
+		return fmt.Errorf("MFDMgr too many fixed packs")
 	}
 
 	replies := []string{"Y", "N"}
@@ -260,64 +273,39 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.
 			diskAttr.PackAttrs,
 			diskInfo.GetNodeStatus() == types.NodeStatusUp)
 
-		// Rewrite first directory track to the pack
-		dirTrack := make([]pkg.Word36, 1792)
+		// Mark VOL1 and first directory track as allocated
+		_ = fpDesc.fixedFeeSpace.allocateSpecificTrackRegion(ldatIndex, 0, 2)
+
+		// Set up first directory track for the pack within our cache to be eventually rewritten
+		mgr.fixedPackDescriptors[ldatIndex] = fpDesc
+		mgr.establishNewMFDTrack(ldatIndex, 0)
+
 		availableTracks := diskAttr.PackAttrs.Label[016].GetW() - 2
 		recordLength := diskAttr.PackAttrs.Label[04].GetH2()
 		blocksPerTrack := diskAttr.PackAttrs.Label[04].GetH1()
 
-		_ = fpDesc.fixedFeeSpace.allocateSpecificTrackRegion(ldatIndex, 0, 2)
-		mgr.fixedLDAT[ldatIndex] = fpDesc
-
-		devTrackAddr := types.DeviceRelativeWordAddress(1792)
-		_ = mgr.establishNewMFDTrack(ldatIndex, 0, devTrackAddr)
-
 		// sector 0
-		das := dirTrack[0:28]
-		das[1].SetW(0_600000_000000) // first 2 sectors are allocated
+		sector0Addr := composeMFDAddress(ldatIndex, 0, 0)
+		sector0, _ := mgr.getMFDSector(sector0Addr)
+		sector0[1].SetW(0_600000_000000) // first 2 sectors are allocated
 		for dx := 3; dx < 27; dx += 3 {
-			das[dx].SetW(0_400000_000000)
+			sector0[dx].SetW(0_400000_000000)
 		}
-		das[27].SetW(0_400000_000000)
+		sector0[27].SetW(0_400000_000000)
+		mgr.markSectorDirty(sector0Addr)
 
 		// sector 1
-		s1 := dirTrack[28:56]
+		sector1Addr := composeMFDAddress(ldatIndex, 0, 1)
+		sector1, _ := mgr.getMFDSector(sector1Addr)
 		// leave +0 and +1 alone (We aren't doing HMBT/SMBT so we don't need the addresses)
-		s1[2].SetW(availableTracks)
-		s1[3].SetW(availableTracks)
-		s1[4].FromStringToFieldata(diskAttr.PackAttrs.PackName)
-		s1[5].SetH1(uint64(ldatIndex))
-		s1[010].SetT1(blocksPerTrack)
-		s1[010].SetS3(1) // Sector 1 version
-		s1[010].SetT3(recordLength)
-
-		// Write the entire directory track to storage
-		dirTrackWordAddr := diskAttr.PackAttrs.Label[03].GetW()
-		blockId := types.BlockId(dirTrackWordAddr / blocksPerTrack)
-		blocksLeft := blocksPerTrack
-		subSetStart := 0
-
-		foundError := false
-		for blocksLeft > 0 && !foundError {
-			subSet := dirTrack[subSetStart : subSetStart+int(recordLength)]
-			pkt := nodeMgr.NewDiskIoPacketWrite(diskInfo.GetDeviceIdentifier(), blockId, subSet)
-			mgr.exec.GetNodeManager().RouteIo(pkt)
-			ioStat := pkt.GetIoStatus()
-			if ioStat != types.IosComplete {
-				msg := fmt.Sprintf("IO error reading directory track on device %v", diskInfo.GetDeviceName())
-				log.Printf("MFDMgr:%v", msg)
-				mgr.exec.SendExecReadOnlyMessage(msg)
-				_ = mgr.exec.GetNodeManager().SetNodeStatus(diskInfo.GetNodeIdentifier(), types.NodeStatusDown)
-				foundError = true
-			}
-
-			blocksLeft--
-			subSetStart += int(recordLength)
-		}
-
-		if foundError {
-			os.Exit(1)
-		}
+		sector1[2].SetW(availableTracks)
+		sector1[3].SetW(availableTracks)
+		sector1[4].FromStringToFieldata(diskAttr.PackAttrs.PackName)
+		sector1[5].SetH1(uint64(ldatIndex))
+		sector1[010].SetT1(blocksPerTrack)
+		sector1[010].SetS3(1) // Sector 1 version
+		sector1[010].SetT3(recordLength)
+		mgr.markSectorDirty(sector1Addr)
 
 		totalTracks += availableTracks
 	}

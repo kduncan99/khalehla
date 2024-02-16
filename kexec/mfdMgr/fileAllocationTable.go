@@ -32,6 +32,12 @@ type fileRegionEntry struct {
 	packTrackId types.TrackId
 }
 
+func newFileAllocationTable() *fileAllocationTable {
+	fat := &fileAllocationTable{}
+	fat.content = make(map[types.MFDRelativeAddress]*fileAllocationEntry)
+	return fat
+}
+
 //func (fae *fileAllocationEntry) coalesceFileAllocationEntry() {
 //	// TODO we might not need this one
 //	// merges logically-adjacent re's
@@ -180,7 +186,7 @@ func (mgr *MFDManager) convertFileRelativeTrackId(
 				// found a good region - update results and stop looking
 				ldat = re.ldatIndex
 				devTrackId = re.packTrackId + (fileTrackId - re.fileTrackId)
-				break
+				return ldat, devTrackId, nil
 			}
 		}
 	}
@@ -197,7 +203,7 @@ func (mgr *MFDManager) loadFileAllocationEntry(mainItem0Address types.MFDRelativ
 		return nil, fmt.Errorf("fae already loaded")
 	}
 
-	mainItem0, err := mgr.getMFDSector(mainItem0Address, false)
+	mainItem0, err := mgr.getMFDSector(mainItem0Address)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +215,7 @@ func (mgr *MFDManager) loadFileAllocationEntry(mainItem0Address types.MFDRelativ
 	}
 
 	for dadAddr&0_400000_000000 == 0 {
-		dadItem, err := mgr.getMFDSector(dadAddr, false)
+		dadItem, err := mgr.getMFDSector(dadAddr)
 		if err != nil {
 			return nil, err
 		}

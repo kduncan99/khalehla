@@ -318,7 +318,7 @@ func (mgr *FacilitiesManager) Dump(dest io.Writer, indent string) {
 		nodeInfo, _ := nm.GetNodeInfoByIdentifier(types.NodeIdentifier(deviceId))
 		str := nodeInfo.GetNodeName()
 		if diskAttr.AssignedTo != nil {
-			str += "* " + diskAttr.AssignedTo.RunId
+			str += " * " + diskAttr.AssignedTo.RunId
 		}
 		if diskAttr.PackAttrs != nil {
 			packAttr := diskAttr.PackAttrs
