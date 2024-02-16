@@ -61,6 +61,12 @@ import (
 // free track list
 // Instead of maintaining HMBT (which is no longer needed) and SMBT (which is annoying) we manage a free space
 // list for each individual pack.
+//
+// For reference:
+//  U001 search item
+//  U010 lead item 0
+//  U100 main item 0
+//	U000 lead item 1 (U==0), main item sector {n}, DAD table
 
 type fixedPackDescriptor struct {
 	deviceId         types.DeviceIdentifier
@@ -69,7 +75,24 @@ type fixedPackDescriptor struct {
 	canAllocate      bool // true if pack is UP, false if it is SU
 	packMask         uint64
 	trackDescriptors map[types.MFDTrackId]fixedTrackDescriptor
-	freeSpace        map[types.TrackId]types.TrackCount
+	fixedFeeSpace    *packFreeSpaceTable
+}
+
+func newFixedPackDescriptor(
+	deviceId types.DeviceIdentifier,
+	packAttrs *types.PackAttributes,
+	allocatable bool) *fixedPackDescriptor {
+	recordLength := packAttrs.Label[04].GetH2()
+	trackCount := packAttrs.Label[016].GetW()
+	return &fixedPackDescriptor{
+		deviceId:         deviceId,
+		packAttributes:   packAttrs,
+		wordsPerBlock:    types.PrepFactor(recordLength),
+		canAllocate:      allocatable,
+		packMask:         (recordLength / 28) - 1,
+		trackDescriptors: make(map[types.MFDTrackId]fixedTrackDescriptor),
+		fixedFeeSpace:    newPackFreeSpaceTable(types.TrackCount(trackCount)),
+	}
 }
 
 type fixedTrackDescriptor struct {
@@ -91,16 +114,17 @@ type MFDManager struct {
 	threadStopped                bool
 	msInitialize                 bool
 	deviceReadyNotificationQueue map[types.DeviceIdentifier]bool
-	fixedLDAT                    map[types.LDATIndex]fixedPackDescriptor
+	fixedLDAT                    map[types.LDATIndex]*fixedPackDescriptor
 	needsPersist                 bool // true if any block in fixedLDAT needs to be persisted
 	fixedLookupTable             map[string]types.MFDRelativeAddress
+	fileAllocations              fileAllocationTable
 }
 
 func NewMFDManager(exec types.IExec) *MFDManager {
 	return &MFDManager{
 		exec:                         exec,
 		deviceReadyNotificationQueue: make(map[types.DeviceIdentifier]bool),
-		fixedLDAT:                    make(map[types.LDATIndex]fixedPackDescriptor),
+		fixedLDAT:                    make(map[types.LDATIndex]*fixedPackDescriptor),
 		fixedLookupTable:             make(map[string]types.MFDRelativeAddress),
 	}
 }
@@ -343,10 +367,10 @@ func (mgr *MFDManager) Dump(dest io.Writer, indent string) {
 			packDesc.canAllocate,
 			packDesc.packMask)
 
-		_, _ = fmt.Fprintf(dest, "%v    Block Descriptors:\n", indent)
+		_, _ = fmt.Fprintf(dest, "%v      Block Descriptors:\n", indent)
 		for trkId, trackDesc := range packDesc.trackDescriptors {
 			for blkId, blockDesc := range trackDesc.blockDescriptors {
-				_, _ = fmt.Fprintf(dest, "%v      mfdTrkId:%04o mfdBlkId:%04o packBlkId:%v dirty:%v\n",
+				_, _ = fmt.Fprintf(dest, "%v        mfdTrkId:%04o mfdBlkId:%04o packBlkId:%v dirty:%v\n",
 					indent,
 					trkId,
 					blkId,
@@ -355,9 +379,9 @@ func (mgr *MFDManager) Dump(dest io.Writer, indent string) {
 			}
 		}
 
-		_, _ = fmt.Fprintf(dest, "%v    FreeSpace (trackId : trackCount):\n", indent)
-		for trkId, trkCount := range packDesc.freeSpace {
-			_, _ = fmt.Fprintf(dest, "%v      %v : %v\n", indent, trkId, trkCount)
+		_, _ = fmt.Fprintf(dest, "    %v      FreeSpace trackId  trackCount\n", indent)
+		for _, fsRegion := range packDesc.fixedFeeSpace.content {
+			_, _ = fmt.Fprintf(dest, "%v               %7v  %10v\n", indent, fsRegion.trackId, fsRegion.trackCount)
 		}
 	}
 

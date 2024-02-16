@@ -17,7 +17,6 @@ import (
 // bootstrapMFDFile creates the MFD entries for the SYS$*MFD$$ file as part of MFD initialization
 // lead item always goes to LDAT 1, blkId 0, sectorId 2
 // main items always go to LDAT 1, blkId 0, sectorId 3 and 4
-// we do NOT store a DAD table for SYS$*MFD$$ - we don't need it, and it would be full of holes anyway.
 func (mgr *MFDManager) bootstrapMFDFile() error {
 	cfg := mgr.exec.GetConfiguration()
 
@@ -25,11 +24,13 @@ func (mgr *MFDManager) bootstrapMFDFile() error {
 	leadAddr0 := composeMFDAddress(1, 0, 2)
 	mainAddr0 := composeMFDAddress(1, 0, 3)
 	mainAddr1 := composeMFDAddress(1, 0, 4)
+	dadAddr0 := composeMFDAddress(1, 0, 5)
 
 	dasSector0, _ := mgr.getMFDSector(dasAddr0, true)
 	leadItem0, _ := mgr.getMFDSector(leadAddr0, true)
 	mainItem0, _ := mgr.getMFDSector(mainAddr0, true)
 	mainItem1, _ := mgr.getMFDSector(mainAddr1, true)
+	dadItem0, _ := mgr.getMFDSector(dadAddr0, true)
 
 	// allocate sectors 2, 3, and 4 in the DAS
 	dasSector0[01].Or(0_160000_000000)
@@ -44,7 +45,7 @@ func (mgr *MFDManager) bootstrapMFDFile() error {
 	pkg.FromStringToFieldataWithOffset(cfg.SystemReadKey, leadItem0, 7, 1)
 	pkg.FromStringToFieldataWithOffset(cfg.SystemWriteKey, leadItem0, 010, 1)
 
-	leadItem0[011].SetS1(0)   // file type == mass stroage
+	leadItem0[011].SetS1(0)   // file type == mass storage
 	leadItem0[011].SetS2(1)   // number of f-cycles which exist
 	leadItem0[011].SetS3(1)   // max number of f-cycles for this file
 	leadItem0[011].SetS4(1)   // current number of f-cycles for this file
@@ -54,7 +55,7 @@ func (mgr *MFDManager) bootstrapMFDFile() error {
 	leadItem0[013].SetW(uint64(mainAddr0))
 
 	// populate main items
-	mainItem0[0].SetW(0_400000_000000) // no DAD table
+	mainItem0[0].SetW(0_200000_000000 | uint64(dadAddr0))
 	pkg.FromStringToFieldataWithOffset(cfg.SystemQualifier, mainItem0, 1, 2)
 	pkg.FromStringToFieldataWithOffset("MFD$$", mainItem0, 3, 2)
 	pkg.FromStringToFieldataWithOffset(cfg.SystemProjectId, mainItem0, 5, 2)
@@ -83,8 +84,13 @@ func (mgr *MFDManager) bootstrapMFDFile() error {
 	mainItem1[07].SetT3(1) // abs f-cycle
 	// TODO what are disk pack entries for? do we need them?
 
+	// populate DAD item for MFD
+	dadItem0[00].SetW(0_400000_000000)   // next DAD table (none)
+	dadItem0[01].SetW(uint64(mainAddr0)) // link back to main item
+	dadItem0[02].SetW(0)                 // file-relative first word
+
 	// Update lookup table
-	lookupKey := cfg.SystemQualifier + ":MFD$$"
+	lookupKey := cfg.SystemQualifier + ":MFD$$" // TODO decide how we're going to key this table for real
 	mgr.fixedLookupTable[lookupKey] = leadAddr0
 
 	return nil
@@ -180,7 +186,7 @@ func (mgr *MFDManager) initializeMassStorage() error {
 	}
 
 	// Go do the work
-	mgr.fixedLDAT = make(map[types.LDATIndex]fixedPackDescriptor)
+	mgr.fixedLDAT = make(map[types.LDATIndex]*fixedPackDescriptor)
 	mgr.fixedLookupTable = make(map[string]types.MFDRelativeAddress)
 
 	err := mgr.initializeFixed(fixedDisks)
@@ -218,7 +224,25 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.
 	}
 
 	// make sure there are no pack name conflicts
-	// TODO
+	conflicts := false
+	packNames := make([]string, 0)
+	for _, diskAttr := range disks {
+		for _, existing := range packNames {
+			if diskAttr.PackAttrs.PackName == existing {
+				msg := fmt.Sprintf("Fixed pack name conflict - %v", existing)
+				mgr.exec.SendExecReadOnlyMessage(msg)
+				conflicts = true
+			} else {
+				packNames = append(packNames, diskAttr.PackAttrs.PackName)
+			}
+		}
+	}
+
+	if conflicts {
+		mgr.exec.SendExecReadOnlyMessage("Resolve pack name conflicts and reboot")
+		mgr.exec.Stop(types.StopDirectoryErrors)
+		return fmt.Errorf("packid conflict")
+	}
 
 	// iterate over the fixed packs
 	nextLdatIndex := types.LDATIndex(1)
@@ -231,23 +255,18 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.
 		// Assign the unit
 		_ = mgr.exec.GetFacilitiesManager().AssignDiskDeviceToExec(diskInfo.GetDeviceIdentifier())
 
+		// Set up fixed pack descriptor
+		fpDesc := newFixedPackDescriptor(diskInfo.GetDeviceIdentifier(),
+			diskAttr.PackAttrs,
+			diskInfo.GetNodeStatus() == types.NodeStatusUp)
+
 		// Rewrite first directory track to the pack
 		dirTrack := make([]pkg.Word36, 1792)
 		availableTracks := diskAttr.PackAttrs.Label[016].GetW() - 2
 		recordLength := diskAttr.PackAttrs.Label[04].GetH2()
 		blocksPerTrack := diskAttr.PackAttrs.Label[04].GetH1()
 
-		fpDesc := fixedPackDescriptor{
-			deviceId:         diskInfo.GetDeviceIdentifier(),
-			packAttributes:   diskAttr.PackAttrs,
-			wordsPerBlock:    types.PrepFactor(recordLength),
-			canAllocate:      diskInfo.GetNodeStatus() == types.NodeStatusUp,
-			packMask:         (recordLength / 28) - 1,
-			trackDescriptors: make(map[types.MFDTrackId]fixedTrackDescriptor),
-			freeSpace:        make(map[types.TrackId]types.TrackCount),
-		}
-		trackCount := diskAttr.PackAttrs.Label[016].GetW() - 2
-		fpDesc.freeSpace[2] = types.TrackCount(trackCount - 2)
+		_ = fpDesc.fixedFeeSpace.allocateSpecificTrackRegion(ldatIndex, 0, 2)
 		mgr.fixedLDAT[ldatIndex] = fpDesc
 
 		devTrackAddr := types.DeviceRelativeWordAddress(1792)
