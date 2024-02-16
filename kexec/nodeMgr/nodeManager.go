@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"khalehla/kexec/types"
+	"khalehla/pkg"
 	"log"
 	"sync"
 	"time"
@@ -292,6 +293,19 @@ func (mgr *NodeManager) GetNodeInfoByIdentifier(nodeId types.NodeIdentifier) (ty
 
 // RouteIo handles all disk and tape IO for the exec
 func (mgr *NodeManager) RouteIo(ioPacket types.IoPacket) {
+	if mgr.exec.GetConfiguration().LogIOs {
+		devId := pkg.Word36(ioPacket.GetDeviceIdentifier())
+		devName := devId.ToStringAsFieldata()
+		switch ioPacket.GetNodeType() {
+		case types.NodeTypeDisk:
+			iop := ioPacket.(*DiskIoPacket)
+			log.Printf("NodeMgr:RouteIO %v iof:%v blk:%v", devName, iop.ioFunction, iop.blockId)
+		case types.NodeTypeTape:
+			iop := ioPacket.(*TapeIoPacket)
+			log.Printf("NodeMgr:RouteIO %v iof:%v", devName, iop.ioFunction)
+		}
+	}
+
 	if ioPacket == nil {
 		ioPacket.SetIoStatus(types.IosInternalError)
 		mgr.exec.Stop(types.StopErrorInSystemIOTable)

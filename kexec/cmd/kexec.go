@@ -13,6 +13,8 @@ import (
 
 func main() {
 	cfg := &config.Configuration{}
+	cfg.LogIOs = true
+
 	e := kexec.NewExec(cfg)
 	_ = e.InitialBoot(true)
 	for !e.GetStopFlag() {

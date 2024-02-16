@@ -6,6 +6,7 @@ package types
 
 import (
 	"io"
+	"khalehla/kexec/config"
 	"time"
 )
 
@@ -107,6 +108,7 @@ type IConsoleManager interface {
 type IExec interface {
 	Close()
 	Dump(destination io.Writer)
+	GetConfiguration() *config.Configuration
 	GetConsoleManager() IConsoleManager
 	GetFacilitiesManager() IFacilitiesManager
 	GetKeyinManager() IKeyinManager

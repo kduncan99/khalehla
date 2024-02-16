@@ -34,11 +34,20 @@ type PrepFactor uint
 // TrackCount represents a number of software tracks, each of which contain 1792 words of storage
 type TrackCount uint
 
+// TrackId represents a software track identifier, relative to the start of a particular pack
+type TrackId uint
+
 // pseudo-enumeration types
 
+type DeviceRelativeWordAddress uint // device-relative word address
 type ExecPhase uint
 type IoFunction uint
 type IoStatus uint
+type LDATIndex uint64
+type MFDBlockId uint64
+type MFDRelativeAddress uint64
+type MFDSectorId uint64
+type MFDTrackId uint64
 type NodeCategory uint
 type NodeStatus uint
 type NodeType uint

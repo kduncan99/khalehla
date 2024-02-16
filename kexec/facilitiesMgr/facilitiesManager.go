@@ -106,6 +106,8 @@ func (mgr *FacilitiesManager) AssignDiskDeviceToExec(deviceId types.DeviceIdenti
 		return fmt.Errorf(msg)
 	}
 
+	// TODO Need to update the Exec RCE fac item table, once we have fac item tables
+
 	diskAttr.AssignedTo = mgr.exec.GetRunControlEntry()
 	return nil
 }

@@ -20,11 +20,12 @@ import (
 const Version = "v1.0.0"
 
 type Exec struct {
-	consoleMgr types.IConsoleManager
-	facMgr     types.IFacilitiesManager
-	keyinMgr   types.IKeyinManager
-	mfdMgr     types.IMFDManager
-	nodeMgr    types.INodeManager
+	configuration *config.Configuration
+	consoleMgr    types.IConsoleManager
+	facMgr        types.IFacilitiesManager
+	keyinMgr      types.IKeyinManager
+	mfdMgr        types.IMFDManager
+	nodeMgr       types.INodeManager
 
 	runControlEntry *types.RunControlEntry
 	runControlTable map[string]*types.RunControlEntry // indexed by runid
@@ -37,6 +38,8 @@ type Exec struct {
 
 func NewExec(cfg *config.Configuration) *Exec {
 	e := &Exec{}
+	e.configuration = cfg
+
 	e.consoleMgr = consoleMgr.NewConsoleManager(e)
 	e.facMgr = facilitiesMgr.NewFacilitiesManager(e)
 	e.keyinMgr = keyinMgr.NewKeyinManager(e)
@@ -67,6 +70,10 @@ func (e *Exec) Close() {
 	e.mfdMgr.CloseManager()
 	e.nodeMgr.CloseManager()
 	e.consoleMgr.CloseManager()
+}
+
+func (e *Exec) GetConfiguration() *config.Configuration {
+	return e.configuration
 }
 
 func (e *Exec) GetConsoleManager() types.IConsoleManager {

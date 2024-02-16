@@ -55,16 +55,17 @@ func (w *Word36) FromBytesToAscii(inp []byte) *Word36 {
 }
 
 // FromBytesToAscii converts an input array of a length which is at least the length of the output array
-// multiplied by six, to the output array of Word36 structs such that each byte is wrapped in a consecutive
+// multiplied by four, to the output array of Word36 structs such that each byte is wrapped in a consecutive
 // ASCII character in the corresponding output word. The input should be LJSF.
 func FromBytesToAscii(input []byte, output []Word36) {
-	bx := 0
-	wx := 0
-	for wx < len(output) {
-		output[wx].FromBytesToAscii(input[bx : bx+4])
-		bx += 4
-		wx++
-	}
+	FromBytesToAsciiWithOffset(input, output, 0, len(output))
+}
+
+// FromBytesToAsciiWithOffset converts an input array of a length which is at least the length of the output array
+// multiplied by four, to the output array of Word36 structs such that each byte is wrapped in a consecutive
+// ASCII character in the corresponding output word. The input should be LJSF.
+func FromBytesToAsciiWithOffset(input []byte, output []Word36, wordOffset int, wordCount int) {
+	FromStringToAsciiWithOffset(string(input), output, wordOffset, wordCount)
 }
 
 // FromBytesToFieldata converts an array of exactly 6 bytes to a Word36 containing 6 Fieldata characters.
@@ -81,13 +82,14 @@ func (w *Word36) FromBytesToFieldata(inp []byte) *Word36 {
 // FromBytesToFieldata converts an input array of zero or more bytes, into an output array of a fixed size
 // where the output words consist of 6 Fieldata characters. The entire output array is LJSF.
 func FromBytesToFieldata(input []byte, output []Word36) {
-	bx := 0
-	wx := 0
-	for wx < len(output) {
-		output[wx].FromBytesToFieldata(input[bx : bx+6])
-		bx += 6
-		wx++
-	}
+	FromBytesToFieldataWithOffset(input, output, 0, len(output))
+}
+
+// FromBytesToFieldataWithOffset converts an input array of a length which is at least the length of the output array
+// multiplied by six, to the output array of Word36 structs such that each byte is wrapped in a consecutive
+// Fieldata character in the corresponding output word. The input should be LJSF.
+func FromBytesToFieldataWithOffset(input []byte, output []Word36, wordOffset int, wordCount int) {
+	FromStringToFieldataWithOffset(string(input), output, wordOffset, wordCount)
 }
 
 // FromStringToAscii converts a string of up to 4 characters to a Word36 containing 4 ASCII characters LJSF.
@@ -107,41 +109,60 @@ func (w *Word36) FromStringToFieldata(inp string) *Word36 {
 // FromStringToAscii converts a string of any number of characters to a Word36 array where-in the output array
 // consists of Word36 structs of 4 ASCII bytes per struct. The entire output is LJSF.
 func FromStringToAscii(input string, output []Word36) {
-	tempLen := len(output) * 4
-	if tempLen&03 != 0 {
-		tempLen = (tempLen &^ 03) + 4
+	FromStringToAsciiWithOffset(input, output, 0, len(output))
+}
+
+func FromStringToAsciiWithOffset(input string, output []Word36, wordOffset int, wordCount int) {
+	temp := fmt.Sprintf("%-*s", wordCount*4, input)
+	bx := 0
+	wx := wordOffset
+	for wy := 0; wy < wordCount; wy++ {
+		var value uint64
+		for by := 0; by < 4; by++ {
+			value <<= 9
+			value |= uint64(temp[bx])
+			bx++
+		}
+		output[wx].SetW(value)
+		wx++
 	}
-	temp := fmt.Sprintf("%-*s", tempLen, input)
-	FromBytesToAscii([]byte(temp), output)
 }
 
 // FromStringToFieldata converts a string of any number of characters to a Word36 array where-in the output array
 // consists of Word36 structs of 6 Fieldata bytes per struct. The entire output is LJSF.
 func FromStringToFieldata(input string, output []Word36) {
-	tempLen := len(output) * 4
-	tempMod := tempLen % 6
-	if tempMod != 0 {
-		tempLen += 6 - tempMod
+	FromStringToFieldataWithOffset(input, output, 0, len(output))
+}
+
+func FromStringToFieldataWithOffset(input string, output []Word36, wordOffset int, wordCount int) {
+	temp := fmt.Sprintf("%-*s", wordCount*6, input)
+	bx := 0
+	wx := wordOffset
+	for wy := 0; wy < wordCount; wy++ {
+		var value uint64
+		for by := 0; by < 6; by++ {
+			value <<= 6
+			value |= uint64(FieldataFromAscii[temp[bx]&0177])
+			bx++
+		}
+		output[wx].SetW(value)
+		wx++
 	}
-	temp := fmt.Sprintf("%-*s", tempLen, input)
-	FromBytesToFieldata([]byte(temp), output)
 }
 
 // NewFromStringToAscii converts a string of any number of characters to a Word36 array where-in the output array
 // consists of Word36 structs of 4 ASCII bytes per struct. The entire output is LJSF.
 func NewFromStringToAscii(input string, outputWordCount int) []Word36 {
-	temp := fmt.Sprintf("%-*s", outputWordCount*4, input)
 	result := make([]Word36, outputWordCount)
-	FromBytesToAscii([]byte(temp), result)
+	FromStringToAscii(input, result)
 	return result
 }
 
 // NewFromStringToFieldata converts a string of any number of characters to a Word36 array where-in the output array
 // consists of Word36 structs of 6 Fieldata bytes per struct. The entire output is LJSF.
 func NewFromStringToFieldata(input string, outputWordCount int) []Word36 {
-	temp := fmt.Sprintf("%-*s", outputWordCount*6, input)
 	result := make([]Word36, outputWordCount)
-	FromBytesToFieldata([]byte(temp), result)
+	FromStringToFieldata(input, result)
 	return result
 }
 
