@@ -613,7 +613,7 @@ func dumpBuffer(buffer []byte) {
 
 func (disk *DiskDevice) Dump(dest io.Writer, indent string) {
 	str := fmt.Sprintf("Rdy:%v WProt:%v pack:%v file:%v\n",
-		disk.isReady, disk.isWriteProtected, disk.packName, disk.fileName)
+		disk.isReady, disk.isWriteProtected, disk.packName, *disk.fileName)
 	_, _ = fmt.Fprintf(dest, "%v%v", indent, str)
 
 	if disk.geometry != nil {

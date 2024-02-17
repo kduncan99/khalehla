@@ -4,6 +4,9 @@
 
 package types
 
+const InvalidLink MFDRelativeAddress = 0_400000_000000
+const InvalidLDAT LDATIndex = 0_400000
+
 const (
 	_ IoFunction = iota
 	IofMount

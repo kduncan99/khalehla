@@ -78,7 +78,7 @@ func (kh *DUKeyinHandler) thread() {
 	kh.threadStarted = true
 
 	now := time.Now()
-	fileName := fmt.Sprintf("kexecDump-%04v%02v%02v-%02v%02v%02v.log",
+	fileName := fmt.Sprintf("kexec-%04v%02v%02v-%02v%02v%02v.dump",
 		now.Year(), int(now.Month()), now.Day(), now.Hour(), now.Minute(), now.Second())
 	dumpFile, err := os.Create(fileName)
 	if err != nil {
