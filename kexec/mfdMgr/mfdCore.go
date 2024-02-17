@@ -429,7 +429,7 @@ func (mgr *MFDManager) initializeMassStorage() error {
 			// If it is 0, it is a removable pack
 			// 0400000, it is an uninitialized fixed pack
 			// anything else, it is a pre-used fixed pack which we're going to initialize
-			ldat := sector1[5].GetS1()
+			ldat := sector1[5].GetH1()
 			if ldat == 0 {
 				removableDisks[ddInfo] = attr
 			} else {
