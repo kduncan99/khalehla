@@ -265,7 +265,14 @@ func (e *Exec) Dump(dest io.Writer) {
 	_, _ = fmt.Fprintf(dest, "  Phase:         %v\n", e.phase)
 	_, _ = fmt.Fprintf(dest, "  Stopped:       %v\n", e.stopFlag)
 	_, _ = fmt.Fprintf(dest, "  StopCode:      %03o\n", e.stopCode)
-	// TODO display jump keys
+
+	str := "Jump Keys Set:"
+	for jk := 1; jk <= 36; jk++ {
+		if e.jumpKeys[jk-1] {
+			str += fmt.Sprintf(" %v", jk)
+		}
+	}
+	_, _ = fmt.Fprintf(dest, "  %v\n", str)
 
 	e.consoleMgr.Dump(dest, "")
 	e.keyinMgr.Dump(dest, "")

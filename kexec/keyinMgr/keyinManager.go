@@ -15,10 +15,12 @@ import (
 
 var handlerTable = map[string]func(types.IExec, types.ConsoleIdentifier, string, string) types.KeyinHandler{
 	"$!": NewStopKeyinHandler,
+	"CJ": NewCJKeyinHandler,
 	"D":  NewDKeyinHandler,
 	"DJ": NewDJKeyinHandler,
 	"DU": NewDUKeyinHandler,
 	"FS": NewFSKeyinHandler,
+	"SJ": NewSJKeyinHandler,
 }
 
 type keyinInfo struct {
