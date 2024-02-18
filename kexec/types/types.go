@@ -41,6 +41,8 @@ type TrackId uint
 
 type DeviceRelativeWordAddress uint // device-relative word address
 type ExecPhase uint
+type FacStatus uint
+type Granularity uint
 type IoFunction uint
 type IoStatus uint
 type LDATIndex uint64
