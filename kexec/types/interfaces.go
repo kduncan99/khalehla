@@ -111,6 +111,7 @@ type IExec interface {
 	GetConfiguration() *config.Configuration
 	GetConsoleManager() IConsoleManager
 	GetFacilitiesManager() IFacilitiesManager
+	GetJumpKey(jkNumber int) bool
 	GetKeyinManager() IKeyinManager
 	GetMFDManager() IMFDManager
 	GetNodeManager() INodeManager
@@ -119,9 +120,10 @@ type IExec interface {
 	GetStopCode() StopCode
 	GetStopFlag() bool
 	HandleKeyIn(source ConsoleIdentifier, text string)
-	SendExecReadOnlyMessage(message string)
+	SendExecReadOnlyMessage(message string, routing *ConsoleIdentifier)
 	SendExecReadReplyMessage(message string, maxReplyChars int) (string, error)
 	SendExecRestrictedReadReplyMessage(message string, accepted []string) (string, error)
+	SetJumpKey(jkNumber int, value bool)
 	Stop(code StopCode)
 }
 

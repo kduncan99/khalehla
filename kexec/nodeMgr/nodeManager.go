@@ -427,7 +427,7 @@ func (mgr *NodeManager) SetNodeStatus(nodeId types.NodeIdentifier, status types.
 	}
 
 	msg := ni.GetNodeName() + " " + GetNodeStatusString(ni.GetNodeStatus(), ni.IsAccessible())
-	mgr.exec.SendExecReadOnlyMessage(msg)
+	mgr.exec.SendExecReadOnlyMessage(msg, nil)
 	if stopExec {
 		mgr.exec.Stop(types.StopConsoleResponseRequiresReboot)
 	}

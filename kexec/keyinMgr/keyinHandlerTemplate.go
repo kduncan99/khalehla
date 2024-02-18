@@ -21,7 +21,7 @@ type FOOKeyinHandler struct {
 	timeFinished    time.Time
 }
 
-func NewFOOKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, options string, arguments string) *FOOKeyinHandler {
+func NewFOOKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, options string, arguments string) types.KeyinHandler {
 	return &FOOKeyinHandler{
 		exec:            exec,
 		source:          source,
@@ -80,7 +80,7 @@ func (kh *FOOKeyinHandler) thread() {
 	kh.threadStarted = true
 
 	// TODO
-	kh.exec.SendExecReadOnlyMessage("YOU ARE A DUMMY")
+	kh.exec.SendExecReadOnlyMessage("YOU ARE A DUMMY", &kh.source)
 	// TODO end
 
 	kh.threadStopped = true

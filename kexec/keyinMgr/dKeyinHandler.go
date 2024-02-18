@@ -97,7 +97,7 @@ func (kh *DKeyinHandler) thread() {
 	zoneName, _ := t.Zone()
 	str += fmt.Sprintf("%v %02v %03v %04v %02v:%02v:%02v %v",
 		t.Weekday(), t.Day(), t.Month(), t.Year(), t.Hour(), t.Minute(), t.Second(), zoneName)
-	kh.exec.SendExecReadOnlyMessage(str)
+	kh.exec.SendExecReadOnlyMessage(str, &kh.source)
 
 	kh.threadStopped = true
 	kh.timeFinished = time.Now()

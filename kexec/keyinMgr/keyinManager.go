@@ -16,6 +16,7 @@ import (
 var handlerTable = map[string]func(types.IExec, types.ConsoleIdentifier, string, string) types.KeyinHandler{
 	"$!": NewStopKeyinHandler,
 	"D":  NewDKeyinHandler,
+	"DJ": NewDJKeyinHandler,
 	"DU": NewDUKeyinHandler,
 	"FS": NewFSKeyinHandler,
 }
@@ -97,12 +98,12 @@ func (mgr *KeyinManager) scheduleKeyinHandler(ki *keyinInfo) {
 	if ok {
 		handler := newHandler(mgr.exec, ki.source, options, args)
 		if !handler.CheckSyntax() {
-			mgr.exec.SendExecReadOnlyMessage(fmt.Sprintf("%v KEYIN HAS SYNTAX ERROR, INPUT IGNORED", command))
+			mgr.exec.SendExecReadOnlyMessage(fmt.Sprintf("%v KEYIN HAS SYNTAX ERROR, INPUT IGNORED", command), nil)
 			return
 		}
 
 		if !handler.IsAllowed() {
-			mgr.exec.SendExecReadOnlyMessage(fmt.Sprintf("%v KEYIN NOT ALLOWED", command))
+			mgr.exec.SendExecReadOnlyMessage(fmt.Sprintf("%v KEYIN NOT ALLOWED", command), nil)
 			return
 		}
 
@@ -113,7 +114,7 @@ func (mgr *KeyinManager) scheduleKeyinHandler(ki *keyinInfo) {
 
 	// TODO check for registered keyins
 
-	mgr.exec.SendExecReadOnlyMessage(fmt.Sprintf("KEYIN NOT REGISTERED*%v", command))
+	mgr.exec.SendExecReadOnlyMessage(fmt.Sprintf("KEYIN NOT REGISTERED*%v", command), nil)
 }
 
 func (mgr *KeyinManager) checkPosted() {

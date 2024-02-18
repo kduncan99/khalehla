@@ -210,7 +210,7 @@ func (mgr *FacilitiesManager) diskBecameReady(deviceId types.DeviceIdentifier) {
 		} else if ioStat != types.IosComplete {
 			log.Printf("FacMgr:IO Error reading label disk:%v status:%v", deviceId, ioStat)
 			consMsg := fmt.Sprintf("%v IO ERROR Reading Pack Label - Status=%v", ni.GetNodeName(), ioStat)
-			mgr.exec.SendExecReadOnlyMessage(consMsg)
+			mgr.exec.SendExecReadOnlyMessage(consMsg, nil)
 			// if unit is UP or SU, tell node manager to DN the unit
 			if devStat == types.NodeStatusUp || devStat == types.NodeStatusSuspended {
 				_ = nm.SetNodeStatus(types.NodeIdentifier(deviceId), types.NodeStatusDown)
@@ -225,7 +225,7 @@ func (mgr *FacilitiesManager) diskBecameReady(deviceId types.DeviceIdentifier) {
 
 		if packAttr.Label[0].ToStringAsAscii() != "VOL1" {
 			consMsg := fmt.Sprintf("%v Pack has no VOL1 label", ni.GetNodeName())
-			mgr.exec.SendExecReadOnlyMessage(consMsg)
+			mgr.exec.SendExecReadOnlyMessage(consMsg, nil)
 			// if unit is UP or SU, tell node manager to DN the unit
 			if devStat == types.NodeStatusUp || devStat == types.NodeStatusSuspended {
 				_ = nm.SetNodeStatus(types.NodeIdentifier(deviceId), types.NodeStatusDown)
@@ -237,7 +237,7 @@ func (mgr *FacilitiesManager) diskBecameReady(deviceId types.DeviceIdentifier) {
 		packAttr.PackName = packName
 		if !nodeMgr.IsValidPackName(packName) {
 			consMsg := fmt.Sprintf("%v Invalid pack ID in VOL1 label", ni.GetNodeName())
-			mgr.exec.SendExecReadOnlyMessage(consMsg)
+			mgr.exec.SendExecReadOnlyMessage(consMsg, nil)
 			// if unit is UP or SU, tell node manager to DN the unit
 			if devStat == types.NodeStatusUp || devStat == types.NodeStatusSuspended {
 				_ = nm.SetNodeStatus(types.NodeIdentifier(deviceId), types.NodeStatusDown)

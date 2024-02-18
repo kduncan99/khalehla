@@ -30,10 +30,10 @@ type Exec struct {
 	runControlEntry *types.RunControlEntry
 	runControlTable map[string]*types.RunControlEntry // indexed by runid
 
-	allowRestart bool
-	phase        types.ExecPhase
-	stopCode     types.StopCode
-	stopFlag     bool
+	jumpKeys []bool
+	phase    types.ExecPhase
+	stopCode types.StopCode
+	stopFlag bool
 }
 
 func NewExec(cfg *config.Configuration) *Exec {
@@ -61,6 +61,8 @@ func NewExec(cfg *config.Configuration) *Exec {
 	e.runControlTable = make(map[string]*types.RunControlEntry)
 	e.runControlTable[e.runControlEntry.RunId] = e.runControlEntry
 
+	e.jumpKeys = make([]bool, 36)
+
 	return e
 }
 
@@ -82,6 +84,10 @@ func (e *Exec) GetConsoleManager() types.IConsoleManager {
 
 func (e *Exec) GetFacilitiesManager() types.IFacilitiesManager {
 	return e.facMgr
+}
+
+func (e *Exec) GetJumpKey(jkNumber int) bool {
+	return (jkNumber >= 1 && jkNumber <= 36) && e.jumpKeys[jkNumber-1]
 }
 
 func (e *Exec) GetKeyinManager() types.IKeyinManager {
@@ -117,6 +123,7 @@ func (e *Exec) HandleKeyIn(source types.ConsoleIdentifier, text string) {
 }
 
 func (e *Exec) InitialBoot(initMassStorage bool) error {
+	// TODO this bit would move to the generic Boot()
 	e.phase = types.ExecPhaseInitializing
 
 	// we need the console before anything else, and then the keyin manager right after that
@@ -130,16 +137,19 @@ func (e *Exec) InitialBoot(initMassStorage bool) error {
 		return err
 	}
 
-	e.SendExecReadOnlyMessage("KEXEC Startup - Version " + Version)
+	e.SendExecReadOnlyMessage("KEXEC Startup - Version "+Version, nil)
 
 	// now let's have the disks and tapes
-	e.SendExecReadOnlyMessage("Building Configuration...")
+	e.SendExecReadOnlyMessage("Building Configuration...", nil)
 	err = e.nodeMgr.InitializeManager()
 	if err != nil {
 		return err
 	}
+	// TODO end of generic BOOT() - from here on, we are assuming JK13
 
 	// Let the operator adjust the configuration
+	//  TODO is there a jump key (besides JK13) that would cause this message?
+	//		if so, this should also be in generic Boot()
 	accepted := []string{"DONE"}
 	_, err = e.SendExecRestrictedReadReplyMessage("Modify Config then answer DONE", accepted)
 	if err != nil {
@@ -158,7 +168,6 @@ func (e *Exec) InitialBoot(initMassStorage bool) error {
 		return err
 	}
 
-	e.allowRestart = false // TODO temporary
 	return nil
 }
 
@@ -167,9 +176,10 @@ func (e *Exec) RecoveryBoot(initMassStorage bool) error {
 	return nil
 }
 
-func (e *Exec) SendExecReadOnlyMessage(message string) {
+func (e *Exec) SendExecReadOnlyMessage(message string, routing *types.ConsoleIdentifier) {
 	consMsg := types.ConsoleReadOnlyMessage{
 		Source:         e.runControlEntry,
+		Routing:        routing,
 		Text:           message,
 		DoNotEmitRunId: true,
 	}
@@ -230,12 +240,18 @@ func (e *Exec) SendExecRestrictedReadReplyMessage(message string, accepted []str
 	return strings.ToUpper(consMsg.Reply), nil
 }
 
+func (e *Exec) SetJumpKey(jkNumber int, value bool) {
+	if (jkNumber >= 1) && (jkNumber <= 36) {
+		e.jumpKeys[jkNumber-1] = value
+	}
+}
+
 func (e *Exec) Stop(code types.StopCode) {
 	// TODO need to set contingency in the Exec RCE
-	if e.allowRestart {
-		e.SendExecReadOnlyMessage(fmt.Sprintf("Restarting Exec: Status Code %03o", code))
+	if !e.jumpKeys[3] {
+		e.SendExecReadOnlyMessage(fmt.Sprintf("Restarting Exec: Status Code %03o", code), nil)
 	} else {
-		e.SendExecReadOnlyMessage(fmt.Sprintf("Stopping Exec: Status Code %03o", code))
+		e.SendExecReadOnlyMessage(fmt.Sprintf("Stopping Exec: Status Code %03o", code), nil)
 	}
 
 	e.stopFlag = true
@@ -249,7 +265,7 @@ func (e *Exec) Dump(dest io.Writer) {
 	_, _ = fmt.Fprintf(dest, "  Phase:         %v\n", e.phase)
 	_, _ = fmt.Fprintf(dest, "  Stopped:       %v\n", e.stopFlag)
 	_, _ = fmt.Fprintf(dest, "  StopCode:      %03o\n", e.stopCode)
-	_, _ = fmt.Fprintf(dest, "  Allow Restart: %v\n", e.allowRestart)
+	// TODO display jump keys
 
 	e.consoleMgr.Dump(dest, "")
 	e.keyinMgr.Dump(dest, "")

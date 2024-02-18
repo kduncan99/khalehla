@@ -378,21 +378,21 @@ func (mgr *MFDManager) initializeMassStorage() error {
 			// Get the pack label from fac mgr
 			attr, err := mgr.exec.GetFacilitiesManager().GetDiskAttributes(ddInfo.GetDeviceIdentifier())
 			if err != nil {
-				mgr.exec.SendExecReadOnlyMessage("Internal configuration error")
+				mgr.exec.SendExecReadOnlyMessage("Internal configuration error", nil)
 				mgr.exec.Stop(types.StopInitializationSystemConfigurationError)
 				return fmt.Errorf("boot canceled")
 			}
 
 			if attr.PackAttrs == nil {
 				msg := fmt.Sprintf("No label exists for pack on device %v", ddInfo.GetDeviceName())
-				mgr.exec.SendExecReadOnlyMessage(msg)
+				mgr.exec.SendExecReadOnlyMessage(msg, nil)
 				_ = mgr.exec.GetNodeManager().SetNodeStatus(ddInfo.GetNodeIdentifier(), types.NodeStatusDown)
 				continue
 			}
 
 			if !attr.PackAttrs.IsPrepped {
 				msg := fmt.Sprintf("Pack is not prepped on device %v", ddInfo.GetDeviceName())
-				mgr.exec.SendExecReadOnlyMessage(msg)
+				mgr.exec.SendExecReadOnlyMessage(msg, nil)
 				_ = mgr.exec.GetNodeManager().SetNodeStatus(ddInfo.GetNodeIdentifier(), types.NodeStatusDown)
 				continue
 			}
@@ -413,7 +413,7 @@ func (mgr *MFDManager) initializeMassStorage() error {
 			if ioStat != types.IosComplete {
 				msg := fmt.Sprintf("IO error reading directory track on device %v", ddInfo.GetDeviceName())
 				log.Printf("MFDMgr:%v", msg)
-				mgr.exec.SendExecReadOnlyMessage(msg)
+				mgr.exec.SendExecReadOnlyMessage(msg, nil)
 				_ = mgr.exec.GetNodeManager().SetNodeStatus(ddInfo.GetNodeIdentifier(), types.NodeStatusDown)
 				continue
 			}
@@ -446,7 +446,7 @@ func (mgr *MFDManager) initializeMassStorage() error {
 
 	// Make sure we have at least one fixed pack after the previous shenanigans
 	if len(mgr.fixedPackDescriptors) == 0 {
-		mgr.exec.SendExecReadOnlyMessage("No Fixed Disks - Cannot Continue Initialization")
+		mgr.exec.SendExecReadOnlyMessage("No Fixed Disks - Cannot Continue Initialization", nil)
 		mgr.exec.Stop(types.StopInitializationSystemConfigurationError)
 		return fmt.Errorf("boot canceled")
 	}
@@ -458,7 +458,7 @@ func (mgr *MFDManager) initializeMassStorage() error {
 // initializeFixed initializes the fixed pool for a jk13 boot
 func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.DiskAttributes) error {
 	msg := fmt.Sprintf("Fixed Disk Pool = %v Devices", len(disks))
-	mgr.exec.SendExecReadOnlyMessage(msg)
+	mgr.exec.SendExecReadOnlyMessage(msg, nil)
 
 	if len(disks) == 0 {
 		return nil
@@ -481,7 +481,7 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.
 		for _, existing := range packNames {
 			if diskAttr.PackAttrs.PackName == existing {
 				msg := fmt.Sprintf("Fixed pack name conflict - %v", existing)
-				mgr.exec.SendExecReadOnlyMessage(msg)
+				mgr.exec.SendExecReadOnlyMessage(msg, nil)
 				conflicts = true
 			} else {
 				packNames = append(packNames, diskAttr.PackAttrs.PackName)
@@ -490,7 +490,7 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.
 	}
 
 	if conflicts {
-		mgr.exec.SendExecReadOnlyMessage("Resolve pack name conflicts and reboot")
+		mgr.exec.SendExecReadOnlyMessage("Resolve pack name conflicts and reboot", nil)
 		mgr.exec.Stop(types.StopDirectoryErrors)
 		return fmt.Errorf("packid conflict")
 	}
@@ -594,7 +594,7 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.
 	}
 
 	msg = fmt.Sprintf("MS Initialized - %v Tracks Available", totalTracks)
-	mgr.exec.SendExecReadOnlyMessage(msg)
+	mgr.exec.SendExecReadOnlyMessage(msg, nil)
 	return nil
 }
 
@@ -656,7 +656,7 @@ func (mgr *MFDManager) markDirectorySectorUnallocated(sectorAddr types.MFDRelati
 // If we return an error, we must previously stop the exec.
 func (mgr *MFDManager) recoverMassStorage() error {
 	// TODO
-	mgr.exec.SendExecReadOnlyMessage("MFD Recovery is not implemented")
+	mgr.exec.SendExecReadOnlyMessage("MFD Recovery is not implemented", nil)
 	mgr.exec.Stop(types.StopDirectoryErrors)
 	return nil
 }

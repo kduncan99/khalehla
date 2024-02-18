@@ -84,7 +84,7 @@ func (kh *DUKeyinHandler) thread() {
 	if err != nil {
 		msg := "DU,MP Failed - Cannot create log file"
 		log.Printf("DU:%s\n", msg)
-		kh.exec.SendExecReadOnlyMessage(msg)
+		kh.exec.SendExecReadOnlyMessage(msg, &kh.source)
 		return
 	}
 
@@ -92,14 +92,14 @@ func (kh *DUKeyinHandler) thread() {
 		if err := dumpFile.Close(); err != nil {
 			msg := "DU,MP Failed - Error closing log file"
 			log.Printf("DU:%s\n", msg)
-			kh.exec.SendExecReadOnlyMessage(msg)
+			kh.exec.SendExecReadOnlyMessage(msg, &kh.source)
 			return
 		}
 	}()
 
 	kh.exec.Dump(dumpFile)
 	msg := "DU,MP Wrote dump to " + fileName
-	kh.exec.SendExecReadOnlyMessage(msg)
+	kh.exec.SendExecReadOnlyMessage(msg, &kh.source)
 
 	kh.threadStopped = true
 	kh.timeFinished = time.Now()

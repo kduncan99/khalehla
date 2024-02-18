@@ -16,6 +16,11 @@ func main() {
 	cfg.LogIOs = true
 
 	e := kexec.NewExec(cfg)
+	e.SetJumpKey(3, true)
+	e.SetJumpKey(4, true)
+	e.SetJumpKey(7, true)
+	e.SetJumpKey(13, true)
+
 	_ = e.InitialBoot(true)
 	for !e.GetStopFlag() {
 		time.Sleep(100 * time.Millisecond)

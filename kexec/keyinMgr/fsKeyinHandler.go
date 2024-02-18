@@ -124,7 +124,7 @@ func (kh *FSKeyinHandler) emitStatusStrings(statStrings []string) {
 				sx++
 			}
 		}
-		kh.exec.SendExecReadOnlyMessage(str)
+		kh.exec.SendExecReadOnlyMessage(str, &kh.source)
 	}
 }
 
@@ -148,7 +148,7 @@ func (kh *FSKeyinHandler) handleAllForChannel() {
 	nodeInfo, err := nm.GetNodeInfoByName(chName)
 	if err != nil {
 		msg := fmt.Sprintf("FS KEYIN - %v DOES NOT EXIST, INPUT IGNORED", chName)
-		kh.exec.SendExecReadOnlyMessage(msg)
+		kh.exec.SendExecReadOnlyMessage(msg, &kh.source)
 		return
 	}
 	statStrings = append(statStrings, kh.getStatusStringForNode(nodeInfo))
@@ -194,7 +194,7 @@ func (kh *FSKeyinHandler) handleComponentList() {
 		ni, err := nm.GetNodeInfoByName(strings.ToUpper(name))
 		if err != nil {
 			msg := fmt.Sprintf("FS KEYIN - %v DOES NOT EXIST, INPUT IGNORED", name)
-			kh.exec.SendExecReadOnlyMessage(msg)
+			kh.exec.SendExecReadOnlyMessage(msg, &kh.source)
 			return
 		}
 
@@ -229,7 +229,7 @@ func (kh *FSKeyinHandler) handleOption() {
 	}
 
 	msg := fmt.Sprintf("FS KEYIN - %v OPTION DOES NOT EXIST, INPUT IGNORED", kh.options)
-	kh.exec.SendExecReadOnlyMessage(msg)
+	kh.exec.SendExecReadOnlyMessage(msg, &kh.source)
 }
 
 func (kh *FSKeyinHandler) thread() {
