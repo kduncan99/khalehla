@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"khalehla/kexec/types"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -15,12 +16,59 @@ import (
 
 var handlerTable = map[string]func(types.IExec, types.ConsoleIdentifier, string, string) types.KeyinHandler{
 	"$!": NewStopKeyinHandler,
+	// "AP"
+	// "AT"
+	// "B"
+	// "BL"
 	"CJ": NewCJKeyinHandler,
+	// "CS"
 	"D":  NewDKeyinHandler,
 	"DJ": NewDJKeyinHandler,
+	// "DN"
 	"DU": NewDUKeyinHandler,
+	// "E"
+	// "FA"
+	// "FB"
+	// "FC" ?
+	// "FF"
 	"FS": NewFSKeyinHandler,
+	// "II"
+	// "IN"
+	// "IT"
+	// "LB"
+	// "LC"
+	// "LG"
+	// "MR"
+	// "MS"
+	// "PM" ?
+	// "PR" ?
+	// "RC"
+	// "RD" ?
+	// "RE"
+	// "RL"
+	// "RM"
+	// "RP" ?
+	// "RS"
+	// "RV"
+	// "SEC"
 	"SJ": NewSJKeyinHandler,
+	// "SM"
+	// "SP"
+	// "SQ"
+	// "SR"
+	// "SS"
+	// "ST"
+	// "SU"
+	// "SX"
+	// "T"
+	// "TB"
+	// "TF"
+	// "TP"
+	// "TS"
+	// "TU" ?
+	// "UL"
+	// "UP"
+	// "X"
 }
 
 type keyinInfo struct {
@@ -32,10 +80,7 @@ type keyinInfo struct {
 type KeyinManager struct {
 	exec            types.IExec
 	mutex           sync.Mutex
-	isInitialized   bool
-	terminateThread bool
-	threadStarted   bool
-	threadStopped   bool
+	threadDone      bool
 	postedKeyins    []*keyinInfo
 	pendingHandlers []types.KeyinHandler
 }
@@ -46,29 +91,33 @@ func NewKeyinManager(exec types.IExec) *KeyinManager {
 	}
 }
 
-// CloseManager is invoked when the exec is stopping
-func (mgr *KeyinManager) CloseManager() {
-	mgr.threadStop()
-	mgr.isInitialized = false
-}
-
-func (mgr *KeyinManager) InitializeManager() error {
-	mgr.threadStart()
-	mgr.isInitialized = true
+// Boot is invoked when the exec is booting - return an error to stop the boot
+func (mgr *KeyinManager) Boot() error {
+	log.Printf("KeyinMgr:Boot")
+	mgr.postedKeyins = make([]*keyinInfo, 0)
+	mgr.pendingHandlers = make([]types.KeyinHandler, 0)
+	go mgr.thread()
 	return nil
 }
 
-func (mgr *KeyinManager) IsInitialized() bool {
-	return mgr.isInitialized
+// Close is invoked when the application is shutting down
+func (mgr *KeyinManager) Close() {
+	log.Printf("KeyinMgr:Close")
+	// nothing to do
 }
 
-// ResetManager clears out any artifacts left over by a previous exec session,
-// and prepares the console for normal operations
-func (mgr *KeyinManager) ResetManager() error {
-	mgr.threadStop()
-	mgr.threadStart()
-	mgr.isInitialized = true
+// Initialize is invoked when the application is starting up
+func (mgr *KeyinManager) Initialize() error {
+	log.Printf("KeyinMgr:Initialized")
 	return nil
+}
+
+// Stop is invoked when the exec is stopping
+func (mgr *KeyinManager) Stop() {
+	log.Printf("KeyinMgr:Stop")
+	for !mgr.threadDone {
+		time.Sleep(25 * time.Millisecond)
+	}
 }
 
 // PostKeyin queues the given keyin info and returns immediately to avoid deadlocks
@@ -76,11 +125,13 @@ func (mgr *KeyinManager) PostKeyin(source types.ConsoleIdentifier, text string) 
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
-	ki := &keyinInfo{
-		source: source,
-		text:   text,
+	if !mgr.threadDone {
+		ki := &keyinInfo{
+			source: source,
+			text:   text,
+		}
+		mgr.postedKeyins = append(mgr.postedKeyins, ki)
 	}
-	mgr.postedKeyins = append(mgr.postedKeyins, ki)
 }
 
 func (mgr *KeyinManager) scheduleKeyinHandler(ki *keyinInfo) {
@@ -146,10 +197,10 @@ func (mgr *KeyinManager) prune() {
 }
 
 func (mgr *KeyinManager) thread() {
-	mgr.threadStarted = true
+	mgr.threadDone = false
 
 	counter := 0
-	for !mgr.terminateThread {
+	for !mgr.exec.GetStopFlag() {
 		time.Sleep(25 * time.Millisecond)
 		mgr.checkPosted()
 		counter++
@@ -159,35 +210,13 @@ func (mgr *KeyinManager) thread() {
 		}
 	}
 
-	mgr.threadStopped = true
-}
-
-func (mgr *KeyinManager) threadStart() {
-	mgr.terminateThread = false
-	if !mgr.threadStarted {
-		go mgr.thread()
-		for !mgr.threadStarted {
-			time.Sleep(25 * time.Millisecond)
-		}
-	}
-}
-
-func (mgr *KeyinManager) threadStop() {
-	if mgr.threadStarted {
-		mgr.terminateThread = true
-		for !mgr.threadStopped {
-			time.Sleep(25 * time.Millisecond)
-		}
-	}
+	mgr.threadDone = true
 }
 
 func (mgr *KeyinManager) Dump(dest io.Writer, indent string) {
 	_, _ = fmt.Fprintf(dest, "%vKeyinManager ----------------------------------------------------\n", indent)
 
-	_, _ = fmt.Fprintf(dest, "%v  initialized:     %v\n", indent, mgr.isInitialized)
-	_, _ = fmt.Fprintf(dest, "%v  threadStarted:   %v\n", indent, mgr.threadStarted)
-	_, _ = fmt.Fprintf(dest, "%v  threadStopped:   %v\n", indent, mgr.threadStopped)
-	_, _ = fmt.Fprintf(dest, "%v  terminateThread: %v\n", indent, mgr.terminateThread)
+	_, _ = fmt.Fprintf(dest, "%v  threadDone: %v\n", indent, mgr.threadDone)
 
 	_, _ = fmt.Fprintf(dest, "%v  Recent or Pending Keyins:\n", indent)
 	for _, kh := range mgr.pendingHandlers {

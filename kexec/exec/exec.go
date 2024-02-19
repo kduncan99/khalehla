@@ -2,11 +2,10 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package kexec
+package exec
 
 import (
 	"fmt"
-	"io"
 	"khalehla/kexec/config"
 	"khalehla/kexec/consoleMgr"
 	"khalehla/kexec/facilitiesMgr"
@@ -14,7 +13,10 @@ import (
 	"khalehla/kexec/mfdMgr"
 	"khalehla/kexec/nodeMgr"
 	"khalehla/kexec/types"
+	"log"
+	"os"
 	"strings"
+	"time"
 )
 
 const Version = "v1.0.0"
@@ -47,31 +49,93 @@ func NewExec(cfg *config.Configuration) *Exec {
 	e.nodeMgr = nodeMgr.NewNodeManager(e)
 	e.phase = types.ExecPhaseNotStarted
 
+	return e
+}
+
+// Boot starts and runs the system.
+// It returns only when we are completely done, not just rebooting.
+func (e *Exec) Boot(session uint, jumpKeys []bool, invokerChannel chan types.StopCode) {
+	e.jumpKeys = jumpKeys
+	e.stopFlag = false
+	e.phase = types.ExecPhaseInitializing
+
 	// ExecRunControlEntry is the RCE for the EXEC - it always exists and is always (or should always be) in the RCT
 	e.runControlEntry = types.NewRunControlEntry(
-		cfg.SystemRunId,
-		cfg.SystemRunId,
-		cfg.SystemAccountId,
-		cfg.SystemProjectId,
-		cfg.SystemUserId)
-	e.runControlEntry.DefaultQualifier = cfg.SystemQualifier
-	e.runControlEntry.ImpliedQualifier = cfg.SystemQualifier
+		e.configuration.SystemRunId,
+		e.configuration.SystemRunId,
+		e.configuration.SystemAccountId,
+		e.configuration.SystemProjectId,
+		e.configuration.SystemUserId)
+	e.runControlEntry.DefaultQualifier = e.configuration.SystemQualifier
+	e.runControlEntry.ImpliedQualifier = e.configuration.SystemQualifier
 	e.runControlEntry.IsExec = true
 
 	e.runControlTable = make(map[string]*types.RunControlEntry)
 	e.runControlTable[e.runControlEntry.RunId] = e.runControlEntry
 
-	e.jumpKeys = make([]bool, 36)
+	managers := []types.IManager{
+		e.consoleMgr,
+		e.keyinMgr,
+		e.nodeMgr,
+		e.facMgr,
+		e.mfdMgr,
+	}
 
-	return e
+	// Boot the various managers
+	for _, m := range managers {
+		_ = m.Boot()
+		if e.stopFlag {
+			invokerChannel <- e.stopCode
+			return
+		}
+	}
+
+	// Begin the real boot process
+	e.SendExecReadOnlyMessage("KEXEC Startup - Version "+Version, nil)
+
+	if session == 0 || e.jumpKeys[types.JumpKey1Index] {
+		// Let the operator adjust the configuration
+		accepted := []string{"DONE"}
+		_, _ = e.SendExecRestrictedReadReplyMessage("Modify Config then answer DONE", accepted)
+		if e.stopFlag {
+			invokerChannel <- e.stopCode
+			return
+		}
+	}
+
+	if session == 0 {
+		e.performInitialBoot()
+	} else {
+		e.performRecoveryBoot()
+	}
+
+	// Now wait for someone to stop us
+	for !e.stopFlag {
+		time.Sleep(25 * time.Millisecond)
+	}
+
+	// Stop the manager, then tell the invoker we are done
+	for _, m := range managers {
+		m.Stop()
+	}
+
+	invokerChannel <- e.stopCode
 }
 
+// Close invokes the Close method on each of the managers in a particular order.
 func (e *Exec) Close() {
-	e.keyinMgr.CloseManager()
-	e.facMgr.CloseManager()
-	e.mfdMgr.CloseManager()
-	e.nodeMgr.CloseManager()
-	e.consoleMgr.CloseManager()
+	log.Printf("Exec:Close")
+	managers := []types.IManager{
+		e.mfdMgr,
+		e.facMgr,
+		e.nodeMgr,
+		e.keyinMgr,
+		e.consoleMgr,
+	}
+
+	for _, m := range managers {
+		m.Close()
+	}
 }
 
 func (e *Exec) GetConfiguration() *config.Configuration {
@@ -122,58 +186,30 @@ func (e *Exec) HandleKeyIn(source types.ConsoleIdentifier, text string) {
 	e.keyinMgr.PostKeyin(source, text)
 }
 
-func (e *Exec) InitialBoot(initMassStorage bool) error {
-	// TODO this bit would move to the generic Boot()
-	e.phase = types.ExecPhaseInitializing
-
-	// we need the console before anything else, and then the keyin manager right after that
-	err := e.consoleMgr.InitializeManager()
-	if err != nil {
-		return err
+// Initialize invokes the Initialize method on each of the managers in a particular order.
+// If any of them return an error, we pass that error back the the caller which should Close() us and terminate.
+// Should be invoked after calling NewExec(), but before calling Boot()
+func (e *Exec) Initialize() error {
+	managers := []types.IManager{
+		e.consoleMgr,
+		e.keyinMgr,
+		e.nodeMgr,
+		e.facMgr,
+		e.mfdMgr,
 	}
 
-	err = e.keyinMgr.InitializeManager()
-	if err != nil {
-		return err
-	}
-
-	e.SendExecReadOnlyMessage("KEXEC Startup - Version "+Version, nil)
-
-	// now let's have the disks and tapes
-	e.SendExecReadOnlyMessage("Building Configuration...", nil)
-	err = e.nodeMgr.InitializeManager()
-	if err != nil {
-		return err
-	}
-	// TODO end of generic BOOT() - from here on, we are assuming JK13
-
-	// Let the operator adjust the configuration
-	//  TODO is there a jump key (besides JK13) that would cause this message?
-	//		if so, this should also be in generic Boot()
-	accepted := []string{"DONE"}
-	_, err = e.SendExecRestrictedReadReplyMessage("Modify Config then answer DONE", accepted)
-	if err != nil {
-		return err
-	}
-
-	// spin up facilities, then the MFD
-	err = e.facMgr.InitializeManager()
-	if err != nil {
-		return err
-	}
-
-	e.mfdMgr.SetMSInitialize(true)
-	err = e.mfdMgr.InitializeManager()
-	if err != nil {
-		return err
+	for _, m := range managers {
+		err := m.Initialize()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func (e *Exec) RecoveryBoot(initMassStorage bool) error {
-	// TODO
-	return nil
+func (e *Exec) SetConfiguration(config *config.Configuration) {
+	e.configuration = config
 }
 
 func (e *Exec) SendExecReadOnlyMessage(message string, routing *types.ConsoleIdentifier) {
@@ -248,23 +284,26 @@ func (e *Exec) SetJumpKey(jkNumber int, value bool) {
 
 func (e *Exec) Stop(code types.StopCode) {
 	// TODO need to set contingency in the Exec RCE
-	if !e.jumpKeys[3] {
-		e.SendExecReadOnlyMessage(fmt.Sprintf("Restarting Exec: Status Code %03o", code), nil)
-	} else {
-		e.SendExecReadOnlyMessage(fmt.Sprintf("Stopping Exec: Status Code %03o", code), nil)
-	}
-
 	e.stopFlag = true
 	e.stopCode = code
 	e.phase = types.ExecPhaseStopped
 }
 
-func (e *Exec) Dump(dest io.Writer) {
-	_, _ = fmt.Fprintf(dest, "Exec Dump ----------------------------------------------------\n")
+func (e *Exec) PerformDump(fullFlag bool) (string, error) {
+	now := time.Now()
+	fileName := fmt.Sprintf("kexec-%04v%02v%02v-%02v%02v%02v.dump",
+		now.Year(), int(now.Month()), now.Day(), now.Hour(), now.Minute(), now.Second())
+	dumpFile, err := os.Create(fileName)
+	if err != nil {
+		err := fmt.Errorf("cannot create dump file:%v\n", err)
+		return "", err
+	}
 
-	_, _ = fmt.Fprintf(dest, "  Phase:         %v\n", e.phase)
-	_, _ = fmt.Fprintf(dest, "  Stopped:       %v\n", e.stopFlag)
-	_, _ = fmt.Fprintf(dest, "  StopCode:      %03o\n", e.stopCode)
+	_, _ = fmt.Fprintf(dumpFile, "Exec Dump ----------------------------------------------------\n")
+
+	_, _ = fmt.Fprintf(dumpFile, "  Phase:         %v\n", e.phase)
+	_, _ = fmt.Fprintf(dumpFile, "  Stopped:       %v\n", e.stopFlag)
+	_, _ = fmt.Fprintf(dumpFile, "  StopCode:      %03o\n", e.stopCode)
 
 	str := "Jump Keys Set:"
 	for jk := 1; jk <= 36; jk++ {
@@ -272,13 +311,23 @@ func (e *Exec) Dump(dest io.Writer) {
 			str += fmt.Sprintf(" %v", jk)
 		}
 	}
-	_, _ = fmt.Fprintf(dest, "  %v\n", str)
+	_, _ = fmt.Fprintf(dumpFile, "  %v\n", str)
 
-	e.consoleMgr.Dump(dest, "")
-	e.keyinMgr.Dump(dest, "")
-	e.nodeMgr.Dump(dest, "")
-	e.facMgr.Dump(dest, "")
-	e.mfdMgr.Dump(dest, "")
+	// TODO something different when fullFlag is set
+
+	e.consoleMgr.Dump(dumpFile, "")
+	e.keyinMgr.Dump(dumpFile, "")
+	e.nodeMgr.Dump(dumpFile, "")
+	e.facMgr.Dump(dumpFile, "")
+	e.mfdMgr.Dump(dumpFile, "")
 
 	// TODO run control table, etc
+
+	err = dumpFile.Close()
+	if err != nil {
+		err := fmt.Errorf("cannot close dump file:%v\n", err)
+		return "", err
+	}
+
+	return fileName, nil
 }

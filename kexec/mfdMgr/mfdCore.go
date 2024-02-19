@@ -13,6 +13,122 @@ import (
 	"time"
 )
 
+// InitializeMassStorage handles MFD initialization for what is effectively a JK13 boot.
+// If we return an error, we must previously stop the exec.
+func (mgr *MFDManager) InitializeMassStorage() {
+	// drain the device ready notification queue, and use that to build up our initial list of disk packs.
+	// We should only have notifications for disks, and the ready flag should always be true.
+	// However, we'll filter out any nonsense anyway.
+	nm := mgr.exec.GetNodeManager()
+	queue := mgr.deviceReadyNotificationQueue
+	mgr.deviceReadyNotificationQueue = make(map[types.DeviceIdentifier]bool)
+	disks := make([]*nodeMgr.DiskDeviceInfo, 0)
+	for devId, ready := range queue {
+		if ready {
+			devInfo, err := nm.GetNodeInfoByIdentifier(types.NodeIdentifier(devId))
+			if err == nil && devInfo.GetNodeType() == types.NodeTypeDisk {
+				disks = append(disks, devInfo.(*nodeMgr.DiskDeviceInfo))
+			}
+		}
+	}
+
+	// Check the labels on the disks so that we may segregate them into fixed and removable lists.
+	// Any problems at this point will lead us to DN the unit.
+	fixedDisks := make(map[*nodeMgr.DiskDeviceInfo]*types.DiskAttributes)
+	removableDisks := make(map[*nodeMgr.DiskDeviceInfo]*types.DiskAttributes)
+	for _, ddInfo := range disks {
+		if ddInfo.GetNodeStatus() == types.NodeStatusUp {
+			// Get the pack label from fac mgr
+			attr, err := mgr.exec.GetFacilitiesManager().GetDiskAttributes(ddInfo.GetDeviceIdentifier())
+			if err != nil {
+				mgr.exec.SendExecReadOnlyMessage("Internal configuration error", nil)
+				mgr.exec.Stop(types.StopInitializationSystemConfigurationError)
+				return
+			}
+
+			if attr.PackAttrs == nil {
+				msg := fmt.Sprintf("No label exists for pack on device %v", ddInfo.GetDeviceName())
+				mgr.exec.SendExecReadOnlyMessage(msg, nil)
+				_ = mgr.exec.GetNodeManager().SetNodeStatus(ddInfo.GetNodeIdentifier(), types.NodeStatusDown)
+				continue
+			}
+
+			if !attr.PackAttrs.IsPrepped {
+				msg := fmt.Sprintf("Pack is not prepped on device %v", ddInfo.GetDeviceName())
+				mgr.exec.SendExecReadOnlyMessage(msg, nil)
+				_ = mgr.exec.GetNodeManager().SetNodeStatus(ddInfo.GetNodeIdentifier(), types.NodeStatusDown)
+				continue
+			}
+
+			// Read sector 1 of the initial directory track.
+			// This is a little messy due to the potential of problematic block sizes.
+			wordsPerBlock := attr.PackAttrs.Label[4].GetH2()
+			dirTrackWordAddr := attr.PackAttrs.Label[03].GetW()
+			dirTrackBlockId := types.BlockId(dirTrackWordAddr / wordsPerBlock)
+			if wordsPerBlock == 28 {
+				dirTrackBlockId++
+			}
+
+			buf := make([]pkg.Word36, wordsPerBlock)
+			pkt := nodeMgr.NewDiskIoPacketRead(ddInfo.GetDeviceIdentifier(), dirTrackBlockId, buf)
+			mgr.exec.GetNodeManager().RouteIo(pkt)
+			ioStat := pkt.GetIoStatus()
+			if ioStat != types.IosComplete {
+				msg := fmt.Sprintf("IO error reading directory track on device %v", ddInfo.GetDeviceName())
+				log.Printf("MFDMgr:%v", msg)
+				mgr.exec.SendExecReadOnlyMessage(msg, nil)
+				_ = mgr.exec.GetNodeManager().SetNodeStatus(ddInfo.GetNodeIdentifier(), types.NodeStatusDown)
+				continue
+			}
+
+			var sector1 []pkg.Word36
+			if wordsPerBlock == 28 {
+				sector1 = buf
+			} else {
+				sector1 = buf[28:56]
+			}
+
+			// get the LDAT field from sector 1
+			// If it is 0, it is a removable pack
+			// 0400000, it is an uninitialized fixed pack
+			// anything else, it is a pre-used fixed pack which we're going to initialize
+			ldat := sector1[5].GetH1()
+			if ldat == 0 {
+				removableDisks[ddInfo] = attr
+			} else {
+				fixedDisks[ddInfo] = attr
+				attr.PackAttrs.IsFixed = true
+			}
+		}
+	}
+
+	err := mgr.initializeFixed(fixedDisks)
+	if err != nil {
+		return
+	}
+
+	// Make sure we have at least one fixed pack after the previous shenanigans
+	if len(mgr.fixedPackDescriptors) == 0 {
+		mgr.exec.SendExecReadOnlyMessage("No Fixed Disks - Cannot Continue Initialization", nil)
+		mgr.exec.Stop(types.StopInitializationSystemConfigurationError)
+		return
+	}
+
+	err = mgr.initializeRemovable(removableDisks)
+	return
+}
+
+// RecoverMassStorage handles MFD recovery for what is NOT a JK13 boot.
+// If we return an error, we must previously stop the exec.
+func (mgr *MFDManager) RecoverMassStorage() {
+	// TODO
+	mgr.exec.SendExecReadOnlyMessage("MFD Recovery is not implemented", nil)
+	mgr.exec.Stop(types.StopDirectoryErrors)
+	return
+}
+
+// ------------------------------------------------------------------------------------------------
+
 // allocateDirectorySector allocates an MFD directory sector for the caller.
 // If preferredLDAT is not InvalidLDAT we will try to allocate a sector from this pack first.
 // Apart from this, we prefer packs with the least number of allocated sectors, to balance the allocations.
@@ -350,111 +466,6 @@ func (mgr *MFDManager) getMFDSector(address types.MFDRelativeAddress) ([]pkg.Wor
 	return data[start:end], nil
 }
 
-// initializeMassStorage handles MFD initialization for what is effectively a JK13 boot.
-// If we return an error, we must previously stop the exec.
-func (mgr *MFDManager) initializeMassStorage() error {
-	// drain the device ready notification queue, and use that to build up our initial list of disk packs.
-	// We should only have notifications for disks, and the ready flag should always be true.
-	// However, we'll filter out any nonsense anyway.
-	nm := mgr.exec.GetNodeManager()
-	queue := mgr.deviceReadyNotificationQueue
-	mgr.deviceReadyNotificationQueue = make(map[types.DeviceIdentifier]bool)
-	disks := make([]*nodeMgr.DiskDeviceInfo, 0)
-	for devId, ready := range queue {
-		if ready {
-			devInfo, err := nm.GetNodeInfoByIdentifier(types.NodeIdentifier(devId))
-			if err == nil && devInfo.GetNodeType() == types.NodeTypeDisk {
-				disks = append(disks, devInfo.(*nodeMgr.DiskDeviceInfo))
-			}
-		}
-	}
-
-	// Check the labels on the disks so that we may segregate them into fixed and removable lists.
-	// Any problems at this point will lead us to DN the unit.
-	fixedDisks := make(map[*nodeMgr.DiskDeviceInfo]*types.DiskAttributes)
-	removableDisks := make(map[*nodeMgr.DiskDeviceInfo]*types.DiskAttributes)
-	for _, ddInfo := range disks {
-		if ddInfo.GetNodeStatus() == types.NodeStatusUp {
-			// Get the pack label from fac mgr
-			attr, err := mgr.exec.GetFacilitiesManager().GetDiskAttributes(ddInfo.GetDeviceIdentifier())
-			if err != nil {
-				mgr.exec.SendExecReadOnlyMessage("Internal configuration error", nil)
-				mgr.exec.Stop(types.StopInitializationSystemConfigurationError)
-				return fmt.Errorf("boot canceled")
-			}
-
-			if attr.PackAttrs == nil {
-				msg := fmt.Sprintf("No label exists for pack on device %v", ddInfo.GetDeviceName())
-				mgr.exec.SendExecReadOnlyMessage(msg, nil)
-				_ = mgr.exec.GetNodeManager().SetNodeStatus(ddInfo.GetNodeIdentifier(), types.NodeStatusDown)
-				continue
-			}
-
-			if !attr.PackAttrs.IsPrepped {
-				msg := fmt.Sprintf("Pack is not prepped on device %v", ddInfo.GetDeviceName())
-				mgr.exec.SendExecReadOnlyMessage(msg, nil)
-				_ = mgr.exec.GetNodeManager().SetNodeStatus(ddInfo.GetNodeIdentifier(), types.NodeStatusDown)
-				continue
-			}
-
-			// Read sector 1 of the initial directory track.
-			// This is a little messy due to the potential of problematic block sizes.
-			wordsPerBlock := attr.PackAttrs.Label[4].GetH2()
-			dirTrackWordAddr := attr.PackAttrs.Label[03].GetW()
-			dirTrackBlockId := types.BlockId(dirTrackWordAddr / wordsPerBlock)
-			if wordsPerBlock == 28 {
-				dirTrackBlockId++
-			}
-
-			buf := make([]pkg.Word36, wordsPerBlock)
-			pkt := nodeMgr.NewDiskIoPacketRead(ddInfo.GetDeviceIdentifier(), dirTrackBlockId, buf)
-			mgr.exec.GetNodeManager().RouteIo(pkt)
-			ioStat := pkt.GetIoStatus()
-			if ioStat != types.IosComplete {
-				msg := fmt.Sprintf("IO error reading directory track on device %v", ddInfo.GetDeviceName())
-				log.Printf("MFDMgr:%v", msg)
-				mgr.exec.SendExecReadOnlyMessage(msg, nil)
-				_ = mgr.exec.GetNodeManager().SetNodeStatus(ddInfo.GetNodeIdentifier(), types.NodeStatusDown)
-				continue
-			}
-
-			var sector1 []pkg.Word36
-			if wordsPerBlock == 28 {
-				sector1 = buf
-			} else {
-				sector1 = buf[28:56]
-			}
-
-			// get the LDAT field from sector 1
-			// If it is 0, it is a removable pack
-			// 0400000, it is an uninitialized fixed pack
-			// anything else, it is a pre-used fixed pack which we're going to initialize
-			ldat := sector1[5].GetH1()
-			if ldat == 0 {
-				removableDisks[ddInfo] = attr
-			} else {
-				fixedDisks[ddInfo] = attr
-				attr.PackAttrs.IsFixed = true
-			}
-		}
-	}
-
-	err := mgr.initializeFixed(fixedDisks)
-	if err != nil {
-		return err
-	}
-
-	// Make sure we have at least one fixed pack after the previous shenanigans
-	if len(mgr.fixedPackDescriptors) == 0 {
-		mgr.exec.SendExecReadOnlyMessage("No Fixed Disks - Cannot Continue Initialization", nil)
-		mgr.exec.Stop(types.StopInitializationSystemConfigurationError)
-		return fmt.Errorf("boot canceled")
-	}
-
-	err = mgr.initializeRemovable(removableDisks)
-	return err
-}
-
 // initializeFixed initializes the fixed pool for a jk13 boot
 func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.DiskAttributes) error {
 	msg := fmt.Sprintf("Fixed Disk Pool = %v Devices", len(disks))
@@ -652,25 +663,16 @@ func (mgr *MFDManager) markDirectorySectorUnallocated(sectorAddr types.MFDRelati
 	return nil
 }
 
-// recoverMassStorage handles MFD recovery for what is NOT a JK13 boot.
-// If we return an error, we must previously stop the exec.
-func (mgr *MFDManager) recoverMassStorage() error {
-	// TODO
-	mgr.exec.SendExecReadOnlyMessage("MFD Recovery is not implemented", nil)
-	mgr.exec.Stop(types.StopDirectoryErrors)
-	return nil
-}
-
 func (mgr *MFDManager) writeLookupTableEntry(
 	qualifier string,
 	filename string,
 	leadItem0Addr types.MFDRelativeAddress) {
 
-	_, ok := mgr.fixedLookupTable[qualifier]
+	_, ok := mgr.fileLeadItemLookupTable[qualifier]
 	if !ok {
-		mgr.fixedLookupTable[qualifier] = make(map[string]types.MFDRelativeAddress)
+		mgr.fileLeadItemLookupTable[qualifier] = make(map[string]types.MFDRelativeAddress)
 	}
-	mgr.fixedLookupTable[qualifier][filename] = leadItem0Addr
+	mgr.fileLeadItemLookupTable[qualifier][filename] = leadItem0Addr
 }
 
 // writeMFDCache writes all the dirty cache blocks to storage.

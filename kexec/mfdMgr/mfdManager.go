@@ -11,7 +11,6 @@ import (
 	"khalehla/pkg"
 	"log"
 	"sync"
-	"time"
 )
 
 // MFDManager is essentially the file system
@@ -74,19 +73,16 @@ func newFixedPackDescriptor(
 type MFDManager struct {
 	exec                         types.IExec
 	mutex                        sync.Mutex
-	isInitialized                bool
-	terminateThread              bool
-	threadStarted                bool
-	threadStopped                bool
-	msInitialize                 bool
-	mfdFileMainItem0Address      types.MFDRelativeAddress
-	cachedTracks                 map[types.MFDRelativeAddress][]pkg.Word36 // key is MFD addr of first sector in track
-	dirtyBlocks                  map[types.MFDRelativeAddress]bool         // 00llllttttss address of block containing the dirty sector
-	freeMFDSectors               []types.MFDRelativeAddress
-	deviceReadyNotificationQueue map[types.DeviceIdentifier]bool
-	fixedPackDescriptors         map[types.LDATIndex]*fixedPackDescriptor
-	fixedLookupTable             map[string]map[string]types.MFDRelativeAddress
-	fileAllocations              *fileAllocationTable
+	threadDone                   bool
+	mfdFileMainItem0Address      types.MFDRelativeAddress                       // MFD address of MFD$$ main file item 0
+	cachedTracks                 map[types.MFDRelativeAddress][]pkg.Word36      // key is MFD addr of first sector in track
+	dirtyBlocks                  map[types.MFDRelativeAddress]bool              // MFD addresses of blocks containing dirty sectors
+	freeMFDSectors               []types.MFDRelativeAddress                     // MFD addresses of existing but unused MFD sectors
+	deviceReadyNotificationQueue map[types.DeviceIdentifier]bool                // queue of device ready notifications
+	fixedPackDescriptors         map[types.LDATIndex]*fixedPackDescriptor       // fpDesc's of all known fixed packs
+	fileLeadItemLookupTable      map[string]map[string]types.MFDRelativeAddress // MFD address of lead item 0 of all cataloged files
+	fileAllocations              *fileAllocationTable                           // Tracks file allocations of all assigned files
+	// TODO make fileAllocations just a map of fae's (like it is now, but not in a separate struct)
 }
 
 func NewMFDManager(exec types.IExec) *MFDManager {
@@ -97,104 +93,49 @@ func NewMFDManager(exec types.IExec) *MFDManager {
 		deviceReadyNotificationQueue: make(map[types.DeviceIdentifier]bool),
 		freeMFDSectors:               make([]types.MFDRelativeAddress, 0),
 		fixedPackDescriptors:         make(map[types.LDATIndex]*fixedPackDescriptor),
-		fixedLookupTable:             make(map[string]map[string]types.MFDRelativeAddress),
+		fileLeadItemLookupTable:      make(map[string]map[string]types.MFDRelativeAddress),
 		fileAllocations:              newFileAllocationTable(),
 	}
 }
 
-// CloseManager is invoked when the exec is stopping
-func (mgr *MFDManager) CloseManager() {
-	mgr.threadStop()
-	mgr.isInitialized = false
-}
+// Boot is invoked when the exec is booting
+func (mgr *MFDManager) Boot() error {
+	log.Printf("MFDMgr:Boot")
 
-func (mgr *MFDManager) InitializeManager() error {
-	var err error
-	if mgr.msInitialize {
-		err = mgr.initializeMassStorage()
-	} else {
-		err = mgr.recoverMassStorage()
-	}
+	// reset tables
+	mgr.cachedTracks = make(map[types.MFDRelativeAddress][]pkg.Word36)
+	mgr.dirtyBlocks = make(map[types.MFDRelativeAddress]bool)
+	mgr.deviceReadyNotificationQueue = make(map[types.DeviceIdentifier]bool)
+	mgr.freeMFDSectors = make([]types.MFDRelativeAddress, 0)
+	mgr.fixedPackDescriptors = make(map[types.LDATIndex]*fixedPackDescriptor)
+	mgr.fileLeadItemLookupTable = make(map[string]map[string]types.MFDRelativeAddress)
+	mgr.fileAllocations = newFileAllocationTable()
 
-	if err != nil {
-		log.Println("MFDMgr:Cannot continue boot")
-		return err
-	}
-
-	mgr.threadStart()
-	mgr.isInitialized = true
 	return nil
 }
 
-func (mgr *MFDManager) IsInitialized() bool {
-	return mgr.isInitialized
+// Close is invoked when the application is shutting down
+func (mgr *MFDManager) Close() {
+	log.Printf("MFDMgr:Close")
+	// nothing to do
 }
 
-// ResetManager clears out any artifacts left over by a previous exec session,
-// and prepares the console for normal operations
-func (mgr *MFDManager) ResetManager() error {
-	mgr.threadStop()
-	mgr.threadStart()
-	mgr.isInitialized = true
+// Initialize is invoked when the application is starting up
+// If we encounter any trouble, we return an error and the application stops.
+func (mgr *MFDManager) Initialize() error {
+	log.Printf("MFDMgr:Initialize")
+	// nothing much to do here
 	return nil
 }
 
-// ----------------------------------------------------------------
-
-func (mgr *MFDManager) NotifyDeviceReady(deviceInfo types.DeviceInfo, isReady bool) {
-	// post it, and let the tread deal with it later
-	mgr.mutex.Lock()
-	defer mgr.mutex.Unlock()
-	mgr.deviceReadyNotificationQueue[deviceInfo.GetDeviceIdentifier()] = isReady
-}
-
-// SetMSInitialize sets or clears the flag which indicates whether to initialze
-// mass-storage upon initialization. Invoke this before calling Initialize.
-func (mgr *MFDManager) SetMSInitialize(flag bool) {
-	mgr.msInitialize = flag
-}
-
-// ----------------------------------------------------------------
-
-func (mgr *MFDManager) thread() {
-	mgr.threadStarted = true
-
-	for !mgr.terminateThread {
-		time.Sleep(25 * time.Millisecond)
-		// TODO - anything?
-	}
-
-	mgr.threadStopped = true
-}
-
-func (mgr *MFDManager) threadStart() {
-	mgr.terminateThread = false
-	if !mgr.threadStarted {
-		go mgr.thread()
-		for !mgr.threadStarted {
-			time.Sleep(25 * time.Millisecond)
-		}
-	}
-}
-
-func (mgr *MFDManager) threadStop() {
-	if mgr.threadStarted {
-		mgr.terminateThread = true
-		for !mgr.threadStopped {
-			time.Sleep(25 * time.Millisecond)
-		}
-	}
+// Stop is invoked when the exec is stopping
+func (mgr *MFDManager) Stop() {
+	log.Printf("MFDMgr:Stop")
+	// nothing to do
 }
 
 func (mgr *MFDManager) Dump(dest io.Writer, indent string) {
 	_, _ = fmt.Fprintf(dest, "%vMFDManager ----------------------------------------------------\n", indent)
-
-	_, _ = fmt.Fprintf(dest, "%v  isInitialized:   %v\n", indent, mgr.isInitialized)
-	_, _ = fmt.Fprintf(dest, "%v  threadStarted:   %v\n", indent, mgr.threadStarted)
-	_, _ = fmt.Fprintf(dest, "%v  threadStopped:   %v\n", indent, mgr.threadStopped)
-	_, _ = fmt.Fprintf(dest, "%v  terminateThread: %v\n", indent, mgr.terminateThread)
-
-	_, _ = fmt.Fprintf(dest, "%v  init MS:         %v\n", indent, mgr.msInitialize)
 
 	_, _ = fmt.Fprintf(dest, "%v  Fixed Packs:\n", indent)
 	for ldat, packDesc := range mgr.fixedPackDescriptors {
@@ -239,7 +180,7 @@ func (mgr *MFDManager) Dump(dest io.Writer, indent string) {
 	}
 
 	_, _ = fmt.Fprintf(dest, "%v  Fixed Lookup Table:\n", indent)
-	for qual, sub := range mgr.fixedLookupTable {
+	for qual, sub := range mgr.fileLeadItemLookupTable {
 		for file, addr := range sub {
 			qualFile := qual + "*" + file
 			_, _ = fmt.Fprintf(dest, "%v    %-25s  %012o\n", indent, qualFile, addr)

@@ -30,10 +30,7 @@ func newInventory() *inventory {
 type FacilitiesManager struct {
 	exec                         types.IExec
 	mutex                        sync.Mutex
-	isInitialized                bool
-	terminateThread              bool
-	threadStarted                bool
-	threadStopped                bool
+	threadDone                   bool
 	inventory                    *inventory
 	deviceReadyNotificationQueue map[types.DeviceIdentifier]bool
 }
@@ -46,15 +43,15 @@ func NewFacilitiesManager(exec types.IExec) *FacilitiesManager {
 	}
 }
 
-// CloseManager is invoked when the exec is stopping
-func (mgr *FacilitiesManager) CloseManager() {
-	// TODO
-	mgr.threadStop()
-	mgr.isInitialized = false
-}
+// Boot is invoked when the exec is booting
+func (mgr *FacilitiesManager) Boot() error {
+	log.Printf("FacMgr:Boot")
 
-func (mgr *FacilitiesManager) InitializeManager() error {
-	// create inventory based on nodeMgr
+	// clear device ready notifications
+	mgr.deviceReadyNotificationQueue = make(map[types.DeviceIdentifier]bool)
+
+	// (re)build inventory based on nodeMgr
+	// this implies that nodeMgr.Boot() MUST be invoked before invoking us.
 	nm := mgr.exec.GetNodeManager()
 	for _, devInfo := range nm.GetDeviceInfos() {
 		devId := devInfo.GetDeviceIdentifier()
@@ -64,27 +61,30 @@ func (mgr *FacilitiesManager) InitializeManager() error {
 		case types.NodeTypeTape:
 			mgr.inventory.tapes[devId] = &types.TapeAttributes{}
 		}
-
 	}
 
-	mgr.threadStart()
-	mgr.isInitialized = true
+	go mgr.thread()
 	return nil
 }
 
-func (mgr *FacilitiesManager) IsInitialized() bool {
-	return mgr.isInitialized
+// Close is invoked when the application is terminating
+func (mgr *FacilitiesManager) Close() {
+	log.Printf("FacMgr:Close")
+	// nothing to do
 }
 
-// ResetManager clears out any artifacts left over by a previous exec session,
-// and prepares the console for normal operations
-func (mgr *FacilitiesManager) ResetManager() error {
-	// TODO
-
-	mgr.threadStop()
-	mgr.threadStart()
-	mgr.isInitialized = true
+// Initialize is invoked when the application starts
+func (mgr *FacilitiesManager) Initialize() error {
+	log.Printf("FacMgr:Initialize")
+	// nothing to do here
 	return nil
+}
+
+func (mgr *FacilitiesManager) Stop() {
+	log.Printf("FacMgr:Stop")
+	for !mgr.threadDone {
+		time.Sleep(25 * time.Millisecond)
+	}
 }
 
 func (mgr *FacilitiesManager) AssignDiskDeviceToExec(deviceId types.DeviceIdentifier) error {
@@ -119,37 +119,35 @@ func (mgr *FacilitiesManager) GetDeviceStatusDetail(deviceId types.DeviceIdentif
 	defer mgr.mutex.Unlock()
 
 	str := ""
-	if mgr.isInitialized {
-		da, ok := mgr.inventory.disks[deviceId]
-		if ok {
-			//	[[*] [R|F] PACKID pack-id]
-			if da.AssignedTo != nil {
-				str += "* "
-			} else {
-				str += "  "
-			}
-
-			if da.PackAttrs != nil && da.PackAttrs.IsPrepped {
-				if da.PackAttrs.IsFixed {
-					str += "F "
-				} else {
-					str += "R "
-				}
-
-				str += "PACKID " + da.PackAttrs.PackName
-			}
+	da, ok := mgr.inventory.disks[deviceId]
+	if ok {
+		//	[[*] [R|F] PACKID pack-id]
+		if da.AssignedTo != nil {
+			str += "* "
+		} else {
+			str += "  "
 		}
 
-		// ta, ok := mgr.inventory.tapes[deviceId]
-		// if ok {
-		//	if ta.AssignedTo != nil {
-		//		//	[* RUNID run-id REEL reel [RING|NORING] [POS [*]ffff[+|-][*]bbbbbb | POS LOST]]
-		//		str += "* RUNID " + ta.AssignedTo.RunId + " REEL " + ta.reelNumber
-		//		// TODO RING | NORING
-		//		// TODO POS
-		//	}
-		// }
+		if da.PackAttrs != nil && da.PackAttrs.IsPrepped {
+			if da.PackAttrs.IsFixed {
+				str += "F "
+			} else {
+				str += "R "
+			}
+
+			str += "PACKID " + da.PackAttrs.PackName
+		}
 	}
+
+	// ta, ok := mgr.inventory.tapes[deviceId]
+	// if ok {
+	//	if ta.AssignedTo != nil {
+	//		//	[* RUNID run-id REEL reel [RING|NORING] [POS [*]ffff[+|-][*]bbbbbb | POS LOST]]
+	//		str += "* RUNID " + ta.AssignedTo.RunId + " REEL " + ta.reelNumber
+	//		// TODO RING | NORING
+	//		// TODO POS
+	//	}
+	// }
 
 	return str
 }
@@ -255,9 +253,9 @@ func (mgr *FacilitiesManager) tapeBecameReady(deviceId types.DeviceIdentifier) {
 }
 
 func (mgr *FacilitiesManager) thread() {
-	mgr.threadStarted = true
+	mgr.threadDone = false
 
-	for !mgr.terminateThread {
+	for !mgr.exec.GetStopFlag() {
 		time.Sleep(10 * time.Millisecond)
 
 		// any device ready notifications?
@@ -282,35 +280,13 @@ func (mgr *FacilitiesManager) thread() {
 		}
 	}
 
-	mgr.threadStopped = true
-}
-
-func (mgr *FacilitiesManager) threadStart() {
-	mgr.terminateThread = false
-	if !mgr.threadStarted {
-		go mgr.thread()
-		for !mgr.threadStarted {
-			time.Sleep(25 * time.Millisecond)
-		}
-	}
-}
-
-func (mgr *FacilitiesManager) threadStop() {
-	if mgr.threadStarted {
-		mgr.terminateThread = true
-		for !mgr.threadStopped {
-			time.Sleep(25 * time.Millisecond)
-		}
-	}
+	mgr.threadDone = true
 }
 
 func (mgr *FacilitiesManager) Dump(dest io.Writer, indent string) {
 	_, _ = fmt.Fprintf(dest, "%vFacilitiesManager ----------------------------------------------------\n", indent)
 
-	_, _ = fmt.Fprintf(dest, "%v  initialized:     %v\n", indent, mgr.isInitialized)
-	_, _ = fmt.Fprintf(dest, "%v  threadStarted:   %v\n", indent, mgr.threadStarted)
-	_, _ = fmt.Fprintf(dest, "%v  threadStopped:   %v\n", indent, mgr.threadStopped)
-	_, _ = fmt.Fprintf(dest, "%v  terminateThread: %v\n", indent, mgr.terminateThread)
+	_, _ = fmt.Fprintf(dest, "%v  threadDone: %v\n", indent, mgr.threadDone)
 
 	nm := mgr.exec.GetNodeManager()
 	_, _ = fmt.Fprintf(dest, "%v  Disk units:\n", indent)

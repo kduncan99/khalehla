@@ -71,6 +71,17 @@ const (
 )
 
 const (
+	JumpKey1Index  = 0
+	JumpKey2Index  = 1
+	JumpKey3Index  = 2
+	JumpKey4Index  = 3
+	JumpKey6Index  = 5
+	JumpKey7Index  = 6
+	JumpKey9Index  = 8
+	JumpKey13Index = 12
+)
+
+const (
 	AOption = 0_000200_000000
 	BOption = 0_000100_000000
 	COption = 0_000040_000000

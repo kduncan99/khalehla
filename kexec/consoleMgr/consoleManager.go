@@ -28,10 +28,8 @@ type readReplyTracker struct {
 type ConsoleManager struct {
 	exec             types.IExec
 	mutex            sync.Mutex
-	isInitialized    bool
-	terminateThread  bool
-	threadStarted    bool
-	threadStopped    bool
+	threadDone       bool
+	threadStop       bool
 	consoles         map[types.ConsoleIdentifier]types.Console
 	primaryConsole   types.Console
 	primaryConsoleId types.ConsoleIdentifier
@@ -45,13 +43,38 @@ func NewConsoleManager(exec types.IExec) *ConsoleManager {
 	}
 }
 
-// CloseManager is invoked when the exec is stopping... for any reason. It tells the goRoutine to threadStop.
-func (mgr *ConsoleManager) CloseManager() {
-	mgr.threadStop()
-	mgr.isInitialized = false
+// Boot is invoked when the exec is booting
+func (mgr *ConsoleManager) Boot() error {
+	log.Printf("ConsMgr:Boot")
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
+	//	TODO shut down all known net consoles
+
+	// reset the consoles list to include only the existing system console
+	mgr.consoles = map[types.ConsoleIdentifier]types.Console{
+		mgr.primaryConsoleId: mgr.primaryConsole,
+	}
+	_ = mgr.primaryConsole.Reset()
+
+	// clear the console queues
+	mgr.queuedReadOnly = make([]*types.ConsoleReadOnlyMessage, 0)
+	mgr.queuedReadReply = make(map[int]*readReplyTracker)
+	return nil
 }
 
-func (mgr *ConsoleManager) InitializeManager() error {
+// Close is invoked when the application is terminating
+func (mgr *ConsoleManager) Close() {
+	log.Printf("ConsMgr:Close")
+	mgr.threadStop = true
+	for !mgr.threadDone {
+		time.Sleep(25 * time.Millisecond)
+	}
+}
+
+// Initialize is invoked when the application is starting
+func (mgr *ConsoleManager) Initialize() error {
+	log.Printf("ConsMgr:Initialize")
 	mgr.consoles = make(map[types.ConsoleIdentifier]types.Console)
 	mgr.queuedReadOnly = make([]*types.ConsoleReadOnlyMessage, 0)
 	mgr.queuedReadReply = make(map[int]*readReplyTracker)
@@ -62,39 +85,16 @@ func (mgr *ConsoleManager) InitializeManager() error {
 
 	// TODO Load net console configuration
 
-	mgr.threadStart()
-	mgr.isInitialized = true
+	// The console manager thread is always running, although the net facility may not be accepting connections
+	go mgr.thread()
 	return nil
 }
 
-func (mgr *ConsoleManager) IsInitialized() bool {
-	return mgr.isInitialized
-}
-
-// ResetManager clears out any artifacts left over by a previous exec session,
-// and prepares the console for normal operations
-func (mgr *ConsoleManager) ResetManager() error {
-	mgr.threadStop()
-
-	mgr.mutex.Lock()
-	if mgr.consoles == nil {
-		// create a single new std console
-		mgr.consoles = make(map[types.ConsoleIdentifier]types.Console)
-		mgr.consoles[0] = NewStandardConsole()
-	} else {
-		// reset all the existing consoles
-		for consId, cons := range mgr.consoles {
-			err := cons.Reset()
-			if err != nil {
-				mgr.dropConsole(consId)
-			}
-		}
-	}
-	mgr.mutex.Unlock()
-
-	mgr.threadStart()
-	mgr.isInitialized = true
-	return nil
+// Stop is invoked when the exec is stopping
+func (mgr *ConsoleManager) Stop() {
+	log.Printf("ConsMgr:Stop")
+	// TODO
+	//  We should probably do something here, but I'm not sure what.
 }
 
 // SendReadOnlyMessage queues a RO message and returns immediately.
@@ -247,7 +247,7 @@ func (mgr *ConsoleManager) checkForReadReplyMessages() bool {
 			if err != nil {
 				// probably a message id overflow, although a dead console cannot be discounted
 				// set it up for a retry - if the console is really dead, it will soon be dropped.
-				// At that point we'll go back through this code but we'll take a different path.
+				// At that point we'll go back through this code, but we'll take a different path.
 				tracker.retryLater = true
 				continue // see if there's a different message we can send
 			} else {
@@ -383,12 +383,14 @@ func (mgr *ConsoleManager) newReadReplyTracker(message *types.ConsoleReadReplyMe
 }
 
 // thread is the main routine for the console manager goRoutine
+// It runs once across all exec sessions, so it is started during Initialize() and terminated by Close().
 func (mgr *ConsoleManager) thread() {
-	mgr.threadStarted = true
+	mgr.threadDone = false
 
-	retryCounter := 0
-	for !mgr.terminateThread {
-		// TODO check for any new net console connections... ?
+	retryCounter := 0 // we only check retries every 8 times through the loop
+	for !mgr.threadStop {
+		// TODO check for any new net console connections...
+		// 	or should we have a separate coroutine for this?
 
 		result := mgr.checkForReadOnlyMessages()
 		result = result || mgr.checkForReadReplyMessages()
@@ -417,36 +419,13 @@ func (mgr *ConsoleManager) thread() {
 		}
 	}
 	mgr.mutex.Unlock()
-
-	mgr.threadStarted = false
-}
-
-func (mgr *ConsoleManager) threadStart() {
-	mgr.terminateThread = false
-	if !mgr.threadStarted {
-		go mgr.thread()
-		for !mgr.threadStarted {
-			time.Sleep(25 * time.Millisecond)
-		}
-	}
-}
-
-func (mgr *ConsoleManager) threadStop() {
-	if mgr.threadStarted {
-		mgr.terminateThread = true
-		for !mgr.threadStopped {
-			time.Sleep(25 * time.Millisecond)
-		}
-	}
+	mgr.threadDone = true
 }
 
 func (mgr *ConsoleManager) Dump(dest io.Writer, indent string) {
 	_, _ = fmt.Fprintf(dest, "%vConsoleManager ----------------------------------------------------\n", indent)
 
-	_, _ = fmt.Fprintf(dest, "%v  initialized:     %v\n", indent, mgr.isInitialized)
-	_, _ = fmt.Fprintf(dest, "%v  threadStarted:   %v\n", indent, mgr.threadStarted)
-	_, _ = fmt.Fprintf(dest, "%v  threadStopped:   %v\n", indent, mgr.threadStopped)
-	_, _ = fmt.Fprintf(dest, "%v  terminateThread: %v\n", indent, mgr.terminateThread)
+	_, _ = fmt.Fprintf(dest, "%v  threadDone:   %v\n", indent, mgr.threadDone)
 	_, _ = fmt.Fprintf(dest, "%v  Consoles:\n", indent)
 	primaryStr := ""
 	for consId, cons := range mgr.consoles {

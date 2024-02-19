@@ -4,6 +4,8 @@
 
 package config
 
+import "fmt"
+
 var defaultAssignMnemonic = "F"
 var defaultLogIOs = false
 var defaultMasterAccountId = ""
@@ -55,4 +57,9 @@ func NewConfiguration() *Configuration {
 	cfg.SystemWriteKey = defaultSystemWriteKey
 
 	return cfg
+}
+
+func (cfg *Configuration) UpdateFromFile(fileName string) error {
+	// TODO
+	return fmt.Errorf("configuration UpdateFromFile() not yet implemented")
 }

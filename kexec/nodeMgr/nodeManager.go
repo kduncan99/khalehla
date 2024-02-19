@@ -23,17 +23,15 @@ const (
 
 // NodeManager handles the inventory of pseudo-hardware channelInfos and deviceInfos
 type NodeManager struct {
-	exec            types.IExec
-	mutex           sync.Mutex
-	isInitialized   bool
-	terminateThread bool
-	threadStarted   bool
-	threadStopped   bool
-	nodeInfos       map[types.NodeIdentifier]types.NodeInfo       // all nodes
-	channelInfos    map[types.ChannelIdentifier]types.ChannelInfo // this is loaded from the config
-	deviceInfos     map[types.DeviceIdentifier]types.DeviceInfo   // this is loaded from the config
-	strategy        selectionStrategy                             // strategy used for selecting a channel fo IO
-	nextChannel     []types.ChannelIdentifier                     // used for selecting channel to be used for IO for round-robin
+	exec         types.IExec
+	mutex        sync.Mutex
+	threadDone   bool
+	threadStop   bool
+	nodeInfos    map[types.NodeIdentifier]types.NodeInfo       // all nodes
+	channelInfos map[types.ChannelIdentifier]types.ChannelInfo // this is loaded from the config
+	deviceInfos  map[types.DeviceIdentifier]types.DeviceInfo   // this is loaded from the config
+	strategy     selectionStrategy                             // strategy used for selecting a channel fo IO
+	nextChannel  []types.ChannelIdentifier                     // used for selecting channel to be used for IO for round-robin
 }
 
 func NewNodeManager(exec types.IExec) *NodeManager {
@@ -43,16 +41,27 @@ func NewNodeManager(exec types.IExec) *NodeManager {
 	}
 }
 
-func (mgr *NodeManager) CloseManager() {
-	mgr.threadStop()
-	mgr.isInitialized = false
+// Boot is invoked when the exec is booting
+func (mgr *NodeManager) Boot() error {
+	log.Printf("NodeMgr:Boot")
+	// nothing to do
+	return nil
 }
 
-// InitializeManager reads the configuration with respect to pseudo-hardware deviceInfos,
-// instantiating that configuration along the way.
-// This must happen very early in Exec startup, before the operator is allowed to modify the config.
-// Thus, we can assume all devices are UP.
-func (mgr *NodeManager) InitializeManager() error {
+// Close is invoked when the application is terminating
+func (mgr *NodeManager) Close() {
+	log.Printf("NodeMgr:Close")
+	mgr.threadStop = true
+	for !mgr.threadDone {
+		time.Sleep(25 * time.Millisecond)
+	}
+
+	// close devices and channels, if appropriate
+}
+
+// Initialize is invoked when the application is starting
+func (mgr *NodeManager) Initialize() error {
+	log.Printf("NodeMgr:Initialized")
 	mgr.nodeInfos = make(map[types.NodeIdentifier]types.NodeInfo)
 	mgr.channelInfos = make(map[types.ChannelIdentifier]types.ChannelInfo)
 	mgr.deviceInfos = make(map[types.DeviceIdentifier]types.DeviceInfo)
@@ -157,26 +166,15 @@ func (mgr *NodeManager) InitializeManager() error {
 		return fmt.Errorf("init error")
 	}
 
-	mgr.threadStart()
-	mgr.isInitialized = true
+	go mgr.thread()
 	return nil
 }
 
-func (mgr *NodeManager) IsInitialized() bool {
-	return mgr.isInitialized
+// Stop is invoked when the exec is stopping
+func (mgr *NodeManager) Stop() {
+	log.Printf("NodeMgr:Stop")
+	// nothing to do
 }
-
-func (mgr *NodeManager) ResetManager() error {
-	mgr.threadStop()
-	mgr.threadStart()
-
-	// TODO should we do anything here?
-
-	mgr.isInitialized = true
-	return nil
-}
-
-// -----------------------------------------------------------
 
 func GetNodeStatusString(status types.NodeStatus, isAccessible bool) string {
 	accStr := ""
@@ -477,12 +475,14 @@ func (mgr *NodeManager) selectChannelForDevice(devInfo types.DeviceInfo) (types.
 	return nil, fmt.Errorf("internal error")
 }
 
-// -----------------------------------------------------------
-
+// thread runs as long as the application is running.
+// Its job is to monitor the hardware, and to send device ready notifications to the facilities manager.
+// The facilities manager *may not* be up and running - it is part of the exec, so it does not run if
+// the exec is not running. SO... those notifications might get dropped on the floor. That is okay.
 func (mgr *NodeManager) thread() {
-	mgr.threadStarted = true
+	mgr.threadDone = false
 
-	for !mgr.terminateThread {
+	for !mgr.threadStop {
 		time.Sleep(25 * time.Millisecond)
 
 		// Check devices to see if any have become ready or not ready since our last poll.
@@ -499,42 +499,18 @@ func (mgr *NodeManager) thread() {
 		mgr.mutex.Unlock()
 
 		fm := mgr.exec.GetFacilitiesManager()
-		mm := mgr.exec.GetMFDManager()
 		for devInfo, isReady := range updates {
 			fm.NotifyDeviceReady(devInfo, isReady)
-			mm.NotifyDeviceReady(devInfo, isReady)
 		}
 	}
 
-	mgr.threadStopped = true
-}
-
-func (mgr *NodeManager) threadStart() {
-	mgr.terminateThread = false
-	if !mgr.threadStarted {
-		go mgr.thread()
-		for !mgr.threadStarted {
-			time.Sleep(25 * time.Millisecond)
-		}
-	}
-}
-
-func (mgr *NodeManager) threadStop() {
-	if mgr.threadStarted {
-		mgr.terminateThread = true
-		for !mgr.threadStopped {
-			time.Sleep(25 * time.Millisecond)
-		}
-	}
+	mgr.threadDone = true
 }
 
 func (mgr *NodeManager) Dump(dest io.Writer, indent string) {
 	_, _ = fmt.Fprintf(dest, "%vNodeManager ----------------------------------------------------\n", indent)
 
-	_, _ = fmt.Fprintf(dest, "%v  initialized:     %v\n", indent, mgr.isInitialized)
-	_, _ = fmt.Fprintf(dest, "%v  threadStarted:   %v\n", indent, mgr.threadStarted)
-	_, _ = fmt.Fprintf(dest, "%v  threadStopped:   %v\n", indent, mgr.threadStopped)
-	_, _ = fmt.Fprintf(dest, "%v  terminateThread: %v\n", indent, mgr.terminateThread)
+	_, _ = fmt.Fprintf(dest, "%v  threadDone: %v\n", indent, mgr.threadDone)
 
 	for _, ni := range mgr.nodeInfos {
 		ni.Dump(dest, indent+"  ")

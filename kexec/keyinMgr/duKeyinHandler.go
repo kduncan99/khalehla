@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"khalehla/kexec/types"
 	"log"
-	"os"
 	"strings"
 	"time"
 )
@@ -41,7 +40,7 @@ func (kh *DUKeyinHandler) Abort() {
 }
 
 func (kh *DUKeyinHandler) CheckSyntax() bool {
-	return kh.options == "MP" && len(kh.arguments) == 0
+	return kh.arguments == "MP" && len(kh.options) == 0
 }
 
 func (kh *DUKeyinHandler) GetCommand() string {
@@ -77,28 +76,15 @@ func (kh *DUKeyinHandler) IsAllowed() bool {
 func (kh *DUKeyinHandler) thread() {
 	kh.threadStarted = true
 
-	now := time.Now()
-	fileName := fmt.Sprintf("kexec-%04v%02v%02v-%02v%02v%02v.dump",
-		now.Year(), int(now.Month()), now.Day(), now.Hour(), now.Minute(), now.Second())
-	dumpFile, err := os.Create(fileName)
+	fileName, err := kh.exec.PerformDump(true)
 	if err != nil {
-		msg := "DU,MP Failed - Cannot create log file"
+		msg := fmt.Sprintf("DU Keyin - %v", err)
 		log.Printf("DU:%s\n", msg)
 		kh.exec.SendExecReadOnlyMessage(msg, &kh.source)
 		return
 	}
 
-	defer func() {
-		if err := dumpFile.Close(); err != nil {
-			msg := "DU,MP Failed - Error closing log file"
-			log.Printf("DU:%s\n", msg)
-			kh.exec.SendExecReadOnlyMessage(msg, &kh.source)
-			return
-		}
-	}()
-
-	kh.exec.Dump(dumpFile)
-	msg := "DU,MP Wrote dump to " + fileName
+	msg := "DU Keyin Wrote dump to " + fileName
 	kh.exec.SendExecReadOnlyMessage(msg, &kh.source)
 
 	kh.threadStopped = true

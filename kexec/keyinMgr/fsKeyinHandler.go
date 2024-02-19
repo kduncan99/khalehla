@@ -134,9 +134,7 @@ func (kh *FSKeyinHandler) getStatusStringForNode(nodeInfo types.NodeInfo) string
 	str += nodeMgr.GetNodeStatusString(nodeInfo.GetNodeStatus(), nodeInfo.IsAccessible())
 	if nodeInfo.GetNodeCategory() == types.NodeCategoryDevice {
 		devInfo := nodeInfo.(types.DeviceInfo)
-		if fm.IsInitialized() {
-			str += " " + fm.GetDeviceStatusDetail(devInfo.GetDeviceIdentifier())
-		}
+		str += " " + fm.GetDeviceStatusDetail(devInfo.GetDeviceIdentifier())
 	}
 	return str
 }

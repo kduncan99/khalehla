@@ -85,7 +85,7 @@ func (mgr *MFDManager) CatalogFixedFile(
 
 	// TODO check read/write keys
 	//	 I suspect we have to meet write key verification, but probably not read key
-	_ /*mainItem0*/, fileSetExists := mgr.fixedLookupTable[qualifier][filename]
+	_ /*mainItem0*/, fileSetExists := mgr.fileLeadItemLookupTable[qualifier][filename]
 
 	// TODO check equipment string
 	// 	Should specify word-addressable or sector-addressable mass storage - applies to the file cycle, not the file set
