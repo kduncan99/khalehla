@@ -71,30 +71,28 @@ func newFixedPackDescriptor(
 }
 
 type MFDManager struct {
-	exec                         types.IExec
-	mutex                        sync.Mutex
-	threadDone                   bool
-	mfdFileMainItem0Address      types.MFDRelativeAddress                       // MFD address of MFD$$ main file item 0
-	cachedTracks                 map[types.MFDRelativeAddress][]pkg.Word36      // key is MFD addr of first sector in track
-	dirtyBlocks                  map[types.MFDRelativeAddress]bool              // MFD addresses of blocks containing dirty sectors
-	freeMFDSectors               []types.MFDRelativeAddress                     // MFD addresses of existing but unused MFD sectors
-	deviceReadyNotificationQueue map[types.DeviceIdentifier]bool                // queue of device ready notifications
-	fixedPackDescriptors         map[types.LDATIndex]*fixedPackDescriptor       // fpDesc's of all known fixed packs
-	fileLeadItemLookupTable      map[string]map[string]types.MFDRelativeAddress // MFD address of lead item 0 of all cataloged files
-	fileAllocations              *fileAllocationTable                           // Tracks file allocations of all assigned files
+	exec                    types.IExec
+	mutex                   sync.Mutex
+	threadDone              bool
+	mfdFileMainItem0Address types.MFDRelativeAddress                       // MFD address of MFD$$ main file item 0
+	cachedTracks            map[types.MFDRelativeAddress][]pkg.Word36      // key is MFD addr of first sector in track
+	dirtyBlocks             map[types.MFDRelativeAddress]bool              // MFD addresses of blocks containing dirty sectors
+	freeMFDSectors          []types.MFDRelativeAddress                     // MFD addresses of existing but unused MFD sectors
+	fixedPackDescriptors    map[types.LDATIndex]*fixedPackDescriptor       // fpDesc's of all known fixed packs
+	fileLeadItemLookupTable map[string]map[string]types.MFDRelativeAddress // MFD address of lead item 0 of all cataloged files
+	fileAllocations         *fileAllocationTable                           // Tracks file allocations of all assigned files
 	// TODO make fileAllocations just a map of fae's (like it is now, but not in a separate struct)
 }
 
 func NewMFDManager(exec types.IExec) *MFDManager {
 	return &MFDManager{
-		exec:                         exec,
-		cachedTracks:                 make(map[types.MFDRelativeAddress][]pkg.Word36),
-		dirtyBlocks:                  make(map[types.MFDRelativeAddress]bool),
-		deviceReadyNotificationQueue: make(map[types.DeviceIdentifier]bool),
-		freeMFDSectors:               make([]types.MFDRelativeAddress, 0),
-		fixedPackDescriptors:         make(map[types.LDATIndex]*fixedPackDescriptor),
-		fileLeadItemLookupTable:      make(map[string]map[string]types.MFDRelativeAddress),
-		fileAllocations:              newFileAllocationTable(),
+		exec:                    exec,
+		cachedTracks:            make(map[types.MFDRelativeAddress][]pkg.Word36),
+		dirtyBlocks:             make(map[types.MFDRelativeAddress]bool),
+		freeMFDSectors:          make([]types.MFDRelativeAddress, 0),
+		fixedPackDescriptors:    make(map[types.LDATIndex]*fixedPackDescriptor),
+		fileLeadItemLookupTable: make(map[string]map[string]types.MFDRelativeAddress),
+		fileAllocations:         newFileAllocationTable(),
 	}
 }
 
@@ -105,7 +103,6 @@ func (mgr *MFDManager) Boot() error {
 	// reset tables
 	mgr.cachedTracks = make(map[types.MFDRelativeAddress][]pkg.Word36)
 	mgr.dirtyBlocks = make(map[types.MFDRelativeAddress]bool)
-	mgr.deviceReadyNotificationQueue = make(map[types.DeviceIdentifier]bool)
 	mgr.freeMFDSectors = make([]types.MFDRelativeAddress, 0)
 	mgr.fixedPackDescriptors = make(map[types.LDATIndex]*fixedPackDescriptor)
 	mgr.fileLeadItemLookupTable = make(map[string]map[string]types.MFDRelativeAddress)
@@ -196,11 +193,5 @@ func (mgr *MFDManager) Dump(dest io.Writer, indent string) {
 			_, _ = fmt.Fprintf(dest, "%v      fileTrkId:%v trkCount:%v ldat:%v devTrkId:%v\n",
 				indent, re.fileTrackId, re.trackCount, re.ldatIndex, re.packTrackId)
 		}
-	}
-
-	_, _ = fmt.Fprintf(dest, "%v  Queued device-ready notifications:\n", indent)
-	for devId, ready := range mgr.deviceReadyNotificationQueue {
-		wId := pkg.Word36(devId)
-		_, _ = fmt.Fprintf(dest, "%v    devId:0%v ready:%v\n", indent, wId.ToStringAsOctal(), ready)
 	}
 }

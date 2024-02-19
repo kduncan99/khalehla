@@ -16,19 +16,12 @@ import (
 // InitializeMassStorage handles MFD initialization for what is effectively a JK13 boot.
 // If we return an error, we must previously stop the exec.
 func (mgr *MFDManager) InitializeMassStorage() {
-	// drain the device ready notification queue, and use that to build up our initial list of disk packs.
-	// We should only have notifications for disks, and the ready flag should always be true.
-	// However, we'll filter out any nonsense anyway.
-	nm := mgr.exec.GetNodeManager()
-	queue := mgr.deviceReadyNotificationQueue
-	mgr.deviceReadyNotificationQueue = make(map[types.DeviceIdentifier]bool)
+	// Get the list of disks from the node manager
 	disks := make([]*nodeMgr.DiskDeviceInfo, 0)
-	for devId, ready := range queue {
-		if ready {
-			devInfo, err := nm.GetNodeInfoByIdentifier(types.NodeIdentifier(devId))
-			if err == nil && devInfo.GetNodeType() == types.NodeTypeDisk {
-				disks = append(disks, devInfo.(*nodeMgr.DiskDeviceInfo))
-			}
+	nm := mgr.exec.GetNodeManager()
+	for _, dInfo := range nm.GetDeviceInfos() {
+		if dInfo.GetNodeType() == types.NodeTypeDisk {
+			disks = append(disks, dInfo.(*nodeMgr.DiskDeviceInfo))
 		}
 	}
 
