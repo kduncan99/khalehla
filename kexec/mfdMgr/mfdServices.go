@@ -9,6 +9,8 @@ import (
 	"khalehla/kexec/types"
 )
 
+// mfdServices contains code which provides directory-level services to all other exec code
+// such as assigning files, cataloging files, and general file allocation.
 func checkOptions(
 	optionsGiven uint64,
 	optionsAllowed uint64,
