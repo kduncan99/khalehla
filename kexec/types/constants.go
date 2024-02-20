@@ -8,6 +8,27 @@ const InvalidLink MFDRelativeAddress = 0_400000_000000
 const InvalidLDAT LDATIndex = 0_400000
 
 const (
+	_ ContingencyType = iota
+	ContingencyIllegalOperation
+	ContingencyGuardMode
+	ContingencyFloatingPointOverflow
+	ContingencyFloatingPointUnderflow
+	ContingencyDivideFault
+	ContingencyRestart
+	ContingencyAbort
+	ContingencyConsoleInterrupt
+	ContingencyTestAndSet
+	ContingencyErrorMode
+	ContingencyInteractivityInterrupt
+	ContingencyBreakpoint
+	ContingencyIPStorageError
+	ContingencyResourcesUnavailable
+	ContingencyAbnormalTermination // commonbanks only
+	ContingencyTerminalTimeout
+	ContingencyExtendedMode
+)
+
+const (
 	_ Granularity = iota
 	TrackGranularity
 	PositionGranularity

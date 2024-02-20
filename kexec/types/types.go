@@ -39,7 +39,8 @@ type TrackId uint
 
 // pseudo-enumeration types
 
-type DeviceRelativeWordAddress uint // device-relative word address
+type ContingencyType uint
+type DeviceRelativeWordAddress uint
 type ExecPhase uint
 type FacStatus uint
 type Granularity uint
