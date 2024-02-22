@@ -149,7 +149,7 @@ func (mgr *MFDManager) allocateDirectorySector(
 	for fsx, addr := range mgr.freeMFDSectors {
 		ldat := getLDATIndexFromMFDAddress(addr)
 		desc := mgr.fixedPackDescriptors[ldat]
-		freeCount := (desc.mfdTrackCount * 64) - desc.mfdSectorsUsed
+		freeCount := (uint64(desc.mfdTrackCount) * 64) - desc.mfdSectorsUsed
 
 		if freeCount > 0 {
 			if ldat == preferredLDAT {
@@ -195,7 +195,6 @@ func (mgr *MFDManager) allocateDirectoryTrack(
 ) (types.LDATIndex, types.MFDTrackId, error) {
 	chosenLDAT := types.InvalidLDAT
 	var chosenDesc *fixedPackDescriptor
-	chosenAvailableMFDTracks := types.TrackCount(0)
 	chosenAvailableTracks := types.TrackCount(0)
 
 	if preferredLDAT != types.InvalidLDAT {
@@ -206,7 +205,6 @@ func (mgr *MFDManager) allocateDirectoryTrack(
 			if availMFDTracks > 0 && availTracks > 0 {
 				chosenLDAT = preferredLDAT
 				chosenDesc = packDesc
-				chosenAvailableMFDTracks = availMFDTracks
 				chosenAvailableTracks = availTracks
 			}
 		}
@@ -219,7 +217,6 @@ func (mgr *MFDManager) allocateDirectoryTrack(
 			if availMFDTracks > 0 && availTracks > chosenAvailableTracks {
 				chosenLDAT = ldat
 				chosenDesc = packDesc
-				chosenAvailableMFDTracks = availMFDTracks
 				chosenAvailableTracks = availTracks
 			}
 		}
@@ -231,9 +228,22 @@ func (mgr *MFDManager) allocateDirectoryTrack(
 		return 0, 0, fmt.Errorf("no disk")
 	}
 
-	// TODO some tricky code here - we'd like to allocate the next physical track following
-	//  any available empty space in the MFD track sequence for the chosen pack
-	return 0, 0, nil
+	// First, find the MFD relative address of the first unused MFD track
+	trackId := types.MFDTrackId(0)
+	for {
+		mfdAddr := composeMFDAddress(chosenLDAT, trackId, 0)
+		_, ok := mgr.cachedTracks[mfdAddr]
+		if !ok {
+			break
+		}
+		trackId++
+	}
+
+	// Now allocate a track (any track) from the pack for the chosen LDAT.
+	// Make sure we update the MFD track count.
+	trackId, _ = chosenDesc.freeSpaceTable.allocateTrack()
+	chosenDesc.mfdTrackCount++
+	return chosenLDAT, trackId, nil
 }
 
 // bootstrapMFD creates the various MFD structures as part of MFD initialization.

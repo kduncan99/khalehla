@@ -35,6 +35,30 @@ func newPackFreeSpaceTable(capacity types.TrackCount) *packFreeSpaceTable {
 	return fst
 }
 
+// allocateTrack allocates one track - used primarily for MFD expansion
+// an error return does NOT imply an exec stop
+func (fst *packFreeSpaceTable) allocateTrack() (types.MFDTrackId, error) {
+	// quick check...
+	if len(fst.content) == 0 {
+		return 0, fmt.Errorf("no space")
+	}
+	// first see if there's a region of just one track
+	for _, region := range fst.content {
+		if region.trackCount == 1 {
+			// use this one
+			trackId := region.trackId
+			fst.markTrackRegionUnallocated(region.trackId, region.trackCount)
+			return types.MFDTrackId(trackId), nil
+		}
+	}
+
+	// just use the next available
+	region := fst.content[0]
+	trackId := types.MFDTrackId(region.trackId)
+	fst.markTrackRegionUnallocated(region.trackId, region.trackCount)
+	return trackId, nil
+}
+
 // allocateSpecificTrackRegion is used only when it has been determined by some external means, that a particular
 // track or range of tracks is not to be allocated otherwise (such as for VOL1 or directory tracks).
 func (fst *packFreeSpaceTable) allocateSpecificTrackRegion(
@@ -115,13 +139,12 @@ func (fst *packFreeSpaceTable) markTrackRegionAllocated(
 
 // markTrackRegionUnallocated is a general-purpose function which manipulates the entries in a free space table
 func (fst *packFreeSpaceTable) markTrackRegionUnallocated(
-	ldatIndex types.LDATIndex, // only for logging
 	trackId types.TrackId,
 	trackCount types.TrackCount) bool {
 
 	if trackCount == 0 {
-		log.Printf("markTrackRegionUnallocated ldat:%v id:%v count:%v requested trackCount is zero",
-			ldatIndex, trackId, trackCount)
+		log.Printf("markTrackRegionUnallocated id:%v count:%v requested trackCount is zero",
+			trackId, trackCount)
 	}
 
 	// We are hoping that we do not find an entry which contains all or part of the requested region
@@ -130,12 +153,10 @@ func (fst *packFreeSpaceTable) markTrackRegionUnallocated(
 		// Does requested region overlap with this entry?
 		entryTrackLimit := types.TrackId(uint64(fsRegion.trackId) + uint64(fsRegion.trackCount))
 		if trackId >= fsRegion.trackId && trackId < entryTrackLimit {
-			log.Printf("markTrackRegionUnallocated ldat%v id:%v count:%v region overlap",
-				ldatIndex, trackId, trackCount)
+			log.Printf("markTrackRegionUnallocated id:%v count:%v region overlap", trackId, trackCount)
 			return false
 		} else if reqTrackLimit > fsRegion.trackId && reqTrackLimit <= entryTrackLimit {
-			log.Printf("markTrackRegionUnallocated ldat%v id:%v count:%v region overlap",
-				ldatIndex, trackId, trackCount)
+			log.Printf("markTrackRegionUnallocated id:%v count:%v region overlap", trackId, trackCount)
 			return false
 		}
 
