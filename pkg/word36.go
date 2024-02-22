@@ -270,6 +270,30 @@ func GetS6(value uint64) uint64 {
 	return value & 077
 }
 
+func (w *Word36) GetT1() uint64 {
+	return uint64((*w >> 24) & 07777)
+}
+
+func GetT1(value uint64) uint64 {
+	return (value >> 24) & 07777
+}
+
+func (w *Word36) GetT2() uint64 {
+	return uint64((*w >> 12) & 07777)
+}
+
+func GetT2(value uint64) uint64 {
+	return (value >> 12) & 07777
+}
+
+func (w *Word36) GetT3() uint64 {
+	return uint64(*w & 07777)
+}
+
+func GetT3(value uint64) uint64 {
+	return value & 07777
+}
+
 func (w *Word36) GetXH1() uint64 {
 	value := uint64((*w >> 18) & 0_777777)
 	if (value & 0_400000) != 0 {

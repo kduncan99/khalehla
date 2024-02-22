@@ -48,7 +48,7 @@ type fixedPackDescriptor struct {
 	canAllocate    bool // true if pack is UP, false if it is SU
 	packMask       uint64
 	freeSpaceTable *packFreeSpaceTable
-	mfdTrackCount  uint64
+	mfdTrackCount  types.TrackCount
 	mfdSectorsUsed uint64
 }
 

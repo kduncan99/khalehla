@@ -10,6 +10,7 @@ import (
 	"log"
 )
 
+// TODO are we even using this?
 type mfdFreeSpaceTable struct {
 	entries map[types.LDATIndex]*packFreeSpaceTable
 }
@@ -18,21 +19,6 @@ func newFreeSpaceTable() *mfdFreeSpaceTable {
 	return &mfdFreeSpaceTable{
 		entries: make(map[types.LDATIndex]*packFreeSpaceTable),
 	}
-}
-
-// establishFreeSpaceTableForPack sets up a free space table for a particular pack, identified by its LDAT index
-func (fst *mfdFreeSpaceTable) establishFreeSpaceTableForPack(
-	ldatIndex types.LDATIndex,
-	trackCount types.TrackCount) error {
-
-	_, ok := fst.entries[ldatIndex]
-	if ok {
-		log.Printf("establishFreeSpaceTableForPack ldat:%v trackCount:%v table already exists", ldatIndex, trackCount)
-		return fmt.Errorf("table already exists")
-	}
-
-	fst.entries[ldatIndex] = newPackFreeSpaceTable(trackCount)
-	return nil
 }
 
 // allocateSpecificTrackRegion is used only when it has been determined by some external means, that a particular
@@ -69,4 +55,19 @@ func (fst *mfdFreeSpaceTable) allocateExactContiguous(trackCount types.TrackCoun
 	}
 
 	return false, 0, 0
+}
+
+// establishFreeSpaceTableForPack sets up a free space table for a particular pack, identified by its LDAT index
+func (fst *mfdFreeSpaceTable) establishFreeSpaceTableForPack(
+	ldatIndex types.LDATIndex,
+	trackCount types.TrackCount) error {
+
+	_, ok := fst.entries[ldatIndex]
+	if ok {
+		log.Printf("establishFreeSpaceTableForPack ldat:%v trackCount:%v table already exists", ldatIndex, trackCount)
+		return fmt.Errorf("table already exists")
+	}
+
+	fst.entries[ldatIndex] = newPackFreeSpaceTable(trackCount)
+	return nil
 }

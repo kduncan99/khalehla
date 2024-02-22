@@ -10,13 +10,13 @@ import (
 	"log"
 )
 
-type packFreeSpaceRegion struct {
+type packRegion struct {
 	trackId    types.TrackId
 	trackCount types.TrackCount
 }
 
-func newPackFreeSpaceRegion(trackId types.TrackId, trackCount types.TrackCount) *packFreeSpaceRegion {
-	return &packFreeSpaceRegion{
+func newPackFreeSpaceRegion(trackId types.TrackId, trackCount types.TrackCount) *packRegion {
+	return &packRegion{
 		trackId:    trackId,
 		trackCount: trackCount,
 	}
@@ -24,15 +24,29 @@ func newPackFreeSpaceRegion(trackId types.TrackId, trackCount types.TrackCount) 
 
 type packFreeSpaceTable struct {
 	capacity types.TrackCount
-	content  []*packFreeSpaceRegion
+	content  []*packRegion
 }
 
 func newPackFreeSpaceTable(capacity types.TrackCount) *packFreeSpaceTable {
 	fst := &packFreeSpaceTable{}
 	fst.capacity = capacity
 	fsr := newPackFreeSpaceRegion(0, capacity)
-	fst.content = []*packFreeSpaceRegion{fsr}
+	fst.content = []*packRegion{fsr}
 	return fst
+}
+
+// allocateSpecificTrackRegion is used only when it has been determined by some external means, that a particular
+// track or range of tracks is not to be allocated otherwise (such as for VOL1 or directory tracks).
+func (fst *packFreeSpaceTable) allocateSpecificTrackRegion(
+	ldatIndex types.LDATIndex,
+	trackId types.TrackId,
+	trackCount types.TrackCount) error {
+
+	ok := fst.markTrackRegionAllocated(ldatIndex, trackId, trackCount)
+	if !ok {
+		return fmt.Errorf("track not allocated")
+	}
+	return nil
 }
 
 // markTrackRegionUnallocated is a general-purpose function which manipulates the entries in a free space table
@@ -165,16 +179,11 @@ func (fst *packFreeSpaceTable) markTrackRegionUnallocated(
 	return true
 }
 
-// allocateSpecificTrackRegion is used only when it has been determined by some external means, that a particular
-// track or range of tracks is not to be allocated otherwise (such as for VOL1 or directory tracks).
-func (fst *packFreeSpaceTable) allocateSpecificTrackRegion(
-	ldatIndex types.LDATIndex,
-	trackId types.TrackId,
-	trackCount types.TrackCount) error {
-
-	ok := fst.markTrackRegionAllocated(ldatIndex, trackId, trackCount)
-	if !ok {
-		return fmt.Errorf("track not allocated")
+// getFreeTrackCount retrieves a sum of all the free tracks
+func (fst *packFreeSpaceTable) getFreeTrackCount() types.TrackCount {
+	count := types.TrackCount(0)
+	for _, entry := range fst.content {
+		count += entry.trackCount
 	}
-	return nil
+	return count
 }

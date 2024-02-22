@@ -10,7 +10,6 @@ import (
 	"khalehla/kexec/types"
 	"khalehla/pkg"
 	"log"
-	"time"
 )
 
 // InitializeMassStorage handles MFD initialization for what is effectively a JK13 boot.
@@ -194,10 +193,47 @@ func (mgr *MFDManager) allocateDirectorySector(
 func (mgr *MFDManager) allocateDirectoryTrack(
 	preferredLDAT types.LDATIndex,
 ) (types.LDATIndex, types.MFDTrackId, error) {
-	// TODO
-	log.Printf("MFDMgr:allocateDirectoryTrack not yet implemented")
-	mgr.exec.Stop(types.StopDirectoryErrors)
-	return 0, 0, fmt.Errorf("not implemented")
+	chosenLDAT := types.InvalidLDAT
+	var chosenDesc *fixedPackDescriptor
+	chosenAvailableMFDTracks := types.TrackCount(0)
+	chosenAvailableTracks := types.TrackCount(0)
+
+	if preferredLDAT != types.InvalidLDAT {
+		packDesc, ok := mgr.fixedPackDescriptors[preferredLDAT]
+		if ok {
+			availMFDTracks := 07777 - packDesc.mfdTrackCount
+			availTracks := packDesc.freeSpaceTable.getFreeTrackCount()
+			if availMFDTracks > 0 && availTracks > 0 {
+				chosenLDAT = preferredLDAT
+				chosenDesc = packDesc
+				chosenAvailableMFDTracks = availMFDTracks
+				chosenAvailableTracks = availTracks
+			}
+		}
+	}
+
+	if chosenLDAT == types.InvalidLDAT {
+		for ldat, packDesc := range mgr.fixedPackDescriptors {
+			availMFDTracks := 07777 - packDesc.mfdTrackCount
+			availTracks := packDesc.freeSpaceTable.getFreeTrackCount()
+			if availMFDTracks > 0 && availTracks > chosenAvailableTracks {
+				chosenLDAT = ldat
+				chosenDesc = packDesc
+				chosenAvailableMFDTracks = availMFDTracks
+				chosenAvailableTracks = availTracks
+			}
+		}
+	}
+
+	if chosenLDAT == types.InvalidLDAT {
+		log.Printf("MFDMgr:No space available for directory track allocation")
+		mgr.exec.Stop(types.StopExecRequestForMassStorageFailed)
+		return 0, 0, fmt.Errorf("no disk")
+	}
+
+	// TODO some tricky code here - we'd like to allocate the next physical track following
+	//  any available empty space in the MFD track sequence for the chosen pack
+	return 0, 0, nil
 }
 
 // bootstrapMFD creates the various MFD structures as part of MFD initialization.
@@ -233,54 +269,18 @@ func (mgr *MFDManager) bootstrapMFD() error {
 	mainAddr1, mainItem1, _ := mgr.allocateDirectorySector(lowestLDAT)
 
 	mgr.mfdFileMainItem0Address = mainAddr0 // we'll need this later
-	swTimeNow := types.GetSWTimeFromSystemTime(time.Now())
 
-	// populate lead item
-	leadItem0[0].SetW(0_500000_000000)
-	pkg.FromStringToFieldataWithOffset(cfg.SystemQualifier, leadItem0, 1, 2)
-	pkg.FromStringToFieldataWithOffset("MFD$$", leadItem0, 3, 2)
-	pkg.FromStringToFieldataWithOffset(cfg.SystemProjectId, leadItem0, 5, 2)
-	pkg.FromStringToFieldataWithOffset(cfg.SystemReadKey, leadItem0, 7, 1)
-	pkg.FromStringToFieldataWithOffset(cfg.SystemWriteKey, leadItem0, 010, 1)
+	mfdFileName := "MFD$$"
+	populateNewLeadItem0(leadItem0, cfg.SystemQualifier, mfdFileName, cfg.SystemProjectId,
+		cfg.SystemReadKey, cfg.SystemWriteKey, 0, 1, true, uint64(mainAddr0))
+	populateMainItem0(mainItem0, cfg.SystemQualifier, mfdFileName, cfg.SystemProjectId,
+		cfg.SystemReadKey, cfg.SystemWriteKey, cfg.SystemAccountId, leadAddr0, mainAddr1,
+		false, false, false, false, true,
+		false, false, cfg.AssignMnemonic, true, true,
+		true, false, false, 1, 0, 262153, []string{})
+	populateFixedMainItem1(mainItem1, cfg.SystemQualifier, mfdFileName, mainAddr0, 1, []string{})
 
-	leadItem0[011].SetS1(0)   // file type == mass storage
-	leadItem0[011].SetS2(1)   // number of f-cycles which exist
-	leadItem0[011].SetS3(1)   // max number of f-cycles for this file
-	leadItem0[011].SetS4(1)   // current number of f-cycles for this file
-	leadItem0[011].SetT3(1)   // highest absolute f-cycle
-	leadItem0[012].SetS1(040) // status bits - Guarded file
-	leadItem0[012].SetS4(0)   // no security words
-	leadItem0[013].SetW(uint64(mainAddr0))
-
-	// populate main items
-	mainItem0[0].SetW(0_200000_000000)
-	pkg.FromStringToFieldataWithOffset(cfg.SystemQualifier, mainItem0, 1, 2)
-	pkg.FromStringToFieldataWithOffset("MFD$$", mainItem0, 3, 2)
-	pkg.FromStringToFieldataWithOffset(cfg.SystemProjectId, mainItem0, 5, 2)
-	pkg.FromStringToFieldataWithOffset(cfg.SystemAccountId, mainItem0, 7, 2)
-	mainItem0[012].SetW(swTimeNow)
-	mainItem0[013].SetW(uint64(leadAddr0))
-	mainItem0[014].SetT1(0)                // descriptor flags
-	mainItem0[014].SetS3(042)              // file flags - large file, written-to
-	mainItem0[015].SetW(uint64(mainAddr1)) // link to main item sector 1
-	mainItem0[015].SetS1(0)                // PCHAR flags
-	pkg.FromStringToFieldataWithOffset(cfg.AssignMnemonic, mainItem0, 016, 1)
-	mainItem0[021].SetS2(070) // guarded, inhibit unload, private
-	mainItem0[021].SetT2(1)   // absolute f-cycle number
-	mainItem0[022].SetW(swTimeNow)
-	mainItem0[023].SetW(swTimeNow)
-	mainItem0[024].SetH1(1)       // initial granules
-	mainItem0[025].SetH1(0777777) // max granules
-
-	mainItem1[1].SetW(0_400000_000000) // no sector 2
-	pkg.FromStringToFieldataWithOffset(cfg.SystemQualifier, mainItem1, 1, 2)
-	pkg.FromStringToFieldataWithOffset("MFD$$", mainItem1, 3, 2)
-	pkg.FromStringToFieldataWithOffset("*NO.1*", mainItem1, 5, 1)
-	mainItem1[06].SetW(uint64(mainAddr0))
-	mainItem1[07].SetT3(1) // abs f-cycle
-	// TODO what are disk pack entries for? do we need them?
-
-	// Before we can play DAD table games, we have to get the MFD$$ file structures in place,
+	// Before we can play DAD table games, we have to get the MFD$$ in-core structures in place,
 	// including *particularly* the file allocation table.
 	// We need to create one allocation region for each pack's initial directory track.
 	highestMFDTrackId := types.TrackId(0)
