@@ -27,9 +27,8 @@ import (
 //
 // Lookup Table
 // Since we have the entire MFD in core, we do not persist lookup table entries in the MFD.
-// However, we do have a lookup table. We use the language map function to implement the thing,
-// with the key being the concatenation of qualifier ':' filename -> the MFDRelativeAddress of the main item
-// for the file set.
+// However, we do have a lookup table with the key being the qualifier, the subkey being the filename,
+// and the value being the lead item sector 0 address for the file set.
 //
 // free track list
 // Instead of maintaining HMBT (which is no longer needed) and SMBT (which is annoying) we manage a free space
@@ -74,14 +73,13 @@ type MFDManager struct {
 	exec                    types.IExec
 	mutex                   sync.Mutex
 	threadDone              bool
-	mfdFileMainItem0Address types.MFDRelativeAddress                       // MFD address of MFD$$ main file item 0
-	cachedTracks            map[types.MFDRelativeAddress][]pkg.Word36      // key is MFD addr of first sector in track
-	dirtyBlocks             map[types.MFDRelativeAddress]bool              // MFD addresses of blocks containing dirty sectors
-	freeMFDSectors          []types.MFDRelativeAddress                     // MFD addresses of existing but unused MFD sectors
-	fixedPackDescriptors    map[types.LDATIndex]*fixedPackDescriptor       // fpDesc's of all known fixed packs
-	fileLeadItemLookupTable map[string]map[string]types.MFDRelativeAddress // MFD address of lead item 0 of all cataloged files
-	fileAllocations         *fileAllocationTable                           // Tracks file allocations of all assigned files
-	// TODO make fileAllocations just a map of fae's (like it is now, but not in a separate struct)
+	mfdFileMainItem0Address types.MFDRelativeAddress                          // MFD address of MFD$$ main file item 0
+	cachedTracks            map[types.MFDRelativeAddress][]pkg.Word36         // key is MFD addr of first sector in track
+	dirtyBlocks             map[types.MFDRelativeAddress]bool                 // MFD addresses of blocks containing dirty sectors
+	freeMFDSectors          []types.MFDRelativeAddress                        // MFD addresses of existing but unused MFD sectors
+	fixedPackDescriptors    map[types.LDATIndex]*fixedPackDescriptor          // fpDescriptors of all known fixed packs
+	fileLeadItemLookupTable map[string]map[string]types.MFDRelativeAddress    // MFD address of lead item 0 of all cataloged files
+	assignedFileAllocations map[types.MFDRelativeAddress]*fileAllocationEntry // key is main item sector 0 address of file
 }
 
 func NewMFDManager(exec types.IExec) *MFDManager {
@@ -92,7 +90,7 @@ func NewMFDManager(exec types.IExec) *MFDManager {
 		freeMFDSectors:          make([]types.MFDRelativeAddress, 0),
 		fixedPackDescriptors:    make(map[types.LDATIndex]*fixedPackDescriptor),
 		fileLeadItemLookupTable: make(map[string]map[string]types.MFDRelativeAddress),
-		fileAllocations:         newFileAllocationTable(),
+		assignedFileAllocations: make(map[types.MFDRelativeAddress]*fileAllocationEntry),
 	}
 }
 
@@ -106,7 +104,7 @@ func (mgr *MFDManager) Boot() error {
 	mgr.freeMFDSectors = make([]types.MFDRelativeAddress, 0)
 	mgr.fixedPackDescriptors = make(map[types.LDATIndex]*fixedPackDescriptor)
 	mgr.fileLeadItemLookupTable = make(map[string]map[string]types.MFDRelativeAddress)
-	mgr.fileAllocations = newFileAllocationTable()
+	mgr.assignedFileAllocations = make(map[types.MFDRelativeAddress]*fileAllocationEntry)
 
 	return nil
 }
@@ -185,13 +183,12 @@ func (mgr *MFDManager) Dump(dest io.Writer, indent string) {
 	}
 
 	_, _ = fmt.Fprintf(dest, "%v  Assigned file allocations:\n", indent)
-	fat := mgr.fileAllocations
-	for _, fae := range fat.content {
+	for _, fae := range mgr.assignedFileAllocations {
 		_, _ = fmt.Fprintf(dest, "%v    mainItem:%012o 1stDAD:%012o upd:%v highest:%v\n",
 			indent, fae.mainItem0Address, fae.dadItem0Address, fae.isUpdated, fae.highestTrackAllocated)
 		for _, re := range fae.regionEntries {
 			_, _ = fmt.Fprintf(dest, "%v      fileTrkId:%v trkCount:%v ldat:%v devTrkId:%v\n",
-				indent, re.fileTrackId, re.trackCount, re.ldatIndex, re.packTrackId)
+				indent, re.fileRegion.trackId, re.fileRegion.trackCount, re.ldatIndex, re.deviceTrackId)
 		}
 	}
 }

@@ -285,9 +285,9 @@ func (mgr *MFDManager) bootstrapMFD() error {
 		cfg.SystemReadKey, cfg.SystemWriteKey, 0, 1, true, uint64(mainAddr0))
 	populateMassStorageMainItem0(mainItem0, cfg.SystemQualifier, mfdFileName, cfg.SystemProjectId,
 		cfg.SystemReadKey, cfg.SystemWriteKey, cfg.SystemAccountId, leadAddr0, mainAddr1,
-		false, false, false, false, true,
-		false, false, cfg.AssignMnemonic, true, true,
-		true, false, false, 1, 0, 262153, []string{})
+		false, false, false, false, false,
+		cfg.AssignMnemonic, true, true, true, false, false,
+		1, 0, 262153, []string{})
 	populateFixedMainItem1(mainItem1, cfg.SystemQualifier, mfdFileName, mainAddr0, 1, []string{})
 
 	// Before we can play DAD table games, we have to get the MFD$$ in-core structures in place,
@@ -295,7 +295,7 @@ func (mgr *MFDManager) bootstrapMFD() error {
 	// We need to create one allocation region for each pack's initial directory track.
 	highestMFDTrackId := types.TrackId(0)
 	fae := newFileAllocationEntry(mainAddr0, 0_400000_000000)
-	mgr.fileAllocations.content[mainAddr0] = fae
+	mgr.assignedFileAllocations[mainAddr0] = fae
 
 	for ldat, desc := range mgr.fixedPackDescriptors {
 		mfdTrackId := types.TrackId(ldat << 12)

@@ -10,28 +10,16 @@ import (
 	"log"
 )
 
-type packRegion struct {
-	trackId    types.TrackId
-	trackCount types.TrackCount
-}
-
-func newPackFreeSpaceRegion(trackId types.TrackId, trackCount types.TrackCount) *packRegion {
-	return &packRegion{
-		trackId:    trackId,
-		trackCount: trackCount,
-	}
-}
-
 type packFreeSpaceTable struct {
 	capacity types.TrackCount
-	content  []*packRegion
+	content  []*TrackRegion
 }
 
 func newPackFreeSpaceTable(capacity types.TrackCount) *packFreeSpaceTable {
 	fst := &packFreeSpaceTable{}
 	fst.capacity = capacity
-	fsr := newPackFreeSpaceRegion(0, capacity)
-	fst.content = []*packRegion{fsr}
+	fsr := newTrackRegion(0, capacity)
+	fst.content = []*TrackRegion{fsr}
 	return fst
 }
 
@@ -124,7 +112,7 @@ func (fst *packFreeSpaceTable) markTrackRegionAllocated(
 			}
 
 			// Break the region into two sections. Messy. Don't like it.
-			newRegion := newPackFreeSpaceRegion(entryLimit, types.TrackCount(entryLimit-reqTrackLimit))
+			newRegion := newTrackRegion(entryLimit, types.TrackCount(entryLimit-reqTrackLimit))
 			fsRegion.trackCount = types.TrackCount(trackId - fsRegion.trackId)
 			newTable := append(fst.content[0:fx+1], newRegion)
 			fst.content = append(newTable, fst.content[fx+1])
@@ -187,7 +175,7 @@ func (fst *packFreeSpaceTable) markTrackRegionUnallocated(
 		// Region is not aligned with the front or back of this entry, nor does it overlap.
 		// If it is ahead of this entry, then we just need to insert a new entry for the requested region.
 		if trackId < fsRegion.trackId {
-			re := newPackFreeSpaceRegion(trackId, trackCount)
+			re := newTrackRegion(trackId, trackCount)
 			newTable := append(fst.content[:fx], re)
 			fst.content = append(newTable, fst.content[fx:]...)
 			return true
@@ -195,7 +183,7 @@ func (fst *packFreeSpaceTable) markTrackRegionUnallocated(
 	}
 
 	// Region is somewhere at the end of the pack. Create a new entry.
-	re := newPackFreeSpaceRegion(trackId, trackCount)
+	re := newTrackRegion(trackId, trackCount)
 	fst.content = append(fst.content, re)
 	return true
 }

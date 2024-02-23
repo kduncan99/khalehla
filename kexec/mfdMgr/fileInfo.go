@@ -8,86 +8,17 @@ import (
 	"khalehla/kexec/types"
 )
 
-type BackupInfo struct {
-	timeBackupCreated          uint64
-	maxBackupLevels            uint64
-	currentBackupLevels        uint64
-	fasBits                    uint64
-	numberOfTextBlocks         uint64
-	backupStartingFilePosition uint64
-	backupReelNumbers          []string
-}
-
-type DescriptorFlags struct {
-	unloaded         bool
-	backedUp         bool
-	saveOnCheckpoint bool
-	toBeCataloged    bool
-	toBeWriteOnly    bool
-	toBeReadOnly     bool
-	toBeDropped      bool
-}
-
-type DisableFlags struct {
-	disabledDueToDirectory     bool
-	disabledAssignedAndWritten bool
-	disabledInaccessibleBackup bool
-}
-
 type DiskPackEntry struct {
 	packName     string
 	mainItemLink uint64
-}
-
-type FileSetCycleInfo struct {
-	toBeCataloged bool
-	toBeDropped   bool
-	absoluteCycle uint
-}
-
-type FileType uint
-
-const (
-	FileTypeFixed     = 0
-	FileTypeTape      = 1
-	FileTypeRemovable = 040
-)
-
-type FileAllocation struct {
-	fileTrackId   types.TrackId
-	trackCount    types.TrackCount
-	ldatIndex     types.LDATIndex
-	deviceTrackId types.TrackId
-}
-
-type InhibitFlags struct {
-	isGuarded         bool
-	inhibitUnload     bool
-	isPrivate         bool
-	assignedExclusive bool
-	isWriteOnly       bool
-	isReadOnly        bool
-}
-
-type FileSetInfo struct {
-	qualifier       string
-	filename        string
-	projectId       string
-	readKey         string
-	writeKey        string
-	fileType        FileType
-	plusOneExists   bool
-	count           uint
-	maxCycleRange   uint
-	currentRange    uint
-	highestAbsolute uint
-	fileInfo        []FileSetCycleInfo
 }
 
 type FileInfo interface {
 	GetAccountId() string
 	GetAbsoluteFileCycle() uint
 }
+
+// -----------------------------------------------------------------------------
 
 type FixedFileInfo struct {
 	accountId                string
@@ -120,6 +51,8 @@ func (fi *FixedFileInfo) GetAccountId() string {
 func (fi *FixedFileInfo) GetAbsoluteFileCycle() uint {
 	return fi.absoluteFileCycle
 }
+
+// -----------------------------------------------------------------------------
 
 type RemovableFileInfo struct {
 	accountId                string
@@ -154,6 +87,8 @@ func (fi *RemovableFileInfo) GetAccountId() string {
 func (fi *RemovableFileInfo) GetAbsoluteFileCycle() uint {
 	return fi.absoluteFileCycle
 }
+
+// -----------------------------------------------------------------------------
 
 type TapeFileInfo struct {
 	accountId              string

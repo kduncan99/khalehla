@@ -10,18 +10,6 @@ import (
 	"log"
 )
 
-// fileAllocationTable is a collection of fileAllocationEntry structs for all files
-// which are currently assigned
-type fileAllocationTable struct {
-	content map[types.MFDRelativeAddress]*fileAllocationEntry
-}
-
-func newFileAllocationTable() *fileAllocationTable {
-	fat := &fileAllocationTable{}
-	fat.content = make(map[types.MFDRelativeAddress]*fileAllocationEntry)
-	return fat
-}
-
 // fileAllocationEntry describes the current allocation of tracks to a particular file instance.
 // These exist in-memory for every file which is currently assigned.
 type fileAllocationEntry struct {
@@ -29,7 +17,7 @@ type fileAllocationEntry struct {
 	mainItem0Address      types.MFDRelativeAddress
 	isUpdated             bool
 	highestTrackAllocated types.TrackId
-	regionEntries         []*fileRegionEntry
+	regionEntries         []*FileAllocation
 }
 
 func newFileAllocationEntry(
@@ -40,45 +28,25 @@ func newFileAllocationEntry(
 		mainItem0Address:      mainItem0Address,
 		isUpdated:             false,
 		highestTrackAllocated: 0,
-		regionEntries:         make([]*fileRegionEntry, 0),
+		regionEntries:         make([]*FileAllocation, 0),
 	}
 }
 
-type fileRegionEntry struct {
-	fileTrackId types.TrackId
-	trackCount  types.TrackCount
-	ldatIndex   types.LDATIndex
-	packTrackId types.TrackId
-}
-
-func newFileRegionEntry(
-	fileTrackId types.TrackId,
-	trackCount types.TrackCount,
-	ldatIndex types.LDATIndex,
-	packTrackId types.TrackId) *fileRegionEntry {
-	return &fileRegionEntry{
-		fileTrackId: fileTrackId,
-		trackCount:  trackCount,
-		ldatIndex:   ldatIndex,
-		packTrackId: packTrackId,
-	}
-}
-
-func (fae *fileAllocationEntry) mergeIntoFileAllocationEntry(newEntry *fileRegionEntry) {
+func (fae *fileAllocationEntry) mergeIntoFileAllocationEntry(newEntry *FileAllocation) {
 	// puts a new re into the fae at the appropriate location.
 	// if it appends to an existing re, then just update that re.
 	// we are only called by other code in this file, and those callers *MUST* ensure no overlaps occur.
 	for rex, re := range fae.regionEntries {
-		if newEntry.fileTrackId < re.fileTrackId {
+		if newEntry.fileRegion.trackId < re.fileRegion.trackId {
 			// the new entry appears before the indexed entry and after the previous entry
 			// if they are the same LDAT, see whether we need to merge
 			if newEntry.ldatIndex == re.ldatIndex {
-				next := types.TrackId(uint64(newEntry.fileTrackId) + uint64(newEntry.trackCount))
-				if next == re.fileTrackId {
+				next := types.TrackId(uint64(newEntry.fileRegion.trackId) + uint64(newEntry.fileRegion.trackCount))
+				if next == re.fileRegion.trackId {
 					// merge them
-					re.fileTrackId = newEntry.fileTrackId
-					re.packTrackId = newEntry.packTrackId
-					re.trackCount += newEntry.trackCount
+					re.fileRegion = newEntry.fileRegion
+					re.deviceTrackId = newEntry.deviceTrackId
+					re.fileRegion.trackCount += newEntry.fileRegion.trackCount
 					fae.isUpdated = true
 					return
 				}
@@ -95,9 +63,9 @@ func (fae *fileAllocationEntry) mergeIntoFileAllocationEntry(newEntry *fileRegio
 		// If the new entry is on the same pack as the indexed entry, see if the new entry is contiguous
 		// with the end of the indexed entry
 		if newEntry.ldatIndex == re.ldatIndex {
-			next := types.TrackId(uint64(re.fileTrackId) + uint64(re.trackCount))
-			if next == newEntry.fileTrackId {
-				re.trackCount += newEntry.trackCount
+			next := types.TrackId(uint64(re.fileRegion.trackId) + uint64(re.fileRegion.trackCount))
+			if next == newEntry.fileRegion.trackId {
+				re.fileRegion.trackCount += newEntry.fileRegion.trackCount
 				return
 			}
 		}
@@ -141,14 +109,14 @@ func (mgr *MFDManager) allocateSpecificTrack(
 	ldatIndex types.LDATIndex,
 	deviceTrackId types.TrackId) error {
 
-	fae, ok := mgr.fileAllocations.content[mainItem0Address]
+	fae, ok := mgr.assignedFileAllocations[mainItem0Address]
 	if !ok {
 		log.Printf("MFDMgr:allocateSpecificTrack Cannot find fae for address %012o", mainItem0Address)
 		mgr.exec.Stop(types.StopDirectoryErrors)
 		return fmt.Errorf("fae not loaded")
 	}
 
-	re := newFileRegionEntry(fileTrackId, trackCount, ldatIndex, deviceTrackId)
+	re := newFileAllocation(fileTrackId, trackCount, ldatIndex, deviceTrackId)
 	fae.mergeIntoFileAllocationEntry(re)
 
 	if fileTrackId > fae.highestTrackAllocated {
@@ -170,7 +138,7 @@ func (mgr *MFDManager) convertFileRelativeTrackId(
 	mainItem0Address types.MFDRelativeAddress,
 	fileTrackId types.TrackId) (types.LDATIndex, types.TrackId, error) {
 
-	fae, ok := mgr.fileAllocations.content[mainItem0Address]
+	fae, ok := mgr.assignedFileAllocations[mainItem0Address]
 	if !ok {
 		log.Printf("MFDMgr:convertFileRelativeTrackId Cannot find fae for address %012o", mainItem0Address)
 		mgr.exec.Stop(types.StopDirectoryErrors)
@@ -181,15 +149,15 @@ func (mgr *MFDManager) convertFileRelativeTrackId(
 	devTrackId := types.TrackId(0)
 	if fileTrackId <= fae.highestTrackAllocated {
 		for _, re := range fae.regionEntries {
-			if fileTrackId < re.fileTrackId {
+			if fileTrackId < re.fileRegion.trackId {
 				// list is ascending - if we get here, there's no point in continuing
 				break
 			}
-			upperLimit := types.TrackId(uint64(re.fileTrackId) + uint64(re.trackCount))
+			upperLimit := types.TrackId(uint64(re.fileRegion.trackId) + uint64(re.fileRegion.trackCount))
 			if fileTrackId < upperLimit {
 				// found a good region - update results and stop looking
 				ldat = re.ldatIndex
-				devTrackId = re.packTrackId + (fileTrackId - re.fileTrackId)
+				devTrackId = re.deviceTrackId + (fileTrackId - re.fileRegion.trackId)
 				return ldat, devTrackId, nil
 			}
 		}
@@ -202,7 +170,7 @@ func (mgr *MFDManager) convertFileRelativeTrackId(
 // If we return an error, we've already stopped the exec
 // CALL UNDER LOCK
 func (mgr *MFDManager) loadFileAllocationEntry(mainItem0Address types.MFDRelativeAddress) (*fileAllocationEntry, error) {
-	_, ok := mgr.fileAllocations.content[mainItem0Address]
+	_, ok := mgr.assignedFileAllocations[mainItem0Address]
 	if ok {
 		log.Printf("MFDMgr:loadFileAllocationEntry fae already loaded for address %012o", mainItem0Address)
 		mgr.exec.Stop(types.StopDirectoryErrors)
@@ -235,7 +203,7 @@ func (mgr *MFDManager) loadFileAllocationEntry(mainItem0Address types.MFDRelativ
 			words := dadItem[dx+1].GetW()
 			ldat := types.LDATIndex(dadItem[dx+2].GetH2())
 			if ldat != 0_400000 {
-				re := newFileRegionEntry(types.TrackId(fileWordAddress/1792),
+				re := newFileAllocation(types.TrackId(fileWordAddress/1792),
 					types.TrackCount(words/1792),
 					ldat,
 					types.TrackId(devAddr/1792))
@@ -248,7 +216,7 @@ func (mgr *MFDManager) loadFileAllocationEntry(mainItem0Address types.MFDRelativ
 		dadAddr = types.MFDRelativeAddress(dadItem[0].GetW())
 	}
 
-	mgr.fileAllocations.content[mainItem0Address] = fae
+	mgr.assignedFileAllocations[mainItem0Address] = fae
 	return fae, nil
 }
 
@@ -256,7 +224,7 @@ func (mgr *MFDManager) loadFileAllocationEntry(mainItem0Address types.MFDRelativ
 // If we return an error, we've already stopped the exec
 // CALL UNDER LOCK
 func (mgr *MFDManager) writeFileAllocationEntryUpdates(mainItem0Address types.MFDRelativeAddress) error {
-	fae, ok := mgr.fileAllocations.content[mainItem0Address]
+	fae, ok := mgr.assignedFileAllocations[mainItem0Address]
 	if !ok {
 		log.Printf("MFDMgr:convertFileRelativeTrackId Cannot find fae for address %012o", mainItem0Address)
 		mgr.exec.Stop(types.StopDirectoryErrors)
