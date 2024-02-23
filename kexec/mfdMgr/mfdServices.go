@@ -21,43 +21,27 @@ type MFDCatalogMassStorageFileRequest struct {
 	projectId         string
 	accountId         string
 	granularity       types.Granularity
-	removable         bool
+	isRemovable       bool
 	wordAddressable   bool
 	saveOnCheckpoint  bool
 	equipment         string
-	guardedFlag       bool
+	isGuarded         bool
 	inhibitUnloadFlag bool
-	privateFlag       bool
-	writeOnly         bool
-	readOnly          bool
-	largeFile         bool // TODO how does this get set? I can't figure it out...
-	reserve           uint64
-	maximum           uint64
-	packIds           []string
-}
-
-type MFDCatalogTapeFileRequest struct {
-	qualifier         string
-	filename          string
-	absoluteFileCycle *uint
-	relativeFileCycle *int
-	readKey           string
-	writeKey          string
-	projectId         string
-	accountId         string
-	granularity       types.Granularity
-	equipment         string
-	guardedFlag       bool
-	inhibitUnloadFlag bool
-	privateFlag       bool
-	writeOnly         bool
-	readOnly          bool
-	density           uint // n/a, but maybe we fake it out
-	format            uint // 001 dc, 002=qw, 004=6bitPk, 010=8bitPk, 020=EvenPar, 040=9Trk
-	features          uint // n/a
-	dataCompression   uint // n/a (I think)
-	mtapop            uint // 040=Jopt, 020=QIC, 010=HIC, 004=BuffOff, 002=DLT, 001=HIS
-	ctlPoolName       string
+	isPrivate         bool
+	isWriteOnly       bool
+	isReadOnly        bool
+	// for disk
+	reserve uint64
+	maximum uint64
+	packIds []string
+	// for tape
+	isTape            bool
+	density           uint
+	format            uint
+	features          uint
+	featuresExtension uint
+	mtapop            uint
+	ctlPool           string
 	reelNumbers       []string
 }
 
@@ -140,7 +124,7 @@ func populateNewLeadItem0(
 	leadItem0[11].SetW(mainItem0Address)
 }
 
-func populateMainItem0(
+func populateMassStorageMainItem0(
 	mainItem0 []pkg.Word36,
 	qualifier string,
 	filename string,
@@ -152,9 +136,7 @@ func populateMainItem0(
 	mainItem1Address types.MFDRelativeAddress,
 	saveOnCheckpoint bool,
 	toBeCataloged bool, // for @ASG,C or @ASG,U
-	isTape bool,
 	isRemovable bool,
-	isLargeFile bool,
 	isPosition bool,
 	isWordAddressable bool,
 	mnemonic string,
@@ -189,19 +171,10 @@ func populateMainItem0(
 	if toBeCataloged {
 		descriptorFlags |= 00100
 	}
-	if isTape {
-		descriptorFlags |= 00040
-	}
 	if isRemovable {
 		descriptorFlags |= 00010
 	}
 	mainItem0[12].SetT1(descriptorFlags)
-
-	var fileFlags uint64
-	if isLargeFile {
-		fileFlags |= 040
-	}
-	mainItem0[12].SetS3(fileFlags)
 
 	var pcharFlags uint64
 	if isPosition {
@@ -323,15 +296,70 @@ func populateRemovableMainItem1(
 	}
 	for dpx := 0; dpx < limit; dpx++ {
 		mainItem1[mix].FromStringToFieldata(packIds[dpx])
-		// TODO for removable, we need the main item address for this file on that pack
+		// TODO for isRemovable, we need the main item address for this file on that pack
 		mix += 2
 	}
 }
 
-// CatalogMassStorageFile attempts to catalog a file on mass storage according to the given parameters.
+func populateTapeMainItem0(
+	mainItem0 []pkg.Word36,
+	qualifier string,
+	filename string,
+	projectId string,
+	accountId string,
+	reelTable0Address types.MFDRelativeAddress,
+	leadItem0Address types.MFDRelativeAddress,
+	mainItem1Address types.MFDRelativeAddress,
+	toBeCataloged bool, // for @ASG,C or @ASG,U
+	isGuarded bool,
+	isPrivate bool,
+	isWriteOnly bool,
+	isReadOnly bool,
+	absoluteCycle uint64,
+	density uint,
+	format uint,
+	features uint,
+	featuresExtension uint,
+	mtapop uint,
+	ctlPool string,
+) {
+	for wx := 0; wx < 28; wx++ {
+		mainItem0[wx].SetW(0)
+	}
+
+	mainItem0[0].SetW(uint64(reelTable0Address))
+	mainItem0[0].Or(0_200000_000000)
+	pkg.FromStringToFieldata(qualifier, mainItem0[1:3])
+	pkg.FromStringToFieldata(filename, mainItem0[3:5])
+	pkg.FromStringToFieldata(projectId, mainItem0[5:7])
+	pkg.FromStringToFieldata(accountId, mainItem0[7:9])
+
+	// TODO
+}
+
+func populateTapeMainItem1(
+	mainItem1 []pkg.Word36,
+	qualifier string,
+	filename string,
+	mainItem0Address types.MFDRelativeAddress,
+	absoluteCycle uint64,
+) {
+	for wx := 0; wx < 28; wx++ {
+		mainItem1[wx].SetW(0)
+	}
+
+	mainItem1[0].SetW(uint64(types.InvalidLink)) // no sector 2 (yet, anyway)
+	pkg.FromStringToFieldata(qualifier, mainItem1[1:3])
+	pkg.FromStringToFieldata(filename, mainItem1[3:5])
+	pkg.FromStringToFieldata("*No.1*", mainItem1[5:6])
+	mainItem1[6].SetW(uint64(mainItem0Address))
+	mainItem1[7].SetT3(absoluteCycle)
+}
+
+// CatalogFile attempts to catalog a file on mass storage according to the given parameters.
 // We really only expect to be invoked via fac mgr, and only for @CAT of word and sector addressable disk files.
 // If we return err, we've stopped the exec
-func (mgr *MFDManager) CatalogMassStorageFile(parameters *MFDCatalogMassStorageFileRequest) (*facilitiesMgr.FacResult, error) {
+func (mgr *MFDManager) CatalogFile(parameters *MFDCatalogMassStorageFileRequest) (*facilitiesMgr.FacResult, error) {
 
 	facResult := facilitiesMgr.NewFacResult()
 
@@ -370,14 +398,16 @@ func (mgr *MFDManager) CatalogMassStorageFile(parameters *MFDCatalogMassStorageF
 		}
 
 		fileType := uint64(0)
-		if parameters.removable {
+		if parameters.isTape {
+			fileType = 001
+		} else if parameters.isRemovable {
 			fileType = 040
 		}
 
 		populateNewLeadItem0(
 			leadItem0, parameters.qualifier, parameters.filename, parameters.projectId,
 			parameters.readKey, parameters.writeKey, fileType,
-			effectiveAbsolute, parameters.guardedFlag, uint64(mainAddr0))
+			effectiveAbsolute, parameters.isGuarded, uint64(mainAddr0))
 
 		equip := parameters.equipment
 		if len(equip) == 0 {
@@ -388,21 +418,32 @@ func (mgr *MFDManager) CatalogMassStorageFile(parameters *MFDCatalogMassStorageF
 			}
 		}
 
-		populateMainItem0(mainItem0, parameters.qualifier, parameters.filename, parameters.projectId,
-			parameters.readKey, parameters.writeKey, parameters.accountId, leadAddr0, mainAddr1,
-			parameters.saveOnCheckpoint, false, false, parameters.removable,
-			parameters.largeFile, parameters.granularity == types.PositionGranularity,
-			parameters.wordAddressable, equip, parameters.guardedFlag, parameters.inhibitUnloadFlag,
-			parameters.privateFlag, parameters.writeOnly, parameters.readOnly, effectiveAbsolute,
-			parameters.reserve, parameters.maximum, parameters.packIds)
+		if !parameters.isTape {
+			populateMassStorageMainItem0(mainItem0, parameters.qualifier, parameters.filename, parameters.projectId,
+				parameters.readKey, parameters.writeKey, parameters.accountId, leadAddr0, mainAddr1,
+				parameters.saveOnCheckpoint, false, parameters.isRemovable,
+				parameters.granularity == types.PositionGranularity, parameters.wordAddressable,
+				equip, parameters.isGuarded, parameters.inhibitUnloadFlag,
+				parameters.isPrivate, parameters.isWriteOnly, parameters.isReadOnly, effectiveAbsolute,
+				parameters.reserve, parameters.maximum, parameters.packIds)
 
-		if !parameters.removable {
-			populateFixedMainItem1(mainItem1, parameters.qualifier, parameters.filename,
-				mainAddr0, effectiveAbsolute, parameters.packIds)
-			// TODO possibly more
+			if !parameters.isRemovable {
+				populateFixedMainItem1(mainItem1, parameters.qualifier, parameters.filename,
+					mainAddr0, effectiveAbsolute, parameters.packIds)
+				// TODO possibly more
+			} else {
+				populateRemovableMainItem1(mainItem1, mainAddr0, effectiveAbsolute, parameters.packIds)
+				// TODO possibly more
+			}
 		} else {
-			populateRemovableMainItem1(mainItem1, mainAddr0, effectiveAbsolute, parameters.packIds)
-			// TODO possibly more
+			reelAddr0 := types.InvalidLink // TODO REEL table address or InvalidLink
+			populateTapeMainItem0(mainItem0, parameters.qualifier, parameters.filename, parameters.projectId,
+				parameters.accountId, reelAddr0, leadAddr0, mainAddr1, false,
+				parameters.isGuarded, parameters.isPrivate, parameters.isWriteOnly, parameters.isReadOnly,
+				effectiveAbsolute, parameters.density, parameters.format, parameters.features,
+				parameters.featuresExtension, parameters.mtapop, parameters.ctlPool)
+			populateTapeMainItem1(mainItem1, parameters.qualifier, parameters.filename, mainAddr0, effectiveAbsolute)
+			// TODO tape file reel table(s)
 		}
 	} else {
 		// TODO check read/write keys
@@ -455,13 +496,6 @@ func (mgr *MFDManager) CatalogMassStorageFile(parameters *MFDCatalogMassStorageF
 
 	facResult.PostMessage(facilitiesMgr.FacStatusComplete, []string{"CAT"})
 	return facResult, nil
-}
-
-func (mgr *MFDManager) CatalogTapeFile(parameters *MFDCatalogTapeFileRequest) *facilitiesMgr.FacResult {
-	// TODO
-	facResult := facilitiesMgr.NewFacResult()
-
-	return facResult
 }
 
 // DeleteFile some problems... I think...

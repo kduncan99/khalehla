@@ -24,7 +24,7 @@ func (mgr *MFDManager) InitializeMassStorage() {
 		}
 	}
 
-	// Check the labels on the disks so that we may segregate them into fixed and removable lists.
+	// Check the labels on the disks so that we may segregate them into fixed and isRemovable lists.
 	// Any problems at this point will lead us to DN the unit.
 	fixedDisks := make(map[*nodeMgr.DiskDeviceInfo]*types.DiskAttributes)
 	removableDisks := make(map[*nodeMgr.DiskDeviceInfo]*types.DiskAttributes)
@@ -81,7 +81,7 @@ func (mgr *MFDManager) InitializeMassStorage() {
 			}
 
 			// get the LDAT field from sector 1
-			// If it is 0, it is a removable pack
+			// If it is 0, it is a isRemovable pack
 			// 0400000, it is an uninitialized fixed pack
 			// anything else, it is a pre-used fixed pack which we're going to initialize
 			ldat := sector1[5].GetH1()
@@ -283,7 +283,7 @@ func (mgr *MFDManager) bootstrapMFD() error {
 	mfdFileName := "MFD$$"
 	populateNewLeadItem0(leadItem0, cfg.SystemQualifier, mfdFileName, cfg.SystemProjectId,
 		cfg.SystemReadKey, cfg.SystemWriteKey, 0, 1, true, uint64(mainAddr0))
-	populateMainItem0(mainItem0, cfg.SystemQualifier, mfdFileName, cfg.SystemProjectId,
+	populateMassStorageMainItem0(mainItem0, cfg.SystemQualifier, mfdFileName, cfg.SystemProjectId,
 		cfg.SystemReadKey, cfg.SystemWriteKey, cfg.SystemAccountId, leadAddr0, mainAddr1,
 		false, false, false, false, true,
 		false, false, cfg.AssignMnemonic, true, true,
@@ -612,7 +612,7 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.
 	return nil
 }
 
-// initializeRemovable registers the removable packs (if any) as part of a JK13 boot.
+// initializeRemovable registers the isRemovable packs (if any) as part of a JK13 boot.
 func (mgr *MFDManager) initializeRemovable(disks map[*nodeMgr.DiskDeviceInfo]*types.DiskAttributes) error {
 	return nil
 }
