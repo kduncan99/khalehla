@@ -22,6 +22,11 @@ func (mgr *MFDManager) ChangeFileSetName(
 	return nil
 }
 
+// CreateFileSet creates lead items to establish an empty file set.
+// When the MFD is in a normalized state, no empty file sets should exist -
+// hence we expect the client to subsequently create a file as part of the file set.
+// If we return MFDInternalError, the exec has been stopped
+// If we return MFDFileNameConflict, a file set already exists with this file name.
 func (mgr *MFDManager) CreateFileSet(
 	qualifier string,
 	filename string,
@@ -29,9 +34,37 @@ func (mgr *MFDManager) CreateFileSet(
 	readKey string,
 	writeKey string,
 	fileType FileType,
-) (types.MFDRelativeAddress, error) {
-	// TODO
-	return 0, nil
+) (leadItem0Address types.MFDRelativeAddress, result MFDResult) {
+	leadItem0Address = types.InvalidLink
+	result = MFDSuccessful
+
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
+	_, ok := mgr.fileLeadItemLookupTable[qualifier][filename]
+	if ok {
+		result = MFDFileNameConflict
+		return
+	}
+
+	leadItem0Address, leadItem0, err := mgr.allocateDirectorySector(types.InvalidLDAT)
+	if err != nil {
+		result = MFDInternalError
+		return
+	}
+
+	leadItem0[0].SetW(uint64(types.InvalidLink))
+	leadItem0[0].Or(0_500000_000000)
+
+	pkg.FromStringToFieldata(qualifier, leadItem0[1:3])
+	pkg.FromStringToFieldata(filename, leadItem0[3:5])
+	pkg.FromStringToFieldata(projectId, leadItem0[5:7])
+	leadItem0[7].FromStringToFieldata(readKey)
+	leadItem0[8].FromStringToAscii(writeKey)
+	leadItem0[9].SetS1(uint64(fileType))
+
+	mgr.markDirectorySectorDirty(leadItem0Address)
+	return
 }
 
 func (mgr *MFDManager) CreateFileCycle(
@@ -49,12 +82,47 @@ func (mgr *MFDManager) GetFileInfo(
 	return nil, 0, nil
 }
 
+// GetFileSetInfo returns a FileSetInfo struct representing the file set
+// and the file set's lead item 0 address.
+// corresponding to the given qualifier and filename.
+// If we return MFDInternalError, the exec has been stopped
+// If we return MFDNotFound then there is no such file set
 func (mgr *MFDManager) GetFileSetInfo(
 	qualifier string,
 	filename string,
-) (fsInfo *FileSetInfo, leadItem0Address types.MFDRelativeAddress, err error) {
-	// TODO
-	return nil, 0, nil
+) (fsInfo *FileSetInfo, leadItem0Address types.MFDRelativeAddress, mfdResult MFDResult) {
+	fsInfo = nil
+	leadItem0Address = types.InvalidLink
+	mfdResult = MFDSuccessful
+
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
+	leadItem0Address, ok := mgr.fileLeadItemLookupTable[qualifier][filename]
+	if !ok {
+		mfdResult = MFDNotFound
+		return
+	}
+
+	leadItem0, err := mgr.getMFDSector(leadItem0Address)
+	if err != nil {
+		mfdResult = MFDInternalError
+		return
+	}
+
+	leadItem1Address := types.MFDRelativeAddress(leadItem0[0].GetW())
+	var leadItem1 []pkg.Word36
+	if leadItem1Address != types.InvalidLink {
+		leadItem1, err = mgr.getMFDSector(leadItem1Address)
+		if err != nil {
+			mfdResult = MFDInternalError
+			return
+		}
+	}
+
+	fsInfo = &FileSetInfo{}
+	fsInfo.PopulateFromLeadItems(leadItem0, leadItem1)
+	return
 }
 
 func (mgr *MFDManager) SetFileCycleRange(

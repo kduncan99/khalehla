@@ -211,7 +211,7 @@ func (e *Exec) Initialize() error {
 // IsValidFilename tests a given string to ensure it is a valid filename.
 // The string must be 1 to 12 character in length, containing any combination of
 // upper-case letters, digits, hyphens, and dollar signs.
-func (e *Exec) IsValidFilename(filename string) bool {
+func IsValidFilename(filename string) bool {
 	if len(filename) < 1 || len(filename) > 12 {
 		return false
 	}
@@ -228,7 +228,7 @@ func (e *Exec) IsValidFilename(filename string) bool {
 // IsValidQualifier test a given string to ensure it is a valid qualifier.
 // The string must be 1 to 12 character in length, containing any combination of
 // upper-case letters, digits, hyphens, and dollar signs.
-func (e *Exec) IsValidQualifier(qualifier string) bool {
+func IsValidQualifier(qualifier string) bool {
 	if len(qualifier) < 1 || len(qualifier) > 12 {
 		return false
 	}

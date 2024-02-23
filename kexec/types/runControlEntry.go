@@ -35,8 +35,7 @@ type RunControlEntry struct {
 	ImpliedQualifier string
 	RunConditionWord RunConditionWord
 	FacilityItems    []FacilitiesItem
-
-	// TODO @USE table
+	UseItems         map[string]UseItem // key is internal file name
 	// TODO Program Control Entry
 }
 
@@ -57,6 +56,7 @@ func NewRunControlEntry(
 		ImpliedQualifier: projectId,
 		RunConditionWord: RunConditionWord{},
 		FacilityItems:    make([]FacilitiesItem, 0),
+		UseItems:         make(map[string]UseItem),
 	}
 }
 

@@ -180,6 +180,11 @@ func (mgr *MFDManager) allocateDirectorySector(
 		return 0, nil, err
 	}
 
+	// clean it out for the caller
+	for wx := 0; wx < 28; wx++ {
+		data[wx] = 0
+	}
+
 	return chosenAddress, data, nil
 }
 

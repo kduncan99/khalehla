@@ -80,13 +80,6 @@ type DeviceInfo interface {
 	SetIsReady(flag bool)
 }
 
-type FacilitiesItem interface {
-	GetInternalFileName() string
-	GetFileName() string
-	GetQualifier() string
-	GetEquipmentCode() uint
-}
-
 type IConsoleManager interface {
 	Boot() error // invoked when the exec is booting - return an error to stop the boot
 	Close()      // invoked when the application is shutting down

@@ -22,7 +22,7 @@ type ConsoleIdentifier pkg.Word36
 
 // NodeIdentifier uniquely identifies a particular device or channel (or anything else identifiable which we manage)
 // It is currently implemented as the 1-6 character device name, all caps alphas and/or digits LJSF
-// stored as fieldata in a Word36 struct
+// stored as Fieldata in a Word36 struct
 type NodeIdentifier pkg.Word36
 type ChannelIdentifier NodeIdentifier
 type DeviceIdentifier NodeIdentifier
@@ -68,6 +68,8 @@ type DiskPackGeometry struct {
 	FirstDirTrackBlockId uint       // block ID of the block containing the first sector of the first directory track
 }
 
+// Things related to ConsoleManager
+
 type ConsoleReadOnlyMessage struct {
 	Source         *RunControlEntry
 	Routing        *ConsoleIdentifier // may be nil
@@ -87,7 +89,7 @@ type ConsoleReadReplyMessage struct {
 	Reply          string
 }
 
-// Things created and managed by FacilitiesManager
+// Things related to FacilitiesManager
 
 type DiskAttributes struct {
 	AssignedTo *RunControlEntry

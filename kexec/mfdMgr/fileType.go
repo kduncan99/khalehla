@@ -11,3 +11,14 @@ const (
 	FileTypeTape      = 001
 	FileTypeRemovable = 040
 )
+
+func NewFileTypeFromField(field uint64) FileType {
+	switch field {
+	case 001:
+		return FileTypeTape
+	case 040:
+		return FileTypeRemovable
+	default:
+		return FileTypeFixed
+	}
+}
