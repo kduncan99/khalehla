@@ -11,6 +11,251 @@ import (
 	"time"
 )
 
+// mfdServices contains code which provides directory-level services to all other exec code
+// such as assigning files, cataloging files, and general file allocation.
+
+// TODO maybe move the bulk of these to types
+
+type BackupInfo struct {
+	timeBackupCreated          uint64
+	maxBackupLevels            uint64
+	currentBackupLevels        uint64
+	fasBits                    uint64
+	numberOfTextBlocks         uint64
+	backupStartingFilePosition uint64
+	backupReelNumbers          []string
+}
+
+type DescriptorFlags struct {
+	unloaded         bool
+	backedUp         bool
+	saveOnCheckpoint bool
+	toBeCataloged    bool
+	toBeWriteOnly    bool
+	toBeReadOnly     bool
+	toBeDropped      bool
+}
+
+type DisableFlags struct {
+	disabledDueToDirectory     bool
+	disabledAssignedAndWritten bool
+	disabledInaccessibleBackup bool
+}
+
+type DiskPackEntry struct {
+	packName     string
+	mainItemLink uint64
+}
+
+type FileSetCycleInfo struct {
+	toBeCataloged bool
+	toBeDropped   bool
+	absoluteCycle uint
+}
+
+type FileType uint
+
+const (
+	FileTypeFixed     = 0
+	FileTypeTape      = 1
+	FileTypeRemovable = 040
+)
+
+type FileAllocation struct {
+	fileTrackId   types.TrackId
+	trackCount    types.TrackCount
+	ldatIndex     types.LDATIndex
+	deviceTrackId types.TrackId
+}
+
+type InhibitFlags struct {
+	isGuarded         bool
+	inhibitUnload     bool
+	isPrivate         bool
+	assignedExclusive bool
+	isWriteOnly       bool
+	isReadOnly        bool
+}
+
+type FileSetInfo struct {
+	qualifier       string
+	filename        string
+	projectId       string
+	readKey         string
+	writeKey        string
+	fileType        FileType
+	plusOneExists   bool
+	count           uint
+	maxCycleRange   uint
+	currentRange    uint
+	highestAbsolute uint
+	fileInfo        []FileSetCycleInfo
+}
+
+type FileInfo interface {
+	GetAccountId() string
+	GetAbsoluteFileCycle() uint
+}
+
+type FixedFileInfo struct {
+	accountId                string
+	absoluteFileCycle        uint
+	timeOfFirstWriteOrUnload uint64
+	descriptorFlags          DescriptorFlags
+	writtenTo                bool
+	granularity              types.Granularity
+	wordAddressable          bool
+	assignMnemonic           string
+	hasSmoqueEntry           bool
+	numberOfTimesAssigned    uint64
+	inhibitFlags             InhibitFlags
+	timeOfLastReference      uint64
+	timeCataloged            uint64
+	initialGranulesReserved  uint64
+	maxGranules              uint64
+	highestGranuleAssigned   uint64
+	highestTrackWritten      uint64
+	quotaGroupGranules       []uint64
+	backupInfo               BackupInfo
+	diskPackEntries          []DiskPackEntry
+	fileAllocations          []FileAllocation
+}
+
+func (fi *FixedFileInfo) GetAccountId() string {
+	return fi.accountId
+}
+
+func (fi *FixedFileInfo) GetAbsoluteFileCycle() uint {
+	return fi.absoluteFileCycle
+}
+
+type RemovableFileInfo struct {
+	accountId                string
+	absoluteFileCycle        uint
+	timeOfFirstWriteOrUnload uint64
+	descriptorFlags          DescriptorFlags
+	writtenTo                bool
+	granularity              types.Granularity
+	wordAddressable          bool
+	assignMnemonic           string
+	hasSmoqueEntry           bool
+	numberOfTimesAssigned    uint64
+	inhibitFlags             InhibitFlags
+	timeOfLastReference      uint64
+	timeCataloged            uint64
+	initialGranulesReserved  uint64
+	maxGranules              uint64
+	highestGranuleAssigned   uint64
+	highestTrackWritten      uint64
+	readKey                  string
+	writeKey                 string
+	quotaGroupGranules       []uint64
+	backupInfo               BackupInfo
+	diskPackEntries          []DiskPackEntry
+	fileAllocations          []FileAllocation
+}
+
+func (fi *RemovableFileInfo) GetAccountId() string {
+	return fi.accountId
+}
+
+func (fi *RemovableFileInfo) GetAbsoluteFileCycle() uint {
+	return fi.absoluteFileCycle
+}
+
+type TapeFileInfo struct {
+	accountId              string
+	absoluteFileCycle      uint
+	descriptorFlags        DescriptorFlags
+	assignMnemonic         string
+	numberOfTimesAssigned  uint64
+	inhibitFlags           InhibitFlags
+	currentAssignCount     uint64
+	timeOfLastReference    uint64
+	timeCataloged          uint64
+	density                uint64
+	format                 uint64
+	features               uint64
+	featuresExtension      uint64
+	featuresExtension1     uint64
+	numberOfReelsCataloged uint64
+	mtaPop                 uint64
+	noiseConstant          uint64
+	translatorMnemonics    []string
+	tapeLibraryPool        string
+	reelNumber             []string
+}
+
+func (fi *TapeFileInfo) GetAccountId() string {
+	return fi.accountId
+}
+
+func (fi *TapeFileInfo) GetAbsoluteFileCycle() uint {
+	return fi.absoluteFileCycle
+}
+
+func (mgr *MFDManager) ChangeFileSetName(
+	leadItem0Address types.MFDRelativeAddress,
+	newQualifier string,
+	newFilename string,
+) error {
+	// TODO
+	return nil
+}
+
+func (mgr *MFDManager) CreateFileSet(
+	qualifier string,
+	filename string,
+	projectId string,
+	readKey string,
+	writeKey string,
+	fileType FileType,
+) (types.MFDRelativeAddress, error) {
+	// TODO
+	return 0, nil
+}
+
+func (mgr *MFDManager) CreateFileCycle(
+	leadItem0Address types.MFDRelativeAddress,
+) (types.MFDRelativeAddress, error) {
+	// TODO
+	return 0, nil
+}
+
+func (mgr *MFDManager) GetFileInfo(
+	leadItem0Address types.MFDRelativeAddress,
+	absoluteCycle uint,
+) (fi FileInfo, mainItem0Address types.MFDRelativeAddress, err error) {
+	// TODO
+	return nil, 0, nil
+}
+
+func (mgr *MFDManager) GetFileSetInfo(
+	qualifier string,
+	filename string,
+) (fsInfo *FileSetInfo, leadItem0Address types.MFDRelativeAddress, err error) {
+	// TODO
+	return nil, 0, nil
+}
+
+func (mgr *MFDManager) SetFileCycleRange(
+	leadItem0Address types.MFDRelativeAddress,
+	cycleRange uint,
+) error {
+	// TODO
+	return nil
+}
+
+func (mgr *MFDManager) SetFileToBeDeleted(
+	leadItem0Address types.MFDRelativeAddress,
+	absoluteCycle uint,
+) error {
+	// TODO
+	return nil
+}
+
+// ----- mostly obsolete below here -----
+
 type MFDCatalogMassStorageFileRequest struct {
 	qualifier         string
 	filename          string
@@ -53,30 +298,6 @@ type MFDDeleteFileRequest struct {
 	readKey           string
 	writeKey          string
 }
-
-// mfdServices contains code which provides directory-level services to all other exec code
-// such as assigning files, cataloging files, and general file allocation.
-
-// TODO don't need this?
-// func checkOptions(
-// 	optionsGiven uint64,
-// 	optionsAllowed uint64,
-// 	facResult *facilitiesMgr.FacResult,
-// ) bool {
-// 	opt := 'A'
-// 	mask := uint64(types.AOption)
-// 	result := true
-// 	for opt <= 'Z' {
-// 		if (optionsGiven&mask != 0) && (optionsAllowed&mask == 0) {
-// 			str := string(opt)
-// 			facResult.PostMessage(facilitiesMgr.FacStatusIllegalOption, []string{str})
-// 			result = false
-// 		}
-// 		opt++
-// 		mask >>= 1
-// 	}
-// 	return result
-// }
 
 // populateNewLeadItem0 sets up a lead item sector 0 in the given buffer,
 // assuming we are cataloging a new file, will have one cycle, and the absolute cycle is given to us.
@@ -496,16 +717,4 @@ func (mgr *MFDManager) CatalogFile(parameters *MFDCatalogMassStorageFileRequest)
 
 	facResult.PostMessage(facilitiesMgr.FacStatusComplete, []string{"CAT"})
 	return facResult, nil
-}
-
-// DeleteFile some problems... I think...
-// should we just mark the damn thing to-be-deleted, and do nothing until fac mgr comes back and tells us
-// to unassign the thing? That makes some sense, in which case this should be called  MarkFileForDeletion().
-// Also... this should never happen, but if the current assigned count is zero, we can just go ahead and delete it.
-// Makes sense?
-func (mgr *MFDManager) DeleteFile(parameters *MFDDeleteFileRequest) *facilitiesMgr.FacResult {
-	// TODO
-	facResult := facilitiesMgr.NewFacResult()
-
-	return facResult
 }
