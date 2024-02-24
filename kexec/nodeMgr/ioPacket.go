@@ -13,5 +13,6 @@ type IoPacket interface {
 	GetNodeDeviceType() NodeDeviceType
 	GetIoFunction() types.IoFunction
 	GetIoStatus() types.IoStatus
+	GetString() string
 	SetIoStatus(ioStatus types.IoStatus)
 }

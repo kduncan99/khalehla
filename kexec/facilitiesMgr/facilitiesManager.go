@@ -284,7 +284,7 @@ func (mgr *FacilitiesManager) diskBecameReady(nodeId types.NodeIdentifier) {
 	// we only care if the unit is UP, SU, or RV (i.e., not DN)
 	facStat := diskAttr.GetFacNodeStatus()
 	if facStat != FacNodeStatusDown {
-		var label []pkg.Word36
+		label := make([]pkg.Word36, 28)
 		nodeManager := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
 		ioPkt := nodeMgr.NewDiskIoPacketReadLabel(nodeId, label)
 		nodeManager.RouteIo(ioPkt)
@@ -295,7 +295,7 @@ func (mgr *FacilitiesManager) diskBecameReady(nodeId types.NodeIdentifier) {
 		} else if ioStat != types.IosComplete {
 			mgr.mutex.Unlock()
 
-			log.Printf("FacMgr:IO Error reading label disk:%v status:%v", nodeId, ioStat)
+			log.Printf("FacMgr:IO Error reading label disk:%v %v", nodeId, ioPkt.GetString())
 			consMsg := fmt.Sprintf("%v IO ERROR Reading Pack Label - Status=%v", diskAttr.GetNodeName(), ioStat)
 			mgr.exec.SendExecReadOnlyMessage(consMsg, nil)
 
