@@ -6,7 +6,6 @@ package nodeMgr
 
 import (
 	"io"
-	"khalehla/kexec/types"
 	"os"
 	"sync"
 )
@@ -74,25 +73,25 @@ func IsValidReelName(name string) bool {
 }
 
 func (tape *TapeDevice) StartIo(pkt IoPacket) {
-	pkt.SetIoStatus(types.IosInProgress)
+	pkt.SetIoStatus(IosInProgress)
 
 	if pkt.GetNodeDeviceType() != tape.GetNodeDeviceType() {
-		pkt.SetIoStatus(types.IosInvalidNodeType)
+		pkt.SetIoStatus(IosInvalidNodeType)
 	}
 
 	switch pkt.GetIoFunction() {
-	case types.IofMount:
+	case IofMount:
 		tape.doMount(pkt.(*TapeIoPacket))
-	case types.IofRead:
+	case IofRead:
 		tape.doRead(pkt.(*TapeIoPacket))
-	case types.IofReset:
+	case IofReset:
 		tape.doReset(pkt.(*TapeIoPacket))
-	case types.IofUnmount:
+	case IofUnmount:
 		tape.doUnmount(pkt.(*TapeIoPacket))
-	case types.IofWrite:
+	case IofWrite:
 		tape.doWrite(pkt.(*TapeIoPacket))
 	default:
-		pkt.SetIoStatus(types.IosInvalidFunction)
+		pkt.SetIoStatus(IosInvalidFunction)
 	}
 }
 
@@ -100,14 +99,14 @@ func (tape *TapeDevice) doMount(pkt *TapeIoPacket) {
 	tape.mutex.Lock()
 	defer tape.mutex.Unlock()
 	// TODO
-	pkt.ioStatus = types.IosSystemError
+	pkt.ioStatus = IosSystemError
 }
 
 func (tape *TapeDevice) doRead(pkt *TapeIoPacket) {
 	tape.mutex.Lock()
 	defer tape.mutex.Unlock()
 	// TODO
-	pkt.ioStatus = types.IosSystemError
+	pkt.ioStatus = IosSystemError
 }
 
 // doReset cancels any pending IO and unmounts the media
@@ -115,21 +114,21 @@ func (tape *TapeDevice) doReset(pkt *TapeIoPacket) {
 	tape.mutex.Lock()
 	defer tape.mutex.Unlock()
 	// TODO
-	pkt.ioStatus = types.IosSystemError
+	pkt.ioStatus = IosSystemError
 }
 
 func (tape *TapeDevice) doUnmount(pkt *TapeIoPacket) {
 	tape.mutex.Lock()
 	defer tape.mutex.Unlock()
 	// TODO
-	pkt.ioStatus = types.IosSystemError
+	pkt.ioStatus = IosSystemError
 }
 
 func (tape *TapeDevice) doWrite(pkt *TapeIoPacket) {
 	tape.mutex.Lock()
 	defer tape.mutex.Unlock()
 	// TODO
-	pkt.ioStatus = types.IosSystemError
+	pkt.ioStatus = IosSystemError
 }
 
 func (tape *TapeDevice) Dump(destination io.Writer, indent string) {

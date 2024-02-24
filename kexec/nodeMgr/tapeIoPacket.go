@@ -11,8 +11,8 @@ import (
 
 type TapeIoPacket struct {
 	nodeId         types.NodeIdentifier
-	ioFunction     types.IoFunction
-	ioStatus       types.IoStatus
+	ioFunction     IoFunction
+	ioStatus       IoStatus
 	fileName       string // for mount
 	writeProtected bool   // for mount
 }
@@ -25,21 +25,21 @@ func (pkt *TapeIoPacket) GetNodeDeviceType() NodeDeviceType {
 	return NodeDeviceTape
 }
 
-func (pkt *TapeIoPacket) GetIoFunction() types.IoFunction {
+func (pkt *TapeIoPacket) GetIoFunction() IoFunction {
 	return pkt.ioFunction
 }
 
-func (pkt *TapeIoPacket) GetIoStatus() types.IoStatus {
+func (pkt *TapeIoPacket) GetIoStatus() IoStatus {
 	return pkt.ioStatus
 }
 
 func (pkt *TapeIoPacket) GetString() string {
-	funcStr, ok := types.IoFunctionTable[pkt.ioFunction]
+	funcStr, ok := IoFunctionTable[pkt.ioFunction]
 	if !ok {
 		funcStr = fmt.Sprintf("%v", pkt.ioFunction)
 	}
 
-	statStr, ok := types.IoStatusTable[pkt.ioStatus]
+	statStr, ok := IoStatusTable[pkt.ioStatus]
 	if !ok {
 		statStr = fmt.Sprintf("%v", pkt.ioStatus)
 	}
@@ -50,15 +50,15 @@ func (pkt *TapeIoPacket) GetString() string {
 	return fmt.Sprintf("func:%s %sstat:%s", funcStr, detStr, statStr)
 }
 
-func (pkt *TapeIoPacket) SetIoStatus(ioStatus types.IoStatus) {
+func (pkt *TapeIoPacket) SetIoStatus(ioStatus IoStatus) {
 	pkt.ioStatus = ioStatus
 }
 
 func NewTapeIoPacketMount(nodeId types.NodeIdentifier, fileName string, writeProtected bool) *TapeIoPacket {
 	return &TapeIoPacket{
 		nodeId:         nodeId,
-		ioFunction:     types.IofMount,
-		ioStatus:       types.IosNotStarted,
+		ioFunction:     IofMount,
+		ioStatus:       IosNotStarted,
 		fileName:       fileName,
 		writeProtected: writeProtected,
 	}
@@ -67,15 +67,15 @@ func NewTapeIoPacketMount(nodeId types.NodeIdentifier, fileName string, writePro
 func NewTapeIoPacketReset(nodeId types.NodeIdentifier) *TapeIoPacket {
 	return &TapeIoPacket{
 		nodeId:     nodeId,
-		ioFunction: types.IofReset,
-		ioStatus:   types.IosNotStarted,
+		ioFunction: IofReset,
+		ioStatus:   IosNotStarted,
 	}
 }
 
 func NewTapeIoPacketUnmount(nodeId types.NodeIdentifier) *TapeIoPacket {
 	return &TapeIoPacket{
 		nodeId:     nodeId,
-		ioFunction: types.IofUnmount,
-		ioStatus:   types.IosNotStarted,
+		ioFunction: IofUnmount,
+		ioStatus:   IosNotStarted,
 	}
 }

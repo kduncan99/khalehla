@@ -244,7 +244,7 @@ func (mgr *NodeManager) RouteIo(ioPacket IoPacket) {
 	}
 
 	if ioPacket == nil {
-		ioPacket.SetIoStatus(types.IosInternalError)
+		ioPacket.SetIoStatus(IosInternalError)
 		mgr.exec.Stop(types.StopErrorInSystemIOTable)
 		return
 	}
@@ -254,23 +254,23 @@ func (mgr *NodeManager) RouteIo(ioPacket IoPacket) {
 
 	devInfo, ok := mgr.deviceInfos[ioPacket.GetNodeIdentifier()]
 	if !ok {
-		ioPacket.SetIoStatus(types.IosDeviceDoesNotExist)
+		ioPacket.SetIoStatus(IosDeviceDoesNotExist)
 		return
 	}
 
 	if !devInfo.IsAccessible() {
-		ioPacket.SetIoStatus(types.IosDeviceIsNotAccessible)
+		ioPacket.SetIoStatus(IosDeviceIsNotAccessible)
 		return
 	}
 
 	chInfo, err := mgr.selectChannelForDevice(devInfo)
 	if err != nil {
-		ioPacket.SetIoStatus(types.IosInternalError)
+		ioPacket.SetIoStatus(IosInternalError)
 		mgr.exec.Stop(types.StopErrorInSystemIOTable)
 		return
 	}
 
-	ioPacket.SetIoStatus(types.IosInProgress)
+	ioPacket.SetIoStatus(IosInProgress)
 	chInfo.GetChannel().StartIo(ioPacket)
 }
 

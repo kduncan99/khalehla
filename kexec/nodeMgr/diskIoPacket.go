@@ -12,8 +12,8 @@ import (
 
 type DiskIoPacket struct {
 	nodeId         types.NodeIdentifier
-	ioFunction     types.IoFunction
-	ioStatus       types.IoStatus
+	ioFunction     IoFunction
+	ioStatus       IoStatus
 	blockId        types.BlockId    // for read, write
 	buffer         []pkg.Word36     // for read, readLabel, write
 	packName       string           // for prep
@@ -32,49 +32,49 @@ func (pkt *DiskIoPacket) GetNodeDeviceType() NodeDeviceType {
 	return NodeDeviceDisk
 }
 
-func (pkt *DiskIoPacket) GetIoFunction() types.IoFunction {
+func (pkt *DiskIoPacket) GetIoFunction() IoFunction {
 	return pkt.ioFunction
 }
 
-func (pkt *DiskIoPacket) GetIoStatus() types.IoStatus {
+func (pkt *DiskIoPacket) GetIoStatus() IoStatus {
 	return pkt.ioStatus
 }
 
 func (pkt *DiskIoPacket) GetString() string {
-	funcStr, ok := types.IoFunctionTable[pkt.ioFunction]
+	funcStr, ok := IoFunctionTable[pkt.ioFunction]
 	if !ok {
 		funcStr = fmt.Sprintf("%v", pkt.ioFunction)
 	}
 
-	statStr, ok := types.IoStatusTable[pkt.ioStatus]
+	statStr, ok := IoStatusTable[pkt.ioStatus]
 	if !ok {
 		statStr = fmt.Sprintf("%v", pkt.ioStatus)
 	}
 
 	detStr := ""
-	if pkt.ioFunction == types.IofRead || pkt.ioFunction == types.IofWrite {
+	if pkt.ioFunction == IofRead || pkt.ioFunction == IofWrite {
 		detStr += fmt.Sprintf("blkId:%v ", pkt.blockId)
 	}
-	if pkt.ioFunction == types.IofPrep {
+	if pkt.ioFunction == IofPrep {
 		detStr += fmt.Sprintf("packId:%v prep:%v tracks:%v rem:%v ",
 			pkt.packName, pkt.prepFactor, pkt.trackCount, pkt.removable)
 	}
-	if pkt.ioFunction == types.IofMount {
+	if pkt.ioFunction == IofMount {
 		detStr += fmt.Sprintf("file:%v writeProt:%v ", pkt.fileName, pkt.writeProtected)
 	}
 
 	return fmt.Sprintf("func:%s %sstat:%s", funcStr, detStr, statStr)
 }
 
-func (pkt *DiskIoPacket) SetIoStatus(ioStatus types.IoStatus) {
+func (pkt *DiskIoPacket) SetIoStatus(ioStatus IoStatus) {
 	pkt.ioStatus = ioStatus
 }
 
 func NewDiskIoPacketMount(nodeId types.NodeIdentifier, fileName string, writeProtected bool) *DiskIoPacket {
 	return &DiskIoPacket{
 		nodeId:         nodeId,
-		ioFunction:     types.IofMount,
-		ioStatus:       types.IosNotStarted,
+		ioFunction:     IofMount,
+		ioStatus:       IosNotStarted,
 		fileName:       fileName,
 		writeProtected: writeProtected,
 	}
@@ -83,8 +83,8 @@ func NewDiskIoPacketMount(nodeId types.NodeIdentifier, fileName string, writePro
 func NewDiskIoPacketPrep(nodeId types.NodeIdentifier, packName string, prepFactor types.PrepFactor, trackCount types.TrackCount, removable bool) *DiskIoPacket {
 	return &DiskIoPacket{
 		nodeId:     nodeId,
-		ioFunction: types.IofPrep,
-		ioStatus:   types.IosNotStarted,
+		ioFunction: IofPrep,
+		ioStatus:   IosNotStarted,
 		packName:   packName,
 		prepFactor: prepFactor,
 		trackCount: trackCount,
@@ -95,8 +95,8 @@ func NewDiskIoPacketPrep(nodeId types.NodeIdentifier, packName string, prepFacto
 func NewDiskIoPacketRead(nodeId types.NodeIdentifier, blockId types.BlockId, buffer []pkg.Word36) *DiskIoPacket {
 	return &DiskIoPacket{
 		nodeId:     nodeId,
-		ioFunction: types.IofRead,
-		ioStatus:   types.IosNotStarted,
+		ioFunction: IofRead,
+		ioStatus:   IosNotStarted,
 		blockId:    blockId,
 		buffer:     buffer,
 	}
@@ -105,8 +105,8 @@ func NewDiskIoPacketRead(nodeId types.NodeIdentifier, blockId types.BlockId, buf
 func NewDiskIoPacketReadLabel(nodeId types.NodeIdentifier, buffer []pkg.Word36) *DiskIoPacket {
 	return &DiskIoPacket{
 		nodeId:     nodeId,
-		ioFunction: types.IofReadLabel,
-		ioStatus:   types.IosNotStarted,
+		ioFunction: IofReadLabel,
+		ioStatus:   IosNotStarted,
 		buffer:     buffer,
 	}
 }
@@ -114,24 +114,24 @@ func NewDiskIoPacketReadLabel(nodeId types.NodeIdentifier, buffer []pkg.Word36) 
 func NewDiskIoPacketReset(nodeId types.NodeIdentifier) *DiskIoPacket {
 	return &DiskIoPacket{
 		nodeId:     nodeId,
-		ioFunction: types.IofReset,
-		ioStatus:   types.IosNotStarted,
+		ioFunction: IofReset,
+		ioStatus:   IosNotStarted,
 	}
 }
 
 func NewDiskIoPacketUnmount(nodeId types.NodeIdentifier) *DiskIoPacket {
 	return &DiskIoPacket{
 		nodeId:     nodeId,
-		ioFunction: types.IofUnmount,
-		ioStatus:   types.IosNotStarted,
+		ioFunction: IofUnmount,
+		ioStatus:   IosNotStarted,
 	}
 }
 
 func NewDiskIoPacketWrite(nodeId types.NodeIdentifier, blockId types.BlockId, buffer []pkg.Word36) *DiskIoPacket {
 	return &DiskIoPacket{
 		nodeId:     nodeId,
-		ioFunction: types.IofWrite,
-		ioStatus:   types.IosNotStarted,
+		ioFunction: IofWrite,
+		ioStatus:   IosNotStarted,
 		blockId:    blockId,
 		buffer:     buffer,
 	}
@@ -140,8 +140,8 @@ func NewDiskIoPacketWrite(nodeId types.NodeIdentifier, blockId types.BlockId, bu
 func NewDiskIoPacketWriteLabel(nodeId types.NodeIdentifier, buffer []pkg.Word36) *DiskIoPacket {
 	return &DiskIoPacket{
 		nodeId:     nodeId,
-		ioFunction: types.IofWriteLabel,
-		ioStatus:   types.IosNotStarted,
+		ioFunction: IofWriteLabel,
+		ioStatus:   IosNotStarted,
 		buffer:     buffer,
 	}
 }

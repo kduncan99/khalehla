@@ -64,7 +64,7 @@ func (mgr *MFDManager) InitializeMassStorage() {
 			pkt := nodeMgr.NewDiskIoPacketRead(ddInfo.GetNodeIdentifier(), dirTrackBlockId, buf)
 			nm.RouteIo(pkt)
 			ioStat := pkt.GetIoStatus()
-			if ioStat != types.IosComplete {
+			if ioStat != nodeMgr.IosComplete {
 				msg := fmt.Sprintf("IO error reading directory track on device %v", ddInfo.GetNodeName())
 				log.Printf("MFDMgr:%v", msg)
 				mgr.exec.SendExecReadOnlyMessage(msg, nil)
@@ -558,7 +558,7 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*facili
 			ioPkt := nodeMgr.NewDiskIoPacketRead(fpDesc.nodeId, blockId, sub)
 			nm.RouteIo(ioPkt)
 			ioStat := ioPkt.GetIoStatus()
-			if ioStat != types.IosComplete {
+			if ioStat != nodeMgr.IosComplete {
 				log.Printf("MFDMgr:initializeFixed cannot read directory track dev:%v blockId:%v",
 					fpDesc.nodeId, blockId)
 				mgr.exec.Stop(types.StopInternalExecIOFailed)
@@ -725,7 +725,7 @@ func (mgr *MFDManager) writeMFDCache() error {
 		nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
 		nm.RouteIo(ioPkt)
 		ioStat := ioPkt.GetIoStatus()
-		if ioStat != types.IosComplete {
+		if ioStat != nodeMgr.IosComplete {
 			log.Printf("MFDMgr:writeMFDCache error writing MFD block status=%v", ioStat)
 			mgr.exec.Stop(types.StopInternalExecIOFailed)
 			return fmt.Errorf("error draining MFD cache")

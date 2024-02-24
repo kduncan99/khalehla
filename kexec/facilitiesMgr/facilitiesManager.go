@@ -289,10 +289,10 @@ func (mgr *FacilitiesManager) diskBecameReady(nodeId types.NodeIdentifier) {
 		ioPkt := nodeMgr.NewDiskIoPacketReadLabel(nodeId, label)
 		nodeManager.RouteIo(ioPkt)
 		ioStat := ioPkt.GetIoStatus()
-		if ioStat == types.IosInternalError {
+		if ioStat == nodeMgr.IosInternalError {
 			mgr.mutex.Unlock()
 			return
-		} else if ioStat != types.IosComplete {
+		} else if ioStat != nodeMgr.IosComplete {
 			mgr.mutex.Unlock()
 
 			log.Printf("FacMgr:IO Error reading label disk:%v %v", nodeId, ioPkt.GetString())

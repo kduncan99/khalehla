@@ -11,8 +11,8 @@ import "khalehla/kexec/types"
 type IoPacket interface {
 	GetNodeIdentifier() types.NodeIdentifier
 	GetNodeDeviceType() NodeDeviceType
-	GetIoFunction() types.IoFunction
-	GetIoStatus() types.IoStatus
+	GetIoFunction() IoFunction
+	GetIoStatus() IoStatus
 	GetString() string
-	SetIoStatus(ioStatus types.IoStatus)
+	SetIoStatus(ioStatus IoStatus)
 }

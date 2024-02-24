@@ -63,13 +63,13 @@ func DoPrep(args []string) error {
 
 	pkt := nodeMgr.NewDiskIoPacketMount(devId, fileName, false)
 	dc.StartIo(pkt)
-	if pkt.GetIoStatus() != types.IosComplete {
+	if pkt.GetIoStatus() != nodeMgr.IosComplete {
 		return fmt.Errorf("status %v returned while mounting pack file %v", pkt.GetIoStatus(), fileName)
 	}
 
 	pkt = nodeMgr.NewDiskIoPacketPrep(devId, packName, types.PrepFactor(prepFactor), types.TrackCount(trackCount), removable)
 	dc.StartIo(pkt)
-	if pkt.GetIoStatus() != types.IosComplete {
+	if pkt.GetIoStatus() != nodeMgr.IosComplete {
 		return fmt.Errorf("status %v returned while prepping pack file %v", pkt.GetIoStatus(), fileName)
 	}
 
@@ -118,7 +118,7 @@ func showLabelRecord(channel types.Channel, devId types.DeviceIdentifier, interp
 	label := make([]pkg.Word36, 28)
 	pkt := nodeMgr.NewDiskIoPacketReadLabel(devId, label)
 	channel.StartIo(pkt)
-	if pkt.GetIoStatus() != types.IosComplete {
+	if pkt.GetIoStatus() != nodeMgr.IosComplete {
 		fmt.Printf("Status %v returned while reading label\n", pkt.GetIoStatus())
 		return
 	}

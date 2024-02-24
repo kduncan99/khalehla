@@ -44,15 +44,15 @@ func (ch *DiskChannel) AssignDevice(nodeIdentifier types.NodeIdentifier, device 
 }
 
 func (ch *DiskChannel) StartIo(ioPacket IoPacket) {
-	ioPacket.SetIoStatus(types.IosInProgress)
+	ioPacket.SetIoStatus(IosInProgress)
 	if ioPacket.GetNodeDeviceType() != ch.GetNodeDeviceType() {
-		ioPacket.SetIoStatus(types.IosInvalidNodeType)
+		ioPacket.SetIoStatus(IosInvalidNodeType)
 		return
 	}
 
 	dev, ok := ch.devices[ioPacket.GetNodeIdentifier()]
 	if !ok {
-		ioPacket.SetIoStatus(types.IosDeviceIsNotAccessible)
+		ioPacket.SetIoStatus(IosDeviceIsNotAccessible)
 		return
 	}
 
