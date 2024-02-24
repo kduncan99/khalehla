@@ -4,7 +4,10 @@
 
 package nodeMgr
 
-import "khalehla/kexec/types"
+import (
+	"fmt"
+	"khalehla/kexec/types"
+)
 
 type TapeIoPacket struct {
 	nodeId         types.NodeIdentifier
@@ -28,6 +31,23 @@ func (pkt *TapeIoPacket) GetIoFunction() types.IoFunction {
 
 func (pkt *TapeIoPacket) GetIoStatus() types.IoStatus {
 	return pkt.ioStatus
+}
+
+func (pkt *TapeIoPacket) GetString() string {
+	funcStr, ok := types.IoFunctionTable[pkt.ioFunction]
+	if !ok {
+		funcStr = fmt.Sprintf("%v", pkt.ioFunction)
+	}
+
+	statStr, ok := types.IoStatusTable[pkt.ioStatus]
+	if !ok {
+		statStr = fmt.Sprintf("%v", pkt.ioStatus)
+	}
+
+	detStr := ""
+	// TODO detStr
+
+	return fmt.Sprintf("func:%s %sstat:%s", funcStr, detStr, statStr)
 }
 
 func (pkt *TapeIoPacket) SetIoStatus(ioStatus types.IoStatus) {
