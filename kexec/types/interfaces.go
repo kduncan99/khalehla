@@ -9,10 +9,10 @@ import (
 	"khalehla/kexec/config"
 )
 
-// Console is a unit which actually acts as an operating system console endpoint.
+// IConsole is a unit which actually acts as an operating system console endpoint.
 // One example is the StandardConsole which is always around.
 // One might also implement a DemandConsole for RSI @@CONS, or a net-based console for a web browser.
-type Console interface {
+type IConsole interface {
 	ClearReadReplyMessage(messageId int) error
 	Close()
 	Dump(destination io.Writer, indent string)

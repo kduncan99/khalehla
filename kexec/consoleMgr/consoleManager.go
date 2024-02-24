@@ -20,7 +20,7 @@ type readReplyTracker struct {
 	replyConsole *types.ConsoleIdentifier // this is the console which is currently supposed to answer
 	hasReply     bool
 	isCanceled   bool
-	messageId    int // from the Console
+	messageId    int // from the IConsole
 	retryLater   bool
 }
 
@@ -30,8 +30,8 @@ type ConsoleManager struct {
 	mutex            sync.Mutex
 	threadDone       bool
 	threadStop       bool
-	consoles         map[types.ConsoleIdentifier]types.Console
-	primaryConsole   types.Console
+	consoles         map[types.ConsoleIdentifier]types.IConsole
+	primaryConsole   types.IConsole
 	primaryConsoleId types.ConsoleIdentifier
 	queuedReadOnly   []*types.ConsoleReadOnlyMessage
 	queuedReadReply  map[int]*readReplyTracker
@@ -52,7 +52,7 @@ func (mgr *ConsoleManager) Boot() error {
 	//	TODO shut down all known net consoles
 
 	// reset the consoles list to include only the existing system console
-	mgr.consoles = map[types.ConsoleIdentifier]types.Console{
+	mgr.consoles = map[types.ConsoleIdentifier]types.IConsole{
 		mgr.primaryConsoleId: mgr.primaryConsole,
 	}
 	_ = mgr.primaryConsole.Reset()
@@ -75,7 +75,7 @@ func (mgr *ConsoleManager) Close() {
 // Initialize is invoked when the application is starting
 func (mgr *ConsoleManager) Initialize() error {
 	log.Printf("ConsMgr:Initialize")
-	mgr.consoles = make(map[types.ConsoleIdentifier]types.Console)
+	mgr.consoles = make(map[types.ConsoleIdentifier]types.IConsole)
 	mgr.queuedReadOnly = make([]*types.ConsoleReadOnlyMessage, 0)
 	mgr.queuedReadReply = make(map[int]*readReplyTracker)
 
@@ -228,7 +228,7 @@ func (mgr *ConsoleManager) checkForReadReplyMessages() bool {
 			text += tracker.message.Text
 
 			// If it has routing, try to send it to the indicated console
-			var console types.Console = nil
+			var console types.IConsole = nil
 			var consoleId types.ConsoleIdentifier
 			if tracker.message.Routing != nil {
 				cons, ok := mgr.consoles[*tracker.message.Routing]
@@ -336,7 +336,7 @@ func (mgr *ConsoleManager) checkForUnsolicitedInput() bool {
 	return false
 }
 
-// dropConsole is invoked whenever any higher level code gets an error response from a Console.
+// dropConsole is invoked whenever any higher level code gets an error response from a IConsole.
 // call under lock
 func (mgr *ConsoleManager) dropConsole(consoleId types.ConsoleIdentifier) {
 	consId := pkg.Word36(consoleId)
