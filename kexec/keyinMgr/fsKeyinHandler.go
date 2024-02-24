@@ -209,15 +209,23 @@ func (kh *FSKeyinHandler) handleOption() {
 	case "DISK":
 		kh.handleAllOf(nodeMgr.NodeCategoryDevice, nodeMgr.NodeDeviceDisk)
 		return
+	case "DISKS":
+		kh.handleAllOf(nodeMgr.NodeCategoryDevice, nodeMgr.NodeDeviceDisk)
+		return
 	case "FDISK":
 		// TODO
 	case "MS":
 		// TODO
 	case "PACK":
 		// TODO
+	case "PACKS":
+		// TODO
 	case "RDISK":
 		// TODO
 	case "TAPE":
+		kh.handleAllOf(nodeMgr.NodeCategoryDevice, nodeMgr.NodeDeviceTape)
+		return
+	case "TAPES":
 		kh.handleAllOf(nodeMgr.NodeCategoryDevice, nodeMgr.NodeDeviceTape)
 		return
 	}
