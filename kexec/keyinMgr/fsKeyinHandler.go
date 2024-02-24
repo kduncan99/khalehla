@@ -132,7 +132,7 @@ func (kh *FSKeyinHandler) getStatusStringForNode(nodeInfo types.NodeInfo) string
 	fm := kh.exec.GetFacilitiesManager()
 	str := nodeInfo.GetNodeName() + " "
 	str += nodeMgr.GetNodeStatusString(nodeInfo.GetNodeStatus(), nodeInfo.IsAccessible())
-	if nodeInfo.GetNodeCategory() == types.NodeCategoryDevice {
+	if nodeInfo.GetNodeCategory() == nodeMgr.NodeCategoryDevice {
 		devInfo := nodeInfo.(types.DeviceInfo)
 		str += " " + fm.GetDeviceStatusDetail(devInfo.GetDeviceIdentifier())
 	}
@@ -151,7 +151,7 @@ func (kh *FSKeyinHandler) handleAllForChannel() {
 	}
 	statStrings = append(statStrings, kh.getStatusStringForNode(nodeInfo))
 
-	if nodeInfo.GetNodeCategory() == types.NodeCategoryChannel {
+	if nodeInfo.GetNodeCategory() == nodeMgr.NodeCategoryChannel {
 		chInfo := nodeInfo.(types.ChannelInfo)
 		devInfos := chInfo.GetDeviceInfos()
 		for _, di := range devInfos {
@@ -162,10 +162,10 @@ func (kh *FSKeyinHandler) handleAllForChannel() {
 	kh.emitStatusStrings(statStrings)
 }
 
-func (kh *FSKeyinHandler) handleAllOf(nodeCategory types.NodeCategory, nodeType types.NodeType) {
+func (kh *FSKeyinHandler) handleAllOf(nodeCategory nodeMgr.NodeCategoryType, nodeType nodeMgr.NodeDeviceType) {
 	nm := kh.exec.GetNodeManager()
 	statStrings := make([]string, 0)
-	if nodeCategory == types.NodeCategoryChannel || nodeCategory == 0 {
+	if nodeCategory == nodeMgr.NodeCategoryChannel || nodeCategory == 0 {
 		for _, chInfo := range nm.GetChannelInfos() {
 			if nodeType == chInfo.GetNodeType() || nodeType == 0 {
 				statStrings = append(statStrings, kh.getStatusStringForNode(chInfo))
@@ -173,7 +173,7 @@ func (kh *FSKeyinHandler) handleAllOf(nodeCategory types.NodeCategory, nodeType 
 		}
 	}
 
-	if nodeCategory == types.NodeCategoryDevice || nodeCategory == 0 {
+	if nodeCategory == nodeMgr.NodeCategoryDevice || nodeCategory == 0 {
 		for _, devInfo := range nm.GetDeviceInfos() {
 			if nodeType == devInfo.GetNodeType() || nodeType == 0 {
 				statStrings = append(statStrings, kh.getStatusStringForNode(devInfo))
@@ -208,10 +208,10 @@ func (kh *FSKeyinHandler) handleOption() {
 		kh.handleAllForChannel()
 		return
 	case "CM":
-		kh.handleAllOf(types.NodeCategoryChannel, 0)
+		kh.handleAllOf(nodeMgr.NodeCategoryChannel, 0)
 		return
 	case "DISK":
-		kh.handleAllOf(types.NodeCategoryDevice, types.NodeTypeDisk)
+		kh.handleAllOf(nodeMgr.NodeCategoryDevice, nodeMgr.NodeDeviceDisk)
 		return
 	case "FDISK":
 		// TODO
@@ -222,7 +222,7 @@ func (kh *FSKeyinHandler) handleOption() {
 	case "RDISK":
 		// TODO
 	case "TAPE":
-		kh.handleAllOf(types.NodeCategoryDevice, types.NodeTypeTape)
+		kh.handleAllOf(nodeMgr.NodeCategoryDevice, nodeMgr.NodeDeviceTape)
 		return
 	}
 

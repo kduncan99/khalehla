@@ -22,12 +22,20 @@ func NewTapeChannel() *TapeChannel {
 	}
 }
 
-func (ch *TapeChannel) GetNodeType() types.NodeType {
-	return types.NodeTypeTape
+func (ch *TapeChannel) GetNodeCategoryType() NodeCategoryType {
+	return NodeCategoryChannel
 }
 
-func (ch *TapeChannel) AssignDevice(deviceIdentifier types.DeviceIdentifier, device types.Device) error {
-	if device.GetNodeType() != types.NodeTypeTape {
+func (ch *TapeChannel) GetNodeDeviceType() NodeDeviceType {
+	return NodeDeviceTape
+}
+
+func (ch *TapeChannel) GetNodeModelType() NodeModelType {
+	return NodeModelTapeChannel
+}
+
+func (ch *TapeChannel) AssignDevice(deviceIdentifier types.DeviceIdentifier, device Device) error {
+	if device.GetNodeDeviceType() != NodeDeviceTape {
 		return fmt.Errorf("device is not a tape")
 	}
 
@@ -37,7 +45,7 @@ func (ch *TapeChannel) AssignDevice(deviceIdentifier types.DeviceIdentifier, dev
 
 func (ch *TapeChannel) StartIo(ioPacket types.IoPacket) {
 	ioPacket.SetIoStatus(types.IosInProgress)
-	if ioPacket.GetNodeType() != ch.GetNodeType() {
+	if ioPacket.GetNodeDeviceType() != ch.GetNodeDeviceType() {
 		ioPacket.SetIoStatus(types.IosInvalidNodeType)
 		return
 	}

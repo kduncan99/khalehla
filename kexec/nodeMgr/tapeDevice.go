@@ -27,8 +27,16 @@ func NewTapeDevice() *TapeDevice {
 	}
 }
 
-func (tape *TapeDevice) GetNodeType() types.NodeType {
-	return types.NodeTypeTape
+func (tape *TapeDevice) GetNodeCategoryType() NodeCategoryType {
+	return NodeCategoryDevice
+}
+
+func (tape *TapeDevice) GetNodeDeviceType() NodeDeviceType {
+	return NodeDeviceTape
+}
+
+func (tape *TapeDevice) GetNodeModelType() NodeModelType {
+	return NodeModelFileSystemTapeDevice
 }
 
 func (tape *TapeDevice) IsMounted() bool {
@@ -68,7 +76,7 @@ func IsValidReelName(name string) bool {
 func (tape *TapeDevice) StartIo(pkt types.IoPacket) {
 	pkt.SetIoStatus(types.IosInProgress)
 
-	if pkt.GetNodeType() != tape.GetNodeType() {
+	if pkt.GetNodeDeviceType() != tape.GetNodeDeviceType() {
 		pkt.SetIoStatus(types.IosInvalidNodeType)
 	}
 

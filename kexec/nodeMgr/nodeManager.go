@@ -27,11 +27,11 @@ type NodeManager struct {
 	mutex        sync.Mutex
 	threadDone   bool
 	threadStop   bool
-	nodeInfos    map[types.NodeIdentifier]types.NodeInfo       // all nodes
-	channelInfos map[types.ChannelIdentifier]types.ChannelInfo // this is loaded from the config
-	deviceInfos  map[types.DeviceIdentifier]types.DeviceInfo   // this is loaded from the config
-	strategy     selectionStrategy                             // strategy used for selecting a channel fo IO
-	nextChannel  []types.ChannelIdentifier                     // used for selecting channel to be used for IO for round-robin
+	nodeInfos    map[types.NodeIdentifier]NodeInfo       // all nodes
+	channelInfos map[types.ChannelIdentifier]ChannelInfo // this is loaded from the config
+	deviceInfos  map[types.DeviceIdentifier]DeviceInfo   // this is loaded from the config
+	strategy     selectionStrategy                       // strategy used for selecting a channel fo IO
+	nextChannel  []types.ChannelIdentifier               // used for selecting channel to be used for IO for round-robin
 }
 
 func NewNodeManager(exec types.IExec) *NodeManager {
@@ -62,9 +62,9 @@ func (mgr *NodeManager) Close() {
 // Initialize is invoked when the application is starting
 func (mgr *NodeManager) Initialize() error {
 	log.Printf("NodeMgr:Initialized")
-	mgr.nodeInfos = make(map[types.NodeIdentifier]types.NodeInfo)
-	mgr.channelInfos = make(map[types.ChannelIdentifier]types.ChannelInfo)
-	mgr.deviceInfos = make(map[types.DeviceIdentifier]types.DeviceInfo)
+	mgr.nodeInfos = make(map[types.NodeIdentifier]NodeInfo)
+	mgr.channelInfos = make(map[types.ChannelIdentifier]ChannelInfo)
+	mgr.deviceInfos = make(map[types.DeviceIdentifier]DeviceInfo)
 
 	// read configuration
 	// TODO from a data file or database or something
@@ -125,8 +125,8 @@ func (mgr *NodeManager) Initialize() error {
 	// Connect devices to channels
 	errors := false
 	for cid, cInfo := range mgr.channelInfos {
-		switch cInfo.GetNodeType() {
-		case types.NodeTypeDisk:
+		switch cInfo.GetNodeDeviceType() {
+		case NodeDeviceDisk:
 			dchInfo := cInfo.(*DiskChannelInfo)
 			for _, dInfo := range dchInfo.deviceInfos {
 				did := dInfo.GetDeviceIdentifier()
@@ -139,7 +139,7 @@ func (mgr *NodeManager) Initialize() error {
 					dInfo.SetIsAccessible(true)
 				}
 			}
-		case types.NodeTypeTape:
+		case NodeDeviceTape:
 			tchInfo := cInfo.(*TapeChannelInfo)
 			for _, dInfo := range tchInfo.deviceInfos {
 				did := dInfo.GetDeviceIdentifier()
@@ -237,8 +237,8 @@ func IsValidPrepFactor(prepFactor types.PrepFactor) bool {
 		prepFactor == 448 || prepFactor == 896 || prepFactor == 1792
 }
 
-func (mgr *NodeManager) GetChannelInfos() []types.ChannelInfo {
-	var result = make([]types.ChannelInfo, len(mgr.channelInfos))
+func (mgr *NodeManager) GetChannelInfos() []ChannelInfo {
+	var result = make([]ChannelInfo, len(mgr.channelInfos))
 	cx := 0
 	for _, chInfo := range mgr.channelInfos {
 		result[cx] = chInfo
@@ -247,8 +247,8 @@ func (mgr *NodeManager) GetChannelInfos() []types.ChannelInfo {
 	return result
 }
 
-func (mgr *NodeManager) GetDeviceInfos() []types.DeviceInfo {
-	var result = make([]types.DeviceInfo, len(mgr.deviceInfos))
+func (mgr *NodeManager) GetDeviceInfos() []DeviceInfo {
+	var result = make([]DeviceInfo, len(mgr.deviceInfos))
 	dx := 0
 	for _, devInfo := range mgr.deviceInfos {
 		result[dx] = devInfo
@@ -257,7 +257,7 @@ func (mgr *NodeManager) GetDeviceInfos() []types.DeviceInfo {
 	return result
 }
 
-func (mgr *NodeManager) GetNodeInfoByName(nodeName string) (types.NodeInfo, error) {
+func (mgr *NodeManager) GetNodeInfoByName(nodeName string) (NodeInfo, error) {
 	for _, chInfo := range mgr.channelInfos {
 		if nodeName == chInfo.GetNodeName() {
 			return chInfo, nil
@@ -273,7 +273,7 @@ func (mgr *NodeManager) GetNodeInfoByName(nodeName string) (types.NodeInfo, erro
 	return nil, fmt.Errorf("not found")
 }
 
-func (mgr *NodeManager) GetNodeInfoByIdentifier(nodeId types.NodeIdentifier) (types.NodeInfo, error) {
+func (mgr *NodeManager) GetNodeInfoByIdentifier(nodeId types.NodeIdentifier) (NodeInfo, error) {
 	for _, chInfo := range mgr.channelInfos {
 		if nodeId == chInfo.GetNodeIdentifier() {
 			return chInfo, nil
@@ -290,15 +290,15 @@ func (mgr *NodeManager) GetNodeInfoByIdentifier(nodeId types.NodeIdentifier) (ty
 }
 
 // RouteIo handles all disk and tape IO for the exec
-func (mgr *NodeManager) RouteIo(ioPacket types.IoPacket) {
+func (mgr *NodeManager) RouteIo(ioPacket IoPacket) {
 	if mgr.exec.GetConfiguration().LogIOs {
 		devId := pkg.Word36(ioPacket.GetDeviceIdentifier())
 		devName := devId.ToStringAsFieldata()
-		switch ioPacket.GetNodeType() {
-		case types.NodeTypeDisk:
+		switch ioPacket.GetNodeDeviceType() {
+		case NodeDeviceDisk:
 			iop := ioPacket.(*DiskIoPacket)
 			log.Printf("NodeMgr:RouteIO %v iof:%v blk:%v", devName, iop.ioFunction, iop.blockId)
-		case types.NodeTypeTape:
+		case NodeDeviceTape:
 			iop := ioPacket.(*TapeIoPacket)
 			log.Printf("NodeMgr:RouteIO %v iof:%v", devName, iop.ioFunction)
 		}
@@ -353,20 +353,20 @@ func (mgr *NodeManager) SetNodeStatus(nodeId types.NodeIdentifier, status types.
 	//	Only makes sense for disk really, and we have FA keyin for that
 
 	// for now, we do not allow changing status of anything except devices
-	if ni.GetNodeCategory() != types.NodeCategoryDevice {
+	if ni.GetNodeCategoryType() != NodeCategoryDevice {
 		return fmt.Errorf("not allowed")
 	}
 
-	devInfo := ni.(types.DeviceInfo)
+	devInfo := ni.(DeviceInfo)
 	stopExec := false
 	switch status {
 	case types.NodeStatusDown:
-		if ni.GetNodeType() == types.NodeTypeDisk {
+		if ni.GetNodeDeviceType() == NodeDeviceDisk {
 			ddInfo := ni.(*DiskDeviceInfo)
 			ddInfo.nodeStatus = status
 			stopExec = mgr.exec.GetFacilitiesManager().IsDeviceAssigned(devInfo.GetDeviceIdentifier())
 			break
-		} else if ni.GetNodeType() == types.NodeTypeTape {
+		} else if ni.GetNodeDeviceType() == NodeDeviceTape {
 			// reset the tape device (unmounts it as part of the process)
 			tdInfo := ni.(*TapeDeviceInfo)
 			ioPkt := NewTapeIoPacketReset(devInfo.GetDeviceIdentifier())
@@ -387,10 +387,10 @@ func (mgr *NodeManager) SetNodeStatus(nodeId types.NodeIdentifier, status types.
 		return fmt.Errorf("not allowed")
 
 	case types.NodeStatusReserved:
-		if ni.GetNodeType() == types.NodeTypeDisk {
+		if ni.GetNodeDeviceType() == NodeDeviceDisk {
 			ddInfo := ni.(*DiskDeviceInfo)
 			ddInfo.nodeStatus = status
-		} else if ni.GetNodeType() == types.NodeTypeTape {
+		} else if ni.GetNodeDeviceType() == NodeDeviceTape {
 			tdInfo := ni.(*TapeDeviceInfo)
 			tdInfo.nodeStatus = status
 		}
@@ -399,7 +399,7 @@ func (mgr *NodeManager) SetNodeStatus(nodeId types.NodeIdentifier, status types.
 		return fmt.Errorf("not allowed")
 
 	case types.NodeStatusSuspended:
-		if ni.GetNodeType() == types.NodeTypeDisk {
+		if ni.GetNodeDeviceType() == NodeDeviceDisk {
 			ddInfo := ni.(*DiskDeviceInfo)
 			ddInfo.nodeStatus = status
 			break
@@ -409,10 +409,10 @@ func (mgr *NodeManager) SetNodeStatus(nodeId types.NodeIdentifier, status types.
 		return fmt.Errorf("not allowed")
 
 	case types.NodeStatusUp:
-		if ni.GetNodeType() == types.NodeTypeDisk {
+		if ni.GetNodeDeviceType() == NodeDeviceDisk {
 			ddInfo := ni.(*DiskDeviceInfo)
 			ddInfo.nodeStatus = status
-		} else if ni.GetNodeType() == types.NodeTypeTape {
+		} else if ni.GetNodeDeviceType() == NodeDeviceTape {
 			tdInfo := ni.(*TapeDeviceInfo)
 			tdInfo.nodeStatus = status
 		}
@@ -437,7 +437,7 @@ func (mgr *NodeManager) SetNodeStatus(nodeId types.NodeIdentifier, status types.
 
 // selectChannelForDevice chooses the *best* channel to be used for accessing the device.
 // THIS MUST BE CALLED UNDER LOCK
-func (mgr *NodeManager) selectChannelForDevice(devInfo types.DeviceInfo) (types.ChannelInfo, error) {
+func (mgr *NodeManager) selectChannelForDevice(devInfo DeviceInfo) (ChannelInfo, error) {
 	cInfos := devInfo.GetChannelInfos()
 	if len(cInfos) == 0 {
 		return nil, fmt.Errorf("not accessible")
@@ -488,7 +488,7 @@ func (mgr *NodeManager) thread() {
 		// Check devices to see if any have become ready or not ready since our last poll.
 		// Make a list while we are under lock, then unlock and notify the appropriate authorities
 		// of any such devices.
-		updates := make(map[types.DeviceInfo]bool)
+		updates := make(map[DeviceInfo]bool)
 		mgr.mutex.Lock()
 		for _, devInfo := range mgr.deviceInfos {
 			if devInfo.GetDevice().IsReady() != devInfo.IsReady() {

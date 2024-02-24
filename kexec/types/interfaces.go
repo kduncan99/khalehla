@@ -7,34 +7,9 @@ package types
 import (
 	"io"
 	"khalehla/kexec/config"
+	"khalehla/kexec/nodeMgr"
 	"time"
 )
-
-// Channel manages async communication with the various deviceInfos assigned to it.
-// It may also manage caching, automatic mounting, or any other various activities
-// on behalf of the exec.
-type Channel interface {
-	AssignDevice(deviceIdentifier DeviceIdentifier, device Device) error
-	Dump(destination io.Writer, indent string)
-	GetNodeType() NodeType
-	StartIo(ioPacket IoPacket)
-}
-
-// ChannelInfo is intended primarily as a means of documenting the use of a more generic NodeInfo
-type ChannelInfo interface {
-	CreateNode()
-	Dump(destination io.Writer, indent string)
-	GetChannel() Channel
-	GetChannelName() string
-	GetChannelIdentifier() ChannelIdentifier
-	GetDeviceInfos() []DeviceInfo
-	GetNodeCategory() NodeCategory
-	GetNodeIdentifier() NodeIdentifier
-	GetNodeName() string
-	GetNodeStatus() NodeStatus
-	GetNodeType() NodeType
-	IsAccessible() bool
-}
 
 // Console is a unit which actually acts as an operating system console endpoint.
 // One example is the StandardConsole which is always around.
@@ -50,34 +25,6 @@ type Console interface {
 	SendReadOnlyMessage(text string) error
 	SendSystemMessages(text1 string, text2 string) error
 	SendReadReplyMessage(text string, maxChars int) (int, error)
-}
-
-// Device manages real or pseudo IO operations for a particular virtual device.
-// It may do so synchronously or asynchronously
-type Device interface {
-	Dump(destination io.Writer, indent string)
-	GetNodeType() NodeType
-	IsReady() bool
-	StartIo(ioPacket IoPacket)
-}
-
-// DeviceInfo is intended primarily as a means of documenting the use of a more generic NodeInfo
-type DeviceInfo interface {
-	CreateNode()
-	Dump(destination io.Writer, indent string)
-	GetChannelInfos() []ChannelInfo
-	GetDevice() Device
-	GetDeviceIdentifier() DeviceIdentifier
-	GetDeviceName() string
-	GetNodeCategory() NodeCategory
-	GetNodeIdentifier() NodeIdentifier
-	GetNodeName() string
-	GetNodeStatus() NodeStatus
-	GetNodeType() NodeType
-	IsAccessible() bool
-	IsReady() bool
-	SetIsAccessible(bool)
-	SetIsReady(flag bool)
 }
 
 type IConsoleManager interface {
@@ -126,7 +73,7 @@ type IFacilitiesManager interface {
 	GetDeviceStatusDetail(deviceId DeviceIdentifier) string
 	GetDiskAttributes(deviceId DeviceIdentifier) (*DiskAttributes, error)
 	IsDeviceAssigned(deviceId DeviceIdentifier) bool
-	NotifyDeviceReady(deviceInfo DeviceInfo, isReady bool)
+	NotifyDeviceReady(deviceInfo nodeMgr.DeviceInfo, isReady bool)
 }
 
 type IKeyinManager interface {
@@ -165,22 +112,12 @@ type INodeManager interface {
 	Dump(destination io.Writer, indent string)
 	Initialize() error // invoked when the application is starting up
 	Stop()             // invoked when the exec is stopping
-	GetChannelInfos() []ChannelInfo
-	GetDeviceInfos() []DeviceInfo
-	GetNodeInfoByName(nodeName string) (NodeInfo, error)
-	GetNodeInfoByIdentifier(nodeId NodeIdentifier) (NodeInfo, error)
-	RouteIo(ioPacket IoPacket)
+	GetChannelInfos() []nodeMgr.ChannelInfo
+	GetDeviceInfos() []nodeMgr.DeviceInfo
+	GetNodeInfoByName(nodeName string) (nodeMgr.NodeInfo, error)
+	GetNodeInfoByIdentifier(nodeId NodeIdentifier) (nodeMgr.NodeInfo, error)
+	RouteIo(ioPacket nodeMgr.IoPacket)
 	SetNodeStatus(nodeId NodeIdentifier, status NodeStatus) error
-}
-
-// IoPacket contains all the information necessary for a Channel to route an IO operation,
-// and for a device to perform that IO operation.
-type IoPacket interface {
-	GetDeviceIdentifier() DeviceIdentifier
-	GetNodeType() NodeType
-	GetIoFunction() IoFunction
-	GetIoStatus() IoStatus
-	SetIoStatus(ioStatus IoStatus)
 }
 
 type KeyinHandler interface {
@@ -193,16 +130,4 @@ type KeyinHandler interface {
 	Invoke()
 	IsAllowed() bool
 	IsDone() bool
-}
-
-// NodeInfo contains all the exec-managed information regarding a particular node
-type NodeInfo interface {
-	CreateNode()
-	Dump(destination io.Writer, indent string)
-	GetNodeCategory() NodeCategory
-	GetNodeIdentifier() NodeIdentifier
-	GetNodeName() string
-	GetNodeStatus() NodeStatus
-	GetNodeType() NodeType
-	IsAccessible() bool
 }

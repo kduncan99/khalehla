@@ -19,7 +19,7 @@ func (mgr *MFDManager) InitializeMassStorage() {
 	disks := make([]*nodeMgr.DiskDeviceInfo, 0)
 	nm := mgr.exec.GetNodeManager()
 	for _, dInfo := range nm.GetDeviceInfos() {
-		if dInfo.GetNodeType() == types.NodeTypeDisk {
+		if dInfo.GetNodeType() == nodeMgr.NodeDeviceDisk {
 			disks = append(disks, dInfo.(*nodeMgr.DiskDeviceInfo))
 		}
 	}

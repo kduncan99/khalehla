@@ -27,8 +27,8 @@ func (pkt *DiskIoPacket) GetDeviceIdentifier() types.DeviceIdentifier {
 	return pkt.deviceId
 }
 
-func (pkt *DiskIoPacket) GetNodeType() types.NodeType {
-	return types.NodeTypeDisk
+func (pkt *DiskIoPacket) GetNodeDeviceType() NodeDeviceType {
+	return NodeDeviceDisk
 }
 
 func (pkt *DiskIoPacket) GetIoFunction() types.IoFunction {

@@ -4,7 +4,9 @@
 
 package config
 
-import "fmt"
+import (
+	"fmt"
+)
 
 var defaultAssignMnemonic = "F"
 var defaultLogIOs = false

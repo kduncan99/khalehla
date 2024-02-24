@@ -72,23 +72,11 @@ const (
 )
 
 const (
-	_ NodeCategory = iota
-	NodeCategoryChannel
-	NodeCategoryDevice
-)
-
-const (
 	_ NodeStatus = iota
 	NodeStatusUp
 	NodeStatusReserved
 	NodeStatusDown
 	NodeStatusSuspended
-)
-
-const (
-	_ NodeType = iota
-	NodeTypeDisk
-	NodeTypeTape
 )
 
 const (

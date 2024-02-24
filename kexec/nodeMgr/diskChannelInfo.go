@@ -30,7 +30,7 @@ func (dci *DiskChannelInfo) CreateNode() {
 	dci.channel = NewDiskChannel()
 }
 
-func (dci *DiskChannelInfo) GetChannel() types.Channel {
+func (dci *DiskChannelInfo) GetChannel() Channel {
 	return dci.channel
 }
 
@@ -42,20 +42,24 @@ func (dci *DiskChannelInfo) GetChannelName() string {
 	return dci.channelName
 }
 
-func (dci *DiskChannelInfo) GetDeviceInfos() []types.DeviceInfo {
-	result := make([]types.DeviceInfo, len(dci.deviceInfos))
+func (dci *DiskChannelInfo) GetDeviceInfos() []DeviceInfo {
+	result := make([]DeviceInfo, len(dci.deviceInfos))
 	for dx, di := range dci.deviceInfos {
 		result[dx] = di
 	}
 	return result
 }
 
-func (dci *DiskChannelInfo) GetNodeIdentifier() types.NodeIdentifier {
-	return types.NodeIdentifier(dci.channelIdentifier)
+func (dci *DiskChannelInfo) GetNodeCategoryType() NodeCategoryType {
+	return NodeCategoryChannel
 }
 
-func (dci *DiskChannelInfo) GetNodeCategory() types.NodeCategory {
-	return types.NodeCategoryChannel
+func (dci *DiskChannelInfo) GetNodeDeviceType() NodeDeviceType {
+	return NodeDeviceDisk
+}
+
+func (dci *DiskChannelInfo) GetNodeIdentifier() types.NodeIdentifier {
+	return types.NodeIdentifier(dci.channelIdentifier)
 }
 
 func (dci *DiskChannelInfo) GetNodeName() string {
@@ -64,10 +68,6 @@ func (dci *DiskChannelInfo) GetNodeName() string {
 
 func (dci *DiskChannelInfo) GetNodeStatus() types.NodeStatus {
 	return types.NodeStatusUp
-}
-
-func (dci *DiskChannelInfo) GetNodeType() types.NodeType {
-	return types.NodeTypeDisk
 }
 
 func (dci *DiskChannelInfo) IsAccessible() bool {

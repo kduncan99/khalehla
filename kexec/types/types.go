@@ -51,9 +51,7 @@ type MFDBlockId uint64
 type MFDRelativeAddress uint64
 type MFDSectorId uint64
 type MFDTrackId uint64
-type NodeCategory uint
 type NodeStatus uint
-type NodeType uint
 type StopCode uint
 
 // DiskPackGeometry describes various useful attributes of a particular prepped disk pack

@@ -33,7 +33,7 @@ func (mgr *MFDManager) CreateFileSet(
 	projectId string,
 	readKey string,
 	writeKey string,
-	fileType FileType,
+	fileType types.FileType,
 ) (leadItem0Address types.MFDRelativeAddress, result MFDResult) {
 	leadItem0Address = types.InvalidLink
 	result = MFDSuccessful
@@ -143,7 +143,7 @@ func (mgr *MFDManager) SetFileToBeDeleted(
 
 // ----- mostly obsolete below here -----
 
-//type MFDCatalogMassStorageFileRequest struct {
+// type MFDCatalogMassStorageFileRequest struct {
 //	qualifier         string
 //	filename          string
 //	absoluteFileCycle *uint
@@ -175,16 +175,16 @@ func (mgr *MFDManager) SetFileToBeDeleted(
 //	mtapop            uint
 //	ctlPool           string
 //	reelNumbers       []string
-//}
+// }
 //
-//type MFDDeleteFileRequest struct {
+// type MFDDeleteFileRequest struct {
 //	qualifier         string
 //	filename          string
 //	absoluteFileCycle *uint
 //	relativeFileCycle *int
 //	readKey           string
 //	writeKey          string
-//}
+// }
 
 // populateNewLeadItem0 sets up a lead item sector 0 in the given buffer,
 // assuming we are cataloging a new file, will have one cycle, and the absolute cycle is given to us.
@@ -464,10 +464,10 @@ func populateTapeMainItem1(
 	mainItem1[7].SetT3(absoluteCycle)
 }
 
-//// CatalogFile attempts to catalog a file on mass storage according to the given parameters.
-//// We really only expect to be invoked via fac mgr, and only for @CAT of word and sector addressable disk files.
-//// If we return err, we've stopped the exec
-//func (mgr *MFDManager) CatalogFile(parameters *MFDCatalogMassStorageFileRequest) (*facilitiesMgr.FacResult, error) {
+// // CatalogFile attempts to catalog a file on mass storage according to the given parameters.
+// // We really only expect to be invoked via fac mgr, and only for @CAT of word and sector addressable disk files.
+// // If we return err, we've stopped the exec
+// func (mgr *MFDManager) CatalogFile(parameters *MFDCatalogMassStorageFileRequest) (*facilitiesMgr.FacResult, error) {
 //
 //	facResult := facilitiesMgr.NewFacResult()
 //
@@ -604,4 +604,4 @@ func populateTapeMainItem1(
 //
 //	facResult.PostMessage(facilitiesMgr.FacStatusComplete, []string{"CAT"})
 //	return facResult, nil
-//}
+// }

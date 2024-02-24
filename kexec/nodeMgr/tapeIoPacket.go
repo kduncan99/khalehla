@@ -18,8 +18,8 @@ func (pkt *TapeIoPacket) GetDeviceIdentifier() types.DeviceIdentifier {
 	return pkt.deviceId
 }
 
-func (pkt *TapeIoPacket) GetNodeType() types.NodeType {
-	return types.NodeTypeTape
+func (pkt *TapeIoPacket) GetNodeDeviceType() NodeDeviceType {
+	return NodeDeviceTape
 }
 
 func (pkt *TapeIoPacket) GetIoFunction() types.IoFunction {

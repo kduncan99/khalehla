@@ -80,8 +80,16 @@ func NewDiskDevice(initialFileName *string) *DiskDevice {
 	return dd
 }
 
-func (disk *DiskDevice) GetNodeType() types.NodeType {
-	return types.NodeTypeDisk
+func (disk *DiskDevice) GetNodeCategoryType() NodeCategoryType {
+	return NodeCategoryDevice
+}
+
+func (disk *DiskDevice) GetNodeModelType() NodeModelType {
+	return NodeModelFileSystemDiskDevice
+}
+
+func (disk *DiskDevice) GetNodeDeviceType() NodeDeviceType {
+	return NodeDeviceDisk
 }
 
 func (disk *DiskDevice) GetGeometry() *types.DiskPackGeometry {
@@ -112,10 +120,10 @@ func (disk *DiskDevice) SetIsWriteProtected(flag bool) {
 	disk.isWriteProtected = flag
 }
 
-func (disk *DiskDevice) StartIo(pkt types.IoPacket) {
+func (disk *DiskDevice) StartIo(pkt IoPacket) {
 	pkt.SetIoStatus(types.IosInProgress)
 
-	if pkt.GetNodeType() != disk.GetNodeType() {
+	if pkt.GetNodeDeviceType() != disk.GetNodeDeviceType() {
 		pkt.SetIoStatus(types.IosInvalidNodeType)
 	}
 

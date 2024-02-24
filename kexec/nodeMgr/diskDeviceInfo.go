@@ -38,15 +38,15 @@ func (ddi *DiskDeviceInfo) CreateNode() {
 	ddi.device = NewDiskDevice(ddi.initialFileName)
 }
 
-func (ddi *DiskDeviceInfo) GetChannelInfos() []types.ChannelInfo {
-	result := make([]types.ChannelInfo, len(ddi.channelInfos))
+func (ddi *DiskDeviceInfo) GetChannelInfos() []ChannelInfo {
+	result := make([]ChannelInfo, len(ddi.channelInfos))
 	for cx, ci := range ddi.channelInfos {
 		result[cx] = ci
 	}
 	return result
 }
 
-func (ddi *DiskDeviceInfo) GetDevice() types.Device {
+func (ddi *DiskDeviceInfo) GetDevice() Device {
 	return ddi.device
 }
 
@@ -62,8 +62,12 @@ func (ddi *DiskDeviceInfo) GetInitialFileName() *string {
 	return ddi.initialFileName
 }
 
-func (ddi *DiskDeviceInfo) GetNodeCategory() types.NodeCategory {
-	return types.NodeCategoryDevice
+func (ddi *DiskDeviceInfo) GetNodeCategoryType() NodeCategoryType {
+	return NodeCategoryDevice
+}
+
+func (ddi *DiskDeviceInfo) GetNodeDeviceType() NodeDeviceType {
+	return NodeDeviceDisk
 }
 
 func (ddi *DiskDeviceInfo) GetNodeIdentifier() types.NodeIdentifier {
@@ -76,10 +80,6 @@ func (ddi *DiskDeviceInfo) GetNodeName() string {
 
 func (ddi *DiskDeviceInfo) GetNodeStatus() types.NodeStatus {
 	return ddi.nodeStatus
-}
-
-func (ddi *DiskDeviceInfo) GetNodeType() types.NodeType {
-	return types.NodeTypeDisk
 }
 
 func (ddi *DiskDeviceInfo) IsAccessible() bool {

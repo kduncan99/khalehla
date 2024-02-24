@@ -56,9 +56,9 @@ func (mgr *FacilitiesManager) Boot() error {
 	for _, devInfo := range nm.GetDeviceInfos() {
 		devId := devInfo.GetDeviceIdentifier()
 		switch devInfo.GetNodeType() {
-		case types.NodeTypeDisk:
+		case nodeMgr.NodeDeviceDisk:
 			mgr.inventory.disks[devId] = &types.DiskAttributes{}
-		case types.NodeTypeTape:
+		case nodeMgr.NodeDeviceTape:
 			mgr.inventory.tapes[devId] = &types.TapeAttributes{}
 		}
 	}

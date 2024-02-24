@@ -30,7 +30,7 @@ func (tci *TapeChannelInfo) CreateNode() {
 	tci.channel = NewTapeChannel()
 }
 
-func (tci *TapeChannelInfo) GetChannel() types.Channel {
+func (tci *TapeChannelInfo) GetChannel() Channel {
 	return tci.channel
 }
 
@@ -42,16 +42,20 @@ func (tci *TapeChannelInfo) GetChannelName() string {
 	return tci.channelName
 }
 
-func (tci *TapeChannelInfo) GetDeviceInfos() []types.DeviceInfo {
-	result := make([]types.DeviceInfo, len(tci.deviceInfos))
+func (tci *TapeChannelInfo) GetDeviceInfos() []DeviceInfo {
+	result := make([]DeviceInfo, len(tci.deviceInfos))
 	for dx, di := range tci.deviceInfos {
 		result[dx] = di
 	}
 	return result
 }
 
-func (tci *TapeChannelInfo) GetNodeCategory() types.NodeCategory {
-	return types.NodeCategoryChannel
+func (tci *TapeChannelInfo) GetNodeCategoryType() NodeCategoryType {
+	return NodeCategoryChannel
+}
+
+func (tci *TapeChannelInfo) GetNodeDeviceType() NodeDeviceType {
+	return NodeDeviceTape
 }
 
 func (tci *TapeChannelInfo) GetNodeIdentifier() types.NodeIdentifier {
@@ -64,10 +68,6 @@ func (tci *TapeChannelInfo) GetNodeName() string {
 
 func (tci *TapeChannelInfo) GetNodeStatus() types.NodeStatus {
 	return types.NodeStatusUp
-}
-
-func (tci *TapeChannelInfo) GetNodeType() types.NodeType {
-	return types.NodeTypeTape
 }
 
 func (tci *TapeChannelInfo) IsAccessible() bool {
