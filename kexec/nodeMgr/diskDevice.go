@@ -199,7 +199,7 @@ func (disk *DiskDevice) doPrep(pkt *DiskIoPacket) {
 		return
 	}
 
-	if !IsValidPrepFactor(pkt.prepFactor) {
+	if !types.IsValidPrepFactor(pkt.prepFactor) {
 		pkt.SetIoStatus(types.IosInvalidPrepFactor)
 		return
 	}
@@ -209,7 +209,7 @@ func (disk *DiskDevice) doPrep(pkt *DiskIoPacket) {
 		return
 	}
 
-	if !IsValidPackName(pkt.packName) {
+	if !types.IsValidPackName(pkt.packName) {
 		pkt.SetIoStatus(types.IosInvalidPackName)
 		return
 	}
@@ -570,12 +570,12 @@ func (disk *DiskDevice) probeGeometry() error {
 	}
 
 	packName := label[1].ToStringAsAscii() + label[2].ToStringAsAscii()[:2]
-	if !IsValidPackName(packName) {
+	if !types.IsValidPackName(packName) {
 		return fmt.Errorf("invalid pack name '%v'", packName)
 	}
 
 	prepFactor := types.PrepFactor(label[4].GetH2())
-	if !IsValidPrepFactor(prepFactor) {
+	if !types.IsValidPrepFactor(prepFactor) {
 		return fmt.Errorf("invalid prep factor %v", prepFactor)
 	}
 

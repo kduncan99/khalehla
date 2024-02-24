@@ -722,7 +722,8 @@ func (mgr *MFDManager) writeMFDCache() error {
 		devBlockId := uint64(devTrackId) * uint64(blocksPerTrack)
 		devBlockId += uint64(mfdSectorId) / uint64(sectorsPerBlock)
 		ioPkt := nodeMgr.NewDiskIoPacketWrite(packDesc.deviceId, types.BlockId(devBlockId), block)
-		mgr.exec.GetNodeManager().RouteIo(ioPkt)
+		nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
+		nm.RouteIo(ioPkt)
 		ioStat := ioPkt.GetIoStatus()
 		if ioStat != types.IosComplete {
 			log.Printf("MFDMgr:writeMFDCache error writing MFD block status=%v", ioStat)

@@ -66,17 +66,12 @@ func (dci *DiskChannelInfo) GetNodeName() string {
 	return dci.channelName
 }
 
-func (dci *DiskChannelInfo) GetNodeStatus() types.NodeStatus {
-	return types.NodeStatusUp
-}
-
 func (dci *DiskChannelInfo) IsAccessible() bool {
 	return true
 }
 
 func (dci *DiskChannelInfo) Dump(dest io.Writer, indent string) {
-	str := fmt.Sprintf("%v %v",
-		dci.channelName, GetNodeStatusString(types.NodeStatusUp, true))
+	str := fmt.Sprintf("%v", dci.channelName)
 	str += " devices:"
 	for _, devInfo := range dci.deviceInfos {
 		str += " " + devInfo.GetNodeName()

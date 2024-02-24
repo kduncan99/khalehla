@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-var handlerTable = map[string]func(types.IExec, types.ConsoleIdentifier, string, string) types.KeyinHandler{
+var handlerTable = map[string]func(types.IExec, types.ConsoleIdentifier, string, string) KeyinHandler{
 	"$!": NewStopKeyinHandler,
 	// "AP"
 	// "AT"
@@ -82,7 +82,7 @@ type KeyinManager struct {
 	mutex           sync.Mutex
 	threadDone      bool
 	postedKeyins    []*keyinInfo
-	pendingHandlers []types.KeyinHandler
+	pendingHandlers []KeyinHandler
 }
 
 func NewKeyinManager(exec types.IExec) *KeyinManager {
@@ -95,7 +95,7 @@ func NewKeyinManager(exec types.IExec) *KeyinManager {
 func (mgr *KeyinManager) Boot() error {
 	log.Printf("KeyinMgr:Boot")
 	mgr.postedKeyins = make([]*keyinInfo, 0)
-	mgr.pendingHandlers = make([]types.KeyinHandler, 0)
+	mgr.pendingHandlers = make([]KeyinHandler, 0)
 	go mgr.thread()
 	return nil
 }

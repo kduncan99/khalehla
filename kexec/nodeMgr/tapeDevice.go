@@ -73,7 +73,7 @@ func IsValidReelName(name string) bool {
 	return true
 }
 
-func (tape *TapeDevice) StartIo(pkt types.IoPacket) {
+func (tape *TapeDevice) StartIo(pkt IoPacket) {
 	pkt.SetIoStatus(types.IosInProgress)
 
 	if pkt.GetNodeDeviceType() != tape.GetNodeDeviceType() {

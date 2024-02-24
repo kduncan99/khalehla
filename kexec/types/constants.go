@@ -72,14 +72,6 @@ const (
 )
 
 const (
-	_ NodeStatus = iota
-	NodeStatusUp
-	NodeStatusReserved
-	NodeStatusDown
-	NodeStatusSuspended
-)
-
-const (
 	JumpKey1Index  = 0
 	JumpKey2Index  = 1
 	JumpKey3Index  = 2

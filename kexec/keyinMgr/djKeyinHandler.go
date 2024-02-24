@@ -22,7 +22,7 @@ type DJKeyinHandler struct {
 	timeFinished    time.Time
 }
 
-func NewDJKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, options string, arguments string) types.KeyinHandler {
+func NewDJKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, options string, arguments string) KeyinHandler {
 	return &DJKeyinHandler{
 		exec:            exec,
 		source:          source,

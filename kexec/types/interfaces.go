@@ -7,8 +7,6 @@ package types
 import (
 	"io"
 	"khalehla/kexec/config"
-	"khalehla/kexec/nodeMgr"
-	"time"
 )
 
 // Console is a unit which actually acts as an operating system console endpoint.
@@ -53,7 +51,6 @@ type IExec interface {
 	GetRunControlEntry() *RunControlEntry
 	GetStopCode() StopCode
 	GetStopFlag() bool
-	HandleKeyIn(source ConsoleIdentifier, text string)
 	Initialize() error
 	PerformDump(fullFlag bool) (string, error)
 	SendExecReadOnlyMessage(message string, routing *ConsoleIdentifier)
@@ -70,10 +67,8 @@ type IFacilitiesManager interface {
 	Initialize() error // invoked when the application is starting up
 	Stop()             // invoked when the exec is stopping
 	AssignDiskDeviceToExec(deviceId DeviceIdentifier) error
-	GetDeviceStatusDetail(deviceId DeviceIdentifier) string
-	GetDiskAttributes(deviceId DeviceIdentifier) (*DiskAttributes, error)
 	IsDeviceAssigned(deviceId DeviceIdentifier) bool
-	NotifyDeviceReady(deviceInfo nodeMgr.DeviceInfo, isReady bool)
+	NotifyDeviceReady(deviceId DeviceIdentifier, isReady bool)
 }
 
 type IKeyinManager interface {
@@ -103,7 +98,6 @@ type IMFDManager interface {
 	InitializeMassStorage()
 	RecoverMassStorage()
 	Stop() // invoked when the exec is stopping
-	//	NotifyDeviceReady(deviceInfo DeviceInfo, isReady bool)
 }
 
 type INodeManager interface {
@@ -112,22 +106,4 @@ type INodeManager interface {
 	Dump(destination io.Writer, indent string)
 	Initialize() error // invoked when the application is starting up
 	Stop()             // invoked when the exec is stopping
-	GetChannelInfos() []nodeMgr.ChannelInfo
-	GetDeviceInfos() []nodeMgr.DeviceInfo
-	GetNodeInfoByName(nodeName string) (nodeMgr.NodeInfo, error)
-	GetNodeInfoByIdentifier(nodeId NodeIdentifier) (nodeMgr.NodeInfo, error)
-	RouteIo(ioPacket nodeMgr.IoPacket)
-	SetNodeStatus(nodeId NodeIdentifier, status NodeStatus) error
-}
-
-type KeyinHandler interface {
-	Abort()
-	CheckSyntax() bool
-	GetCommand() string
-	GetOptions() string
-	GetArguments() string
-	GetTimeFinished() time.Time
-	Invoke()
-	IsAllowed() bool
-	IsDone() bool
 }

@@ -327,7 +327,8 @@ func (mgr *ConsoleManager) checkForUnsolicitedInput() bool {
 			mgr.dropConsole(consId)
 		} else if input != nil {
 			// send the raw input to the exec, and let it deal with parsing issues
-			mgr.exec.HandleKeyIn(consId, *input)
+			km := mgr.exec.GetKeyinManager()
+			km.PostKeyin(consId, *input)
 			return true
 		}
 	}

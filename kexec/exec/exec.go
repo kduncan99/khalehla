@@ -182,10 +182,6 @@ func (e *Exec) GetStopFlag() bool {
 	return e.stopFlag
 }
 
-func (e *Exec) HandleKeyIn(source types.ConsoleIdentifier, text string) {
-	e.keyinMgr.PostKeyin(source, text)
-}
-
 // Initialize invokes the Initialize method on each of the managers in a particular order.
 // If any of them return an error, we pass that error back the the caller which should Close() us and terminate.
 // Should be invoked after calling NewExec(), but before calling Boot()
@@ -206,40 +202,6 @@ func (e *Exec) Initialize() error {
 	}
 
 	return nil
-}
-
-// IsValidFilename tests a given string to ensure it is a valid filename.
-// The string must be 1 to 12 character in length, containing any combination of
-// upper-case letters, digits, hyphens, and dollar signs.
-func IsValidFilename(filename string) bool {
-	if len(filename) < 1 || len(filename) > 12 {
-		return false
-	}
-
-	for _, ch := range filename {
-		if (ch < 'A' || ch > 'Z') && ch != '-' && ch != '$' {
-			return false
-		}
-	}
-
-	return true
-}
-
-// IsValidQualifier test a given string to ensure it is a valid qualifier.
-// The string must be 1 to 12 character in length, containing any combination of
-// upper-case letters, digits, hyphens, and dollar signs.
-func IsValidQualifier(qualifier string) bool {
-	if len(qualifier) < 1 || len(qualifier) > 12 {
-		return false
-	}
-
-	for _, ch := range qualifier {
-		if (ch < 'A' || ch > 'Z') && ch != '-' && ch != '$' {
-			return false
-		}
-	}
-
-	return true
 }
 
 func (e *Exec) SetConfiguration(config *config.Configuration) {

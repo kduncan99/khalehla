@@ -42,7 +42,6 @@ import (
 
 type fixedPackDescriptor struct {
 	deviceId       types.DeviceIdentifier
-	packAttributes *types.PackAttributes // created and maintained by facMgr
 	wordsPerBlock  types.PrepFactor
 	canAllocate    bool // true if pack is UP, false if it is SU
 	packMask       uint64
@@ -53,7 +52,6 @@ type fixedPackDescriptor struct {
 
 func newFixedPackDescriptor(
 	deviceId types.DeviceIdentifier,
-	packAttrs *types.PackAttributes,
 	allocatable bool,
 ) *fixedPackDescriptor {
 
@@ -134,10 +132,9 @@ func (mgr *MFDManager) Dump(dest io.Writer, indent string) {
 
 	_, _ = fmt.Fprintf(dest, "%v  Fixed Packs:\n", indent)
 	for ldat, packDesc := range mgr.fixedPackDescriptors {
-		_, _ = fmt.Fprintf(dest, "%v    ldat=%04o %s alloc=%v mask=%06o\n",
+		_, _ = fmt.Fprintf(dest, "%v    ldat=%04o alloc=%v mask=%06o\n",
 			indent,
 			ldat,
-			packDesc.packAttributes.PackName,
 			packDesc.canAllocate,
 			packDesc.packMask)
 

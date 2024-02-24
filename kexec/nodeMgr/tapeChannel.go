@@ -43,7 +43,7 @@ func (ch *TapeChannel) AssignDevice(deviceIdentifier types.DeviceIdentifier, dev
 	return nil
 }
 
-func (ch *TapeChannel) StartIo(ioPacket types.IoPacket) {
+func (ch *TapeChannel) StartIo(ioPacket IoPacket) {
 	ioPacket.SetIoStatus(types.IosInProgress)
 	if ioPacket.GetNodeDeviceType() != ch.GetNodeDeviceType() {
 		ioPacket.SetIoStatus(types.IosInvalidNodeType)

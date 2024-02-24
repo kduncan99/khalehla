@@ -6,6 +6,7 @@ package keyinMgr
 
 import (
 	"fmt"
+	"khalehla/kexec/facilitiesMgr"
 	"khalehla/kexec/nodeMgr"
 	"khalehla/kexec/types"
 	"strings"
@@ -47,7 +48,7 @@ type FSKeyinHandler struct {
 	timeFinished    time.Time
 }
 
-func NewFSKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, options string, arguments string) types.KeyinHandler {
+func NewFSKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, options string, arguments string) KeyinHandler {
 	return &FSKeyinHandler{
 		exec:            exec,
 		source:          source,
@@ -66,7 +67,7 @@ func (kh *FSKeyinHandler) Abort() {
 func (kh *FSKeyinHandler) CheckSyntax() bool {
 	if len(kh.options) != 0 {
 		if kh.options == "ALL" {
-			return nodeMgr.IsValidNodeName(kh.arguments)
+			return types.IsValidNodeName(kh.arguments)
 		}
 		return len(kh.options) <= 6 && len(kh.arguments) == 0
 	}
@@ -77,7 +78,7 @@ func (kh *FSKeyinHandler) CheckSyntax() bool {
 	}
 
 	for _, name := range split {
-		if !nodeMgr.IsValidNodeName(strings.ToUpper(name)) {
+		if !types.IsValidNodeName(strings.ToUpper(name)) {
 			return false
 		}
 	}
@@ -128,19 +129,14 @@ func (kh *FSKeyinHandler) emitStatusStrings(statStrings []string) {
 	}
 }
 
-func (kh *FSKeyinHandler) getStatusStringForNode(nodeInfo types.NodeInfo) string {
-	fm := kh.exec.GetFacilitiesManager()
-	str := nodeInfo.GetNodeName() + " "
-	str += nodeMgr.GetNodeStatusString(nodeInfo.GetNodeStatus(), nodeInfo.IsAccessible())
-	if nodeInfo.GetNodeCategory() == nodeMgr.NodeCategoryDevice {
-		devInfo := nodeInfo.(types.DeviceInfo)
-		str += " " + fm.GetDeviceStatusDetail(devInfo.GetDeviceIdentifier())
-	}
-	return str
+func (kh *FSKeyinHandler) getStatusStringForNode(nodeId types.NodeIdentifier) string {
+	fm := kh.exec.GetFacilitiesManager().(*facilitiesMgr.FacilitiesManager)
+	attr, _ := fm.GetNodeAttributes(nodeId)
+	return attr.GetNodeName() + " " + fm.GetNodeStatusString(nodeId)
 }
 
 func (kh *FSKeyinHandler) handleAllForChannel() {
-	nm := kh.exec.GetNodeManager()
+	nm := kh.exec.GetNodeManager().(*nodeMgr.NodeManager)
 	statStrings := make([]string, 0)
 	chName := strings.ToUpper(kh.arguments)
 	nodeInfo, err := nm.GetNodeInfoByName(chName)
@@ -149,13 +145,13 @@ func (kh *FSKeyinHandler) handleAllForChannel() {
 		kh.exec.SendExecReadOnlyMessage(msg, &kh.source)
 		return
 	}
-	statStrings = append(statStrings, kh.getStatusStringForNode(nodeInfo))
+	statStrings = append(statStrings, kh.getStatusStringForNode(nodeInfo.GetNodeIdentifier()))
 
-	if nodeInfo.GetNodeCategory() == nodeMgr.NodeCategoryChannel {
-		chInfo := nodeInfo.(types.ChannelInfo)
+	if nodeInfo.GetNodeCategoryType() == nodeMgr.NodeCategoryChannel {
+		chInfo := nodeInfo.(nodeMgr.ChannelInfo)
 		devInfos := chInfo.GetDeviceInfos()
 		for _, di := range devInfos {
-			statStrings = append(statStrings, kh.getStatusStringForNode(di))
+			statStrings = append(statStrings, kh.getStatusStringForNode(di.GetNodeIdentifier()))
 		}
 	}
 
@@ -163,20 +159,20 @@ func (kh *FSKeyinHandler) handleAllForChannel() {
 }
 
 func (kh *FSKeyinHandler) handleAllOf(nodeCategory nodeMgr.NodeCategoryType, nodeType nodeMgr.NodeDeviceType) {
-	nm := kh.exec.GetNodeManager()
+	nm := kh.exec.GetNodeManager().(*nodeMgr.NodeManager)
 	statStrings := make([]string, 0)
 	if nodeCategory == nodeMgr.NodeCategoryChannel || nodeCategory == 0 {
 		for _, chInfo := range nm.GetChannelInfos() {
-			if nodeType == chInfo.GetNodeType() || nodeType == 0 {
-				statStrings = append(statStrings, kh.getStatusStringForNode(chInfo))
+			if nodeType == chInfo.GetNodeDeviceType() || nodeType == 0 {
+				statStrings = append(statStrings, kh.getStatusStringForNode(chInfo.GetNodeIdentifier()))
 			}
 		}
 	}
 
 	if nodeCategory == nodeMgr.NodeCategoryDevice || nodeCategory == 0 {
 		for _, devInfo := range nm.GetDeviceInfos() {
-			if nodeType == devInfo.GetNodeType() || nodeType == 0 {
-				statStrings = append(statStrings, kh.getStatusStringForNode(devInfo))
+			if nodeType == devInfo.GetNodeDeviceType() || nodeType == 0 {
+				statStrings = append(statStrings, kh.getStatusStringForNode(devInfo.GetNodeIdentifier()))
 			}
 		}
 	}
@@ -185,18 +181,18 @@ func (kh *FSKeyinHandler) handleAllOf(nodeCategory nodeMgr.NodeCategoryType, nod
 }
 
 func (kh *FSKeyinHandler) handleComponentList() {
-	nm := kh.exec.GetNodeManager()
+	fm := kh.exec.GetFacilitiesManager().(*facilitiesMgr.FacilitiesManager)
 	names := strings.Split(kh.arguments, ",")
 	statStrings := make([]string, len(names))
 	for nx, name := range names {
-		ni, err := nm.GetNodeInfoByName(strings.ToUpper(name))
-		if err != nil {
+		attr, ok := fm.GetNodeAttributesByName(name)
+		if !ok {
 			msg := fmt.Sprintf("FS KEYIN - %v DOES NOT EXIST, INPUT IGNORED", name)
 			kh.exec.SendExecReadOnlyMessage(msg, &kh.source)
 			return
 		}
 
-		statStrings[nx] = kh.getStatusStringForNode(ni)
+		statStrings[nx] = kh.getStatusStringForNode(attr.GetNodeIdentifier())
 	}
 
 	kh.emitStatusStrings(statStrings)

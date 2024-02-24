@@ -21,6 +21,5 @@ type ChannelInfo interface {
 	GetNodeDeviceType() NodeDeviceType
 	GetNodeIdentifier() types.NodeIdentifier
 	GetNodeName() string
-	GetNodeStatus() types.NodeStatus
 	IsAccessible() bool
 }

@@ -51,7 +51,6 @@ type MFDBlockId uint64
 type MFDRelativeAddress uint64
 type MFDSectorId uint64
 type MFDTrackId uint64
-type NodeStatus uint
 type StopCode uint
 
 // DiskPackGeometry describes various useful attributes of a particular prepped disk pack
@@ -67,6 +66,7 @@ type DiskPackGeometry struct {
 }
 
 // Things related to ConsoleManager
+// TODO move them to ConsoleManager maybe?
 
 type ConsoleReadOnlyMessage struct {
 	Source         *RunControlEntry
@@ -85,28 +85,4 @@ type ConsoleReadReplyMessage struct {
 	DoNotLogReply  bool // reply may contain secure information
 	MaxReplyLength int
 	Reply          string
-}
-
-// Things related to FacilitiesManager
-
-type DiskAttributes struct {
-	AssignedTo *RunControlEntry
-	PackAttrs  *PackAttributes
-}
-
-type PackAttributes struct {
-	Label     []pkg.Word36
-	IsPrepped bool
-	IsFixed   bool
-	PackName  string
-}
-
-type TapeAttributes struct {
-	AssignedTo *RunControlEntry
-	ReelAttrs  *ReelAttributes
-}
-
-type ReelAttributes struct {
-	ReelNumber string
-	IsLabeled  bool
 }

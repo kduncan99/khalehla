@@ -21,7 +21,6 @@ type DeviceInfo interface {
 	GetNodeDeviceType() NodeDeviceType
 	GetNodeIdentifier() types.NodeIdentifier
 	GetNodeName() string
-	GetNodeStatus() types.NodeStatus
 	IsAccessible() bool
 	IsReady() bool
 	SetIsAccessible(bool)

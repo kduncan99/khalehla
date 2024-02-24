@@ -16,7 +16,6 @@ type DiskDeviceInfo struct {
 	deviceIdentifier types.DeviceIdentifier
 	initialFileName  *string
 	device           *DiskDevice
-	nodeStatus       types.NodeStatus
 	channelInfos     []*DiskChannelInfo
 	isAccessible     bool // can only be true if status is UP, RV, or SU and the device is assigned to at least one channel
 	isReady          bool // cached version of device.IsReady() - when there is a mismatch, we need to do something
@@ -28,7 +27,6 @@ func NewDiskDeviceInfo(deviceName string, initialFileName *string) *DiskDeviceIn
 	return &DiskDeviceInfo{
 		deviceName:       deviceName,
 		deviceIdentifier: types.DeviceIdentifier(pkg.NewFromStringToFieldata(deviceName, 1)[0]),
-		nodeStatus:       types.NodeStatusUp,
 		initialFileName:  initialFileName,
 		channelInfos:     make([]*DiskChannelInfo, 0),
 	}
@@ -78,10 +76,6 @@ func (ddi *DiskDeviceInfo) GetNodeName() string {
 	return ddi.deviceName
 }
 
-func (ddi *DiskDeviceInfo) GetNodeStatus() types.NodeStatus {
-	return ddi.nodeStatus
-}
-
 func (ddi *DiskDeviceInfo) IsAccessible() bool {
 	return ddi.isAccessible
 }
@@ -100,8 +94,7 @@ func (ddi *DiskDeviceInfo) SetIsReady(flag bool) {
 
 func (ddi *DiskDeviceInfo) Dump(dest io.Writer, indent string) {
 	did := pkg.Word36(ddi.deviceIdentifier)
-	str := fmt.Sprintf("%v id:0%v %v ready:%v",
-		ddi.deviceName, did.ToStringAsOctal(), GetNodeStatusString(ddi.nodeStatus, ddi.isAccessible), ddi.isReady)
+	str := fmt.Sprintf("%v id:0%v ready:%v", ddi.deviceName, did.ToStringAsOctal(), ddi.isReady)
 
 	str += " channels:"
 	for _, chInfo := range ddi.channelInfos {

@@ -66,17 +66,12 @@ func (tci *TapeChannelInfo) GetNodeName() string {
 	return tci.channelName
 }
 
-func (tci *TapeChannelInfo) GetNodeStatus() types.NodeStatus {
-	return types.NodeStatusUp
-}
-
 func (tci *TapeChannelInfo) IsAccessible() bool {
 	return true
 }
 
 func (tci *TapeChannelInfo) Dump(dest io.Writer, indent string) {
-	str := fmt.Sprintf("%v %v",
-		tci.channelName, GetNodeStatusString(types.NodeStatusUp, true))
+	str := fmt.Sprintf("%v", tci.channelName)
 	str += " devices:"
 	for _, devInfo := range tci.deviceInfos {
 		str += " " + devInfo.GetNodeName()
