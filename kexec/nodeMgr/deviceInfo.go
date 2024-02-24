@@ -15,8 +15,6 @@ type DeviceInfo interface {
 	Dump(destination io.Writer, indent string)
 	GetChannelInfos() []ChannelInfo
 	GetDevice() Device
-	GetDeviceIdentifier() types.DeviceIdentifier
-	GetDeviceName() string
 	GetNodeCategoryType() NodeCategoryType
 	GetNodeDeviceType() NodeDeviceType
 	GetNodeIdentifier() types.NodeIdentifier

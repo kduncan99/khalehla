@@ -12,17 +12,17 @@ import (
 )
 
 type TapeChannelInfo struct {
-	channelName       string
-	channelIdentifier types.ChannelIdentifier
-	channel           *TapeChannel
-	deviceInfos       []*TapeDeviceInfo
+	nodeName       string
+	nodeIdentifier types.NodeIdentifier
+	channel        *TapeChannel
+	deviceInfos    []*TapeDeviceInfo
 }
 
-func NewTapeChannelInfo(channelName string) *TapeChannelInfo {
+func NewTapeChannelInfo(nodeName string) *TapeChannelInfo {
 	return &TapeChannelInfo{
-		channelName:       channelName,
-		channelIdentifier: types.ChannelIdentifier(pkg.NewFromStringToFieldata(channelName, 1)[0]),
-		deviceInfos:       make([]*TapeDeviceInfo, 0),
+		nodeName:       nodeName,
+		nodeIdentifier: types.NodeIdentifier(pkg.NewFromStringToFieldata(nodeName, 1)[0]),
+		deviceInfos:    make([]*TapeDeviceInfo, 0),
 	}
 }
 
@@ -32,14 +32,6 @@ func (tci *TapeChannelInfo) CreateNode() {
 
 func (tci *TapeChannelInfo) GetChannel() Channel {
 	return tci.channel
-}
-
-func (tci *TapeChannelInfo) GetChannelIdentifier() types.ChannelIdentifier {
-	return tci.channelIdentifier
-}
-
-func (tci *TapeChannelInfo) GetChannelName() string {
-	return tci.channelName
 }
 
 func (tci *TapeChannelInfo) GetDeviceInfos() []DeviceInfo {
@@ -59,11 +51,11 @@ func (tci *TapeChannelInfo) GetNodeDeviceType() NodeDeviceType {
 }
 
 func (tci *TapeChannelInfo) GetNodeIdentifier() types.NodeIdentifier {
-	return types.NodeIdentifier(tci.channelIdentifier)
+	return types.NodeIdentifier(tci.nodeIdentifier)
 }
 
 func (tci *TapeChannelInfo) GetNodeName() string {
-	return tci.channelName
+	return tci.nodeName
 }
 
 func (tci *TapeChannelInfo) IsAccessible() bool {
@@ -71,7 +63,7 @@ func (tci *TapeChannelInfo) IsAccessible() bool {
 }
 
 func (tci *TapeChannelInfo) Dump(dest io.Writer, indent string) {
-	str := fmt.Sprintf("%v", tci.channelName)
+	str := fmt.Sprintf("%v", tci.nodeName)
 	str += " devices:"
 	for _, devInfo := range tci.deviceInfos {
 		str += " " + devInfo.GetNodeName()

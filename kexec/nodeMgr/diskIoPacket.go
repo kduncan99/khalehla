@@ -10,7 +10,7 @@ import (
 )
 
 type DiskIoPacket struct {
-	deviceId       types.DeviceIdentifier
+	nodeId         types.NodeIdentifier
 	ioFunction     types.IoFunction
 	ioStatus       types.IoStatus
 	blockId        types.BlockId    // for read, write
@@ -23,8 +23,8 @@ type DiskIoPacket struct {
 	writeProtected bool             // for mount
 }
 
-func (pkt *DiskIoPacket) GetDeviceIdentifier() types.DeviceIdentifier {
-	return pkt.deviceId
+func (pkt *DiskIoPacket) GetNodeIdentifier() types.NodeIdentifier {
+	return pkt.nodeId
 }
 
 func (pkt *DiskIoPacket) GetNodeDeviceType() NodeDeviceType {
@@ -43,9 +43,9 @@ func (pkt *DiskIoPacket) SetIoStatus(ioStatus types.IoStatus) {
 	pkt.ioStatus = ioStatus
 }
 
-func NewDiskIoPacketMount(deviceId types.DeviceIdentifier, fileName string, writeProtected bool) *DiskIoPacket {
+func NewDiskIoPacketMount(nodeId types.NodeIdentifier, fileName string, writeProtected bool) *DiskIoPacket {
 	return &DiskIoPacket{
-		deviceId:       deviceId,
+		nodeId:         nodeId,
 		ioFunction:     types.IofMount,
 		ioStatus:       types.IosNotStarted,
 		fileName:       fileName,
@@ -53,9 +53,9 @@ func NewDiskIoPacketMount(deviceId types.DeviceIdentifier, fileName string, writ
 	}
 }
 
-func NewDiskIoPacketPrep(deviceId types.DeviceIdentifier, packName string, prepFactor types.PrepFactor, trackCount types.TrackCount, removable bool) *DiskIoPacket {
+func NewDiskIoPacketPrep(nodeId types.NodeIdentifier, packName string, prepFactor types.PrepFactor, trackCount types.TrackCount, removable bool) *DiskIoPacket {
 	return &DiskIoPacket{
-		deviceId:   deviceId,
+		nodeId:     nodeId,
 		ioFunction: types.IofPrep,
 		ioStatus:   types.IosNotStarted,
 		packName:   packName,
@@ -65,9 +65,9 @@ func NewDiskIoPacketPrep(deviceId types.DeviceIdentifier, packName string, prepF
 	}
 }
 
-func NewDiskIoPacketRead(deviceId types.DeviceIdentifier, blockId types.BlockId, buffer []pkg.Word36) *DiskIoPacket {
+func NewDiskIoPacketRead(nodeId types.NodeIdentifier, blockId types.BlockId, buffer []pkg.Word36) *DiskIoPacket {
 	return &DiskIoPacket{
-		deviceId:   deviceId,
+		nodeId:     nodeId,
 		ioFunction: types.IofRead,
 		ioStatus:   types.IosNotStarted,
 		blockId:    blockId,
@@ -75,34 +75,34 @@ func NewDiskIoPacketRead(deviceId types.DeviceIdentifier, blockId types.BlockId,
 	}
 }
 
-func NewDiskIoPacketReadLabel(deviceId types.DeviceIdentifier, buffer []pkg.Word36) *DiskIoPacket {
+func NewDiskIoPacketReadLabel(nodeId types.NodeIdentifier, buffer []pkg.Word36) *DiskIoPacket {
 	return &DiskIoPacket{
-		deviceId:   deviceId,
+		nodeId:     nodeId,
 		ioFunction: types.IofReadLabel,
 		ioStatus:   types.IosNotStarted,
 		buffer:     buffer,
 	}
 }
 
-func NewDiskIoPacketReset(deviceId types.DeviceIdentifier) *DiskIoPacket {
+func NewDiskIoPacketReset(nodeId types.NodeIdentifier) *DiskIoPacket {
 	return &DiskIoPacket{
-		deviceId:   deviceId,
+		nodeId:     nodeId,
 		ioFunction: types.IofReset,
 		ioStatus:   types.IosNotStarted,
 	}
 }
 
-func NewDiskIoPacketUnmount(deviceId types.DeviceIdentifier) *DiskIoPacket {
+func NewDiskIoPacketUnmount(nodeId types.NodeIdentifier) *DiskIoPacket {
 	return &DiskIoPacket{
-		deviceId:   deviceId,
+		nodeId:     nodeId,
 		ioFunction: types.IofUnmount,
 		ioStatus:   types.IosNotStarted,
 	}
 }
 
-func NewDiskIoPacketWrite(deviceId types.DeviceIdentifier, blockId types.BlockId, buffer []pkg.Word36) *DiskIoPacket {
+func NewDiskIoPacketWrite(nodeId types.NodeIdentifier, blockId types.BlockId, buffer []pkg.Word36) *DiskIoPacket {
 	return &DiskIoPacket{
-		deviceId:   deviceId,
+		nodeId:     nodeId,
 		ioFunction: types.IofWrite,
 		ioStatus:   types.IosNotStarted,
 		blockId:    blockId,
@@ -110,9 +110,9 @@ func NewDiskIoPacketWrite(deviceId types.DeviceIdentifier, blockId types.BlockId
 	}
 }
 
-func NewDiskIoPacketWriteLabel(deviceId types.DeviceIdentifier, buffer []pkg.Word36) *DiskIoPacket {
+func NewDiskIoPacketWriteLabel(nodeId types.NodeIdentifier, buffer []pkg.Word36) *DiskIoPacket {
 	return &DiskIoPacket{
-		deviceId:   deviceId,
+		nodeId:     nodeId,
 		ioFunction: types.IofWriteLabel,
 		ioStatus:   types.IosNotStarted,
 		buffer:     buffer,

@@ -13,12 +13,12 @@ import (
 // TapeChannel routes IOs to the appropriate deviceInfos which it manages.
 // Some day in the future we may add caching, perhaps in a CacheTapeChannel.
 type TapeChannel struct {
-	devices map[types.DeviceIdentifier]*TapeDevice
+	devices map[types.NodeIdentifier]*TapeDevice
 }
 
 func NewTapeChannel() *TapeChannel {
 	return &TapeChannel{
-		devices: make(map[types.DeviceIdentifier]*TapeDevice),
+		devices: make(map[types.NodeIdentifier]*TapeDevice),
 	}
 }
 
@@ -34,12 +34,12 @@ func (ch *TapeChannel) GetNodeModelType() NodeModelType {
 	return NodeModelTapeChannel
 }
 
-func (ch *TapeChannel) AssignDevice(deviceIdentifier types.DeviceIdentifier, device Device) error {
+func (ch *TapeChannel) AssignDevice(nodeIdentifier types.NodeIdentifier, device Device) error {
 	if device.GetNodeDeviceType() != NodeDeviceTape {
 		return fmt.Errorf("device is not a tape")
 	}
 
-	ch.devices[deviceIdentifier] = device.(*TapeDevice)
+	ch.devices[nodeIdentifier] = device.(*TapeDevice)
 	return nil
 }
 
@@ -50,7 +50,7 @@ func (ch *TapeChannel) StartIo(ioPacket IoPacket) {
 		return
 	}
 
-	dev, ok := ch.devices[ioPacket.GetDeviceIdentifier()]
+	dev, ok := ch.devices[ioPacket.GetNodeIdentifier()]
 	if !ok {
 		ioPacket.SetIoStatus(types.IosDeviceIsNotAccessible)
 		return

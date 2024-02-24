@@ -12,20 +12,20 @@ import (
 )
 
 type TapeDeviceInfo struct {
-	deviceName       string
-	deviceIdentifier types.DeviceIdentifier
-	device           *TapeDevice
-	channelInfos     []*TapeChannelInfo
-	isAccessible     bool // can only be true if status is UP, RV, or SU and the device is assigned to at least one channel
-	isReady          bool // cached version of device.IsReady() - when there is a mismatch, we need to do something
+	nodeName       string
+	nodeIdentifier types.NodeIdentifier
+	device         *TapeDevice
+	channelInfos   []*TapeChannelInfo
+	isAccessible   bool // can only be true if status is UP, RV, or SU and the device is assigned to at least one channel
+	isReady        bool // cached version of device.IsReady() - when there is a mismatch, we need to do something
 }
 
 // NewTapeDeviceInfo creates a new struct
-func NewTapeDeviceInfo(deviceName string) *TapeDeviceInfo {
+func NewTapeDeviceInfo(nodeName string) *TapeDeviceInfo {
 	return &TapeDeviceInfo{
-		deviceName:       deviceName,
-		deviceIdentifier: types.DeviceIdentifier(pkg.NewFromStringToFieldata(deviceName, 1)[0]),
-		channelInfos:     make([]*TapeChannelInfo, 0),
+		nodeName:       nodeName,
+		nodeIdentifier: types.NodeIdentifier(pkg.NewFromStringToFieldata(nodeName, 1)[0]),
+		channelInfos:   make([]*TapeChannelInfo, 0),
 	}
 }
 
@@ -45,14 +45,6 @@ func (tdi *TapeDeviceInfo) GetDevice() Device {
 	return tdi.device
 }
 
-func (tdi *TapeDeviceInfo) GetDeviceIdentifier() types.DeviceIdentifier {
-	return tdi.deviceIdentifier
-}
-
-func (tdi *TapeDeviceInfo) GetDeviceName() string {
-	return tdi.deviceName
-}
-
 func (tdi *TapeDeviceInfo) GetNodeCategoryType() NodeCategoryType {
 	return NodeCategoryDevice
 }
@@ -62,11 +54,11 @@ func (tdi *TapeDeviceInfo) GetNodeDeviceType() NodeDeviceType {
 }
 
 func (tdi *TapeDeviceInfo) GetNodeIdentifier() types.NodeIdentifier {
-	return types.NodeIdentifier(tdi.deviceIdentifier)
+	return tdi.nodeIdentifier
 }
 
 func (tdi *TapeDeviceInfo) GetNodeName() string {
-	return tdi.deviceName
+	return tdi.nodeName
 }
 
 func (tdi *TapeDeviceInfo) IsAccessible() bool {
@@ -86,11 +78,11 @@ func (tdi *TapeDeviceInfo) SetIsReady(flag bool) {
 }
 
 func (tdi *TapeDeviceInfo) Dump(dest io.Writer, indent string) {
-	did := pkg.Word36(tdi.deviceIdentifier)
-	str := fmt.Sprintf("%v id:0%v ready:%v", tdi.deviceName, did.ToStringAsOctal(), tdi.isReady)
+	did := pkg.Word36(tdi.nodeIdentifier)
+	str := fmt.Sprintf("%v id:0%v ready:%v", tdi.nodeName, did.ToStringAsOctal(), tdi.isReady)
 	str += " channels:"
 	for _, chInfo := range tdi.channelInfos {
-		str += " " + chInfo.GetChannelName()
+		str += " " + chInfo.GetNodeName()
 	}
 
 	_, _ = fmt.Fprintf(dest, "%v%v\n", indent, str)

@@ -7,22 +7,16 @@ package facilitiesMgr
 import (
 	"khalehla/kexec/nodeMgr"
 	"khalehla/kexec/types"
-	"khalehla/pkg"
 )
 
-type PackAttributes struct {
-	Label     []pkg.Word36
-	IsPrepped bool
-	IsFixed   bool
-	PackName  string
-}
-
 type DiskAttributes struct {
-	identifier types.NodeIdentifier
-	name       string
-	status     FacNodeStatus
-	AssignedTo *types.RunControlEntry
-	PackAttrs  *PackAttributes
+	identifier    types.NodeIdentifier
+	name          string
+	status        FacNodeStatus
+	AssignedTo    *types.RunControlEntry
+	PackLabelInfo *types.PackLabelInfo
+	IsPrepped     bool
+	IsFixed       bool
 }
 
 func (da *DiskAttributes) GetFacNodeStatus() FacNodeStatus {

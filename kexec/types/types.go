@@ -24,8 +24,6 @@ type ConsoleIdentifier pkg.Word36
 // It is currently implemented as the 1-6 character device name, all caps alphas and/or digits LJSF
 // stored as Fieldata in a Word36 struct
 type NodeIdentifier pkg.Word36
-type ChannelIdentifier NodeIdentifier
-type DeviceIdentifier NodeIdentifier
 
 // PrepFactor indicates the number of words stored in a block of data for disk media.
 // Current valid values include 28, 56, 112, 224, 448, 896, and 1792.

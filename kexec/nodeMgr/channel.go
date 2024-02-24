@@ -13,7 +13,7 @@ import (
 // It may also manage caching, automatic mounting, or any other various activities
 // on behalf of the exec.
 type Channel interface {
-	AssignDevice(deviceIdentifier types.DeviceIdentifier, device Device) error
+	AssignDevice(nodeIdentifier types.NodeIdentifier, device Device) error
 	Dump(destination io.Writer, indent string)
 	GetNodeCategoryType() NodeCategoryType
 	GetNodeDeviceType() NodeDeviceType

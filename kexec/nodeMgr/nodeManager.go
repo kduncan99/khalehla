@@ -27,11 +27,11 @@ type NodeManager struct {
 	mutex        sync.Mutex
 	threadDone   bool
 	threadStop   bool
-	nodeInfos    map[types.NodeIdentifier]NodeInfo       // all nodes
-	channelInfos map[types.ChannelIdentifier]ChannelInfo // this is loaded from the config
-	deviceInfos  map[types.DeviceIdentifier]DeviceInfo   // this is loaded from the config
-	strategy     selectionStrategy                       // strategy used for selecting a channel fo IO
-	nextChannel  []types.ChannelIdentifier               // used for selecting channel to be used for IO for round-robin
+	nodeInfos    map[types.NodeIdentifier]NodeInfo    // all nodes
+	channelInfos map[types.NodeIdentifier]ChannelInfo // this is loaded from the config
+	deviceInfos  map[types.NodeIdentifier]DeviceInfo  // this is loaded from the config
+	strategy     selectionStrategy                    // strategy used for selecting a channel fo IO
+	nextChannel  []types.NodeIdentifier               // used for selecting channel to be used for IO for round-robin
 }
 
 func NewNodeManager(exec types.IExec) *NodeManager {
@@ -63,16 +63,16 @@ func (mgr *NodeManager) Close() {
 func (mgr *NodeManager) Initialize() error {
 	log.Printf("NodeMgr:Initialized")
 	mgr.nodeInfos = make(map[types.NodeIdentifier]NodeInfo)
-	mgr.channelInfos = make(map[types.ChannelIdentifier]ChannelInfo)
-	mgr.deviceInfos = make(map[types.DeviceIdentifier]DeviceInfo)
+	mgr.channelInfos = make(map[types.NodeIdentifier]ChannelInfo)
+	mgr.deviceInfos = make(map[types.NodeIdentifier]DeviceInfo)
 
 	// read configuration
 	// TODO from a data file or database or something
 	chan0 := NewDiskChannelInfo("CHDISK")
 	chan1 := NewTapeChannelInfo("CHTAPE")
 
-	mgr.channelInfos[chan0.channelIdentifier] = chan0
-	mgr.channelInfos[chan1.channelIdentifier] = chan1
+	mgr.channelInfos[chan0.GetNodeIdentifier()] = chan0
+	mgr.channelInfos[chan1.GetNodeIdentifier()] = chan1
 
 	fn1 := "resources/fix000.pack"
 	disk0 := NewDiskDeviceInfo("DISK0", &fn1)
@@ -86,12 +86,12 @@ func (mgr *NodeManager) Initialize() error {
 	tape0 := NewTapeDeviceInfo("TAPE0")
 	tape1 := NewTapeDeviceInfo("TAPE1")
 
-	mgr.deviceInfos[disk0.deviceIdentifier] = disk0
-	mgr.deviceInfos[disk1.deviceIdentifier] = disk1
-	mgr.deviceInfos[disk2.deviceIdentifier] = disk2
-	mgr.deviceInfos[disk3.deviceIdentifier] = disk3
-	mgr.deviceInfos[tape0.deviceIdentifier] = tape0
-	mgr.deviceInfos[tape1.deviceIdentifier] = tape1
+	mgr.deviceInfos[disk0.nodeIdentifier] = disk0
+	mgr.deviceInfos[disk1.nodeIdentifier] = disk1
+	mgr.deviceInfos[disk2.nodeIdentifier] = disk2
+	mgr.deviceInfos[disk3.nodeIdentifier] = disk3
+	mgr.deviceInfos[tape0.nodeIdentifier] = tape0
+	mgr.deviceInfos[tape1.nodeIdentifier] = tape1
 
 	chan0.deviceInfos = []*DiskDeviceInfo{disk0, disk1, disk2, disk3}
 	chan1.deviceInfos = []*TapeDeviceInfo{tape0, tape1}
@@ -103,18 +103,18 @@ func (mgr *NodeManager) Initialize() error {
 	tape0.channelInfos = []*TapeChannelInfo{chan1}
 	tape1.channelInfos = []*TapeChannelInfo{chan1}
 
-	for chId, chInfo := range mgr.channelInfos {
-		mgr.nodeInfos[types.NodeIdentifier(chId)] = chInfo
+	for nodeId, chInfo := range mgr.channelInfos {
+		mgr.nodeInfos[nodeId] = chInfo
 	}
-	for devId, devInfo := range mgr.deviceInfos {
-		mgr.nodeInfos[types.NodeIdentifier(devId)] = devInfo
+	for nodeId, devInfo := range mgr.deviceInfos {
+		mgr.nodeInfos[nodeId] = devInfo
 	}
 	// TODO End TODOs
 
 	// Create channels
 	for _, cInfo := range mgr.channelInfos {
 		cInfo.CreateNode()
-		mgr.nextChannel = append(mgr.nextChannel, cInfo.GetChannelIdentifier())
+		mgr.nextChannel = append(mgr.nextChannel, cInfo.GetNodeIdentifier())
 	}
 
 	// Create devices
@@ -129,8 +129,8 @@ func (mgr *NodeManager) Initialize() error {
 		case NodeDeviceDisk:
 			dchInfo := cInfo.(*DiskChannelInfo)
 			for _, dInfo := range dchInfo.deviceInfos {
-				did := dInfo.GetDeviceIdentifier()
-				log.Printf("NodeMgr:assigning %v to %v", dInfo.GetDeviceName(), cInfo.GetNodeName())
+				did := dInfo.GetNodeIdentifier()
+				log.Printf("NodeMgr:assigning %v to %v", dInfo.GetNodeName(), cInfo.GetNodeName())
 				err := mgr.channelInfos[cid].GetChannel().AssignDevice(did, mgr.deviceInfos[did].GetDevice())
 				if err != nil {
 					log.Printf("NodeMgr:%v", err)
@@ -142,8 +142,8 @@ func (mgr *NodeManager) Initialize() error {
 		case NodeDeviceTape:
 			tchInfo := cInfo.(*TapeChannelInfo)
 			for _, dInfo := range tchInfo.deviceInfos {
-				did := dInfo.GetDeviceIdentifier()
-				log.Printf("NodeMgr:assigning %v to %v", dInfo.GetDeviceName(), cInfo.GetNodeName())
+				did := dInfo.GetNodeIdentifier()
+				log.Printf("NodeMgr:assigning %v to %v", dInfo.GetNodeName(), cInfo.GetNodeName())
 				err := mgr.channelInfos[cid].GetChannel().AssignDevice(did, mgr.deviceInfos[did].GetDevice())
 				if err != nil {
 					log.Printf("NodeMgr:%v", err)
@@ -231,7 +231,7 @@ func (mgr *NodeManager) GetNodeInfoByIdentifier(nodeId types.NodeIdentifier) (No
 // RouteIo handles all disk and tape IO for the exec
 func (mgr *NodeManager) RouteIo(ioPacket IoPacket) {
 	if mgr.exec.GetConfiguration().LogIOs {
-		devId := pkg.Word36(ioPacket.GetDeviceIdentifier())
+		devId := pkg.Word36(ioPacket.GetNodeIdentifier())
 		devName := devId.ToStringAsFieldata()
 		switch ioPacket.GetNodeDeviceType() {
 		case NodeDeviceDisk:
@@ -252,7 +252,7 @@ func (mgr *NodeManager) RouteIo(ioPacket IoPacket) {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
-	devInfo, ok := mgr.deviceInfos[ioPacket.GetDeviceIdentifier()]
+	devInfo, ok := mgr.deviceInfos[ioPacket.GetNodeIdentifier()]
 	if !ok {
 		ioPacket.SetIoStatus(types.IosDeviceDoesNotExist)
 		return
@@ -297,12 +297,12 @@ func (mgr *NodeManager) selectChannelForDevice(devInfo DeviceInfo) (ChannelInfo,
 		// devices to channels can get a bit... messy.
 		for cx, cid := range mgr.nextChannel {
 			for _, cInfo := range cInfos {
-				if cInfo.GetChannelIdentifier() == cid {
+				if cInfo.GetNodeIdentifier() == cid {
 					// shuffle the nextChannel array
 					for dx := cx; dx < len(mgr.nextChannel)-1; dx++ {
 						mgr.nextChannel[dx] = mgr.nextChannel[dx+1]
 					}
-					mgr.nextChannel[len(mgr.nextChannel)-1] = cInfo.GetChannelIdentifier()
+					mgr.nextChannel[len(mgr.nextChannel)-1] = cInfo.GetNodeIdentifier()
 
 					// done
 					return cInfo, nil
@@ -341,7 +341,7 @@ func (mgr *NodeManager) thread() {
 
 		fm := mgr.exec.GetFacilitiesManager().(types.IFacilitiesManager)
 		for devInfo, isReady := range updates {
-			fm.NotifyDeviceReady(devInfo.GetDeviceIdentifier(), isReady)
+			fm.NotifyDeviceReady(devInfo.GetNodeIdentifier(), isReady)
 		}
 	}
 

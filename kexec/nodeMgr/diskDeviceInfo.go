@@ -12,23 +12,23 @@ import (
 )
 
 type DiskDeviceInfo struct {
-	deviceName       string
-	deviceIdentifier types.DeviceIdentifier
-	initialFileName  *string
-	device           *DiskDevice
-	channelInfos     []*DiskChannelInfo
-	isAccessible     bool // can only be true if status is UP, RV, or SU and the device is assigned to at least one channel
-	isReady          bool // cached version of device.IsReady() - when there is a mismatch, we need to do something
+	nodeName        string
+	nodeIdentifier  types.NodeIdentifier
+	initialFileName *string
+	device          *DiskDevice
+	channelInfos    []*DiskChannelInfo
+	isAccessible    bool // can only be true if status is UP, RV, or SU and the device is assigned to at least one channel
+	isReady         bool // cached version of device.IsReady() - when there is a mismatch, we need to do something
 }
 
 // NewDiskDeviceInfo creates a new struct
-// deviceName is required, but initialFileName can be set to nil if the device is not to be initially mounted
-func NewDiskDeviceInfo(deviceName string, initialFileName *string) *DiskDeviceInfo {
+// nodeName is required, but initialFileName can be set to nil if the device is not to be initially mounted
+func NewDiskDeviceInfo(nodeName string, initialFileName *string) *DiskDeviceInfo {
 	return &DiskDeviceInfo{
-		deviceName:       deviceName,
-		deviceIdentifier: types.DeviceIdentifier(pkg.NewFromStringToFieldata(deviceName, 1)[0]),
-		initialFileName:  initialFileName,
-		channelInfos:     make([]*DiskChannelInfo, 0),
+		nodeName:        nodeName,
+		nodeIdentifier:  types.NodeIdentifier(pkg.NewFromStringToFieldata(nodeName, 1)[0]),
+		initialFileName: initialFileName,
+		channelInfos:    make([]*DiskChannelInfo, 0),
 	}
 }
 
@@ -48,14 +48,6 @@ func (ddi *DiskDeviceInfo) GetDevice() Device {
 	return ddi.device
 }
 
-func (ddi *DiskDeviceInfo) GetDeviceIdentifier() types.DeviceIdentifier {
-	return ddi.deviceIdentifier
-}
-
-func (ddi *DiskDeviceInfo) GetDeviceName() string {
-	return ddi.deviceName
-}
-
 func (ddi *DiskDeviceInfo) GetInitialFileName() *string {
 	return ddi.initialFileName
 }
@@ -69,11 +61,11 @@ func (ddi *DiskDeviceInfo) GetNodeDeviceType() NodeDeviceType {
 }
 
 func (ddi *DiskDeviceInfo) GetNodeIdentifier() types.NodeIdentifier {
-	return types.NodeIdentifier(ddi.deviceIdentifier)
+	return ddi.nodeIdentifier
 }
 
 func (ddi *DiskDeviceInfo) GetNodeName() string {
-	return ddi.deviceName
+	return ddi.nodeName
 }
 
 func (ddi *DiskDeviceInfo) IsAccessible() bool {
@@ -93,12 +85,12 @@ func (ddi *DiskDeviceInfo) SetIsReady(flag bool) {
 }
 
 func (ddi *DiskDeviceInfo) Dump(dest io.Writer, indent string) {
-	did := pkg.Word36(ddi.deviceIdentifier)
-	str := fmt.Sprintf("%v id:0%v ready:%v", ddi.deviceName, did.ToStringAsOctal(), ddi.isReady)
+	did := pkg.Word36(ddi.nodeIdentifier)
+	str := fmt.Sprintf("%v id:0%v ready:%v", ddi.nodeName, did.ToStringAsOctal(), ddi.isReady)
 
 	str += " channels:"
 	for _, chInfo := range ddi.channelInfos {
-		str += " " + chInfo.GetChannelName()
+		str += " " + chInfo.GetNodeName()
 	}
 
 	_, _ = fmt.Fprintf(dest, "%v%v\n", indent, str)

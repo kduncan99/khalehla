@@ -13,12 +13,12 @@ import (
 // DiskChannel routes IOs to the appropriate deviceInfos which it manages.
 // Some day in the future we may add caching, perhaps in a CacheDiskChannel.
 type DiskChannel struct {
-	devices map[types.DeviceIdentifier]*DiskDevice
+	devices map[types.NodeIdentifier]*DiskDevice
 }
 
 func NewDiskChannel() *DiskChannel {
 	return &DiskChannel{
-		devices: make(map[types.DeviceIdentifier]*DiskDevice),
+		devices: make(map[types.NodeIdentifier]*DiskDevice),
 	}
 }
 
@@ -34,12 +34,12 @@ func (ch *DiskChannel) GetNodeModelType() NodeModelType {
 	return NodeModelDiskChannel
 }
 
-func (ch *DiskChannel) AssignDevice(deviceIdentifier types.DeviceIdentifier, device Device) error {
+func (ch *DiskChannel) AssignDevice(nodeIdentifier types.NodeIdentifier, device Device) error {
 	if device.GetNodeDeviceType() != NodeDeviceDisk {
 		return fmt.Errorf("device is not a disk")
 	}
 
-	ch.devices[deviceIdentifier] = device.(*DiskDevice)
+	ch.devices[nodeIdentifier] = device.(*DiskDevice)
 	return nil
 }
 
@@ -50,7 +50,7 @@ func (ch *DiskChannel) StartIo(ioPacket IoPacket) {
 		return
 	}
 
-	dev, ok := ch.devices[ioPacket.GetDeviceIdentifier()]
+	dev, ok := ch.devices[ioPacket.GetNodeIdentifier()]
 	if !ok {
 		ioPacket.SetIoStatus(types.IosDeviceIsNotAccessible)
 		return

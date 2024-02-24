@@ -66,9 +66,9 @@ type IFacilitiesManager interface {
 	Dump(destination io.Writer, indent string)
 	Initialize() error // invoked when the application is starting up
 	Stop()             // invoked when the exec is stopping
-	AssignDiskDeviceToExec(deviceId DeviceIdentifier) error
-	IsDeviceAssigned(deviceId DeviceIdentifier) bool
-	NotifyDeviceReady(deviceId DeviceIdentifier, isReady bool)
+	AssignDiskDeviceToExec(nodeId NodeIdentifier) error
+	IsDeviceAssigned(nodeId NodeIdentifier) bool
+	NotifyDeviceReady(nodeId NodeIdentifier, isReady bool)
 }
 
 type IKeyinManager interface {

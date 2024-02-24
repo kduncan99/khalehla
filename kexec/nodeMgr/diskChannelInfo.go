@@ -12,17 +12,17 @@ import (
 )
 
 type DiskChannelInfo struct {
-	channelName       string
-	channelIdentifier types.ChannelIdentifier
-	channel           *DiskChannel
-	deviceInfos       []*DiskDeviceInfo
+	nodeName       string
+	nodeIdentifier types.NodeIdentifier
+	channel        *DiskChannel
+	deviceInfos    []*DiskDeviceInfo
 }
 
-func NewDiskChannelInfo(channelName string) *DiskChannelInfo {
+func NewDiskChannelInfo(nodeName string) *DiskChannelInfo {
 	return &DiskChannelInfo{
-		channelName:       channelName,
-		channelIdentifier: types.ChannelIdentifier(pkg.NewFromStringToFieldata(channelName, 1)[0]),
-		deviceInfos:       make([]*DiskDeviceInfo, 0),
+		nodeName:       nodeName,
+		nodeIdentifier: types.NodeIdentifier(pkg.NewFromStringToFieldata(nodeName, 1)[0]),
+		deviceInfos:    make([]*DiskDeviceInfo, 0),
 	}
 }
 
@@ -32,14 +32,6 @@ func (dci *DiskChannelInfo) CreateNode() {
 
 func (dci *DiskChannelInfo) GetChannel() Channel {
 	return dci.channel
-}
-
-func (dci *DiskChannelInfo) GetChannelIdentifier() types.ChannelIdentifier {
-	return dci.channelIdentifier
-}
-
-func (dci *DiskChannelInfo) GetChannelName() string {
-	return dci.channelName
 }
 
 func (dci *DiskChannelInfo) GetDeviceInfos() []DeviceInfo {
@@ -59,11 +51,11 @@ func (dci *DiskChannelInfo) GetNodeDeviceType() NodeDeviceType {
 }
 
 func (dci *DiskChannelInfo) GetNodeIdentifier() types.NodeIdentifier {
-	return types.NodeIdentifier(dci.channelIdentifier)
+	return types.NodeIdentifier(dci.nodeIdentifier)
 }
 
 func (dci *DiskChannelInfo) GetNodeName() string {
-	return dci.channelName
+	return dci.nodeName
 }
 
 func (dci *DiskChannelInfo) IsAccessible() bool {
@@ -71,7 +63,7 @@ func (dci *DiskChannelInfo) IsAccessible() bool {
 }
 
 func (dci *DiskChannelInfo) Dump(dest io.Writer, indent string) {
-	str := fmt.Sprintf("%v", dci.channelName)
+	str := fmt.Sprintf("%v", dci.nodeName)
 	str += " devices:"
 	for _, devInfo := range dci.deviceInfos {
 		str += " " + devInfo.GetNodeName()

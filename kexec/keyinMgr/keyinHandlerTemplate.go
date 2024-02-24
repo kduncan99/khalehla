@@ -21,7 +21,7 @@ type FOOKeyinHandler struct {
 	timeFinished    time.Time
 }
 
-func NewFOOKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, options string, arguments string) types.KeyinHandler {
+func NewFOOKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, options string, arguments string) KeyinHandler {
 	return &FOOKeyinHandler{
 		exec:            exec,
 		source:          source,

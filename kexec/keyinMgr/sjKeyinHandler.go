@@ -22,7 +22,7 @@ type SJKeyinHandler struct {
 	timeFinished    time.Time
 }
 
-func NewSJKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, options string, arguments string) types.KeyinHandler {
+func NewSJKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, options string, arguments string) KeyinHandler {
 	return &SJKeyinHandler{
 		exec:            exec,
 		source:          source,

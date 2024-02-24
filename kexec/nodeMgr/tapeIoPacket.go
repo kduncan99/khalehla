@@ -7,15 +7,15 @@ package nodeMgr
 import "khalehla/kexec/types"
 
 type TapeIoPacket struct {
-	deviceId       types.DeviceIdentifier
+	nodeId         types.NodeIdentifier
 	ioFunction     types.IoFunction
 	ioStatus       types.IoStatus
 	fileName       string // for mount
 	writeProtected bool   // for mount
 }
 
-func (pkt *TapeIoPacket) GetDeviceIdentifier() types.DeviceIdentifier {
-	return pkt.deviceId
+func (pkt *TapeIoPacket) GetNodeIdentifier() types.NodeIdentifier {
+	return pkt.nodeId
 }
 
 func (pkt *TapeIoPacket) GetNodeDeviceType() NodeDeviceType {
@@ -34,9 +34,9 @@ func (pkt *TapeIoPacket) SetIoStatus(ioStatus types.IoStatus) {
 	pkt.ioStatus = ioStatus
 }
 
-func NewTapeIoPacketMount(deviceId types.DeviceIdentifier, fileName string, writeProtected bool) *TapeIoPacket {
+func NewTapeIoPacketMount(nodeId types.NodeIdentifier, fileName string, writeProtected bool) *TapeIoPacket {
 	return &TapeIoPacket{
-		deviceId:       deviceId,
+		nodeId:         nodeId,
 		ioFunction:     types.IofMount,
 		ioStatus:       types.IosNotStarted,
 		fileName:       fileName,
@@ -44,17 +44,17 @@ func NewTapeIoPacketMount(deviceId types.DeviceIdentifier, fileName string, writ
 	}
 }
 
-func NewTapeIoPacketReset(deviceId types.DeviceIdentifier) *TapeIoPacket {
+func NewTapeIoPacketReset(nodeId types.NodeIdentifier) *TapeIoPacket {
 	return &TapeIoPacket{
-		deviceId:   deviceId,
+		nodeId:     nodeId,
 		ioFunction: types.IofReset,
 		ioStatus:   types.IosNotStarted,
 	}
 }
 
-func NewTapeIoPacketUnmount(deviceId types.DeviceIdentifier) *TapeIoPacket {
+func NewTapeIoPacketUnmount(nodeId types.NodeIdentifier) *TapeIoPacket {
 	return &TapeIoPacket{
-		deviceId:   deviceId,
+		nodeId:     nodeId,
 		ioFunction: types.IofUnmount,
 		ioStatus:   types.IosNotStarted,
 	}

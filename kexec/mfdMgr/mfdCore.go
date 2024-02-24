@@ -4,8 +4,11 @@
 
 package mfdMgr
 
+// we are allowed to know about facMgr, nodeMgr, consMgr
+
 import (
 	"fmt"
+	"khalehla/kexec/facilitiesMgr"
 	"khalehla/kexec/nodeMgr"
 	"khalehla/kexec/types"
 	"khalehla/pkg"
@@ -17,59 +20,55 @@ import (
 func (mgr *MFDManager) InitializeMassStorage() {
 	// Get the list of disks from the node manager
 	disks := make([]*nodeMgr.DiskDeviceInfo, 0)
-	nm := mgr.exec.GetNodeManager()
+	fm := mgr.exec.GetFacilitiesManager().(*facilitiesMgr.FacilitiesManager)
+	nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
 	for _, dInfo := range nm.GetDeviceInfos() {
-		if dInfo.GetNodeType() == nodeMgr.NodeDeviceDisk {
+		if dInfo.GetNodeDeviceType() == nodeMgr.NodeDeviceDisk {
 			disks = append(disks, dInfo.(*nodeMgr.DiskDeviceInfo))
 		}
 	}
 
 	// Check the labels on the disks so that we may segregate them into fixed and isRemovable lists.
 	// Any problems at this point will lead us to DN the unit.
-	fixedDisks := make(map[*nodeMgr.DiskDeviceInfo]*types.DiskAttributes)
-	removableDisks := make(map[*nodeMgr.DiskDeviceInfo]*types.DiskAttributes)
+	// At this point, FacMgr should know about all the disks.
+	fixedDisks := make(map[*nodeMgr.DiskDeviceInfo]*facilitiesMgr.DiskAttributes)
+	removableDisks := make(map[*nodeMgr.DiskDeviceInfo]*facilitiesMgr.DiskAttributes)
 	for _, ddInfo := range disks {
-		if ddInfo.GetNodeStatus() == types.NodeStatusUp {
-			// Get the pack label from fac mgr
-			attr, err := mgr.exec.GetFacilitiesManager().GetDiskAttributes(ddInfo.GetDeviceIdentifier())
-			if err != nil {
+		nodeAttr, _ := fm.GetNodeAttributes(ddInfo.GetNodeIdentifier())
+		if nodeAttr.GetFacNodeStatus() == facilitiesMgr.FacNodeStatusUp {
+			// Get the pack attributes from fac mgr
+			diskAttr, ok := fm.GetDiskAttributes(ddInfo.GetNodeIdentifier())
+			if !ok {
 				mgr.exec.SendExecReadOnlyMessage("Internal configuration error", nil)
 				mgr.exec.Stop(types.StopInitializationSystemConfigurationError)
 				return
 			}
 
-			if attr.PackAttrs == nil {
-				msg := fmt.Sprintf("No label exists for pack on device %v", ddInfo.GetDeviceName())
+			if diskAttr.PackLabelInfo == nil {
+				msg := fmt.Sprintf("No valid label exists for pack on device %v", ddInfo.GetNodeName())
 				mgr.exec.SendExecReadOnlyMessage(msg, nil)
-				_ = mgr.exec.GetNodeManager().SetNodeStatus(ddInfo.GetNodeIdentifier(), types.NodeStatusDown)
-				continue
-			}
-
-			if !attr.PackAttrs.IsPrepped {
-				msg := fmt.Sprintf("Pack is not prepped on device %v", ddInfo.GetDeviceName())
-				mgr.exec.SendExecReadOnlyMessage(msg, nil)
-				_ = mgr.exec.GetNodeManager().SetNodeStatus(ddInfo.GetNodeIdentifier(), types.NodeStatusDown)
+				_ = fm.SetNodeStatus(ddInfo.GetNodeIdentifier(), facilitiesMgr.FacNodeStatusDown)
 				continue
 			}
 
 			// Read sector 1 of the initial directory track.
 			// This is a little messy due to the potential of problematic block sizes.
-			wordsPerBlock := attr.PackAttrs.Label[4].GetH2()
-			dirTrackWordAddr := attr.PackAttrs.Label[03].GetW()
+			wordsPerBlock := uint64(diskAttr.PackLabelInfo.WordsPerRecord)
+			dirTrackWordAddr := uint64(diskAttr.PackLabelInfo.FirstDirectoryTrackAddress)
 			dirTrackBlockId := types.BlockId(dirTrackWordAddr / wordsPerBlock)
 			if wordsPerBlock == 28 {
 				dirTrackBlockId++
 			}
 
 			buf := make([]pkg.Word36, wordsPerBlock)
-			pkt := nodeMgr.NewDiskIoPacketRead(ddInfo.GetDeviceIdentifier(), dirTrackBlockId, buf)
-			mgr.exec.GetNodeManager().RouteIo(pkt)
+			pkt := nodeMgr.NewDiskIoPacketRead(ddInfo.GetNodeIdentifier(), dirTrackBlockId, buf)
+			nm.RouteIo(pkt)
 			ioStat := pkt.GetIoStatus()
 			if ioStat != types.IosComplete {
-				msg := fmt.Sprintf("IO error reading directory track on device %v", ddInfo.GetDeviceName())
+				msg := fmt.Sprintf("IO error reading directory track on device %v", ddInfo.GetNodeName())
 				log.Printf("MFDMgr:%v", msg)
 				mgr.exec.SendExecReadOnlyMessage(msg, nil)
-				_ = mgr.exec.GetNodeManager().SetNodeStatus(ddInfo.GetNodeIdentifier(), types.NodeStatusDown)
+				_ = fm.SetNodeStatus(ddInfo.GetNodeIdentifier(), facilitiesMgr.FacNodeStatusDown)
 				continue
 			}
 
@@ -86,10 +85,10 @@ func (mgr *MFDManager) InitializeMassStorage() {
 			// anything else, it is a pre-used fixed pack which we're going to initialize
 			ldat := sector1[5].GetH1()
 			if ldat == 0 {
-				removableDisks[ddInfo] = attr
+				removableDisks[ddInfo] = diskAttr
 			} else {
-				fixedDisks[ddInfo] = attr
-				attr.PackAttrs.IsFixed = true
+				fixedDisks[ddInfo] = diskAttr
+				diskAttr.IsFixed = true
 			}
 		}
 	}
@@ -199,7 +198,7 @@ func (mgr *MFDManager) allocateDirectoryTrack(
 	preferredLDAT types.LDATIndex,
 ) (types.LDATIndex, types.MFDTrackId, error) {
 	chosenLDAT := types.InvalidLDAT
-	var chosenDesc *fixedPackDescriptor
+	var chosenDesc *packDescriptor
 	chosenAvailableTracks := types.TrackCount(0)
 
 	if preferredLDAT != types.InvalidLDAT {
@@ -307,7 +306,8 @@ func (mgr *MFDManager) bootstrapMFD() error {
 		if mfdTrackId > highestMFDTrackId {
 			highestMFDTrackId = mfdTrackId
 		}
-		packTrackId := desc.packAttributes.Label[03] / 1792
+
+		packTrackId := desc.firstDirectoryTrackAddress / 1792
 		err := mgr.allocateSpecificTrack(mainAddr0, mfdTrackId, 1, ldat, types.TrackId(packTrackId))
 		if err != nil {
 			return err
@@ -429,7 +429,7 @@ func getMFDSectorIdFromMFDAddress(address types.MFDRelativeAddress) types.MFDSec
 // CALL UNDER LOCK
 func (mgr *MFDManager) getMFDAddressForBlock(address types.MFDRelativeAddress) types.MFDRelativeAddress {
 	ldat := getLDATIndexFromMFDAddress(address)
-	mask := mgr.fixedPackDescriptors[ldat].packMask
+	mask := uint64(mgr.fixedPackDescriptors[ldat].packMask)
 	return types.MFDRelativeAddress(uint64(address) & ^mask)
 }
 
@@ -447,12 +447,12 @@ func (mgr *MFDManager) getMFDBlock(address types.MFDRelativeAddress) ([]pkg.Word
 	}
 
 	ldat := getLDATIndexFromMFDAddress(address)
-	sector := getMFDSectorIdFromMFDAddress(address)
-	mask := mgr.fixedPackDescriptors[ldat].packMask
-	baseSectorId := uint64(sector) & ^mask
+	sectorId := getMFDSectorIdFromMFDAddress(address)
+	mask := uint64(mgr.fixedPackDescriptors[ldat].packMask)
+	baseSectorId := uint64(sectorId) & ^mask
 
 	start := 28 * baseSectorId
-	end := start + uint64(mgr.fixedPackDescriptors[ldat].wordsPerBlock)
+	end := start + uint64(mgr.fixedPackDescriptors[ldat].prepFactor)
 	return data[start:end], nil
 }
 
@@ -475,7 +475,7 @@ func (mgr *MFDManager) getMFDSector(address types.MFDRelativeAddress) ([]pkg.Wor
 }
 
 // initializeFixed initializes the fixed pool for a jk13 boot
-func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.DiskAttributes) error {
+func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*facilitiesMgr.DiskAttributes) error {
 	msg := fmt.Sprintf("Fixed Disk Pool = %v Devices", len(disks))
 	mgr.exec.SendExecReadOnlyMessage(msg, nil)
 
@@ -498,12 +498,12 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.
 	packNames := make([]string, 0)
 	for _, diskAttr := range disks {
 		for _, existing := range packNames {
-			if diskAttr.PackAttrs.PackName == existing {
+			if diskAttr.PackLabelInfo.PackId == existing {
 				msg := fmt.Sprintf("Fixed pack name conflict - %v", existing)
 				mgr.exec.SendExecReadOnlyMessage(msg, nil)
 				conflicts = true
 			} else {
-				packNames = append(packNames, diskAttr.PackAttrs.PackName)
+				packNames = append(packNames, diskAttr.PackLabelInfo.PackId)
 			}
 		}
 	}
@@ -514,6 +514,8 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.
 		return fmt.Errorf("packid conflict")
 	}
 
+	nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
+
 	// iterate over the fixed packs - we start at 1, which may not be conventional, but it works
 	nextLdatIndex := types.LDATIndex(1)
 	totalTracks := uint64(0)
@@ -523,12 +525,10 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.
 		nextLdatIndex++
 
 		// Assign the unit
-		_ = mgr.exec.GetFacilitiesManager().AssignDiskDeviceToExec(diskInfo.GetDeviceIdentifier())
+		_ = mgr.exec.GetFacilitiesManager().AssignDiskDeviceToExec(diskInfo.GetNodeIdentifier())
 
 		// Set up fixed pack descriptor
-		fpDesc := newFixedPackDescriptor(diskInfo.GetDeviceIdentifier(),
-			diskAttr.PackAttrs,
-			diskInfo.GetNodeStatus() == types.NodeStatusUp)
+		fpDesc := newPackDescriptor(diskInfo.GetNodeIdentifier(), diskAttr)
 
 		// Mark VOL1 and first directory track as allocated
 		fpDesc.mfdTrackCount = 1
@@ -538,10 +538,10 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.
 		// Set up first directory track for the pack within our cache to be eventually rewritten
 		mgr.fixedPackDescriptors[ldatIndex] = fpDesc
 
-		availableTracks := diskAttr.PackAttrs.Label[016].GetW() - 2
-		recordLength := diskAttr.PackAttrs.Label[04].GetH2()
-		blocksPerTrack := diskAttr.PackAttrs.Label[04].GetH1()
-		wordsPerBlock := uint64(fpDesc.wordsPerBlock)
+		availableTracks := diskAttr.PackLabelInfo.TrackCount
+		recordLength := diskAttr.PackLabelInfo.WordsPerRecord
+		blocksPerTrack := diskAttr.PackLabelInfo.RecordsPerTrack
+		wordsPerBlock := diskAttr.PackLabelInfo.WordsPerRecord
 
 		// We need to read the first directory track into cache
 		// so we can update sector 0 and sector 1 appropriately.
@@ -552,15 +552,15 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.
 
 		// read the directory track into cache
 		blockId := types.BlockId(blocksPerTrack)
-		wx := uint64(0)
+		wx := uint(0)
 		for bx := 0; bx < int(blocksPerTrack); bx++ {
 			sub := data[wx : wx+wordsPerBlock]
-			ioPkt := nodeMgr.NewDiskIoPacketRead(fpDesc.deviceId, blockId, sub)
-			mgr.exec.GetNodeManager().RouteIo(ioPkt)
+			ioPkt := nodeMgr.NewDiskIoPacketRead(fpDesc.nodeId, blockId, sub)
+			nm.RouteIo(ioPkt)
 			ioStat := ioPkt.GetIoStatus()
 			if ioStat != types.IosComplete {
 				log.Printf("MFDMgr:initializeFixed cannot read directory track dev:%v blockId:%v",
-					fpDesc.deviceId, blockId)
+					fpDesc.nodeId, blockId)
 				mgr.exec.Stop(types.StopInternalExecIOFailed)
 				return fmt.Errorf("IO error")
 			}
@@ -595,16 +595,16 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.
 		}
 
 		// leave +0 and +1 alone (We aren't doing HMBT/SMBT so we don't need the addresses)
-		sector1[2].SetW(availableTracks)
-		sector1[3].SetW(availableTracks)
-		sector1[4].FromStringToFieldata(diskAttr.PackAttrs.PackName)
+		sector1[2].SetW(uint64(availableTracks))
+		sector1[3].SetW(uint64(availableTracks))
+		sector1[4].FromStringToFieldata(diskAttr.PackLabelInfo.PackId)
 		sector1[5].SetH1(uint64(ldatIndex))
-		sector1[010].SetT1(blocksPerTrack)
+		sector1[010].SetT1(uint64(blocksPerTrack))
 		sector1[010].SetS3(1) // Sector 1 version
-		sector1[010].SetT3(recordLength)
+		sector1[010].SetT3(uint64(recordLength))
 		mgr.markDirectorySectorDirty(sector1Addr)
 
-		totalTracks += availableTracks
+		totalTracks += uint64(availableTracks)
 	}
 
 	err = mgr.bootstrapMFD()
@@ -618,7 +618,7 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*types.
 }
 
 // initializeRemovable registers the isRemovable packs (if any) as part of a JK13 boot.
-func (mgr *MFDManager) initializeRemovable(disks map[*nodeMgr.DiskDeviceInfo]*types.DiskAttributes) error {
+func (mgr *MFDManager) initializeRemovable(disks map[*nodeMgr.DiskDeviceInfo]*facilitiesMgr.DiskAttributes) error {
 	return nil
 }
 
@@ -717,11 +717,11 @@ func (mgr *MFDManager) writeMFDCache() error {
 			return fmt.Errorf("error draining MFD cache")
 		}
 
-		blocksPerTrack := 1792 / packDesc.wordsPerBlock
-		sectorsPerBlock := packDesc.wordsPerBlock / 28
+		blocksPerTrack := 1792 / packDesc.prepFactor
+		sectorsPerBlock := packDesc.prepFactor / 28
 		devBlockId := uint64(devTrackId) * uint64(blocksPerTrack)
 		devBlockId += uint64(mfdSectorId) / uint64(sectorsPerBlock)
-		ioPkt := nodeMgr.NewDiskIoPacketWrite(packDesc.deviceId, types.BlockId(devBlockId), block)
+		ioPkt := nodeMgr.NewDiskIoPacketWrite(packDesc.nodeId, types.BlockId(devBlockId), block)
 		nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
 		nm.RouteIo(ioPkt)
 		ioStat := ioPkt.GetIoStatus()
