@@ -35,6 +35,43 @@ const (
 )
 
 const (
+	_ IoFunction = iota
+	IofMount
+	IofPrep
+	IofReset
+	IofRead
+	IofReadLabel
+	IofUnmount
+	IofWrite
+	IofWriteLabel
+)
+
+const (
+	_ IoStatus = iota
+	IosNotStarted
+	IosInProgress
+	IosComplete
+	IosSystemError
+	IosInternalError // usually means the Exec fell over
+
+	IosDeviceDoesNotExist
+	IosDeviceIsDown
+	IosDeviceIsNotAccessible
+	IosInvalidFunction
+	IosNilBuffer
+	IosInvalidBufferSize
+	IosInvalidBlockId
+	IosInvalidNodeType
+	IosInvalidPackName
+	IosInvalidPrepFactor
+	IosInvalidTrackCount
+	IosMediaNotMounted
+	IosMediaAlreadyMounted
+	IosPackNotPrepped
+	IosWriteProtected
+)
+
+const (
 	JumpKey1Index  = 0
 	JumpKey2Index  = 1
 	JumpKey3Index  = 2

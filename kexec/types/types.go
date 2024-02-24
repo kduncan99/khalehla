@@ -42,6 +42,8 @@ type DeviceRelativeWordAddress uint
 type ExecPhase uint
 type FacStatus uint
 type Granularity uint
+type IoFunction uint
+type IoStatus uint
 type LDATIndex uint64
 type MFDBlockId uint64
 type MFDRelativeAddress uint64

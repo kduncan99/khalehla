@@ -5,7 +5,6 @@
 package nodeMgr
 
 import (
-	"fmt"
 	"khalehla/kexec/types"
 	"khalehla/pkg"
 )
@@ -38,32 +37,6 @@ func (pkt *DiskIoPacket) GetIoFunction() types.IoFunction {
 
 func (pkt *DiskIoPacket) GetIoStatus() types.IoStatus {
 	return pkt.ioStatus
-}
-
-func (pkt *DiskIoPacket) GetString() string {
-	funcStr, ok := types.IoFunctionTable[pkt.ioFunction]
-	if !ok {
-		funcStr = fmt.Sprintf("%v", pkt.ioFunction)
-	}
-
-	statStr, ok := types.IoStatusTable[pkt.ioStatus]
-	if !ok {
-		statStr = fmt.Sprintf("%v", pkt.ioStatus)
-	}
-
-	detStr := ""
-	if pkt.ioFunction == types.IofRead || pkt.ioFunction == types.IofWrite {
-		detStr += fmt.Sprintf("blkId:%v ", pkt.blockId)
-	}
-	if pkt.ioFunction == types.IofPrep {
-		detStr += fmt.Sprintf("packId:%v prep:%v tracks:%v rem:%v ",
-			pkt.packName, pkt.prepFactor, pkt.trackCount, pkt.removable)
-	}
-	if pkt.ioFunction == types.IofMount {
-		detStr += fmt.Sprintf("file:%v writeProt:%v ", pkt.fileName, pkt.writeProtected)
-	}
-
-	return fmt.Sprintf("func:%s %sstat:%s", funcStr, detStr, statStr)
 }
 
 func (pkt *DiskIoPacket) SetIoStatus(ioStatus types.IoStatus) {
