@@ -16,10 +16,12 @@ type inventory struct {
 }
 
 func newInventory() *inventory {
-	return &inventory{
+	i := &inventory{
+		nodes: make(map[types.NodeIdentifier]NodeAttributes),
 		disks: make(map[types.NodeIdentifier]*DiskAttributes),
 		tapes: make(map[types.NodeIdentifier]*TapeAttributes),
 	}
+	return i
 }
 
 func (i *inventory) injectNode(nodeInfo nodeMgr.NodeInfo) {

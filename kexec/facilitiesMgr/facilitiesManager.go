@@ -42,6 +42,8 @@ func (mgr *FacilitiesManager) Boot() error {
 	// (re)build inventory based on nodeMgr
 	// this implies that nodeMgr.Boot() MUST be invoked before invoking us.
 	// TODO at some point, it might be nice to add the channels in here
+	// TODO should we really do this? don't we want to preserve the inventory for the previous session?
+	mgr.inventory = newInventory()
 	nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
 	for _, devInfo := range nm.GetDeviceInfos() {
 		mgr.inventory.injectNode(devInfo)
