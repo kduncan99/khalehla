@@ -12,12 +12,16 @@ const (
 	// channels
 
 	NodeModelDiskChannel
-	NodeModelTapeChannel
+	NodeModelCacheDiskChannel
+	NodeModelTapeLibraryChannel
 
 	// devices
 
 	NodeModelFileSystemDiskDevice
+	NodeModelRAMDiskDevice
+	NodeModelSCSIDiskDevice
 	NodeModelFileSystemTapeDevice
+	NodeModelSCSITapeDevice
 )
 
 type NodeModel struct {
@@ -32,9 +36,24 @@ var NodeModelTable = map[string]NodeModel{
 		deviceType:   NodeDeviceDisk,
 		modelType:    NodeModelFileSystemDiskDevice,
 	},
+	"RMDISK": {
+		categoryType: NodeCategoryDevice,
+		deviceType:   NodeDeviceDisk,
+		modelType:    NodeModelRAMDiskDevice,
+	},
+	"SCDISK": {
+		categoryType: NodeCategoryDevice,
+		deviceType:   NodeDeviceDisk,
+		modelType:    NodeModelSCSIDiskDevice,
+	},
 	"FSTAPE": {
 		categoryType: NodeCategoryDevice,
 		deviceType:   NodeDeviceTape,
 		modelType:    NodeModelFileSystemTapeDevice,
+	},
+	"SCTAPE": {
+		categoryType: NodeCategoryDevice,
+		deviceType:   NodeDeviceTape,
+		modelType:    NodeModelSCSITapeDevice,
 	},
 }

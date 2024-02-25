@@ -13,12 +13,12 @@ import (
 // DiskChannel routes IOs to the appropriate deviceInfos which it manages.
 // Some day in the future we may add caching, perhaps in a CacheDiskChannel.
 type DiskChannel struct {
-	devices map[types.NodeIdentifier]*DiskDevice
+	devices map[types.NodeIdentifier]DiskDevice
 }
 
 func NewDiskChannel() *DiskChannel {
 	return &DiskChannel{
-		devices: make(map[types.NodeIdentifier]*DiskDevice),
+		devices: make(map[types.NodeIdentifier]DiskDevice),
 	}
 }
 
@@ -39,7 +39,7 @@ func (ch *DiskChannel) AssignDevice(nodeIdentifier types.NodeIdentifier, device 
 		return fmt.Errorf("device is not a disk")
 	}
 
-	ch.devices[nodeIdentifier] = device.(*DiskDevice)
+	ch.devices[nodeIdentifier] = device.(*FileSystemDiskDevice)
 	return nil
 }
 

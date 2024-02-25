@@ -57,7 +57,7 @@ func DoPrep(args []string) error {
 	}
 
 	dc := nodeMgr.NewDiskChannel()
-	dd := nodeMgr.NewDiskDevice(nil)
+	dd := nodeMgr.NewFileSystemDiskDevice(nil)
 	devId := types.DeviceIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
 	_ = dc.AssignDevice(devId, dd)
 
@@ -96,7 +96,7 @@ func DoShow(args []string) error {
 	}
 
 	dc := nodeMgr.NewDiskChannel()
-	dd := nodeMgr.NewDiskDevice(nil)
+	dd := nodeMgr.NewFileSystemDiskDevice(nil)
 	devId := types.DeviceIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
 	_ = dc.AssignDevice(devId, dd)
 

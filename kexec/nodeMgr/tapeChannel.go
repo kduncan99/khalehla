@@ -13,12 +13,12 @@ import (
 // TapeChannel routes IOs to the appropriate deviceInfos which it manages.
 // Some day in the future we may add caching, perhaps in a CacheTapeChannel.
 type TapeChannel struct {
-	devices map[types.NodeIdentifier]*TapeDevice
+	devices map[types.NodeIdentifier]TapeDevice
 }
 
 func NewTapeChannel() *TapeChannel {
 	return &TapeChannel{
-		devices: make(map[types.NodeIdentifier]*TapeDevice),
+		devices: make(map[types.NodeIdentifier]TapeDevice),
 	}
 }
 
@@ -31,7 +31,7 @@ func (ch *TapeChannel) GetNodeDeviceType() NodeDeviceType {
 }
 
 func (ch *TapeChannel) GetNodeModelType() NodeModelType {
-	return NodeModelTapeChannel
+	return NodeModelTapeLibraryChannel
 }
 
 func (ch *TapeChannel) AssignDevice(nodeIdentifier types.NodeIdentifier, device Device) error {
@@ -39,7 +39,7 @@ func (ch *TapeChannel) AssignDevice(nodeIdentifier types.NodeIdentifier, device 
 		return fmt.Errorf("device is not a tape")
 	}
 
-	ch.devices[nodeIdentifier] = device.(*TapeDevice)
+	ch.devices[nodeIdentifier] = device.(TapeDevice)
 	return nil
 }
 
