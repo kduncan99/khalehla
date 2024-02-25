@@ -14,7 +14,7 @@ import (
 type TapeDeviceInfo struct {
 	nodeName       string
 	nodeIdentifier types.NodeIdentifier
-	device         *TapeDevice
+	device         *FileSystemTapeDevice
 	channelInfos   []*TapeChannelInfo
 	isAccessible   bool // can only be true if status is UP, RV, or SU and the device is assigned to at least one channel
 	isReady        bool // cached version of device.IsReady() - when there is a mismatch, we need to do something
@@ -30,7 +30,7 @@ func NewTapeDeviceInfo(nodeName string) *TapeDeviceInfo {
 }
 
 func (tdi *TapeDeviceInfo) CreateNode() {
-	tdi.device = NewTapeDevice()
+	tdi.device = NewFileSystemTapeDevice()
 }
 
 func (tdi *TapeDeviceInfo) GetChannelInfos() []ChannelInfo {
