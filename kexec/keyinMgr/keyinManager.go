@@ -7,14 +7,14 @@ package keyinMgr
 import (
 	"fmt"
 	"io"
-	"khalehla/kexec/types"
+	"khalehla/kexec"
 	"log"
 	"strings"
 	"sync"
 	"time"
 )
 
-var handlerTable = map[string]func(types.IExec, types.ConsoleIdentifier, string, string) KeyinHandler{
+var handlerTable = map[string]func(kexec.IExec, kexec.ConsoleIdentifier, string, string) KeyinHandler{
 	"$!": NewStopKeyinHandler,
 	// "AP"
 	// "AT"
@@ -72,20 +72,20 @@ var handlerTable = map[string]func(types.IExec, types.ConsoleIdentifier, string,
 }
 
 type keyinInfo struct {
-	source types.ConsoleIdentifier
+	source kexec.ConsoleIdentifier
 	text   string
 }
 
 // KeyinManager handles all things related to unsolicited console keyins
 type KeyinManager struct {
-	exec            types.IExec
+	exec            kexec.IExec
 	mutex           sync.Mutex
 	threadDone      bool
 	postedKeyins    []*keyinInfo
 	pendingHandlers []KeyinHandler
 }
 
-func NewKeyinManager(exec types.IExec) *KeyinManager {
+func NewKeyinManager(exec kexec.IExec) *KeyinManager {
 	return &KeyinManager{
 		exec: exec,
 	}
@@ -121,7 +121,7 @@ func (mgr *KeyinManager) Stop() {
 }
 
 // PostKeyin queues the given keyin info and returns immediately to avoid deadlocks
-func (mgr *KeyinManager) PostKeyin(source types.ConsoleIdentifier, text string) {
+func (mgr *KeyinManager) PostKeyin(source kexec.ConsoleIdentifier, text string) {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 

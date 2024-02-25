@@ -8,8 +8,8 @@ package facilitiesMgr
 import (
 	"fmt"
 	"io"
+	"khalehla/kexec"
 	"khalehla/kexec/nodeMgr"
-	"khalehla/kexec/types"
 	"khalehla/pkg"
 	"log"
 	"sync"
@@ -17,18 +17,18 @@ import (
 )
 
 type FacilitiesManager struct {
-	exec                         types.IExec
+	exec                         kexec.IExec
 	mutex                        sync.Mutex
 	threadDone                   bool
 	inventory                    *inventory
-	deviceReadyNotificationQueue map[types.NodeIdentifier]bool
+	deviceReadyNotificationQueue map[kexec.NodeIdentifier]bool
 }
 
-func NewFacilitiesManager(exec types.IExec) *FacilitiesManager {
+func NewFacilitiesManager(exec kexec.IExec) *FacilitiesManager {
 	return &FacilitiesManager{
 		exec:                         exec,
 		inventory:                    newInventory(),
-		deviceReadyNotificationQueue: make(map[types.NodeIdentifier]bool),
+		deviceReadyNotificationQueue: make(map[kexec.NodeIdentifier]bool),
 	}
 }
 
@@ -37,7 +37,7 @@ func (mgr *FacilitiesManager) Boot() error {
 	log.Printf("FacMgr:Boot")
 
 	// clear device ready notifications
-	mgr.deviceReadyNotificationQueue = make(map[types.NodeIdentifier]bool)
+	mgr.deviceReadyNotificationQueue = make(map[kexec.NodeIdentifier]bool)
 
 	// (re)build inventory based on nodeMgr
 	// this implies that nodeMgr.Boot() MUST be invoked before invoking us.
@@ -73,7 +73,7 @@ func (mgr *FacilitiesManager) Stop() {
 	}
 }
 
-func (mgr *FacilitiesManager) AssignDiskDeviceToExec(deviceId types.NodeIdentifier) error {
+func (mgr *FacilitiesManager) AssignDiskDeviceToExec(deviceId kexec.NodeIdentifier) error {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
@@ -81,14 +81,14 @@ func (mgr *FacilitiesManager) AssignDiskDeviceToExec(deviceId types.NodeIdentifi
 	if !ok {
 		msg := fmt.Sprintf("Device %v is not known", deviceId)
 		log.Println(msg)
-		mgr.exec.Stop(types.StopFacilitiesComplex)
+		mgr.exec.Stop(kexec.StopFacilitiesComplex)
 		return fmt.Errorf(msg)
 	}
 
 	if diskAttr.AssignedTo != nil {
 		msg := fmt.Sprintf("Device %v is already assigned to %v", deviceId, diskAttr.AssignedTo.RunId)
 		log.Println(msg)
-		mgr.exec.Stop(types.StopFacilitiesComplex)
+		mgr.exec.Stop(kexec.StopFacilitiesComplex)
 		return fmt.Errorf(msg)
 	}
 
@@ -98,12 +98,12 @@ func (mgr *FacilitiesManager) AssignDiskDeviceToExec(deviceId types.NodeIdentifi
 	return nil
 }
 
-func (mgr *FacilitiesManager) GetDiskAttributes(nodeId types.NodeIdentifier) (*DiskAttributes, bool) {
+func (mgr *FacilitiesManager) GetDiskAttributes(nodeId kexec.NodeIdentifier) (*DiskAttributes, bool) {
 	attr, ok := mgr.inventory.nodes[nodeId]
 	return attr.(*DiskAttributes), ok
 }
 
-func (mgr *FacilitiesManager) GetNodeAttributes(nodeId types.NodeIdentifier) (NodeAttributes, bool) {
+func (mgr *FacilitiesManager) GetNodeAttributes(nodeId kexec.NodeIdentifier) (NodeAttributes, bool) {
 	attr, ok := mgr.inventory.nodes[nodeId]
 	return attr, ok
 }
@@ -118,7 +118,7 @@ func (mgr *FacilitiesManager) GetNodeAttributesByName(name string) (NodeAttribut
 	return nil, false
 }
 
-func (mgr *FacilitiesManager) GetNodeStatusString(nodeId types.NodeIdentifier) string {
+func (mgr *FacilitiesManager) GetNodeStatusString(nodeId kexec.NodeIdentifier) string {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
@@ -175,7 +175,7 @@ func (mgr *FacilitiesManager) GetNodeStatusString(nodeId types.NodeIdentifier) s
 	return str
 }
 
-func (mgr *FacilitiesManager) IsDeviceAssigned(deviceId types.NodeIdentifier) bool {
+func (mgr *FacilitiesManager) IsDeviceAssigned(deviceId kexec.NodeIdentifier) bool {
 	dAttr, ok := mgr.inventory.disks[deviceId]
 	if ok {
 		return dAttr.AssignedTo != nil
@@ -189,14 +189,14 @@ func (mgr *FacilitiesManager) IsDeviceAssigned(deviceId types.NodeIdentifier) bo
 	return false
 }
 
-func (mgr *FacilitiesManager) NotifyDeviceReady(deviceId types.NodeIdentifier, isReady bool) {
+func (mgr *FacilitiesManager) NotifyDeviceReady(deviceId kexec.NodeIdentifier, isReady bool) {
 	// queue this for the thread to pick up
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 	mgr.deviceReadyNotificationQueue[deviceId] = isReady
 }
 
-func (mgr *FacilitiesManager) SetNodeStatus(nodeId types.NodeIdentifier, status FacNodeStatus) error {
+func (mgr *FacilitiesManager) SetNodeStatus(nodeId kexec.NodeIdentifier, status FacNodeStatus) error {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
@@ -267,12 +267,12 @@ func (mgr *FacilitiesManager) SetNodeStatus(nodeId types.NodeIdentifier, status 
 	msg := nodeAttr.GetNodeName() + " " + mgr.GetNodeStatusString(nodeId)
 	mgr.exec.SendExecReadOnlyMessage(msg, nil)
 	if stopExec {
-		mgr.exec.Stop(types.StopConsoleResponseRequiresReboot)
+		mgr.exec.Stop(kexec.StopConsoleResponseRequiresReboot)
 	}
 
 	return nil
 }
-func (mgr *FacilitiesManager) diskBecameReady(nodeId types.NodeIdentifier) {
+func (mgr *FacilitiesManager) diskBecameReady(nodeId kexec.NodeIdentifier) {
 	// Device became ready - any pack attributes we have, are obsolete, so reload them
 	log.Printf("FacMgr:Disk %v became ready", nodeId)
 
@@ -307,7 +307,7 @@ func (mgr *FacilitiesManager) diskBecameReady(nodeId types.NodeIdentifier) {
 		}
 
 		var ok bool
-		diskAttr.PackLabelInfo, ok = types.NewPackLabelInfo(label)
+		diskAttr.PackLabelInfo, ok = kexec.NewPackLabelInfo(label)
 		if !ok {
 			mgr.mutex.Unlock()
 
@@ -327,7 +327,7 @@ func (mgr *FacilitiesManager) diskBecameReady(nodeId types.NodeIdentifier) {
 	mgr.mutex.Unlock()
 }
 
-func (mgr *FacilitiesManager) tapeBecameReady(nodeId types.NodeIdentifier) {
+func (mgr *FacilitiesManager) tapeBecameReady(nodeId kexec.NodeIdentifier) {
 	// Device became ready
 	// what we do here depends upon the current state of the device...
 	// TODO
@@ -342,7 +342,7 @@ func (mgr *FacilitiesManager) thread() {
 		// any device ready notifications?
 		mgr.mutex.Lock()
 		queue := mgr.deviceReadyNotificationQueue
-		mgr.deviceReadyNotificationQueue = make(map[types.NodeIdentifier]bool)
+		mgr.deviceReadyNotificationQueue = make(map[kexec.NodeIdentifier]bool)
 		mgr.mutex.Unlock()
 
 		for devId, flag := range queue {

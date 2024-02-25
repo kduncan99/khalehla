@@ -2,7 +2,7 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package types
+package kexec
 
 const InvalidLink MFDRelativeAddress = 0_400000_000000
 const InvalidLDAT LDATIndex = 0_400000

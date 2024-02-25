@@ -2,7 +2,7 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package types
+package exec
 
 type RunConditionWord struct {
 	inhibitPageEject                   bool // bit 3

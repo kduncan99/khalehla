@@ -8,9 +8,9 @@ package mfdMgr
 
 import (
 	"fmt"
+	"khalehla/kexec"
 	"khalehla/kexec/facilitiesMgr"
 	"khalehla/kexec/nodeMgr"
-	"khalehla/kexec/types"
 	"khalehla/pkg"
 	"log"
 )
@@ -40,7 +40,7 @@ func (mgr *MFDManager) InitializeMassStorage() {
 			diskAttr, ok := fm.GetDiskAttributes(ddInfo.GetNodeIdentifier())
 			if !ok {
 				mgr.exec.SendExecReadOnlyMessage("Internal configuration error", nil)
-				mgr.exec.Stop(types.StopInitializationSystemConfigurationError)
+				mgr.exec.Stop(kexec.StopInitializationSystemConfigurationError)
 				return
 			}
 
@@ -55,7 +55,7 @@ func (mgr *MFDManager) InitializeMassStorage() {
 			// This is a little messy due to the potential of problematic block sizes.
 			wordsPerBlock := uint64(diskAttr.PackLabelInfo.WordsPerRecord)
 			dirTrackWordAddr := uint64(diskAttr.PackLabelInfo.FirstDirectoryTrackAddress)
-			dirTrackBlockId := types.BlockId(dirTrackWordAddr / wordsPerBlock)
+			dirTrackBlockId := kexec.BlockId(dirTrackWordAddr / wordsPerBlock)
 			if wordsPerBlock == 28 {
 				dirTrackBlockId++
 			}
@@ -101,7 +101,7 @@ func (mgr *MFDManager) InitializeMassStorage() {
 	// Make sure we have at least one fixed pack after the previous shenanigans
 	if len(mgr.fixedPackDescriptors) == 0 {
 		mgr.exec.SendExecReadOnlyMessage("No Fixed Disks - Cannot Continue Initialization", nil)
-		mgr.exec.Stop(types.StopInitializationSystemConfigurationError)
+		mgr.exec.Stop(kexec.StopInitializationSystemConfigurationError)
 		return
 	}
 
@@ -114,7 +114,7 @@ func (mgr *MFDManager) InitializeMassStorage() {
 func (mgr *MFDManager) RecoverMassStorage() {
 	// TODO
 	mgr.exec.SendExecReadOnlyMessage("MFD Recovery is not implemented", nil)
-	mgr.exec.Stop(types.StopDirectoryErrors)
+	mgr.exec.Stop(kexec.StopDirectoryErrors)
 	return
 }
 
@@ -128,8 +128,8 @@ func (mgr *MFDManager) RecoverMassStorage() {
 // If we return an error, we've already stopped the exec
 // CALL UNDER LOCK
 func (mgr *MFDManager) allocateDirectorySector(
-	preferredLDAT types.LDATIndex,
-) (types.MFDRelativeAddress, []pkg.Word36, error) {
+	preferredLDAT kexec.LDATIndex,
+) (kexec.MFDRelativeAddress, []pkg.Word36, error) {
 	// Are there any free sectors? If not, allocate a directory track
 	if len(mgr.freeMFDSectors) == 0 {
 		_, _, err := mgr.allocateDirectoryTrack(preferredLDAT)
@@ -142,7 +142,7 @@ func (mgr *MFDManager) allocateDirectorySector(
 	//		preferred (if not InvalidLDAT)
 	//		pack with the least number of sectors
 	//		anything available
-	chosenAddress := types.InvalidLink
+	chosenAddress := kexec.InvalidLink
 	chosenSectorsUsed := uint64(0)
 	chosenIndex := 0
 	for fsx, addr := range mgr.freeMFDSectors {
@@ -195,13 +195,13 @@ func (mgr *MFDManager) allocateDirectorySector(
 // If we return an error, we've already stopped the exec
 // CALL UNDER LOCK
 func (mgr *MFDManager) allocateDirectoryTrack(
-	preferredLDAT types.LDATIndex,
-) (types.LDATIndex, types.MFDTrackId, error) {
-	chosenLDAT := types.InvalidLDAT
+	preferredLDAT kexec.LDATIndex,
+) (kexec.LDATIndex, kexec.MFDTrackId, error) {
+	chosenLDAT := kexec.InvalidLDAT
 	var chosenDesc *packDescriptor
-	chosenAvailableTracks := types.TrackCount(0)
+	chosenAvailableTracks := kexec.TrackCount(0)
 
-	if preferredLDAT != types.InvalidLDAT {
+	if preferredLDAT != kexec.InvalidLDAT {
 		packDesc, ok := mgr.fixedPackDescriptors[preferredLDAT]
 		if ok {
 			availMFDTracks := 07777 - packDesc.mfdTrackCount
@@ -214,7 +214,7 @@ func (mgr *MFDManager) allocateDirectoryTrack(
 		}
 	}
 
-	if chosenLDAT == types.InvalidLDAT {
+	if chosenLDAT == kexec.InvalidLDAT {
 		for ldat, packDesc := range mgr.fixedPackDescriptors {
 			availMFDTracks := 07777 - packDesc.mfdTrackCount
 			availTracks := packDesc.freeSpaceTable.getFreeTrackCount()
@@ -226,14 +226,14 @@ func (mgr *MFDManager) allocateDirectoryTrack(
 		}
 	}
 
-	if chosenLDAT == types.InvalidLDAT {
+	if chosenLDAT == kexec.InvalidLDAT {
 		log.Printf("MFDMgr:No space available for directory track allocation")
-		mgr.exec.Stop(types.StopExecRequestForMassStorageFailed)
+		mgr.exec.Stop(kexec.StopExecRequestForMassStorageFailed)
 		return 0, 0, fmt.Errorf("no disk")
 	}
 
 	// First, find the MFD relative address of the first unused MFD track
-	trackId := types.MFDTrackId(0)
+	trackId := kexec.MFDTrackId(0)
 	for {
 		mfdAddr := composeMFDAddress(chosenLDAT, trackId, 0)
 		_, ok := mgr.cachedTracks[mfdAddr]
@@ -259,10 +259,10 @@ func (mgr *MFDManager) bootstrapMFD() error {
 	cfg := mgr.exec.GetConfiguration()
 
 	// Find the highest and lowest LDAT indices
-	var lowestLDAT = types.InvalidLDAT
-	var highestLDAT = types.LDATIndex(0)
+	var lowestLDAT = kexec.InvalidLDAT
+	var highestLDAT = kexec.LDATIndex(0)
 	for ldat := range mgr.fixedPackDescriptors {
-		if lowestLDAT == types.InvalidLDAT && ldat < lowestLDAT {
+		if lowestLDAT == kexec.InvalidLDAT && ldat < lowestLDAT {
 			lowestLDAT = ldat
 		}
 		if ldat > highestLDAT {
@@ -273,7 +273,7 @@ func (mgr *MFDManager) bootstrapMFD() error {
 	// We've already initialized the DAS sector - put the expected free sectors (2 through 63)
 	// into the free sector list.
 	for sx := 2; sx < 64; sx++ {
-		sectorAddr := composeMFDAddress(lowestLDAT, 0, types.MFDSectorId(sx))
+		sectorAddr := composeMFDAddress(lowestLDAT, 0, kexec.MFDSectorId(sx))
 		mgr.freeMFDSectors = append(mgr.freeMFDSectors, sectorAddr)
 	}
 
@@ -297,18 +297,18 @@ func (mgr *MFDManager) bootstrapMFD() error {
 	// Before we can play DAD table games, we have to get the MFD$$ in-core structures in place,
 	// including *particularly* the file allocation table.
 	// We need to create one allocation region for each pack's initial directory track.
-	highestMFDTrackId := types.TrackId(0)
+	highestMFDTrackId := kexec.TrackId(0)
 	fae := newFileAllocationEntry(mainAddr0, 0_400000_000000)
 	mgr.assignedFileAllocations[mainAddr0] = fae
 
 	for ldat, desc := range mgr.fixedPackDescriptors {
-		mfdTrackId := types.TrackId(ldat << 12)
+		mfdTrackId := kexec.TrackId(ldat << 12)
 		if mfdTrackId > highestMFDTrackId {
 			highestMFDTrackId = mfdTrackId
 		}
 
 		packTrackId := desc.firstDirectoryTrackAddress / 1792
-		err := mgr.allocateSpecificTrack(mainAddr0, mfdTrackId, 1, ldat, types.TrackId(packTrackId))
+		err := mgr.allocateSpecificTrack(mainAddr0, mfdTrackId, 1, ldat, kexec.TrackId(packTrackId))
 		if err != nil {
 			return err
 		}
@@ -352,12 +352,12 @@ func (mgr *MFDManager) bootstrapMFD() error {
 }
 
 func composeMFDAddress(
-	ldatIndex types.LDATIndex,
-	trackId types.MFDTrackId,
-	sectorId types.MFDSectorId,
-) types.MFDRelativeAddress {
+	ldatIndex kexec.LDATIndex,
+	trackId kexec.MFDTrackId,
+	sectorId kexec.MFDSectorId,
+) kexec.MFDRelativeAddress {
 
-	return types.MFDRelativeAddress(uint64(ldatIndex&07777)<<18 | uint64(trackId&07777)<<6 | uint64(sectorId&077))
+	return kexec.MFDRelativeAddress(uint64(ldatIndex&07777)<<18 | uint64(trackId&07777)<<6 | uint64(sectorId&077))
 }
 
 // findDASEntryForSector chases the appropriate DAS chain to find the DAS which describes the given sector address,
@@ -368,15 +368,15 @@ func composeMFDAddress(
 //	the index of the DAS entry
 //	a slice to the 3-word DAS entry itself.
 func (mgr *MFDManager) findDASEntryForSector(
-	sectorAddr types.MFDRelativeAddress,
-) (types.MFDRelativeAddress, int, []pkg.Word36, error) {
+	sectorAddr kexec.MFDRelativeAddress,
+) (kexec.MFDRelativeAddress, int, []pkg.Word36, error) {
 
 	// what are we looking for?
 	ldat := getLDATIndexFromMFDAddress(sectorAddr)
 	trackId := getMFDTrackIdFromMFDAddress(sectorAddr)
 
 	dasAddr := composeMFDAddress(ldat, 0, 0)
-	for dasAddr != types.InvalidLink {
+	for dasAddr != kexec.InvalidLink {
 		das, err := mgr.getMFDSector(dasAddr)
 		if err != nil {
 			return 0, 0, nil, err
@@ -392,8 +392,8 @@ func (mgr *MFDManager) findDASEntryForSector(
 		// Look at the other entries
 		for ex := 1; ex < 8; ex++ {
 			ey := ex * 3
-			entryAddr := types.MFDRelativeAddress(das[ey].GetW())
-			if entryAddr != types.InvalidLink {
+			entryAddr := kexec.MFDRelativeAddress(das[ey].GetW())
+			if entryAddr != kexec.InvalidLink {
 				entryTrackId := getMFDTrackIdFromMFDAddress(entryAddr)
 				if entryTrackId == trackId {
 					// found it.
@@ -403,46 +403,46 @@ func (mgr *MFDManager) findDASEntryForSector(
 		}
 
 		// So it is not this DAS - move on to the next
-		dasAddr = types.MFDRelativeAddress(das[033].GetW())
+		dasAddr = kexec.MFDRelativeAddress(das[033].GetW())
 	}
 
 	// We did not find the DAS entry - complain and crash
 	log.Printf("MFDMgr:Cannot find DAS for sector %012o", sectorAddr)
-	mgr.exec.Stop(types.StopDirectoryErrors)
+	mgr.exec.Stop(kexec.StopDirectoryErrors)
 	return 0, 0, nil, fmt.Errorf("cannot find DAS")
 }
 
-func getLDATIndexFromMFDAddress(address types.MFDRelativeAddress) types.LDATIndex {
-	return types.LDATIndex(address>>18) & 07777
+func getLDATIndexFromMFDAddress(address kexec.MFDRelativeAddress) kexec.LDATIndex {
+	return kexec.LDATIndex(address>>18) & 07777
 }
 
-func getMFDTrackIdFromMFDAddress(address types.MFDRelativeAddress) types.MFDTrackId {
-	return types.MFDTrackId(address>>6) & 07777
+func getMFDTrackIdFromMFDAddress(address kexec.MFDRelativeAddress) kexec.MFDTrackId {
+	return kexec.MFDTrackId(address>>6) & 07777
 }
 
-func getMFDSectorIdFromMFDAddress(address types.MFDRelativeAddress) types.MFDSectorId {
-	return types.MFDSectorId(address & 077)
+func getMFDSectorIdFromMFDAddress(address kexec.MFDRelativeAddress) kexec.MFDSectorId {
+	return kexec.MFDSectorId(address & 077)
 }
 
 // getMFDAddressForBlock takes a given MFD-relative sector address and normalizes it to
 // the first sector in the block containing the given sector.
 // CALL UNDER LOCK
-func (mgr *MFDManager) getMFDAddressForBlock(address types.MFDRelativeAddress) types.MFDRelativeAddress {
+func (mgr *MFDManager) getMFDAddressForBlock(address kexec.MFDRelativeAddress) kexec.MFDRelativeAddress {
 	ldat := getLDATIndexFromMFDAddress(address)
 	mask := uint64(mgr.fixedPackDescriptors[ldat].packMask)
-	return types.MFDRelativeAddress(uint64(address) & ^mask)
+	return kexec.MFDRelativeAddress(uint64(address) & ^mask)
 }
 
 // getMFDBlock returns a slice corresponding to all the sectors in the physical block
 // containing the sector represented by the given address. Used for reading/writing MFD blocks.
 // If we return an error, we've already stopped the exec
 // CALL UNDER LOCK
-func (mgr *MFDManager) getMFDBlock(address types.MFDRelativeAddress) ([]pkg.Word36, error) {
+func (mgr *MFDManager) getMFDBlock(address kexec.MFDRelativeAddress) ([]pkg.Word36, error) {
 	ldatAndTrack := address & 0_007777_777700
 	data, ok := mgr.cachedTracks[ldatAndTrack]
 	if !ok {
 		log.Printf("MFDMgr:getMFDBlock address:%v is not in cache", address)
-		mgr.exec.Stop(types.StopDirectoryErrors)
+		mgr.exec.Stop(kexec.StopDirectoryErrors)
 		return nil, fmt.Errorf("internal error")
 	}
 
@@ -459,12 +459,12 @@ func (mgr *MFDManager) getMFDBlock(address types.MFDRelativeAddress) ([]pkg.Word
 // getMFDSector returns a slice corresponding to the portion of the MFD block which represents the indicated sector.
 // If we return an error, we've already stopped the exec
 // CALL UNDER LOCK
-func (mgr *MFDManager) getMFDSector(address types.MFDRelativeAddress) ([]pkg.Word36, error) {
+func (mgr *MFDManager) getMFDSector(address kexec.MFDRelativeAddress) ([]pkg.Word36, error) {
 	ldatAndTrack := address & 0_007777_777700
 	data, ok := mgr.cachedTracks[ldatAndTrack]
 	if !ok {
 		log.Printf("MFDMgr:getMFDSector address:%v is not in cache", address)
-		mgr.exec.Stop(types.StopDirectoryErrors)
+		mgr.exec.Stop(kexec.StopDirectoryErrors)
 		return nil, fmt.Errorf("internal error")
 	}
 
@@ -489,7 +489,7 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*facili
 	if err != nil {
 		return err
 	} else if reply != "Y" {
-		mgr.exec.Stop(types.StopConsoleResponseRequiresReboot)
+		mgr.exec.Stop(kexec.StopConsoleResponseRequiresReboot)
 		return fmt.Errorf("boot canceled")
 	}
 
@@ -510,14 +510,14 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*facili
 
 	if conflicts {
 		mgr.exec.SendExecReadOnlyMessage("Resolve pack name conflicts and reboot", nil)
-		mgr.exec.Stop(types.StopDirectoryErrors)
+		mgr.exec.Stop(kexec.StopDirectoryErrors)
 		return fmt.Errorf("packid conflict")
 	}
 
 	nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
 
 	// iterate over the fixed packs - we start at 1, which may not be conventional, but it works
-	nextLdatIndex := types.LDATIndex(1)
+	nextLdatIndex := kexec.LDATIndex(1)
 	totalTracks := uint64(0)
 	for diskInfo, diskAttr := range disks {
 		// Assign an LDAT to the pack, update the pack label, then rewrite the label
@@ -545,13 +545,13 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*facili
 
 		// We need to read the first directory track into cache
 		// so we can update sector 0 and sector 1 appropriately.
-		mfdTrackId := types.MFDTrackId(ldatIndex << 12)
+		mfdTrackId := kexec.MFDTrackId(ldatIndex << 12)
 		mfdAddr := composeMFDAddress(ldatIndex, mfdTrackId, 0)
 		data := make([]pkg.Word36, 1792)
 		mgr.cachedTracks[mfdAddr] = data
 
 		// read the directory track into cache
-		blockId := types.BlockId(blocksPerTrack)
+		blockId := kexec.BlockId(blocksPerTrack)
 		wx := uint(0)
 		for bx := 0; bx < int(blocksPerTrack); bx++ {
 			sub := data[wx : wx+wordsPerBlock]
@@ -561,7 +561,7 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*facili
 			if ioStat != nodeMgr.IosComplete {
 				log.Printf("MFDMgr:initializeFixed cannot read directory track dev:%v blockId:%v",
 					fpDesc.nodeId, blockId)
-				mgr.exec.Stop(types.StopInternalExecIOFailed)
+				mgr.exec.Stop(kexec.StopInternalExecIOFailed)
 				return fmt.Errorf("IO error")
 			}
 
@@ -580,7 +580,7 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*facili
 		sector0[0].SetH2(0)
 		sector0[1].SetW(0_600000_000000) // first 2 sectors are allocated
 		for dx := 3; dx < 27; dx += 3 {
-			sector0[dx].SetW(uint64(types.InvalidLink))
+			sector0[dx].SetW(uint64(kexec.InvalidLink))
 			sector0[dx+1].SetW(0)
 			sector0[dx+2].SetW(0)
 		}
@@ -624,7 +624,7 @@ func (mgr *MFDManager) initializeRemovable(disks map[*nodeMgr.DiskDeviceInfo]*fa
 
 // markDirectorySectorAllocated finds the appropriate DAS entry for the given sector address
 // and marks the sector as allocated, as well as marking the DAS entry as updated.
-func (mgr *MFDManager) markDirectorySectorAllocated(sectorAddr types.MFDRelativeAddress) error {
+func (mgr *MFDManager) markDirectorySectorAllocated(sectorAddr kexec.MFDRelativeAddress) error {
 	dasAddr, _, entry, err := mgr.findDASEntryForSector(sectorAddr)
 	if err != nil {
 		return err
@@ -645,14 +645,14 @@ func (mgr *MFDManager) markDirectorySectorAllocated(sectorAddr types.MFDRelative
 
 // markDirectorySectorDirty marks the block which contains the given sector as dirty,
 // so that it can subsequently be written to storage.
-func (mgr *MFDManager) markDirectorySectorDirty(address types.MFDRelativeAddress) {
+func (mgr *MFDManager) markDirectorySectorDirty(address kexec.MFDRelativeAddress) {
 	blockAddr := mgr.getMFDAddressForBlock(address)
 	mgr.dirtyBlocks[blockAddr] = true
 }
 
 // markDirectorySectorUnallocated finds the appropriate DAS entry for the given sector address
 // and marks the sector as unallocated, as well as marking the DAS entry as updated.
-func (mgr *MFDManager) markDirectorySectorUnallocated(sectorAddr types.MFDRelativeAddress) error {
+func (mgr *MFDManager) markDirectorySectorUnallocated(sectorAddr kexec.MFDRelativeAddress) error {
 	dasAddr, _, entry, err := mgr.findDASEntryForSector(sectorAddr)
 	if err != nil {
 		return err
@@ -674,11 +674,11 @@ func (mgr *MFDManager) markDirectorySectorUnallocated(sectorAddr types.MFDRelati
 func (mgr *MFDManager) writeLookupTableEntry(
 	qualifier string,
 	filename string,
-	leadItem0Addr types.MFDRelativeAddress) {
+	leadItem0Addr kexec.MFDRelativeAddress) {
 
 	_, ok := mgr.fileLeadItemLookupTable[qualifier]
 	if !ok {
-		mgr.fileLeadItemLookupTable[qualifier] = make(map[string]types.MFDRelativeAddress)
+		mgr.fileLeadItemLookupTable[qualifier] = make(map[string]kexec.MFDRelativeAddress)
 	}
 	mgr.fileLeadItemLookupTable[qualifier][filename] = leadItem0Addr
 }
@@ -691,29 +691,29 @@ func (mgr *MFDManager) writeMFDCache() error {
 		block, err := mgr.getMFDBlock(blockAddr)
 		if err != nil {
 			log.Printf("MFDMgr:writeMFDCache cannot find MFD block for dirty block address:%012o", blockAddr)
-			mgr.exec.Stop(types.StopDirectoryErrors)
+			mgr.exec.Stop(kexec.StopDirectoryErrors)
 			return fmt.Errorf("error draining MFD cache")
 		}
 
 		mfdTrackId := (blockAddr >> 6) & 077777777
 		mfdSectorId := getMFDSectorIdFromMFDAddress(blockAddr)
 
-		ldat, devTrackId, err := mgr.convertFileRelativeTrackId(mgr.mfdFileMainItem0Address, types.TrackId(mfdTrackId))
+		ldat, devTrackId, err := mgr.convertFileRelativeTrackId(mgr.mfdFileMainItem0Address, kexec.TrackId(mfdTrackId))
 		if err != nil {
 			log.Printf("MFDMgr:writeMFDCache error converting mfdaddr:%012o trackId:%06v", mgr.mfdFileMainItem0Address, mfdTrackId)
-			mgr.exec.Stop(types.StopDirectoryErrors)
+			mgr.exec.Stop(kexec.StopDirectoryErrors)
 			return fmt.Errorf("error draining MFD cache")
 		} else if ldat == 0_400000 {
 			log.Printf("MFDMgr:writeMFDCache error converting mfdaddr:%012o trackId:%06v track not allocated",
 				mgr.mfdFileMainItem0Address, mfdTrackId)
-			mgr.exec.Stop(types.StopDirectoryErrors)
+			mgr.exec.Stop(kexec.StopDirectoryErrors)
 			return fmt.Errorf("error draining MFD cache")
 		}
 
 		packDesc, ok := mgr.fixedPackDescriptors[ldat]
 		if !ok {
 			log.Printf("MFDMgr:writeMFDCache cannot find packDesc for ldat:%04v", ldat)
-			mgr.exec.Stop(types.StopDirectoryErrors)
+			mgr.exec.Stop(kexec.StopDirectoryErrors)
 			return fmt.Errorf("error draining MFD cache")
 		}
 
@@ -721,17 +721,17 @@ func (mgr *MFDManager) writeMFDCache() error {
 		sectorsPerBlock := packDesc.prepFactor / 28
 		devBlockId := uint64(devTrackId) * uint64(blocksPerTrack)
 		devBlockId += uint64(mfdSectorId) / uint64(sectorsPerBlock)
-		ioPkt := nodeMgr.NewDiskIoPacketWrite(packDesc.nodeId, types.BlockId(devBlockId), block)
+		ioPkt := nodeMgr.NewDiskIoPacketWrite(packDesc.nodeId, kexec.BlockId(devBlockId), block)
 		nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
 		nm.RouteIo(ioPkt)
 		ioStat := ioPkt.GetIoStatus()
 		if ioStat != nodeMgr.IosComplete {
 			log.Printf("MFDMgr:writeMFDCache error writing MFD block status=%v", ioStat)
-			mgr.exec.Stop(types.StopInternalExecIOFailed)
+			mgr.exec.Stop(kexec.StopInternalExecIOFailed)
 			return fmt.Errorf("error draining MFD cache")
 		}
 	}
 
-	mgr.dirtyBlocks = make(map[types.MFDRelativeAddress]bool)
+	mgr.dirtyBlocks = make(map[kexec.MFDRelativeAddress]bool)
 	return nil
 }

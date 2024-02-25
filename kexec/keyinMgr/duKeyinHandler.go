@@ -6,15 +6,15 @@ package keyinMgr
 
 import (
 	"fmt"
-	"khalehla/kexec/types"
+	"khalehla/kexec"
 	"log"
 	"strings"
 	"time"
 )
 
 type DUKeyinHandler struct {
-	exec            types.IExec
-	source          types.ConsoleIdentifier
+	exec            kexec.IExec
+	source          kexec.ConsoleIdentifier
 	options         string
 	arguments       string
 	terminateThread bool
@@ -23,7 +23,7 @@ type DUKeyinHandler struct {
 	timeFinished    time.Time
 }
 
-func NewDUKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, options string, arguments string) KeyinHandler {
+func NewDUKeyinHandler(exec kexec.IExec, source kexec.ConsoleIdentifier, options string, arguments string) KeyinHandler {
 	return &DUKeyinHandler{
 		exec:            exec,
 		source:          source,

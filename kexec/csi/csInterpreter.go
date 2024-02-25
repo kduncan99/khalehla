@@ -6,7 +6,8 @@ package csi
 
 import (
 	"fmt"
-	"khalehla/kexec/types"
+	"khalehla/kexec"
+	"khalehla/kexec/exec"
 	"log"
 	"strings"
 )
@@ -21,7 +22,7 @@ const (
 )
 
 type handlerPacket struct {
-	rce                 *types.RunControlEntry
+	rce                 *exec.RunControlEntry
 	isTip               bool
 	source              controlStatementSource
 	sourceIsExecRequest bool
@@ -36,7 +37,7 @@ type handlerPacket struct {
 // and by whatever handler processes ECL for batch and demand runs.
 // TODO we should return a status packet including CSF status word and list of facility status entries
 func HandleControlStatement(
-	rce *types.RunControlEntry,
+	rce *exec.RunControlEntry,
 	source controlStatementSource,
 	statement string,
 ) uint64 {
@@ -45,7 +46,7 @@ func HandleControlStatement(
 	if len(split) == 0 || split[0][0] != '@' {
 		// does not start with '@' - invalid statement
 		log.Printf("%v:CS Syntax Error '%v' does not start with @", rce.RunId, statement)
-		rce.PostContingency(types.ContingencyErrorMode, 04, 040)
+		rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
 		return 0_400000_000000
 	}
 
@@ -75,7 +76,7 @@ func HandleControlStatement(
 	case "ADD":
 		if pkt.isTip || source == CSTSourceERCSI {
 			log.Printf("%v:CS '%v' not allowed for TIP or ER CSI$", rce.RunId, statement)
-			rce.PostContingency(types.ContingencyErrorMode, 04, 042)
+			rce.PostContingency(kexec.ContingencyErrorMode, 04, 042)
 			return 0_400000_000000
 		}
 		return handleAdd(&pkt)
@@ -86,7 +87,7 @@ func HandleControlStatement(
 	case "BRKPT":
 		if pkt.isTip || source == CSTSourceERCSI {
 			log.Printf("%v:CS '%v' not allowed for TIP or ER CSI$", rce.RunId, statement)
-			rce.PostContingency(types.ContingencyErrorMode, 04, 042)
+			rce.PostContingency(kexec.ContingencyErrorMode, 04, 042)
 			return 0_400000_000000
 		}
 		return handleBrkpt(&pkt)
@@ -97,7 +98,7 @@ func HandleControlStatement(
 	case "@CKPT":
 		if pkt.isTip || source == CSTSourceERCSI {
 			log.Printf("%v:CS '%v' not allowed for TIP or ER CSI$", rce.RunId, statement)
-			rce.PostContingency(types.ContingencyErrorMode, 04, 042)
+			rce.PostContingency(kexec.ContingencyErrorMode, 04, 042)
 			return 0_400000_000000
 		}
 		return handleCkpt(&pkt)
@@ -108,7 +109,7 @@ func HandleControlStatement(
 	case "@LOG":
 		if source == CSTSourceERCSI {
 			log.Printf("%v:CS '%v' not allowed for ER CSI$", rce.RunId, statement)
-			rce.PostContingency(types.ContingencyErrorMode, 04, 042)
+			rce.PostContingency(kexec.ContingencyErrorMode, 04, 042)
 			return 0_400000_000000
 		}
 		return handleLog(&pkt)
@@ -125,7 +126,7 @@ func HandleControlStatement(
 	case "@START":
 		if source == CSTSourceERCSI {
 			log.Printf("%v:CS '%v' not allowed for ER CSI$", rce.RunId, statement)
-			rce.PostContingency(types.ContingencyErrorMode, 04, 042)
+			rce.PostContingency(kexec.ContingencyErrorMode, 04, 042)
 			return 0_400000_000000
 		}
 		return handleStart(&pkt)
@@ -133,7 +134,7 @@ func HandleControlStatement(
 	case "@SYM":
 		if source == CSTSourceERCSI {
 			log.Printf("%v:CS '%v' not allowed for ER CSI$", rce.RunId, statement)
-			rce.PostContingency(types.ContingencyErrorMode, 04, 042)
+			rce.PostContingency(kexec.ContingencyErrorMode, 04, 042)
 			return 0_400000_000000
 		}
 		return handleSym(&pkt)
@@ -141,7 +142,7 @@ func HandleControlStatement(
 	case "@SYMCN":
 		if pkt.isTip || source == CSTSourceERCSI {
 			log.Printf("%v:CS '%v' not allowed for TIP or ER CSI$", rce.RunId, statement)
-			rce.PostContingency(types.ContingencyErrorMode, 04, 042)
+			rce.PostContingency(kexec.ContingencyErrorMode, 04, 042)
 			return 0_400000_000000
 		}
 		return handleSymcn(&pkt)
@@ -152,7 +153,7 @@ func HandleControlStatement(
 
 	// syntax error
 	log.Printf("%v:CS '%v' invalid control statement", rce.RunId, statement)
-	rce.PostContingency(types.ContingencyErrorMode, 04, 040)
+	rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
 	return 0_400000_000000
 }
 
@@ -166,7 +167,7 @@ func cleanOptions(pkt *handlerPacket) (string, bool) {
 		if opt < 'A' || opt > 'Z' {
 			log.Printf("%v:CS Syntax Error in options field", pkt.rce.RunId)
 			if pkt.sourceIsExecRequest {
-				pkt.rce.PostContingency(types.ContingencyErrorMode, 04, 040)
+				pkt.rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
 			}
 			return "", false
 		}

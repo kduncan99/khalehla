@@ -5,15 +5,15 @@
 package facilitiesMgr
 
 import (
+	"khalehla/kexec"
 	"khalehla/kexec/nodeMgr"
-	"khalehla/kexec/types"
 )
 
 type NodeAttributes interface {
 	GetFacNodeStatus() FacNodeStatus
 	GetNodeCategoryType() nodeMgr.NodeCategoryType
 	GetNodeDeviceType() nodeMgr.NodeDeviceType
-	GetNodeIdentifier() types.NodeIdentifier
+	GetNodeIdentifier() kexec.NodeIdentifier
 	GetNodeName() string
 	SetFacNodeStatus(status FacNodeStatus)
 }

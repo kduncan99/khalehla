@@ -6,12 +6,12 @@ package nodeMgr
 
 import (
 	"io"
-	"khalehla/kexec/types"
+	"khalehla/kexec"
 )
 
 type DiskDevice interface {
 	Dump(dest io.Writer, indent string)
-	GetGeometry() *types.DiskPackGeometry
+	GetGeometry() *kexec.DiskPackGeometry
 	GetNodeCategoryType() NodeCategoryType
 	GetNodeDeviceType() NodeDeviceType
 	GetNodeModelType() NodeModelType

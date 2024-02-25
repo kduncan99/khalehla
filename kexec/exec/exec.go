@@ -6,13 +6,13 @@ package exec
 
 import (
 	"fmt"
+	"khalehla/kexec"
 	"khalehla/kexec/config"
 	"khalehla/kexec/consoleMgr"
 	"khalehla/kexec/facilitiesMgr"
 	"khalehla/kexec/keyinMgr"
 	"khalehla/kexec/mfdMgr"
 	"khalehla/kexec/nodeMgr"
-	"khalehla/kexec/types"
 	"log"
 	"os"
 	"strings"
@@ -23,18 +23,18 @@ const Version = "v1.0.0"
 
 type Exec struct {
 	configuration *config.Configuration
-	consoleMgr    types.IConsoleManager
-	facMgr        types.IFacilitiesManager
-	keyinMgr      types.IKeyinManager
-	mfdMgr        types.IMFDManager
-	nodeMgr       types.INodeManager
+	consoleMgr    kexec.IConsoleManager
+	facMgr        kexec.IFacilitiesManager
+	keyinMgr      kexec.IKeyinManager
+	mfdMgr        kexec.IMFDManager
+	nodeMgr       kexec.INodeManager
 
-	runControlEntry *types.RunControlEntry
-	runControlTable map[string]*types.RunControlEntry // indexed by runid
+	runControlEntry *RunControlEntry
+	runControlTable map[string]*RunControlEntry // indexed by runid
 
 	jumpKeys []bool
-	phase    types.ExecPhase
-	stopCode types.StopCode
+	phase    kexec.ExecPhase
+	stopCode kexec.StopCode
 	stopFlag bool
 }
 
@@ -47,20 +47,20 @@ func NewExec(cfg *config.Configuration) *Exec {
 	e.keyinMgr = keyinMgr.NewKeyinManager(e)
 	e.mfdMgr = mfdMgr.NewMFDManager(e)
 	e.nodeMgr = nodeMgr.NewNodeManager(e)
-	e.phase = types.ExecPhaseNotStarted
+	e.phase = kexec.ExecPhaseNotStarted
 
 	return e
 }
 
 // Boot starts and runs the system.
 // It returns only when we are completely done, not just rebooting.
-func (e *Exec) Boot(session uint, jumpKeys []bool, invokerChannel chan types.StopCode) {
+func (e *Exec) Boot(session uint, jumpKeys []bool, invokerChannel chan kexec.StopCode) {
 	e.jumpKeys = jumpKeys
 	e.stopFlag = false
-	e.phase = types.ExecPhaseInitializing
+	e.phase = kexec.ExecPhaseInitializing
 
 	// ExecRunControlEntry is the RCE for the EXEC - it always exists and is always (or should always be) in the RCT
-	e.runControlEntry = types.NewRunControlEntry(
+	e.runControlEntry = NewRunControlEntry(
 		e.configuration.SystemRunId,
 		e.configuration.SystemRunId,
 		e.configuration.SystemAccountId,
@@ -70,10 +70,10 @@ func (e *Exec) Boot(session uint, jumpKeys []bool, invokerChannel chan types.Sto
 	e.runControlEntry.ImpliedQualifier = e.configuration.SystemQualifier
 	e.runControlEntry.IsExec = true
 
-	e.runControlTable = make(map[string]*types.RunControlEntry)
+	e.runControlTable = make(map[string]*RunControlEntry)
 	e.runControlTable[e.runControlEntry.RunId] = e.runControlEntry
 
-	managers := []types.IManager{
+	managers := []kexec.IManager{
 		e.consoleMgr,
 		e.keyinMgr,
 		e.nodeMgr,
@@ -93,7 +93,7 @@ func (e *Exec) Boot(session uint, jumpKeys []bool, invokerChannel chan types.Sto
 	// Begin the real boot process
 	e.SendExecReadOnlyMessage("KEXEC Startup - Version "+Version, nil)
 
-	if session == 0 || e.jumpKeys[types.JumpKey1Index] {
+	if session == 0 || e.jumpKeys[kexec.JumpKey1Index] {
 		// Let the operator adjust the configuration
 		accepted := []string{"DONE"}
 		_, _ = e.SendExecRestrictedReadReplyMessage("Modify Config then answer DONE", accepted)
@@ -125,7 +125,7 @@ func (e *Exec) Boot(session uint, jumpKeys []bool, invokerChannel chan types.Sto
 // Close invokes the Close method on each of the managers in a particular order.
 func (e *Exec) Close() {
 	log.Printf("Exec:Close")
-	managers := []types.IManager{
+	managers := []kexec.IManager{
 		e.mfdMgr,
 		e.facMgr,
 		e.nodeMgr,
@@ -142,11 +142,11 @@ func (e *Exec) GetConfiguration() *config.Configuration {
 	return e.configuration
 }
 
-func (e *Exec) GetConsoleManager() types.IConsoleManager {
+func (e *Exec) GetConsoleManager() kexec.IConsoleManager {
 	return e.consoleMgr
 }
 
-func (e *Exec) GetFacilitiesManager() types.IFacilitiesManager {
+func (e *Exec) GetFacilitiesManager() kexec.IFacilitiesManager {
 	return e.facMgr
 }
 
@@ -154,27 +154,27 @@ func (e *Exec) GetJumpKey(jkNumber int) bool {
 	return (jkNumber >= 1 && jkNumber <= 36) && e.jumpKeys[jkNumber-1]
 }
 
-func (e *Exec) GetKeyinManager() types.IKeyinManager {
+func (e *Exec) GetKeyinManager() kexec.IKeyinManager {
 	return e.keyinMgr
 }
 
-func (e *Exec) GetMFDManager() types.IMFDManager {
+func (e *Exec) GetMFDManager() kexec.IMFDManager {
 	return e.mfdMgr
 }
 
-func (e *Exec) GetNodeManager() types.INodeManager {
+func (e *Exec) GetNodeManager() kexec.INodeManager {
 	return e.nodeMgr
 }
 
-func (e *Exec) GetPhase() types.ExecPhase {
+func (e *Exec) GetPhase() kexec.ExecPhase {
 	return e.phase
 }
 
-func (e *Exec) GetRunControlEntry() *types.RunControlEntry {
+func (e *Exec) GetRunControlEntry() *RunControlEntry {
 	return e.runControlEntry
 }
 
-func (e *Exec) GetStopCode() types.StopCode {
+func (e *Exec) GetStopCode() kexec.StopCode {
 	return e.stopCode
 }
 
@@ -186,7 +186,7 @@ func (e *Exec) GetStopFlag() bool {
 // If any of them return an error, we pass that error back the the caller which should Close() us and terminate.
 // Should be invoked after calling NewExec(), but before calling Boot()
 func (e *Exec) Initialize() error {
-	managers := []types.IManager{
+	managers := []kexec.IManager{
 		e.consoleMgr,
 		e.keyinMgr,
 		e.nodeMgr,
@@ -208,8 +208,8 @@ func (e *Exec) SetConfiguration(config *config.Configuration) {
 	e.configuration = config
 }
 
-func (e *Exec) SendExecReadOnlyMessage(message string, routing *types.ConsoleIdentifier) {
-	consMsg := types.ConsoleReadOnlyMessage{
+func (e *Exec) SendExecReadOnlyMessage(message string, routing *kexec.ConsoleIdentifier) {
+	consMsg := kexec.ConsoleReadOnlyMessage{
 		Source:         e.runControlEntry,
 		Routing:        routing,
 		Text:           message,
@@ -219,7 +219,7 @@ func (e *Exec) SendExecReadOnlyMessage(message string, routing *types.ConsoleIde
 }
 
 func (e *Exec) SendExecReadReplyMessage(message string, maxReplyChars int) (string, error) {
-	consMsg := types.ConsoleReadReplyMessage{
+	consMsg := kexec.ConsoleReadReplyMessage{
 		Source:         e.runControlEntry,
 		Text:           message,
 		DoNotEmitRunId: true,
@@ -246,7 +246,7 @@ func (e *Exec) SendExecRestrictedReadReplyMessage(message string, accepted []str
 		}
 	}
 
-	consMsg := types.ConsoleReadReplyMessage{
+	consMsg := kexec.ConsoleReadReplyMessage{
 		Source:         e.runControlEntry,
 		Text:           message,
 		DoNotEmitRunId: true,
@@ -278,11 +278,11 @@ func (e *Exec) SetJumpKey(jkNumber int, value bool) {
 	}
 }
 
-func (e *Exec) Stop(code types.StopCode) {
+func (e *Exec) Stop(code kexec.StopCode) {
 	// TODO need to set contingency in the Exec RCE
 	e.stopFlag = true
 	e.stopCode = code
-	e.phase = types.ExecPhaseStopped
+	e.phase = kexec.ExecPhaseStopped
 }
 
 func (e *Exec) PerformDump(fullFlag bool) (string, error) {

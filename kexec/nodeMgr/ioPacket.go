@@ -4,12 +4,14 @@
 
 package nodeMgr
 
-import "khalehla/kexec/types"
+import (
+	"khalehla/kexec"
+)
 
 // IoPacket contains all the information necessary for a Channel to route an IO operation,
 // and for a device to perform that IO operation.
 type IoPacket interface {
-	GetNodeIdentifier() types.NodeIdentifier
+	GetNodeIdentifier() kexec.NodeIdentifier
 	GetNodeDeviceType() NodeDeviceType
 	GetIoFunction() IoFunction
 	GetIoStatus() IoStatus

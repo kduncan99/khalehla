@@ -7,18 +7,18 @@ package nodeMgr
 import (
 	"fmt"
 	"io"
-	"khalehla/kexec/types"
+	"khalehla/kexec"
 )
 
 // TapeChannel routes IOs to the appropriate deviceInfos which it manages.
 // Some day in the future we may add caching, perhaps in a CacheTapeChannel.
 type TapeChannel struct {
-	devices map[types.NodeIdentifier]TapeDevice
+	devices map[kexec.NodeIdentifier]TapeDevice
 }
 
 func NewTapeChannel() *TapeChannel {
 	return &TapeChannel{
-		devices: make(map[types.NodeIdentifier]TapeDevice),
+		devices: make(map[kexec.NodeIdentifier]TapeDevice),
 	}
 }
 
@@ -34,7 +34,7 @@ func (ch *TapeChannel) GetNodeModelType() NodeModelType {
 	return NodeModelTapeLibraryChannel
 }
 
-func (ch *TapeChannel) AssignDevice(nodeIdentifier types.NodeIdentifier, device Device) error {
+func (ch *TapeChannel) AssignDevice(nodeIdentifier kexec.NodeIdentifier, device Device) error {
 	if device.GetNodeDeviceType() != NodeDeviceTape {
 		return fmt.Errorf("device is not a tape")
 	}

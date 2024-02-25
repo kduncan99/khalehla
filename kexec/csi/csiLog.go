@@ -6,7 +6,7 @@ package csi
 
 import (
 	"fmt"
-	"khalehla/kexec/types"
+	"khalehla/kexec"
 	"log"
 )
 
@@ -19,7 +19,7 @@ func handleLog(pkt *handlerPacket) uint64 {
 	if len(pkt.options) > 0 {
 		log.Printf("%v:Invalid options '%v'", pkt.rce.RunId, pkt.statement)
 		if pkt.sourceIsExecRequest {
-			pkt.rce.PostContingency(types.ContingencyErrorMode, 04, 040)
+			pkt.rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
 		}
 		return 0_600000_000000
 	}
@@ -27,7 +27,7 @@ func handleLog(pkt *handlerPacket) uint64 {
 	if len(pkt.arguments) == 0 {
 		log.Printf("%v:Missing log message '%v'", pkt.rce.RunId, pkt.statement)
 		if pkt.sourceIsExecRequest {
-			pkt.rce.PostContingency(types.ContingencyErrorMode, 04, 040)
+			pkt.rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
 		}
 		return 0_600000_000000
 	}

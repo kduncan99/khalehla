@@ -7,7 +7,8 @@ package consoleMgr
 import (
 	"fmt"
 	"io"
-	"khalehla/kexec/types"
+	"khalehla/kexec"
+	"khalehla/kexec/pkg"
 	"khalehla/pkg"
 	"log"
 	"sync"
@@ -16,8 +17,8 @@ import (
 
 type readReplyTracker struct {
 	trackerId    int
-	message      *types.ConsoleReadReplyMessage
-	replyConsole *types.ConsoleIdentifier // this is the console which is currently supposed to answer
+	message      *kexec.ConsoleReadReplyMessage
+	replyConsole *kexec.ConsoleIdentifier // this is the console which is currently supposed to answer
 	hasReply     bool
 	isCanceled   bool
 	messageId    int // from the IConsole
@@ -26,18 +27,18 @@ type readReplyTracker struct {
 
 // ConsoleManager handles all things related to console interaction
 type ConsoleManager struct {
-	exec             types.IExec
+	exec             kexec.IExec
 	mutex            sync.Mutex
 	threadDone       bool
 	threadStop       bool
-	consoles         map[types.ConsoleIdentifier]types.IConsole
-	primaryConsole   types.IConsole
-	primaryConsoleId types.ConsoleIdentifier
-	queuedReadOnly   []*types.ConsoleReadOnlyMessage
+	consoles         map[kexec.ConsoleIdentifier]kexec.IConsole
+	primaryConsole   kexec.IConsole
+	primaryConsoleId kexec.ConsoleIdentifier
+	queuedReadOnly   []*kexec.ConsoleReadOnlyMessage
 	queuedReadReply  map[int]*readReplyTracker
 }
 
-func NewConsoleManager(exec types.IExec) *ConsoleManager {
+func NewConsoleManager(exec kexec.IExec) *ConsoleManager {
 	return &ConsoleManager{
 		exec: exec,
 	}
@@ -52,13 +53,13 @@ func (mgr *ConsoleManager) Boot() error {
 	//	TODO shut down all known net consoles
 
 	// reset the consoles list to include only the existing system console
-	mgr.consoles = map[types.ConsoleIdentifier]types.IConsole{
+	mgr.consoles = map[kexec.ConsoleIdentifier]kexec.IConsole{
 		mgr.primaryConsoleId: mgr.primaryConsole,
 	}
 	_ = mgr.primaryConsole.Reset()
 
 	// clear the console queues
-	mgr.queuedReadOnly = make([]*types.ConsoleReadOnlyMessage, 0)
+	mgr.queuedReadOnly = make([]*kexec.ConsoleReadOnlyMessage, 0)
 	mgr.queuedReadReply = make(map[int]*readReplyTracker)
 	return nil
 }
@@ -75,12 +76,12 @@ func (mgr *ConsoleManager) Close() {
 // Initialize is invoked when the application is starting
 func (mgr *ConsoleManager) Initialize() error {
 	log.Printf("ConsMgr:Initialize")
-	mgr.consoles = make(map[types.ConsoleIdentifier]types.IConsole)
-	mgr.queuedReadOnly = make([]*types.ConsoleReadOnlyMessage, 0)
+	mgr.consoles = make(map[kexec.ConsoleIdentifier]kexec.IConsole)
+	mgr.queuedReadOnly = make([]*kexec.ConsoleReadOnlyMessage, 0)
 	mgr.queuedReadReply = make(map[int]*readReplyTracker)
 
 	mgr.primaryConsole = NewStandardConsole()
-	mgr.primaryConsoleId = types.ConsoleIdentifier(pkg.NewFromStringToFieldata("SYSCON", 1)[0])
+	mgr.primaryConsoleId = kexec.ConsoleIdentifier(pkg.NewFromStringToFieldata("SYSCON", 1)[0])
 	mgr.consoles[mgr.primaryConsoleId] = mgr.primaryConsole
 
 	// TODO Load net console configuration
@@ -99,7 +100,7 @@ func (mgr *ConsoleManager) Stop() {
 
 // SendReadOnlyMessage queues a RO message and returns immediately.
 // The ConsoleManager thread will handle actually sending the message to all the consoles if/as appropriate.
-func (mgr *ConsoleManager) SendReadOnlyMessage(message *types.ConsoleReadOnlyMessage) {
+func (mgr *ConsoleManager) SendReadOnlyMessage(message *kexec.ConsoleReadOnlyMessage) {
 	// Log it and put it in the RCE tail sheet (unless it is the Exec)
 	log.Printf("ConsMgr:Queueing %v*%v", message.Source.RunId, message.Text)
 	if !message.Source.IsExec {
@@ -114,7 +115,7 @@ func (mgr *ConsoleManager) SendReadOnlyMessage(message *types.ConsoleReadOnlyMes
 // SendReadReplyMessage queues a read-reply message and waits for the response.
 // The wait is terminated if the RCE goes into contingency mode, or if the exec stops.
 // During the waiting period, the ConsoleManager thread will send the message, then poll for a reply as necessary.
-func (mgr *ConsoleManager) SendReadReplyMessage(message *types.ConsoleReadReplyMessage) error {
+func (mgr *ConsoleManager) SendReadReplyMessage(message *kexec.ConsoleReadReplyMessage) error {
 	// Log it and put it in the RCE tail sheet (unless it is the Exec)
 	log.Printf("ConsMgr:Queueing n-%v:%v", message.Source.RunId, message.Text)
 	if !message.Source.IsExec {
@@ -228,8 +229,8 @@ func (mgr *ConsoleManager) checkForReadReplyMessages() bool {
 			text += tracker.message.Text
 
 			// If it has routing, try to send it to the indicated console
-			var console types.IConsole = nil
-			var consoleId types.ConsoleIdentifier
+			var console kexec.IConsole = nil
+			var consoleId kexec.ConsoleIdentifier
 			if tracker.message.Routing != nil {
 				cons, ok := mgr.consoles[*tracker.message.Routing]
 				if ok {
@@ -338,7 +339,7 @@ func (mgr *ConsoleManager) checkForUnsolicitedInput() bool {
 
 // dropConsole is invoked whenever any higher level code gets an error response from a IConsole.
 // call under lock
-func (mgr *ConsoleManager) dropConsole(consoleId types.ConsoleIdentifier) {
+func (mgr *ConsoleManager) dropConsole(consoleId kexec.ConsoleIdentifier) {
 	consId := pkg.Word36(consoleId)
 	log.Printf("ConsMgr: Deleting unreponsive console %v", consId.ToStringAsFieldata())
 	delete(mgr.consoles, consoleId)
@@ -351,7 +352,7 @@ func (mgr *ConsoleManager) dropConsole(consoleId types.ConsoleIdentifier) {
 }
 
 // call under lock
-func (mgr *ConsoleManager) findTrackerFor(consoleId types.ConsoleIdentifier, messageId int) (int, error) {
+func (mgr *ConsoleManager) findTrackerFor(consoleId kexec.ConsoleIdentifier, messageId int) (int, error) {
 	for trackerId, tracker := range mgr.queuedReadReply {
 		if tracker.replyConsole != nil && *tracker.replyConsole == consoleId && tracker.messageId == messageId {
 			return trackerId, nil
@@ -362,7 +363,7 @@ func (mgr *ConsoleManager) findTrackerFor(consoleId types.ConsoleIdentifier, mes
 }
 
 // newReadReplyTracker generates a readReplyTracker for the given message and queues it up
-func (mgr *ConsoleManager) newReadReplyTracker(message *types.ConsoleReadReplyMessage) *readReplyTracker {
+func (mgr *ConsoleManager) newReadReplyTracker(message *kexec.ConsoleReadReplyMessage) *readReplyTracker {
 	tracker := &readReplyTracker{}
 	tracker.message = message
 	tracker.hasReply = false

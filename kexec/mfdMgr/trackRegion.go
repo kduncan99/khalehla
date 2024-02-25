@@ -5,15 +5,15 @@
 package mfdMgr
 
 import (
-	"khalehla/kexec/types"
+	"khalehla/kexec"
 )
 
 type TrackRegion struct {
-	trackId    types.TrackId
-	trackCount types.TrackCount
+	trackId    kexec.TrackId
+	trackCount kexec.TrackCount
 }
 
-func newTrackRegion(trackId types.TrackId, trackCount types.TrackCount) *TrackRegion {
+func newTrackRegion(trackId kexec.TrackId, trackCount kexec.TrackCount) *TrackRegion {
 	return &TrackRegion{
 		trackId:    trackId,
 		trackCount: trackCount,

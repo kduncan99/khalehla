@@ -2,9 +2,10 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package types
+package kexec
 
 import (
+	"khalehla/kexec/exec"
 	"khalehla/pkg"
 )
 
@@ -35,7 +36,7 @@ type TrackCount uint
 // TrackId represents a software track identifier, relative to the start of a particular pack
 type TrackId uint
 
-// pseudo-enumeration types
+// pseudo-enumeration pkg
 
 type ContingencyType uint
 type DeviceRelativeWordAddress uint
@@ -65,7 +66,7 @@ type DiskPackGeometry struct {
 // TODO move them to ConsoleManager maybe?
 
 type ConsoleReadOnlyMessage struct {
-	Source         *RunControlEntry
+	Source         *exec.RunControlEntry
 	Routing        *ConsoleIdentifier // may be nil
 	RunId          *string            // for logging purposes, may not match RCE - may be nil
 	Text           string             // message to be displayed
@@ -73,7 +74,7 @@ type ConsoleReadOnlyMessage struct {
 }
 
 type ConsoleReadReplyMessage struct {
-	Source         *RunControlEntry
+	Source         *exec.RunControlEntry
 	Routing        *ConsoleIdentifier // may be nil
 	RunId          *string            // for logging purposes, may not match RCE - may be nil
 	Text           string             // message to be displayed

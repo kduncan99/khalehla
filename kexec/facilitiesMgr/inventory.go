@@ -5,21 +5,21 @@
 package facilitiesMgr
 
 import (
+	"khalehla/kexec"
 	"khalehla/kexec/nodeMgr"
-	"khalehla/kexec/types"
 )
 
 type inventory struct {
-	nodes map[types.NodeIdentifier]NodeAttributes
-	disks map[types.NodeIdentifier]*DiskAttributes
-	tapes map[types.NodeIdentifier]*TapeAttributes
+	nodes map[kexec.NodeIdentifier]NodeAttributes
+	disks map[kexec.NodeIdentifier]*DiskAttributes
+	tapes map[kexec.NodeIdentifier]*TapeAttributes
 }
 
 func newInventory() *inventory {
 	i := &inventory{
-		nodes: make(map[types.NodeIdentifier]NodeAttributes),
-		disks: make(map[types.NodeIdentifier]*DiskAttributes),
-		tapes: make(map[types.NodeIdentifier]*TapeAttributes),
+		nodes: make(map[kexec.NodeIdentifier]NodeAttributes),
+		disks: make(map[kexec.NodeIdentifier]*DiskAttributes),
+		tapes: make(map[kexec.NodeIdentifier]*TapeAttributes),
 	}
 	return i
 }

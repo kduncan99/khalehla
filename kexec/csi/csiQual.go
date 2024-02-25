@@ -5,8 +5,8 @@
 package csi
 
 import (
+	"khalehla/kexec"
 	"khalehla/kexec/exec"
-	"khalehla/kexec/types"
 	"log"
 	"strings"
 )
@@ -36,7 +36,7 @@ func handleQual(pkt *handlerPacket) uint64 {
 		if !exec.IsValidQualifier(temp) {
 			log.Printf("%v:Invalid qualifier '%v'", pkt.rce.RunId, pkt.statement)
 			if pkt.sourceIsExecRequest {
-				pkt.rce.PostContingency(types.ContingencyErrorMode, 04, 040)
+				pkt.rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
 			}
 			return 0_600000_000000
 		}
@@ -47,7 +47,7 @@ func handleQual(pkt *handlerPacket) uint64 {
 		if len(cleanQualifier) == 0 {
 			log.Printf("%v: Missing qualifier '%v'", pkt.rce.RunId, pkt.statement)
 			if pkt.sourceIsExecRequest {
-				pkt.rce.PostContingency(types.ContingencyErrorMode, 04, 040)
+				pkt.rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
 			}
 			return 0_600000_000000
 		}
@@ -58,7 +58,7 @@ func handleQual(pkt *handlerPacket) uint64 {
 		if len(cleanQualifier) == 0 {
 			log.Printf("%v: Missing qualifier '%v'", pkt.rce.RunId, pkt.statement)
 			if pkt.sourceIsExecRequest {
-				pkt.rce.PostContingency(types.ContingencyErrorMode, 04, 040)
+				pkt.rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
 			}
 			return 0_600000_000000
 		}
@@ -69,7 +69,7 @@ func handleQual(pkt *handlerPacket) uint64 {
 		if len(cleanQualifier) > 0 {
 			log.Printf("%v: Should not specify qualifier with R option '%v'", pkt.rce.RunId, pkt.statement)
 			if pkt.sourceIsExecRequest {
-				pkt.rce.PostContingency(types.ContingencyErrorMode, 04, 040)
+				pkt.rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
 			}
 			return 0_600000_000000
 		}
@@ -80,7 +80,7 @@ func handleQual(pkt *handlerPacket) uint64 {
 		// option error
 		log.Printf("%v: Conflicting options '%v'", pkt.rce.RunId, pkt.statement)
 		if pkt.sourceIsExecRequest {
-			pkt.rce.PostContingency(types.ContingencyErrorMode, 04, 040)
+			pkt.rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
 		}
 		return 0_600000_000000
 	}

@@ -7,8 +7,9 @@ package packUtil
 import (
 	"errors"
 	"fmt"
+	"khalehla/kexec"
 	"khalehla/kexec/nodeMgr"
-	"khalehla/kexec/types"
+	"khalehla/kexec/pkg"
 	"khalehla/pkg"
 	"os"
 	"strconv"
@@ -36,7 +37,7 @@ func DoPrep(args []string) error {
 	if err != nil || prepFactor <= 0 {
 		return fmt.Errorf("error in prepfactor argument")
 	}
-	if !nodeMgr.IsValidPrepFactor(types.PrepFactor(prepFactor)) {
+	if !nodeMgr.IsValidPrepFactor(kexec.PrepFactor(prepFactor)) {
 		return fmt.Errorf("invalid prep factor (use 28, 56, 112, 224, 448, 896, or 1792)")
 	}
 
@@ -58,7 +59,7 @@ func DoPrep(args []string) error {
 
 	dc := nodeMgr.NewDiskChannel()
 	dd := nodeMgr.NewFileSystemDiskDevice(nil)
-	devId := types.DeviceIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
+	devId := pkg.DeviceIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
 	_ = dc.AssignDevice(devId, dd)
 
 	pkt := nodeMgr.NewDiskIoPacketMount(devId, fileName, false)
@@ -67,7 +68,7 @@ func DoPrep(args []string) error {
 		return fmt.Errorf("status %v returned while mounting pack file %v", pkt.GetIoStatus(), fileName)
 	}
 
-	pkt = nodeMgr.NewDiskIoPacketPrep(devId, packName, types.PrepFactor(prepFactor), types.TrackCount(trackCount), removable)
+	pkt = nodeMgr.NewDiskIoPacketPrep(devId, packName, kexec.PrepFactor(prepFactor), kexec.TrackCount(trackCount), removable)
 	dc.StartIo(pkt)
 	if pkt.GetIoStatus() != nodeMgr.IosComplete {
 		return fmt.Errorf("status %v returned while prepping pack file %v", pkt.GetIoStatus(), fileName)
@@ -97,7 +98,7 @@ func DoShow(args []string) error {
 
 	dc := nodeMgr.NewDiskChannel()
 	dd := nodeMgr.NewFileSystemDiskDevice(nil)
-	devId := types.DeviceIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
+	devId := pkg.DeviceIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
 	_ = dc.AssignDevice(devId, dd)
 
 	pkt := nodeMgr.NewDiskIoPacketMount(devId, fileName, false)
@@ -114,7 +115,7 @@ func DoShow(args []string) error {
 	return nil
 }
 
-func showLabelRecord(channel types.Channel, devId types.DeviceIdentifier, interpret bool) {
+func showLabelRecord(channel pkg.Channel, devId pkg.DeviceIdentifier, interpret bool) {
 	label := make([]pkg.Word36, 28)
 	pkt := nodeMgr.NewDiskIoPacketReadLabel(devId, label)
 	channel.StartIo(pkt)

@@ -7,7 +7,8 @@ package nodeMgr
 import (
 	"fmt"
 	"io"
-	"khalehla/kexec/types"
+	"khalehla/kexec"
+	"khalehla/kexec/pkg"
 	"khalehla/pkg"
 	"log"
 	"os"
@@ -43,7 +44,7 @@ import (
 // +021     (non-canonical) total number of blocks on pack
 
 // Simple lookup table - the key is words per block, the value is bytes per block padded to power of two
-var bytesPerBlockMap = map[types.PrepFactor]uint{
+var bytesPerBlockMap = map[kexec.PrepFactor]uint{
 	28:   128,
 	56:   256,
 	112:  512,
@@ -59,7 +60,7 @@ type FileSystemDiskDevice struct {
 	isReady          bool
 	isWriteProtected bool
 	packName         string
-	geometry         *types.DiskPackGeometry
+	geometry         *kexec.DiskPackGeometry
 	mutex            sync.Mutex
 	buffer           []byte
 	Verbose          bool
@@ -92,7 +93,7 @@ func (disk *FileSystemDiskDevice) GetNodeDeviceType() NodeDeviceType {
 	return NodeDeviceDisk
 }
 
-func (disk *FileSystemDiskDevice) GetGeometry() *types.DiskPackGeometry {
+func (disk *FileSystemDiskDevice) GetGeometry() *kexec.DiskPackGeometry {
 	return disk.geometry
 }
 
@@ -199,7 +200,7 @@ func (disk *FileSystemDiskDevice) doPrep(pkt *DiskIoPacket) {
 		return
 	}
 
-	if !types.IsValidPrepFactor(pkt.prepFactor) {
+	if !kexec.IsValidPrepFactor(pkt.prepFactor) {
 		pkt.SetIoStatus(IosInvalidPrepFactor)
 		return
 	}
@@ -209,7 +210,7 @@ func (disk *FileSystemDiskDevice) doPrep(pkt *DiskIoPacket) {
 		return
 	}
 
-	if !types.IsValidPackName(pkt.packName) {
+	if !kexec.IsValidPackName(pkt.packName) {
 		pkt.SetIoStatus(IosInvalidPackName)
 		return
 	}
@@ -280,7 +281,7 @@ func (disk *FileSystemDiskDevice) doPrep(pkt *DiskIoPacket) {
 	wx := 0
 	wLen := int(recordLength)
 	offset := int64(8192)
-	ioLen := int64(bytesPerBlockMap[types.PrepFactor(recordLength)])
+	ioLen := int64(bytesPerBlockMap[kexec.PrepFactor(recordLength)])
 	buffer = make([]byte, ioLen)
 	byteCount := wLen * 9 / 2
 	for wx < 1792 {
@@ -570,24 +571,24 @@ func (disk *FileSystemDiskDevice) probeGeometry() error {
 	}
 
 	packName := label[1].ToStringAsAscii() + label[2].ToStringAsAscii()[:2]
-	if !types.IsValidPackName(packName) {
+	if !kexec.IsValidPackName(packName) {
 		return fmt.Errorf("invalid pack name '%v'", packName)
 	}
 
-	prepFactor := types.PrepFactor(label[4].GetH2())
-	if !types.IsValidPrepFactor(prepFactor) {
+	prepFactor := kexec.PrepFactor(label[4].GetH2())
+	if !kexec.IsValidPrepFactor(prepFactor) {
 		return fmt.Errorf("invalid prep factor %v", prepFactor)
 	}
 
-	blockCount := types.BlockCount(label[021].GetW())
+	blockCount := kexec.BlockCount(label[021].GetW())
 	blocksPerTrack := uint(1792 / prepFactor)
-	trackCount := types.TrackCount(blockCount / types.BlockCount(blocksPerTrack))
+	trackCount := kexec.TrackCount(blockCount / kexec.BlockCount(blocksPerTrack))
 	sectorsPerBlock := uint(prepFactor / 28)
 	bytesPerBlock := uint(prepFactor) * 9 / 2
 	paddedBytesPerBlock := bytesPerBlockMap[prepFactor]
 
 	disk.packName = packName
-	disk.geometry = &types.DiskPackGeometry{
+	disk.geometry = &kexec.DiskPackGeometry{
 		PrepFactor:           prepFactor,
 		BlockCount:           blockCount,
 		BlocksPerTrack:       blocksPerTrack,

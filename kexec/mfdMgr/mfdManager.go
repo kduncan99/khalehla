@@ -7,8 +7,9 @@ package mfdMgr
 import (
 	"fmt"
 	"io"
+	"khalehla/kexec"
 	"khalehla/kexec/facilitiesMgr"
-	"khalehla/kexec/types"
+	"khalehla/kexec/pkg"
 	"khalehla/pkg"
 	"log"
 	"sync"
@@ -43,18 +44,18 @@ import (
 
 // Keeps track of things which pertain to a specific disk pack (an internal MFD struct)
 type packDescriptor struct {
-	nodeId                     types.NodeIdentifier
-	prepFactor                 types.PrepFactor
-	firstDirectoryTrackAddress types.DeviceRelativeWordAddress
+	nodeId                     kexec.NodeIdentifier
+	prepFactor                 kexec.PrepFactor
+	firstDirectoryTrackAddress kexec.DeviceRelativeWordAddress
 	canAllocate                bool                // true if pack is UP, false if it is SU - must be set by fac mgr
 	packMask                   uint                // used for calculating blocks from sectors
 	freeSpaceTable             *packFreeSpaceTable // represents all unallocated tracks on the pack
-	mfdTrackCount              types.TrackCount    // number of MFD tracks allocated on the pack
+	mfdTrackCount              kexec.TrackCount    // number of MFD tracks allocated on the pack
 	mfdSectorsUsed             uint64              // number of MFD sectors in use among the MFD tracks
 }
 
 func newPackDescriptor(
-	nodeId types.NodeIdentifier,
+	nodeId kexec.NodeIdentifier,
 	diskAttributes *facilitiesMgr.DiskAttributes,
 ) *packDescriptor {
 
@@ -73,27 +74,27 @@ func newPackDescriptor(
 }
 
 type MFDManager struct {
-	exec                    types.IExec
+	exec                    kexec.IExec
 	mutex                   sync.Mutex
 	threadDone              bool
-	mfdFileMainItem0Address types.MFDRelativeAddress                          // MFD address of MFD$$ main file item 0
-	cachedTracks            map[types.MFDRelativeAddress][]pkg.Word36         // key is MFD addr of first sector in track
-	dirtyBlocks             map[types.MFDRelativeAddress]bool                 // MFD addresses of blocks containing dirty sectors
-	freeMFDSectors          []types.MFDRelativeAddress                        // MFD addresses of existing but unused MFD sectors
-	fixedPackDescriptors    map[types.LDATIndex]*packDescriptor               // packDescriptors of all known fixed packs
-	fileLeadItemLookupTable map[string]map[string]types.MFDRelativeAddress    // MFD address of lead item 0 of all cataloged files
-	assignedFileAllocations map[types.MFDRelativeAddress]*fileAllocationEntry // key is main item sector 0 address of file
+	mfdFileMainItem0Address kexec.MFDRelativeAddress                          // MFD address of MFD$$ main file item 0
+	cachedTracks            map[kexec.MFDRelativeAddress][]pkg.Word36         // key is MFD addr of first sector in track
+	dirtyBlocks             map[kexec.MFDRelativeAddress]bool                 // MFD addresses of blocks containing dirty sectors
+	freeMFDSectors          []kexec.MFDRelativeAddress                        // MFD addresses of existing but unused MFD sectors
+	fixedPackDescriptors    map[kexec.LDATIndex]*packDescriptor               // packDescriptors of all known fixed packs
+	fileLeadItemLookupTable map[string]map[string]kexec.MFDRelativeAddress    // MFD address of lead item 0 of all cataloged files
+	assignedFileAllocations map[kexec.MFDRelativeAddress]*fileAllocationEntry // key is main item sector 0 address of file
 }
 
-func NewMFDManager(exec types.IExec) *MFDManager {
+func NewMFDManager(exec kexec.IExec) *MFDManager {
 	return &MFDManager{
 		exec:                    exec,
-		cachedTracks:            make(map[types.MFDRelativeAddress][]pkg.Word36),
-		dirtyBlocks:             make(map[types.MFDRelativeAddress]bool),
-		freeMFDSectors:          make([]types.MFDRelativeAddress, 0),
-		fixedPackDescriptors:    make(map[types.LDATIndex]*packDescriptor),
-		fileLeadItemLookupTable: make(map[string]map[string]types.MFDRelativeAddress),
-		assignedFileAllocations: make(map[types.MFDRelativeAddress]*fileAllocationEntry),
+		cachedTracks:            make(map[kexec.MFDRelativeAddress][]pkg.Word36),
+		dirtyBlocks:             make(map[kexec.MFDRelativeAddress]bool),
+		freeMFDSectors:          make([]kexec.MFDRelativeAddress, 0),
+		fixedPackDescriptors:    make(map[kexec.LDATIndex]*packDescriptor),
+		fileLeadItemLookupTable: make(map[string]map[string]kexec.MFDRelativeAddress),
+		assignedFileAllocations: make(map[kexec.MFDRelativeAddress]*fileAllocationEntry),
 	}
 }
 
@@ -102,12 +103,12 @@ func (mgr *MFDManager) Boot() error {
 	log.Printf("MFDMgr:Boot")
 
 	// reset tables
-	mgr.cachedTracks = make(map[types.MFDRelativeAddress][]pkg.Word36)
-	mgr.dirtyBlocks = make(map[types.MFDRelativeAddress]bool)
-	mgr.freeMFDSectors = make([]types.MFDRelativeAddress, 0)
-	mgr.fixedPackDescriptors = make(map[types.LDATIndex]*packDescriptor)
-	mgr.fileLeadItemLookupTable = make(map[string]map[string]types.MFDRelativeAddress)
-	mgr.assignedFileAllocations = make(map[types.MFDRelativeAddress]*fileAllocationEntry)
+	mgr.cachedTracks = make(map[kexec.MFDRelativeAddress][]pkg.Word36)
+	mgr.dirtyBlocks = make(map[kexec.MFDRelativeAddress]bool)
+	mgr.freeMFDSectors = make([]kexec.MFDRelativeAddress, 0)
+	mgr.fixedPackDescriptors = make(map[kexec.LDATIndex]*packDescriptor)
+	mgr.fileLeadItemLookupTable = make(map[string]map[string]kexec.MFDRelativeAddress)
+	mgr.assignedFileAllocations = make(map[kexec.MFDRelativeAddress]*fileAllocationEntry)
 
 	return nil
 }

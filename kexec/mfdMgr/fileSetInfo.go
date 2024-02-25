@@ -5,7 +5,8 @@
 package mfdMgr
 
 import (
-	"khalehla/kexec/types"
+	"khalehla/kexec"
+	"khalehla/kexec/pkg"
 	"khalehla/pkg"
 	"strings"
 )
@@ -22,7 +23,7 @@ type FileSetInfo struct {
 	projectId       string
 	readKey         string
 	writeKey        string
-	fileType        types.FileType
+	fileType        kexec.FileType
 	plusOneExists   bool
 	count           uint
 	maxCycleRange   uint
@@ -40,7 +41,7 @@ func (fsi *FileSetInfo) PopulateFromLeadItems(leadItem0 []pkg.Word36, leadItem1 
 	fsi.projectId = strings.TrimRight(leadItem0[5].ToStringAsFieldata()+leadItem0[6].ToStringAsFieldata(), " ")
 	fsi.readKey = strings.TrimRight(leadItem0[7].ToStringAsFieldata(), " ")
 	fsi.writeKey = strings.TrimRight(leadItem0[010].ToStringAsFieldata(), " ")
-	fsi.fileType = types.NewFileTypeFromField(leadItem0[011].GetS1())
+	fsi.fileType = kexec.NewFileTypeFromField(leadItem0[011].GetS1())
 	fsi.plusOneExists = false
 	fsi.count = uint(leadItem0[011].GetS2())
 	fsi.maxCycleRange = uint(leadItem0[011].GetS3())

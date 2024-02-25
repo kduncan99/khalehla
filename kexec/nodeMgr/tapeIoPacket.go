@@ -6,18 +6,18 @@ package nodeMgr
 
 import (
 	"fmt"
-	"khalehla/kexec/types"
+	"khalehla/kexec"
 )
 
 type TapeIoPacket struct {
-	nodeId         types.NodeIdentifier
+	nodeId         kexec.NodeIdentifier
 	ioFunction     IoFunction
 	ioStatus       IoStatus
 	fileName       string // for mount
 	writeProtected bool   // for mount
 }
 
-func (pkt *TapeIoPacket) GetNodeIdentifier() types.NodeIdentifier {
+func (pkt *TapeIoPacket) GetNodeIdentifier() kexec.NodeIdentifier {
 	return pkt.nodeId
 }
 
@@ -54,7 +54,7 @@ func (pkt *TapeIoPacket) SetIoStatus(ioStatus IoStatus) {
 	pkt.ioStatus = ioStatus
 }
 
-func NewTapeIoPacketMount(nodeId types.NodeIdentifier, fileName string, writeProtected bool) *TapeIoPacket {
+func NewTapeIoPacketMount(nodeId kexec.NodeIdentifier, fileName string, writeProtected bool) *TapeIoPacket {
 	return &TapeIoPacket{
 		nodeId:         nodeId,
 		ioFunction:     IofMount,
@@ -64,7 +64,7 @@ func NewTapeIoPacketMount(nodeId types.NodeIdentifier, fileName string, writePro
 	}
 }
 
-func NewTapeIoPacketReset(nodeId types.NodeIdentifier) *TapeIoPacket {
+func NewTapeIoPacketReset(nodeId kexec.NodeIdentifier) *TapeIoPacket {
 	return &TapeIoPacket{
 		nodeId:     nodeId,
 		ioFunction: IofReset,
@@ -72,7 +72,7 @@ func NewTapeIoPacketReset(nodeId types.NodeIdentifier) *TapeIoPacket {
 	}
 }
 
-func NewTapeIoPacketUnmount(nodeId types.NodeIdentifier) *TapeIoPacket {
+func NewTapeIoPacketUnmount(nodeId kexec.NodeIdentifier) *TapeIoPacket {
 	return &TapeIoPacket{
 		nodeId:     nodeId,
 		ioFunction: IofUnmount,

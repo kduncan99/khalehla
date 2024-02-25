@@ -6,22 +6,6 @@ package csi
 
 import "strings"
 
-/*
-	For Mass Storage Files
-		@CAT[,options] filename[,type/reserve/granule/maximum,pack-id-1/.../pack-id-n,,,ACR-name]
-		max
-	options include
-		B, G, P, R, S, V, W, Z
-
-	For Tape Files
-		@CAT,options filename,type[/units/log/noise/processor/tape/
-			format/data-converter/block-numbering/data-compression/
-			buffered-write/expanded-buffer,reel-1/reel-2/.../reel-n,
-			expiration-period/mmspec,,ACR-name,CTL-pool]
-	options include
-		E, G, H, J, L, M, O, P, R, S, V, W, Z
-*/
-
 // handleCat updates the default and/or implied qualifier for the run control entry.
 //
 //	For Mass Storage Files

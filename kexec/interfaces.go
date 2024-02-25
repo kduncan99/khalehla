@@ -2,11 +2,12 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package types
+package kexec
 
 import (
 	"io"
 	"khalehla/kexec/config"
+	"khalehla/kexec/exec"
 )
 
 // IConsole is a unit which actually acts as an operating system console endpoint.
@@ -48,7 +49,7 @@ type IExec interface {
 	GetMFDManager() IMFDManager
 	GetNodeManager() INodeManager
 	GetPhase() ExecPhase
-	GetRunControlEntry() *RunControlEntry
+	GetRunControlEntry() *exec.RunControlEntry
 	GetStopCode() StopCode
 	GetStopFlag() bool
 	Initialize() error

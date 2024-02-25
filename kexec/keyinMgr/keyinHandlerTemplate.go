@@ -5,14 +5,14 @@
 package keyinMgr
 
 import (
-	"khalehla/kexec/types"
+	"khalehla/kexec"
 	"strings"
 	"time"
 )
 
 type FOOKeyinHandler struct {
-	exec            types.IExec
-	source          types.ConsoleIdentifier
+	exec            kexec.IExec
+	source          kexec.ConsoleIdentifier
 	options         string
 	arguments       string
 	terminateThread bool
@@ -21,7 +21,7 @@ type FOOKeyinHandler struct {
 	timeFinished    time.Time
 }
 
-func NewFOOKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, options string, arguments string) KeyinHandler {
+func NewFOOKeyinHandler(exec kexec.IExec, source kexec.ConsoleIdentifier, options string, arguments string) KeyinHandler {
 	return &FOOKeyinHandler{
 		exec:            exec,
 		source:          source,

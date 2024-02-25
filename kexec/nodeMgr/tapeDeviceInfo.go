@@ -7,13 +7,14 @@ package nodeMgr
 import (
 	"fmt"
 	"io"
-	"khalehla/kexec/types"
+	"khalehla/kexec"
+	"khalehla/kexec/pkg"
 	"khalehla/pkg"
 )
 
 type TapeDeviceInfo struct {
 	nodeName       string
-	nodeIdentifier types.NodeIdentifier
+	nodeIdentifier kexec.NodeIdentifier
 	device         *FileSystemTapeDevice
 	channelInfos   []*TapeChannelInfo
 	isAccessible   bool // can only be true if status is UP, RV, or SU and the device is assigned to at least one channel
@@ -24,7 +25,7 @@ type TapeDeviceInfo struct {
 func NewTapeDeviceInfo(nodeName string) *TapeDeviceInfo {
 	return &TapeDeviceInfo{
 		nodeName:       nodeName,
-		nodeIdentifier: types.NodeIdentifier(pkg.NewFromStringToFieldata(nodeName, 1)[0]),
+		nodeIdentifier: kexec.NodeIdentifier(pkg.NewFromStringToFieldata(nodeName, 1)[0]),
 		channelInfos:   make([]*TapeChannelInfo, 0),
 	}
 }
@@ -53,7 +54,7 @@ func (tdi *TapeDeviceInfo) GetNodeDeviceType() NodeDeviceType {
 	return NodeDeviceTape
 }
 
-func (tdi *TapeDeviceInfo) GetNodeIdentifier() types.NodeIdentifier {
+func (tdi *TapeDeviceInfo) GetNodeIdentifier() kexec.NodeIdentifier {
 	return tdi.nodeIdentifier
 }
 

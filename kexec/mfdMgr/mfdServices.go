@@ -5,7 +5,8 @@
 package mfdMgr
 
 import (
-	"khalehla/kexec/types"
+	"khalehla/kexec"
+	"khalehla/kexec/pkg"
 	"khalehla/pkg"
 	"time"
 )
@@ -14,7 +15,7 @@ import (
 // (but mostly facilities manager) such as assigning files, cataloging files, and general file allocation.
 
 func (mgr *MFDManager) ChangeFileSetName(
-	leadItem0Address types.MFDRelativeAddress,
+	leadItem0Address kexec.MFDRelativeAddress,
 	newQualifier string,
 	newFilename string,
 ) error {
@@ -33,9 +34,9 @@ func (mgr *MFDManager) CreateFileSet(
 	projectId string,
 	readKey string,
 	writeKey string,
-	fileType types.FileType,
-) (leadItem0Address types.MFDRelativeAddress, result MFDResult) {
-	leadItem0Address = types.InvalidLink
+	fileType kexec.FileType,
+) (leadItem0Address kexec.MFDRelativeAddress, result MFDResult) {
+	leadItem0Address = kexec.InvalidLink
 	result = MFDSuccessful
 
 	mgr.mutex.Lock()
@@ -47,13 +48,13 @@ func (mgr *MFDManager) CreateFileSet(
 		return
 	}
 
-	leadItem0Address, leadItem0, err := mgr.allocateDirectorySector(types.InvalidLDAT)
+	leadItem0Address, leadItem0, err := mgr.allocateDirectorySector(kexec.InvalidLDAT)
 	if err != nil {
 		result = MFDInternalError
 		return
 	}
 
-	leadItem0[0].SetW(uint64(types.InvalidLink))
+	leadItem0[0].SetW(uint64(kexec.InvalidLink))
 	leadItem0[0].Or(0_500000_000000)
 
 	pkg.FromStringToFieldata(qualifier, leadItem0[1:3])
@@ -68,16 +69,16 @@ func (mgr *MFDManager) CreateFileSet(
 }
 
 func (mgr *MFDManager) CreateFileCycle(
-	leadItem0Address types.MFDRelativeAddress,
-) (types.MFDRelativeAddress, error) {
+	leadItem0Address kexec.MFDRelativeAddress,
+) (kexec.MFDRelativeAddress, error) {
 	// TODO
 	return 0, nil
 }
 
 func (mgr *MFDManager) GetFileInfo(
-	leadItem0Address types.MFDRelativeAddress,
+	leadItem0Address kexec.MFDRelativeAddress,
 	absoluteCycle uint,
-) (fi FileInfo, mainItem0Address types.MFDRelativeAddress, err error) {
+) (fi FileInfo, mainItem0Address kexec.MFDRelativeAddress, err error) {
 	// TODO
 	return nil, 0, nil
 }
@@ -90,9 +91,9 @@ func (mgr *MFDManager) GetFileInfo(
 func (mgr *MFDManager) GetFileSetInfo(
 	qualifier string,
 	filename string,
-) (fsInfo *FileSetInfo, leadItem0Address types.MFDRelativeAddress, mfdResult MFDResult) {
+) (fsInfo *FileSetInfo, leadItem0Address kexec.MFDRelativeAddress, mfdResult MFDResult) {
 	fsInfo = nil
-	leadItem0Address = types.InvalidLink
+	leadItem0Address = kexec.InvalidLink
 	mfdResult = MFDSuccessful
 
 	mgr.mutex.Lock()
@@ -110,9 +111,9 @@ func (mgr *MFDManager) GetFileSetInfo(
 		return
 	}
 
-	leadItem1Address := types.MFDRelativeAddress(leadItem0[0].GetW())
+	leadItem1Address := kexec.MFDRelativeAddress(leadItem0[0].GetW())
 	var leadItem1 []pkg.Word36
-	if leadItem1Address != types.InvalidLink {
+	if leadItem1Address != kexec.InvalidLink {
 		leadItem1, err = mgr.getMFDSector(leadItem1Address)
 		if err != nil {
 			mfdResult = MFDInternalError
@@ -126,7 +127,7 @@ func (mgr *MFDManager) GetFileSetInfo(
 }
 
 func (mgr *MFDManager) SetFileCycleRange(
-	leadItem0Address types.MFDRelativeAddress,
+	leadItem0Address kexec.MFDRelativeAddress,
 	cycleRange uint,
 ) error {
 	// TODO
@@ -134,7 +135,7 @@ func (mgr *MFDManager) SetFileCycleRange(
 }
 
 func (mgr *MFDManager) SetFileToBeDeleted(
-	leadItem0Address types.MFDRelativeAddress,
+	leadItem0Address kexec.MFDRelativeAddress,
 	absoluteCycle uint,
 ) error {
 	// TODO
@@ -152,7 +153,7 @@ func (mgr *MFDManager) SetFileToBeDeleted(
 //	writeKey          string
 //	projectId         string
 //	accountId         string
-//	granularity       types.Granularity
+//	granularity       pkg.Granularity
 //	isRemovable       bool
 //	wordAddressable   bool
 //	saveOnCheckpoint  bool
@@ -205,7 +206,7 @@ func populateNewLeadItem0(
 		leadItem0[wx].SetW(0)
 	}
 
-	leadItem0[0].SetW(uint64(types.InvalidLink))
+	leadItem0[0].SetW(uint64(kexec.InvalidLink))
 	leadItem0[0].Or(0_500000_000000)
 
 	pkg.FromStringToFieldata(qualifier, leadItem0[1:3])
@@ -240,8 +241,8 @@ func populateMassStorageMainItem0(
 	readKey string,
 	writeKey string,
 	accountId string,
-	leadItem0Address types.MFDRelativeAddress,
-	mainItem1Address types.MFDRelativeAddress,
+	leadItem0Address kexec.MFDRelativeAddress,
+	mainItem1Address kexec.MFDRelativeAddress,
 	saveOnCheckpoint bool,
 	toBeCataloged bool, // for @ASG,C or @ASG,U
 	isRemovable bool,
@@ -262,7 +263,7 @@ func populateMassStorageMainItem0(
 		mainItem0[wx].SetW(0)
 	}
 
-	mainItem0[0].SetW(uint64(types.InvalidLink)) // no DAD table (yet, anyway)
+	mainItem0[0].SetW(uint64(kexec.InvalidLink)) // no DAD table (yet, anyway)
 	mainItem0[0].Or(0_200000_000000)
 
 	pkg.FromStringToFieldata(qualifier, mainItem0[1:3])
@@ -315,7 +316,7 @@ func populateMassStorageMainItem0(
 	mainItem0[17].SetH1(inhibitFlags)
 	mainItem0[17].SetT3(absoluteCycle)
 
-	swTimeNow := types.GetSWTimeFromSystemTime(time.Now())
+	swTimeNow := kexec.GetSWTimeFromSystemTime(time.Now())
 	mainItem0[19].SetW(swTimeNow)
 	mainItem0[20].SetH1(reserve)
 	mainItem0[21].SetH1(maximum)
@@ -352,7 +353,7 @@ func populateFixedMainItem1(
 	mainItem1 []pkg.Word36,
 	qualifier string,
 	filename string,
-	mainItem0Address types.MFDRelativeAddress,
+	mainItem0Address kexec.MFDRelativeAddress,
 	absoluteCycle uint64,
 	packIds []string,
 ) {
@@ -360,7 +361,7 @@ func populateFixedMainItem1(
 		mainItem1[wx].SetW(0)
 	}
 
-	mainItem1[0].SetW(uint64(types.InvalidLink)) // no sector 2 (yet, anyway)
+	mainItem1[0].SetW(uint64(kexec.InvalidLink)) // no sector 2 (yet, anyway)
 	pkg.FromStringToFieldata(qualifier, mainItem1[1:3])
 	pkg.FromStringToFieldata(filename, mainItem1[3:5])
 	pkg.FromStringToFieldata("*No.1*", mainItem1[5:6])
@@ -382,7 +383,7 @@ func populateFixedMainItem1(
 
 func populateRemovableMainItem1(
 	mainItem1 []pkg.Word36,
-	mainItem0Address types.MFDRelativeAddress,
+	mainItem0Address kexec.MFDRelativeAddress,
 	absoluteCycle uint64,
 	packIds []string,
 ) {
@@ -390,7 +391,7 @@ func populateRemovableMainItem1(
 		mainItem1[wx].SetW(0)
 	}
 
-	mainItem1[0].SetW(uint64(types.InvalidLink)) // no sector 2 (yet, anyway)
+	mainItem1[0].SetW(uint64(kexec.InvalidLink)) // no sector 2 (yet, anyway)
 	mainItem1[6].SetW(uint64(mainItem0Address))
 	mainItem1[7].SetT3(absoluteCycle)
 	mainItem1[17].SetT3(uint64(len(packIds)))
@@ -415,9 +416,9 @@ func populateTapeMainItem0(
 	filename string,
 	projectId string,
 	accountId string,
-	reelTable0Address types.MFDRelativeAddress,
-	leadItem0Address types.MFDRelativeAddress,
-	mainItem1Address types.MFDRelativeAddress,
+	reelTable0Address kexec.MFDRelativeAddress,
+	leadItem0Address kexec.MFDRelativeAddress,
+	mainItem1Address kexec.MFDRelativeAddress,
 	toBeCataloged bool, // for @ASG,C or @ASG,U
 	isGuarded bool,
 	isPrivate bool,
@@ -449,14 +450,14 @@ func populateTapeMainItem1(
 	mainItem1 []pkg.Word36,
 	qualifier string,
 	filename string,
-	mainItem0Address types.MFDRelativeAddress,
+	mainItem0Address kexec.MFDRelativeAddress,
 	absoluteCycle uint64,
 ) {
 	for wx := 0; wx < 28; wx++ {
 		mainItem1[wx].SetW(0)
 	}
 
-	mainItem1[0].SetW(uint64(types.InvalidLink)) // no sector 2 (yet, anyway)
+	mainItem1[0].SetW(uint64(kexec.InvalidLink)) // no sector 2 (yet, anyway)
 	pkg.FromStringToFieldata(qualifier, mainItem1[1:3])
 	pkg.FromStringToFieldata(filename, mainItem1[3:5])
 	pkg.FromStringToFieldata("*No.1*", mainItem1[5:6])
@@ -479,17 +480,17 @@ func populateTapeMainItem1(
 //
 //	if !fileSetExists {
 //		// Create a lead and main items and mark them dirty
-//		leadAddr0, leadItem0, err := mgr.allocateDirectorySector(types.InvalidLDAT)
+//		leadAddr0, leadItem0, err := mgr.allocateDirectorySector(pkg.InvalidLDAT)
 //		if err != nil {
 //			return nil, err
 //		}
 //
-//		mainAddr0, mainItem0, err := mgr.allocateDirectorySector(types.InvalidLDAT)
+//		mainAddr0, mainItem0, err := mgr.allocateDirectorySector(pkg.InvalidLDAT)
 //		if err != nil {
 //			return nil, err
 //		}
 //
-//		mainAddr1, mainItem1, err := mgr.allocateDirectorySector(types.InvalidLDAT)
+//		mainAddr1, mainItem1, err := mgr.allocateDirectorySector(pkg.InvalidLDAT)
 //		if err != nil {
 //			return nil, err
 //		}
@@ -530,7 +531,7 @@ func populateTapeMainItem1(
 //			populateMassStorageMainItem0(mainItem0, parameters.qualifier, parameters.filename, parameters.projectId,
 //				parameters.readKey, parameters.writeKey, parameters.accountId, leadAddr0, mainAddr1,
 //				parameters.saveOnCheckpoint, false, parameters.isRemovable,
-//				parameters.granularity == types.PositionGranularity, parameters.wordAddressable,
+//				parameters.granularity == pkg.PositionGranularity, parameters.wordAddressable,
 //				equip, parameters.isGuarded, parameters.inhibitUnloadFlag,
 //				parameters.isPrivate, parameters.isWriteOnly, parameters.isReadOnly, effectiveAbsolute,
 //				parameters.reserve, parameters.maximum, parameters.packIds)
@@ -544,7 +545,7 @@ func populateTapeMainItem1(
 //				// TODO possibly more
 //			}
 //		} else {
-//			reelAddr0 := types.InvalidLink // TODO REEL table address or InvalidLink
+//			reelAddr0 := pkg.InvalidLink // TODO REEL table address or InvalidLink
 //			populateTapeMainItem0(mainItem0, parameters.qualifier, parameters.filename, parameters.projectId,
 //				parameters.accountId, reelAddr0, leadAddr0, mainAddr1, false,
 //				parameters.isGuarded, parameters.isPrivate, parameters.isWriteOnly, parameters.isReadOnly,
@@ -580,9 +581,9 @@ func populateTapeMainItem1(
 //		// thus 6 < z <= 35
 //
 //		// leadItem0, _ := mgr.getMFDSector(leadAddr0)
-//		// var leadAddr1 = types.MFDRelativeAddress(leadItem0[0].GetW())
+//		// var leadAddr1 = pkg.MFDRelativeAddress(leadItem0[0].GetW())
 //		// var leadItem1 []pkg.Word36
-//		// if leadAddr1 != types.InvalidLink {
+//		// if leadAddr1 != pkg.InvalidLink {
 //		// 	leadItem1, _ = mgr.getMFDSector(leadAddr1)
 //		// }
 //		//

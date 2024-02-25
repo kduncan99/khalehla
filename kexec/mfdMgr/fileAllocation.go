@@ -5,20 +5,20 @@
 package mfdMgr
 
 import (
-	"khalehla/kexec/types"
+	"khalehla/kexec"
 )
 
 type FileAllocation struct {
 	fileRegion    TrackRegion
-	ldatIndex     types.LDATIndex
-	deviceTrackId types.TrackId
+	ldatIndex     kexec.LDATIndex
+	deviceTrackId kexec.TrackId
 }
 
 func newFileAllocation(
-	fileTrackId types.TrackId,
-	trackCount types.TrackCount,
-	ldatIndex types.LDATIndex,
-	deviceTrackId types.TrackId) *FileAllocation {
+	fileTrackId kexec.TrackId,
+	trackCount kexec.TrackCount,
+	ldatIndex kexec.LDATIndex,
+	deviceTrackId kexec.TrackId) *FileAllocation {
 	return &FileAllocation{
 		fileRegion: TrackRegion{
 			trackId:    fileTrackId,

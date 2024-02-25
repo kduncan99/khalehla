@@ -6,25 +6,26 @@ package nodeMgr
 
 import (
 	"fmt"
-	"khalehla/kexec/types"
+	"khalehla/kexec"
+	"khalehla/kexec/pkg"
 	"khalehla/pkg"
 )
 
 type DiskIoPacket struct {
-	nodeId         types.NodeIdentifier
+	nodeId         kexec.NodeIdentifier
 	ioFunction     IoFunction
 	ioStatus       IoStatus
-	blockId        types.BlockId    // for read, write
+	blockId        kexec.BlockId    // for read, write
 	buffer         []pkg.Word36     // for read, readLabel, write
 	packName       string           // for prep
-	prepFactor     types.PrepFactor // for prep
-	trackCount     types.TrackCount // for prep
+	prepFactor     kexec.PrepFactor // for prep
+	trackCount     kexec.TrackCount // for prep
 	removable      bool             // for prep
 	fileName       string           // for mount
 	writeProtected bool             // for mount
 }
 
-func (pkt *DiskIoPacket) GetNodeIdentifier() types.NodeIdentifier {
+func (pkt *DiskIoPacket) GetNodeIdentifier() kexec.NodeIdentifier {
 	return pkt.nodeId
 }
 
@@ -70,7 +71,7 @@ func (pkt *DiskIoPacket) SetIoStatus(ioStatus IoStatus) {
 	pkt.ioStatus = ioStatus
 }
 
-func NewDiskIoPacketMount(nodeId types.NodeIdentifier, fileName string, writeProtected bool) *DiskIoPacket {
+func NewDiskIoPacketMount(nodeId kexec.NodeIdentifier, fileName string, writeProtected bool) *DiskIoPacket {
 	return &DiskIoPacket{
 		nodeId:         nodeId,
 		ioFunction:     IofMount,
@@ -80,7 +81,7 @@ func NewDiskIoPacketMount(nodeId types.NodeIdentifier, fileName string, writePro
 	}
 }
 
-func NewDiskIoPacketPrep(nodeId types.NodeIdentifier, packName string, prepFactor types.PrepFactor, trackCount types.TrackCount, removable bool) *DiskIoPacket {
+func NewDiskIoPacketPrep(nodeId kexec.NodeIdentifier, packName string, prepFactor kexec.PrepFactor, trackCount kexec.TrackCount, removable bool) *DiskIoPacket {
 	return &DiskIoPacket{
 		nodeId:     nodeId,
 		ioFunction: IofPrep,
@@ -92,7 +93,7 @@ func NewDiskIoPacketPrep(nodeId types.NodeIdentifier, packName string, prepFacto
 	}
 }
 
-func NewDiskIoPacketRead(nodeId types.NodeIdentifier, blockId types.BlockId, buffer []pkg.Word36) *DiskIoPacket {
+func NewDiskIoPacketRead(nodeId kexec.NodeIdentifier, blockId kexec.BlockId, buffer []pkg.Word36) *DiskIoPacket {
 	return &DiskIoPacket{
 		nodeId:     nodeId,
 		ioFunction: IofRead,
@@ -102,7 +103,7 @@ func NewDiskIoPacketRead(nodeId types.NodeIdentifier, blockId types.BlockId, buf
 	}
 }
 
-func NewDiskIoPacketReadLabel(nodeId types.NodeIdentifier, buffer []pkg.Word36) *DiskIoPacket {
+func NewDiskIoPacketReadLabel(nodeId kexec.NodeIdentifier, buffer []pkg.Word36) *DiskIoPacket {
 	return &DiskIoPacket{
 		nodeId:     nodeId,
 		ioFunction: IofReadLabel,
@@ -111,7 +112,7 @@ func NewDiskIoPacketReadLabel(nodeId types.NodeIdentifier, buffer []pkg.Word36) 
 	}
 }
 
-func NewDiskIoPacketReset(nodeId types.NodeIdentifier) *DiskIoPacket {
+func NewDiskIoPacketReset(nodeId kexec.NodeIdentifier) *DiskIoPacket {
 	return &DiskIoPacket{
 		nodeId:     nodeId,
 		ioFunction: IofReset,
@@ -119,7 +120,7 @@ func NewDiskIoPacketReset(nodeId types.NodeIdentifier) *DiskIoPacket {
 	}
 }
 
-func NewDiskIoPacketUnmount(nodeId types.NodeIdentifier) *DiskIoPacket {
+func NewDiskIoPacketUnmount(nodeId kexec.NodeIdentifier) *DiskIoPacket {
 	return &DiskIoPacket{
 		nodeId:     nodeId,
 		ioFunction: IofUnmount,
@@ -127,7 +128,7 @@ func NewDiskIoPacketUnmount(nodeId types.NodeIdentifier) *DiskIoPacket {
 	}
 }
 
-func NewDiskIoPacketWrite(nodeId types.NodeIdentifier, blockId types.BlockId, buffer []pkg.Word36) *DiskIoPacket {
+func NewDiskIoPacketWrite(nodeId kexec.NodeIdentifier, blockId kexec.BlockId, buffer []pkg.Word36) *DiskIoPacket {
 	return &DiskIoPacket{
 		nodeId:     nodeId,
 		ioFunction: IofWrite,
@@ -137,7 +138,7 @@ func NewDiskIoPacketWrite(nodeId types.NodeIdentifier, blockId types.BlockId, bu
 	}
 }
 
-func NewDiskIoPacketWriteLabel(nodeId types.NodeIdentifier, buffer []pkg.Word36) *DiskIoPacket {
+func NewDiskIoPacketWriteLabel(nodeId kexec.NodeIdentifier, buffer []pkg.Word36) *DiskIoPacket {
 	return &DiskIoPacket{
 		nodeId:     nodeId,
 		ioFunction: IofWriteLabel,

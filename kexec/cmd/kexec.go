@@ -6,9 +6,9 @@ package main
 
 import (
 	"fmt"
+	"khalehla/kexec"
 	"khalehla/kexec/config"
 	"khalehla/kexec/exec"
-	"khalehla/kexec/types"
 	"os"
 	"strconv"
 	"strings"
@@ -117,11 +117,11 @@ func main() {
 
 	e.SetConfiguration(cfg)
 
-	channel := make(chan types.StopCode)
+	channel := make(chan kexec.StopCode)
 	session := uint(0)
 
 	for {
-		if context.jumpKeys[types.JumpKey2Index] {
+		if context.jumpKeys[kexec.JumpKey2Index] {
 			fmt.Println("::Performing pre-boot system dump...")
 			fileName, err := e.PerformDump(e.GetJumpKey(6))
 			if err != nil {

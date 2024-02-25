@@ -4,10 +4,8 @@
 
 package exec
 
-import "khalehla/kexec/types"
-
 type erContext struct {
-	rce *types.RunControlEntry
+	rce *RunControlEntry
 	// need GRS
 	// need current memory (but that is obtainable through GRS, I think)
 }

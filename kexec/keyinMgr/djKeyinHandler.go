@@ -6,14 +6,14 @@ package keyinMgr
 
 import (
 	"fmt"
-	"khalehla/kexec/types"
+	"khalehla/kexec"
 	"strings"
 	"time"
 )
 
 type DJKeyinHandler struct {
-	exec            types.IExec
-	source          types.ConsoleIdentifier
+	exec            kexec.IExec
+	source          kexec.ConsoleIdentifier
 	options         string
 	arguments       string
 	terminateThread bool
@@ -22,7 +22,7 @@ type DJKeyinHandler struct {
 	timeFinished    time.Time
 }
 
-func NewDJKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, options string, arguments string) KeyinHandler {
+func NewDJKeyinHandler(exec kexec.IExec, source kexec.ConsoleIdentifier, options string, arguments string) KeyinHandler {
 	return &DJKeyinHandler{
 		exec:            exec,
 		source:          source,
@@ -72,7 +72,7 @@ func (kh *DJKeyinHandler) IsAllowed() bool {
 	return true
 }
 
-func displayJumpKeys(exec types.IExec, source *types.ConsoleIdentifier) {
+func displayJumpKeys(exec kexec.IExec, source *kexec.ConsoleIdentifier) {
 	str := ""
 	for jk := 1; jk <= 36; jk++ {
 		jkSet := exec.GetJumpKey(jk)

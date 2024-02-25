@@ -2,7 +2,15 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package types
+package kexec
+
+func IsValidFilenameChar(ch byte) bool {
+	return (ch >= 'A' && ch <= 'Z') || ch == '-' || ch == '$'
+}
+
+func IsValidQualifierChar(ch byte) bool {
+	return (ch >= 'A' && ch <= 'Z') || ch == '-' || ch == '$'
+}
 
 // IsValidFilename tests a given string to ensure it is a valid filename.
 // The string must be 1 to 12 character in length, containing any combination of
@@ -12,8 +20,8 @@ func IsValidFilename(filename string) bool {
 		return false
 	}
 
-	for _, ch := range filename {
-		if (ch < 'A' || ch > 'Z') && ch != '-' && ch != '$' {
+	for chx := range filename {
+		if !IsValidFilenameChar(filename[chx]) {
 			return false
 		}
 	}
@@ -29,8 +37,8 @@ func IsValidQualifier(qualifier string) bool {
 		return false
 	}
 
-	for _, ch := range qualifier {
-		if (ch < 'A' || ch > 'Z') && ch != '-' && ch != '$' {
+	for chx := range qualifier {
+		if !IsValidQualifierChar(qualifier[chx]) {
 			return false
 		}
 	}

@@ -5,16 +5,17 @@
 package facilitiesMgr
 
 import (
+	"khalehla/kexec"
+	"khalehla/kexec/exec"
 	"khalehla/kexec/nodeMgr"
-	"khalehla/kexec/types"
 )
 
 type DiskAttributes struct {
-	identifier    types.NodeIdentifier
+	identifier    kexec.NodeIdentifier
 	name          string
 	status        FacNodeStatus
-	AssignedTo    *types.RunControlEntry
-	PackLabelInfo *types.PackLabelInfo
+	AssignedTo    *exec.RunControlEntry
+	PackLabelInfo *kexec.PackLabelInfo
 	IsPrepped     bool
 	IsFixed       bool
 }
@@ -31,7 +32,7 @@ func (da *DiskAttributes) GetNodeDeviceType() nodeMgr.NodeDeviceType {
 	return nodeMgr.NodeDeviceDisk
 }
 
-func (da *DiskAttributes) GetNodeIdentifier() types.NodeIdentifier {
+func (da *DiskAttributes) GetNodeIdentifier() kexec.NodeIdentifier {
 	return da.identifier
 }
 

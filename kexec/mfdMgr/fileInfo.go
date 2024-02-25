@@ -5,7 +5,7 @@
 package mfdMgr
 
 import (
-	"khalehla/kexec/types"
+	"khalehla/kexec"
 )
 
 type DiskPackEntry struct {
@@ -26,7 +26,7 @@ type FixedFileInfo struct {
 	timeOfFirstWriteOrUnload uint64
 	descriptorFlags          DescriptorFlags
 	writtenTo                bool
-	granularity              types.Granularity
+	granularity              kexec.Granularity
 	wordAddressable          bool
 	assignMnemonic           string
 	hasSmoqueEntry           bool
@@ -60,7 +60,7 @@ type RemovableFileInfo struct {
 	timeOfFirstWriteOrUnload uint64
 	descriptorFlags          DescriptorFlags
 	writtenTo                bool
-	granularity              types.Granularity
+	granularity              kexec.Granularity
 	wordAddressable          bool
 	assignMnemonic           string
 	hasSmoqueEntry           bool

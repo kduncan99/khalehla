@@ -5,8 +5,9 @@
 package facilitiesMgr
 
 import (
+	"khalehla/kexec"
+	"khalehla/kexec/exec"
 	"khalehla/kexec/nodeMgr"
-	"khalehla/kexec/types"
 )
 
 type ReelAttributes struct {
@@ -15,10 +16,10 @@ type ReelAttributes struct {
 }
 
 type TapeAttributes struct {
-	identifier types.NodeIdentifier
+	identifier kexec.NodeIdentifier
 	name       string
 	status     FacNodeStatus
-	AssignedTo *types.RunControlEntry
+	AssignedTo *exec.RunControlEntry
 	ReelAttrs  *ReelAttributes
 }
 
@@ -34,7 +35,7 @@ func (ta *TapeAttributes) GetNodeDeviceType() nodeMgr.NodeDeviceType {
 	return nodeMgr.NodeDeviceTape
 }
 
-func (ta *TapeAttributes) GetNodeIdentifier() types.NodeIdentifier {
+func (ta *TapeAttributes) GetNodeIdentifier() kexec.NodeIdentifier {
 	return ta.identifier
 }
 

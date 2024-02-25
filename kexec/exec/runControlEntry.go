@@ -2,7 +2,9 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package types
+package exec
+
+import "khalehla/kexec"
 
 /*
 TIP:
@@ -34,8 +36,8 @@ type RunControlEntry struct {
 	DefaultQualifier string
 	ImpliedQualifier string
 	RunConditionWord RunConditionWord
-	FacilityItems    []FacilitiesItem
-	UseItems         map[string]UseItem // key is internal file name
+	FacilityItems    []kexec.FacilitiesItem
+	UseItems         map[string]kexec.UseItem // key is internal file name
 	// TODO Program Control Entry
 }
 
@@ -55,8 +57,20 @@ func NewRunControlEntry(
 		DefaultQualifier: projectId,
 		ImpliedQualifier: projectId,
 		RunConditionWord: RunConditionWord{},
-		FacilityItems:    make([]FacilitiesItem, 0),
-		UseItems:         make(map[string]UseItem),
+		FacilityItems:    make([]kexec.FacilitiesItem, 0),
+		UseItems:         make(map[string]kexec.UseItem),
+	}
+}
+
+func (rce *RunControlEntry) GetEffectiveQualifier(fileSpec *kexec.FileSpecification) string {
+	if fileSpec.HasAsterisk {
+		if len(fileSpec.Qualifier) == 0 {
+			return fileSpec.Qualifier
+		} else {
+			return rce.ImpliedQualifier
+		}
+	} else {
+		return rce.DefaultQualifier
 	}
 }
 
@@ -64,7 +78,7 @@ func (rce *RunControlEntry) IsTIPTransaction() bool {
 	return false // TODO
 }
 
-func (rce *RunControlEntry) PostContingency(contingencyType ContingencyType, errorType uint, errorCode uint) {
+func (rce *RunControlEntry) PostContingency(contingencyType kexec.ContingencyType, errorType uint, errorCode uint) {
 	// TODO
 }
 

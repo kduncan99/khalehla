@@ -5,14 +5,14 @@
 package keyinMgr
 
 import (
-	"khalehla/kexec/types"
+	"khalehla/kexec"
 	"strings"
 	"time"
 )
 
 type StopKeyinHandler struct {
-	exec            types.IExec
-	source          types.ConsoleIdentifier
+	exec            kexec.IExec
+	source          kexec.ConsoleIdentifier
 	options         string
 	arguments       string
 	terminateThread bool
@@ -21,7 +21,7 @@ type StopKeyinHandler struct {
 	timeFinished    time.Time
 }
 
-func NewStopKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, options string, arguments string) KeyinHandler {
+func NewStopKeyinHandler(exec kexec.IExec, source kexec.ConsoleIdentifier, options string, arguments string) KeyinHandler {
 	return &StopKeyinHandler{
 		exec:            exec,
 		source:          source,
@@ -73,7 +73,7 @@ func (kh *StopKeyinHandler) IsAllowed() bool {
 
 func (kh *StopKeyinHandler) thread() {
 	kh.threadStarted = true
-	kh.exec.Stop(types.StopOperatorInitiatedRecovery)
+	kh.exec.Stop(kexec.StopOperatorInitiatedRecovery)
 	kh.threadStopped = true
 	kh.timeFinished = time.Now()
 }

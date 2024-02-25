@@ -6,9 +6,9 @@ package keyinMgr
 
 import (
 	"fmt"
+	"khalehla/kexec"
 	"khalehla/kexec/facilitiesMgr"
 	"khalehla/kexec/nodeMgr"
-	"khalehla/kexec/types"
 	"strings"
 	"time"
 )
@@ -38,8 +38,8 @@ Variations we accept:
 */
 
 type FSKeyinHandler struct {
-	exec            types.IExec
-	source          types.ConsoleIdentifier
+	exec            kexec.IExec
+	source          kexec.ConsoleIdentifier
 	options         string
 	arguments       string
 	terminateThread bool
@@ -48,7 +48,7 @@ type FSKeyinHandler struct {
 	timeFinished    time.Time
 }
 
-func NewFSKeyinHandler(exec types.IExec, source types.ConsoleIdentifier, options string, arguments string) KeyinHandler {
+func NewFSKeyinHandler(exec kexec.IExec, source kexec.ConsoleIdentifier, options string, arguments string) KeyinHandler {
 	return &FSKeyinHandler{
 		exec:            exec,
 		source:          source,
@@ -67,7 +67,7 @@ func (kh *FSKeyinHandler) Abort() {
 func (kh *FSKeyinHandler) CheckSyntax() bool {
 	if len(kh.options) != 0 {
 		if kh.options == "ALL" {
-			return types.IsValidNodeName(kh.arguments)
+			return kexec.IsValidNodeName(kh.arguments)
 		}
 		return len(kh.options) <= 6 && len(kh.arguments) == 0
 	}
@@ -78,7 +78,7 @@ func (kh *FSKeyinHandler) CheckSyntax() bool {
 	}
 
 	for _, name := range split {
-		if !types.IsValidNodeName(strings.ToUpper(name)) {
+		if !kexec.IsValidNodeName(strings.ToUpper(name)) {
 			return false
 		}
 	}
@@ -129,7 +129,7 @@ func (kh *FSKeyinHandler) emitStatusStrings(statStrings []string) {
 	}
 }
 
-func (kh *FSKeyinHandler) getStatusStringForNode(nodeId types.NodeIdentifier) string {
+func (kh *FSKeyinHandler) getStatusStringForNode(nodeId kexec.NodeIdentifier) string {
 	fm := kh.exec.GetFacilitiesManager().(*facilitiesMgr.FacilitiesManager)
 	attr, _ := fm.GetNodeAttributes(nodeId)
 	return attr.GetNodeName() + " " + fm.GetNodeStatusString(nodeId)

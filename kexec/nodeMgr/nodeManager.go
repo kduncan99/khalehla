@@ -7,7 +7,8 @@ package nodeMgr
 import (
 	"fmt"
 	"io"
-	"khalehla/kexec/types"
+	"khalehla/kexec"
+	"khalehla/kexec/pkg"
 	"khalehla/pkg"
 	"log"
 	"sync"
@@ -23,18 +24,18 @@ const (
 
 // NodeManager handles the inventory of pseudo-hardware channelInfos and deviceInfos
 type NodeManager struct {
-	exec         types.IExec
+	exec         kexec.IExec
 	mutex        sync.Mutex
 	threadDone   bool
 	threadStop   bool
-	nodeInfos    map[types.NodeIdentifier]NodeInfo    // all nodes
-	channelInfos map[types.NodeIdentifier]ChannelInfo // this is loaded from the config
-	deviceInfos  map[types.NodeIdentifier]DeviceInfo  // this is loaded from the config
+	nodeInfos    map[kexec.NodeIdentifier]NodeInfo    // all nodes
+	channelInfos map[kexec.NodeIdentifier]ChannelInfo // this is loaded from the config
+	deviceInfos  map[kexec.NodeIdentifier]DeviceInfo  // this is loaded from the config
 	strategy     selectionStrategy                    // strategy used for selecting a channel fo IO
-	nextChannel  []types.NodeIdentifier               // used for selecting channel to be used for IO for round-robin
+	nextChannel  []kexec.NodeIdentifier               // used for selecting channel to be used for IO for round-robin
 }
 
-func NewNodeManager(exec types.IExec) *NodeManager {
+func NewNodeManager(exec kexec.IExec) *NodeManager {
 	return &NodeManager{
 		exec:     exec,
 		strategy: StrategyRoundRobin, // TODO read this from configuration
@@ -62,9 +63,9 @@ func (mgr *NodeManager) Close() {
 // Initialize is invoked when the application is starting
 func (mgr *NodeManager) Initialize() error {
 	log.Printf("NodeMgr:Initialized")
-	mgr.nodeInfos = make(map[types.NodeIdentifier]NodeInfo)
-	mgr.channelInfos = make(map[types.NodeIdentifier]ChannelInfo)
-	mgr.deviceInfos = make(map[types.NodeIdentifier]DeviceInfo)
+	mgr.nodeInfos = make(map[kexec.NodeIdentifier]NodeInfo)
+	mgr.channelInfos = make(map[kexec.NodeIdentifier]ChannelInfo)
+	mgr.deviceInfos = make(map[kexec.NodeIdentifier]DeviceInfo)
 
 	// read configuration
 	// TODO from a data file or database or something
@@ -162,7 +163,7 @@ func (mgr *NodeManager) Initialize() error {
 	}
 
 	if errors {
-		mgr.exec.Stop(types.StopInitializationSystemConfigurationError)
+		mgr.exec.Stop(kexec.StopInitializationSystemConfigurationError)
 		return fmt.Errorf("init error")
 	}
 
@@ -212,7 +213,7 @@ func (mgr *NodeManager) GetNodeInfoByName(nodeName string) (NodeInfo, error) {
 	return nil, fmt.Errorf("not found")
 }
 
-func (mgr *NodeManager) GetNodeInfoByIdentifier(nodeId types.NodeIdentifier) (NodeInfo, error) {
+func (mgr *NodeManager) GetNodeInfoByIdentifier(nodeId kexec.NodeIdentifier) (NodeInfo, error) {
 	for _, chInfo := range mgr.channelInfos {
 		if nodeId == chInfo.GetNodeIdentifier() {
 			return chInfo, nil
@@ -245,7 +246,7 @@ func (mgr *NodeManager) RouteIo(ioPacket IoPacket) {
 
 	if ioPacket == nil {
 		ioPacket.SetIoStatus(IosInternalError)
-		mgr.exec.Stop(types.StopErrorInSystemIOTable)
+		mgr.exec.Stop(kexec.StopErrorInSystemIOTable)
 		return
 	}
 
@@ -266,7 +267,7 @@ func (mgr *NodeManager) RouteIo(ioPacket IoPacket) {
 	chInfo, err := mgr.selectChannelForDevice(devInfo)
 	if err != nil {
 		ioPacket.SetIoStatus(IosInternalError)
-		mgr.exec.Stop(types.StopErrorInSystemIOTable)
+		mgr.exec.Stop(kexec.StopErrorInSystemIOTable)
 		return
 	}
 
@@ -339,7 +340,7 @@ func (mgr *NodeManager) thread() {
 		}
 		mgr.mutex.Unlock()
 
-		fm := mgr.exec.GetFacilitiesManager().(types.IFacilitiesManager)
+		fm := mgr.exec.GetFacilitiesManager().(kexec.IFacilitiesManager)
 		for devInfo, isReady := range updates {
 			fm.NotifyDeviceReady(devInfo.GetNodeIdentifier(), isReady)
 		}

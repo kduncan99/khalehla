@@ -7,13 +7,14 @@ package nodeMgr
 import (
 	"fmt"
 	"io"
-	"khalehla/kexec/types"
+	"khalehla/kexec"
+	"khalehla/kexec/pkg"
 	"khalehla/pkg"
 )
 
 type DiskDeviceInfo struct {
 	nodeName        string
-	nodeIdentifier  types.NodeIdentifier
+	nodeIdentifier  kexec.NodeIdentifier
 	initialFileName *string
 	device          *FileSystemDiskDevice
 	channelInfos    []*DiskChannelInfo
@@ -26,7 +27,7 @@ type DiskDeviceInfo struct {
 func NewDiskDeviceInfo(nodeName string, initialFileName *string) *DiskDeviceInfo {
 	return &DiskDeviceInfo{
 		nodeName:        nodeName,
-		nodeIdentifier:  types.NodeIdentifier(pkg.NewFromStringToFieldata(nodeName, 1)[0]),
+		nodeIdentifier:  kexec.NodeIdentifier(pkg.NewFromStringToFieldata(nodeName, 1)[0]),
 		initialFileName: initialFileName,
 		channelInfos:    make([]*DiskChannelInfo, 0),
 	}
@@ -60,7 +61,7 @@ func (ddi *DiskDeviceInfo) GetNodeDeviceType() NodeDeviceType {
 	return NodeDeviceDisk
 }
 
-func (ddi *DiskDeviceInfo) GetNodeIdentifier() types.NodeIdentifier {
+func (ddi *DiskDeviceInfo) GetNodeIdentifier() kexec.NodeIdentifier {
 	return ddi.nodeIdentifier
 }
 
