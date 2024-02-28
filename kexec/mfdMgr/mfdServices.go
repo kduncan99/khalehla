@@ -6,7 +6,6 @@ package mfdMgr
 
 import (
 	"khalehla/kexec"
-	"khalehla/kexec/pkg"
 	"khalehla/pkg"
 	"time"
 )
@@ -76,7 +75,8 @@ func (mgr *MFDManager) CreateFileCycle(
 }
 
 func (mgr *MFDManager) GetFileInfo(
-	leadItem0Address kexec.MFDRelativeAddress,
+	qualifier string,
+	filename string,
 	absoluteCycle uint,
 ) (fi FileInfo, mainItem0Address kexec.MFDRelativeAddress, err error) {
 	// TODO

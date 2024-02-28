@@ -23,6 +23,20 @@ var defaultSystemRunId = "EXEC-8"
 var defaultSystemUserId = "EXEC-8"
 var defaultSystemWriteKey = "WRKEY"
 
+type EquipmentUsage uint
+
+const (
+	EquipmentUsageSectorAddressableMassStorage = iota
+	EquipmentUsageWordAddressableMassStorage
+	EquipmentUsageTape
+)
+
+type EquipmentEntry struct {
+	Mnemonic            string
+	Usage               EquipmentUsage
+	SelectableEquipment []string // name associated with the NodeModelType (see nodeMgr)
+}
+
 type Configuration struct {
 	AssignMnemonic      string
 	LogIOs              bool
@@ -38,6 +52,7 @@ type Configuration struct {
 	SystemRunId         string
 	SystemUserId        string
 	SystemWriteKey      string
+	EquipmentTable      map[string]*EquipmentEntry // key is mnemonic
 }
 
 func NewConfiguration() *Configuration {
@@ -58,10 +73,69 @@ func NewConfiguration() *Configuration {
 	cfg.SystemUserId = defaultSystemUserId
 	cfg.SystemWriteKey = defaultSystemWriteKey
 
+	cfg.importEquipmentEntry(&EquipmentEntry{
+		Mnemonic:            "F",
+		Usage:               EquipmentUsageSectorAddressableMassStorage,
+		SelectableEquipment: []string{"FSDISK", "RMDISK", "SCDISK"},
+	})
+	cfg.importEquipmentEntry(&EquipmentEntry{
+		Mnemonic:            "FFSYS",
+		Usage:               EquipmentUsageSectorAddressableMassStorage,
+		SelectableEquipment: []string{"FSDISK"},
+	})
+	cfg.importEquipmentEntry(&EquipmentEntry{
+		Mnemonic:            "FSCSI",
+		Usage:               EquipmentUsageSectorAddressableMassStorage,
+		SelectableEquipment: []string{"SCDISK"},
+	})
+	cfg.importEquipmentEntry(&EquipmentEntry{
+		Mnemonic:            "FRAM",
+		Usage:               EquipmentUsageSectorAddressableMassStorage,
+		SelectableEquipment: []string{"RMDISK"},
+	})
+	cfg.importEquipmentEntry(&EquipmentEntry{
+		Mnemonic:            "D",
+		Usage:               EquipmentUsageWordAddressableMassStorage,
+		SelectableEquipment: []string{"FSDISK", "RMDISK", "SCDISK"},
+	})
+	cfg.importEquipmentEntry(&EquipmentEntry{
+		Mnemonic:            "DFSYS",
+		Usage:               EquipmentUsageWordAddressableMassStorage,
+		SelectableEquipment: []string{"FSDISK"},
+	})
+	cfg.importEquipmentEntry(&EquipmentEntry{
+		Mnemonic:            "DSCSI",
+		Usage:               EquipmentUsageWordAddressableMassStorage,
+		SelectableEquipment: []string{"SCDISK"},
+	})
+	cfg.importEquipmentEntry(&EquipmentEntry{
+		Mnemonic:            "DRAM",
+		Usage:               EquipmentUsageWordAddressableMassStorage,
+		SelectableEquipment: []string{"RMDISK"},
+	})
+	cfg.importEquipmentEntry(&EquipmentEntry{
+		Mnemonic:            "T",
+		Usage:               EquipmentUsageTape,
+		SelectableEquipment: []string{"FSTAPE", "SCTAPE"},
+	})
+	cfg.importEquipmentEntry(&EquipmentEntry{
+		Mnemonic:            "TFSYS",
+		Usage:               EquipmentUsageTape,
+		SelectableEquipment: []string{"FSTAPE"},
+	})
+	cfg.importEquipmentEntry(&EquipmentEntry{
+		Mnemonic:            "TSCSI",
+		Usage:               EquipmentUsageTape,
+		SelectableEquipment: []string{"SCTAPE"},
+	})
 	return cfg
 }
 
 func (cfg *Configuration) UpdateFromFile(fileName string) error {
 	// TODO
 	return fmt.Errorf("configuration UpdateFromFile() not yet implemented")
+}
+
+func (cfg *Configuration) importEquipmentEntry(entry *EquipmentEntry) {
+	cfg.EquipmentTable[entry.Mnemonic] = entry
 }

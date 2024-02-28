@@ -16,32 +16,33 @@ type DiskPackEntry struct {
 type FileInfo interface {
 	GetAccountId() string
 	GetAbsoluteFileCycle() uint
+	GetAssignMnemonic() string
 }
 
 // -----------------------------------------------------------------------------
 
 type FixedFileInfo struct {
 	accountId                string
-	absoluteFileCycle        uint
-	timeOfFirstWriteOrUnload uint64
-	descriptorFlags          DescriptorFlags
-	writtenTo                bool
-	granularity              kexec.Granularity
-	wordAddressable          bool
-	assignMnemonic           string
-	hasSmoqueEntry           bool
-	numberOfTimesAssigned    uint64
-	inhibitFlags             InhibitFlags
-	timeOfLastReference      uint64
-	timeCataloged            uint64
-	initialGranulesReserved  uint64
-	maxGranules              uint64
-	highestGranuleAssigned   uint64
-	highestTrackWritten      uint64
-	quotaGroupGranules       []uint64
-	backupInfo               BackupInfo
-	diskPackEntries          []DiskPackEntry
-	fileAllocations          []FileAllocation
+	AbsoluteFileCycle        uint
+	TimeOfFirstWriteOrUnload uint64
+	DescriptorFlags          DescriptorFlags
+	WrittenTo                bool
+	Granularity              kexec.Granularity
+	WordAddressable          bool
+	AssignMnemonic           string
+	HasSmoqueEntry           bool
+	NumberOfTimesAssigned    uint64
+	InhibitFlags             InhibitFlags
+	TimeOfLastReference      uint64
+	TimeCataloged            uint64
+	InitialGranulesReserved  uint64
+	MaxGranules              uint64
+	HighestGranuleAssigned   uint64
+	HighestTrackWritten      uint64
+	QuotaGroupGranules       []uint64
+	BackupInfo               BackupInfo
+	DiskPackEntries          []DiskPackEntry
+	FileAllocations          []FileAllocation
 }
 
 func (fi *FixedFileInfo) GetAccountId() string {
@@ -49,74 +50,86 @@ func (fi *FixedFileInfo) GetAccountId() string {
 }
 
 func (fi *FixedFileInfo) GetAbsoluteFileCycle() uint {
-	return fi.absoluteFileCycle
+	return fi.AbsoluteFileCycle
+}
+
+func (fi *FixedFileInfo) GetAssignMnemonic() string {
+	return fi.AssignMnemonic
 }
 
 // -----------------------------------------------------------------------------
 
 type RemovableFileInfo struct {
-	accountId                string
-	absoluteFileCycle        uint
-	timeOfFirstWriteOrUnload uint64
-	descriptorFlags          DescriptorFlags
-	writtenTo                bool
-	granularity              kexec.Granularity
-	wordAddressable          bool
-	assignMnemonic           string
-	hasSmoqueEntry           bool
-	numberOfTimesAssigned    uint64
-	inhibitFlags             InhibitFlags
-	timeOfLastReference      uint64
-	timeCataloged            uint64
-	initialGranulesReserved  uint64
-	maxGranules              uint64
-	highestGranuleAssigned   uint64
-	highestTrackWritten      uint64
-	readKey                  string
-	writeKey                 string
-	quotaGroupGranules       []uint64
-	backupInfo               BackupInfo
-	diskPackEntries          []DiskPackEntry
-	fileAllocations          []FileAllocation
+	AccountId                string
+	AbsoluteFileCycle        uint
+	TimeOfFirstWriteOrUnload uint64
+	DescriptorFlags          DescriptorFlags
+	WrittenTo                bool
+	Granularity              kexec.Granularity
+	WordAddressable          bool
+	AssignMnemonic           string
+	HasSmoqueEntry           bool
+	NumberOfTimesAssigned    uint64
+	InhibitFlags             InhibitFlags
+	TimeOfLastReference      uint64
+	TimeCataloged            uint64
+	InitialGranulesReserved  uint64
+	MaxGranules              uint64
+	HighestGranuleAssigned   uint64
+	HighestTrackWritten      uint64
+	ReadKey                  string
+	WriteKey                 string
+	QuotaGroupGranules       []uint64
+	BackupInfo               BackupInfo
+	DiskPackEntries          []DiskPackEntry
+	FileAllocations          []FileAllocation
 }
 
 func (fi *RemovableFileInfo) GetAccountId() string {
-	return fi.accountId
+	return fi.AccountId
 }
 
 func (fi *RemovableFileInfo) GetAbsoluteFileCycle() uint {
-	return fi.absoluteFileCycle
+	return fi.AbsoluteFileCycle
+}
+
+func (fi *RemovableFileInfo) GetAssignMnemonic() string {
+	return fi.AssignMnemonic
 }
 
 // -----------------------------------------------------------------------------
 
 type TapeFileInfo struct {
-	accountId              string
-	absoluteFileCycle      uint
-	descriptorFlags        DescriptorFlags
-	assignMnemonic         string
-	numberOfTimesAssigned  uint64
-	inhibitFlags           InhibitFlags
-	currentAssignCount     uint64
-	timeOfLastReference    uint64
-	timeCataloged          uint64
-	density                uint64
-	format                 uint64
-	features               uint64
-	featuresExtension      uint64
-	featuresExtension1     uint64
-	numberOfReelsCataloged uint64
-	mtaPop                 uint64
-	noiseConstant          uint64
-	translatorMnemonics    []string
-	tapeLibraryPool        string
-	reelNumber             []string
+	AccountId              string
+	AbsoluteFileCycle      uint
+	DescriptorFlags        DescriptorFlags
+	AssignMnemonic         string
+	NumberOfTimesAssigned  uint64
+	InhibitFlags           InhibitFlags
+	CurrentAssignCount     uint64
+	TimeOfLastReference    uint64
+	TimeCataloged          uint64
+	Density                uint64
+	Format                 uint64
+	Features               uint64
+	FeaturesExtension      uint64
+	FeaturesExtension1     uint64
+	NumberOfReelsCataloged uint64
+	MtaPop                 uint64
+	NoiseConstant          uint64
+	TranslatorMnemonics    []string
+	TapeLibraryPool        string
+	ReelNumber             []string
 }
 
 func (fi *TapeFileInfo) GetAccountId() string {
-	return fi.accountId
+	return fi.AccountId
 }
 
 func (fi *TapeFileInfo) GetAbsoluteFileCycle() uint {
-	return fi.absoluteFileCycle
+	return fi.AbsoluteFileCycle
+}
+
+func (fi *TapeFileInfo) GetAssignMnemonic() string {
+	return fi.AssignMnemonic
 }

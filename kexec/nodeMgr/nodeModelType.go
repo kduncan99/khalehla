@@ -25,35 +25,35 @@ const (
 )
 
 type NodeModel struct {
-	categoryType NodeCategoryType
-	deviceType   NodeDeviceType
-	modelType    NodeModelType
+	CategoryType NodeCategoryType
+	DeviceType   NodeDeviceType
+	ModelType    NodeModelType
 }
 
 var NodeModelTable = map[string]NodeModel{
 	"FSDISK": {
-		categoryType: NodeCategoryDevice,
-		deviceType:   NodeDeviceDisk,
-		modelType:    NodeModelFileSystemDiskDevice,
+		CategoryType: NodeCategoryDevice,
+		DeviceType:   NodeDeviceDisk,
+		ModelType:    NodeModelFileSystemDiskDevice,
 	},
 	"RMDISK": {
-		categoryType: NodeCategoryDevice,
-		deviceType:   NodeDeviceDisk,
-		modelType:    NodeModelRAMDiskDevice,
+		CategoryType: NodeCategoryDevice,
+		DeviceType:   NodeDeviceDisk,
+		ModelType:    NodeModelRAMDiskDevice,
 	},
 	"SCDISK": {
-		categoryType: NodeCategoryDevice,
-		deviceType:   NodeDeviceDisk,
-		modelType:    NodeModelSCSIDiskDevice,
+		CategoryType: NodeCategoryDevice,
+		DeviceType:   NodeDeviceDisk,
+		ModelType:    NodeModelSCSIDiskDevice,
 	},
 	"FSTAPE": {
-		categoryType: NodeCategoryDevice,
-		deviceType:   NodeDeviceTape,
-		modelType:    NodeModelFileSystemTapeDevice,
+		CategoryType: NodeCategoryDevice,
+		DeviceType:   NodeDeviceTape,
+		ModelType:    NodeModelFileSystemTapeDevice,
 	},
 	"SCTAPE": {
-		categoryType: NodeCategoryDevice,
-		deviceType:   NodeDeviceTape,
-		modelType:    NodeModelSCSITapeDevice,
+		CategoryType: NodeCategoryDevice,
+		DeviceType:   NodeDeviceTape,
+		ModelType:    NodeModelSCSITapeDevice,
 	},
 }

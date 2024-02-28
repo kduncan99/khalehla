@@ -9,7 +9,6 @@ import (
 	"io"
 	"khalehla/kexec"
 	"khalehla/kexec/facilitiesMgr"
-	"khalehla/kexec/pkg"
 	"khalehla/pkg"
 	"log"
 	"sync"
