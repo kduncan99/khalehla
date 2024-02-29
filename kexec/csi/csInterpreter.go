@@ -6,8 +6,6 @@ package csi
 
 import (
 	"khalehla/kexec"
-	"khalehla/kexec/exec"
-	"khalehla/kexec/facilitiesMgr"
 	"log"
 	"strings"
 )
@@ -23,7 +21,7 @@ const (
 
 type handlerPacket struct {
 	exec                kexec.IExec
-	rce                 *exec.RunControlEntry
+	rce                 *kexec.RunControlEntry
 	isTip               bool
 	source              controlStatementSource
 	sourceIsExecRequest bool
@@ -46,10 +44,10 @@ type ParsedControlStatement struct {
 // as well as a more generic resultCode, suitable for return in A0 from ER CSF$/ACSF$.
 func HandleControlStatement(
 	exec kexec.IExec,
-	rce *exec.RunControlEntry,
+	rce *kexec.RunControlEntry,
 	source controlStatementSource,
 	pcs *ParsedControlStatement,
-) (facResult *facilitiesMgr.FacStatusResult, resultCode uint64) {
+) (facResult *kexec.FacStatusResult, resultCode uint64) {
 
 	pkt := handlerPacket{
 		exec:                exec,
@@ -65,8 +63,8 @@ func HandleControlStatement(
 			log.Printf("%v:CS '%v' not allowed for TIP or ER CSI$", rce.RunId, pcs.originalStatement)
 			rce.PostContingency(kexec.ContingencyErrorMode, 04, 042)
 
-			facResult = facilitiesMgr.NewFacResult()
-			facResult.PostMessage(facilitiesMgr.FacStatusIllegalControlStatement, []string{})
+			facResult = kexec.NewFacResult()
+			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
 			return
 		}
@@ -80,8 +78,8 @@ func HandleControlStatement(
 			log.Printf("%v:CS '%v' not allowed for TIP or ER CSI$", rce.RunId, pcs.originalStatement)
 			rce.PostContingency(kexec.ContingencyErrorMode, 04, 042)
 
-			facResult = facilitiesMgr.NewFacResult()
-			facResult.PostMessage(facilitiesMgr.FacStatusIllegalControlStatement, []string{})
+			facResult = kexec.NewFacResult()
+			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
 			return
 		}
@@ -95,8 +93,8 @@ func HandleControlStatement(
 			log.Printf("%v:CS '%v' not allowed for TIP or ER CSI$", rce.RunId, pcs.originalStatement)
 			rce.PostContingency(kexec.ContingencyErrorMode, 04, 042)
 
-			facResult = facilitiesMgr.NewFacResult()
-			facResult.PostMessage(facilitiesMgr.FacStatusIllegalControlStatement, []string{})
+			facResult = kexec.NewFacResult()
+			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
 			return
 		}
@@ -110,8 +108,8 @@ func HandleControlStatement(
 			log.Printf("%v:CS '%v' not allowed for ER CSI$", rce.RunId, pcs.originalStatement)
 			rce.PostContingency(kexec.ContingencyErrorMode, 04, 042)
 
-			facResult = facilitiesMgr.NewFacResult()
-			facResult.PostMessage(facilitiesMgr.FacStatusIllegalControlStatement, []string{})
+			facResult = kexec.NewFacResult()
+			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
 			return
 		}
@@ -131,8 +129,8 @@ func HandleControlStatement(
 			log.Printf("%v:CS '%v' not allowed for ER CSI$", rce.RunId, pcs.originalStatement)
 
 			rce.PostContingency(kexec.ContingencyErrorMode, 04, 042)
-			facResult = facilitiesMgr.NewFacResult()
-			facResult.PostMessage(facilitiesMgr.FacStatusIllegalControlStatement, []string{})
+			facResult = kexec.NewFacResult()
+			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
 			return
 		}
@@ -143,8 +141,8 @@ func HandleControlStatement(
 			log.Printf("%v:CS '%v' not allowed for ER CSI$", rce.RunId, pcs.originalStatement)
 
 			rce.PostContingency(kexec.ContingencyErrorMode, 04, 042)
-			facResult = facilitiesMgr.NewFacResult()
-			facResult.PostMessage(facilitiesMgr.FacStatusIllegalControlStatement, []string{})
+			facResult = kexec.NewFacResult()
+			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
 			return
 		}
@@ -155,8 +153,8 @@ func HandleControlStatement(
 			log.Printf("%v:CS '%v' not allowed for TIP or ER CSI$", rce.RunId, pcs.originalStatement)
 
 			rce.PostContingency(kexec.ContingencyErrorMode, 04, 042)
-			facResult = facilitiesMgr.NewFacResult()
-			facResult.PostMessage(facilitiesMgr.FacStatusIllegalControlStatement, []string{})
+			facResult = kexec.NewFacResult()
+			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
 			return
 		}
@@ -170,8 +168,8 @@ func HandleControlStatement(
 	log.Printf("%v:CS '%v' invalid control statement", rce.RunId, pcs.originalStatement)
 	rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
 
-	facResult = facilitiesMgr.NewFacResult()
-	facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, []string{})
+	facResult = kexec.NewFacResult()
+	facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
 	resultCode = 0_400000_000000
 	return
 }
@@ -200,9 +198,9 @@ func HandleControlStatement(
 // fully-composed multi-line statement passed to us as a single string.
 // We do not check image length here - that must be dealt with at a higher level.
 func ParseControlStatement(
-	rce *exec.RunControlEntry,
+	rce *kexec.RunControlEntry,
 	statement string,
-) (pcs *ParsedControlStatement, facResult *facilitiesMgr.FacStatusResult, resultCode uint64) {
+) (pcs *ParsedControlStatement, facResult *kexec.FacStatusResult, resultCode uint64) {
 	pcs = &ParsedControlStatement{
 		label:             "",
 		mnemonic:          "",
@@ -210,7 +208,7 @@ func ParseControlStatement(
 		optionsFields:     make([]string, 0),
 		operandFields:     make([][]string, 0),
 	}
-	facResult = facilitiesMgr.NewFacResult()
+	facResult = kexec.NewFacResult()
 	resultCode = 0
 
 	// trim comment
@@ -227,7 +225,7 @@ func ParseControlStatement(
 		log.Printf("%v:CS Syntax Error '%v' does not start with @", rce.RunId, statement)
 		rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
 
-		facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, []string{})
+		facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
 		resultCode = 0_400000_000000
 		return
 	}
@@ -236,7 +234,7 @@ func ParseControlStatement(
 	p.SkipSpaces()
 	ident, found, ok := p.ParseIdentifier()
 	if !ok {
-		facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, []string{})
+		facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
 		resultCode = 0_400000_000000
 		return
 	} else if !found {
@@ -244,7 +242,7 @@ func ParseControlStatement(
 		// anything else constitutes a syntax error.
 		p.SkipSpaces()
 		if !p.IsAtEnd() {
-			facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, []string{})
+			facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
 			resultCode = 0_400000_000000
 			return
 		} else {
@@ -262,14 +260,14 @@ func ParseControlStatement(
 		ident, found, ok = p.ParseIdentifier()
 		if !ok {
 			// error in mnemonic
-			facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, []string{})
+			facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
 			resultCode = 0_400000_000000
 			return
 		} else if !found {
 			// either an empty labeled statement, or a syntax error
 			p.SkipSpaces()
 			if !p.IsAtEnd() {
-				facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, []string{})
+				facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
 				resultCode = 0_400000_000000
 				return
 			} else {
@@ -288,7 +286,7 @@ func ParseControlStatement(
 			if term == 0 || term == ' ' {
 				break
 			} else if term == ',' {
-				facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, []string{})
+				facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
 				resultCode = 0_400000_000000
 				return
 			} else {
@@ -340,44 +338,6 @@ func ParseControlStatement(
 	}
 
 	return
-}
-
-// checkIllegalOptions compares the given options word to the allowed options word,
-// producing a fac message for each option set in the given word which does not appear in the allowed word.
-// Returns true if no such instances were found, else false
-// If not ok and the source is an ER CSF$/ACSF$/CSI$, we post a contingency
-func checkIllegalOptions(
-	pkt *handlerPacket,
-	givenOptions uint64,
-	allowedOptions uint64,
-	facResult *facilitiesMgr.FacStatusResult,
-) bool {
-	bit := uint64(kexec.AOption)
-	letter := 'A'
-	ok := true
-
-	for {
-		if bit&givenOptions != 0 && bit&allowedOptions == 0 {
-			param := string(letter)
-			facResult.PostMessage(facilitiesMgr.FacStatusIllegalOption, []string{param})
-			ok = false
-		}
-
-		if bit == kexec.ZOption {
-			break
-		} else {
-			letter++
-			bit >>= 1
-		}
-	}
-
-	if !ok {
-		if pkt.sourceIsExecRequest {
-			pkt.rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
-		}
-	}
-
-	return ok
 }
 
 // cleanOptions scans the options field and produces a corresponding options word.

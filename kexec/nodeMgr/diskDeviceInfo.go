@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 	"khalehla/kexec"
-	"khalehla/kexec/pkg"
+	"khalehla/kexec/nodes"
 	"khalehla/pkg"
 )
 
@@ -16,7 +16,7 @@ type DiskDeviceInfo struct {
 	nodeName        string
 	nodeIdentifier  kexec.NodeIdentifier
 	initialFileName *string
-	device          *FileSystemDiskDevice
+	device          *nodes.FileSystemDiskDevice
 	channelInfos    []*DiskChannelInfo
 	isAccessible    bool // can only be true if status is UP, RV, or SU and the device is assigned to at least one channel
 	isReady         bool // cached version of device.IsReady() - when there is a mismatch, we need to do something
@@ -34,7 +34,7 @@ func NewDiskDeviceInfo(nodeName string, initialFileName *string) *DiskDeviceInfo
 }
 
 func (ddi *DiskDeviceInfo) CreateNode() {
-	ddi.device = NewFileSystemDiskDevice(ddi.initialFileName)
+	ddi.device = nodes.NewFileSystemDiskDevice(ddi.initialFileName)
 }
 
 func (ddi *DiskDeviceInfo) GetChannelInfos() []ChannelInfo {
@@ -45,7 +45,7 @@ func (ddi *DiskDeviceInfo) GetChannelInfos() []ChannelInfo {
 	return result
 }
 
-func (ddi *DiskDeviceInfo) GetDevice() Device {
+func (ddi *DiskDeviceInfo) GetDevice() nodes.Device {
 	return ddi.device
 }
 
@@ -53,12 +53,12 @@ func (ddi *DiskDeviceInfo) GetInitialFileName() *string {
 	return ddi.initialFileName
 }
 
-func (ddi *DiskDeviceInfo) GetNodeCategoryType() NodeCategoryType {
-	return NodeCategoryDevice
+func (ddi *DiskDeviceInfo) GetNodeCategoryType() nodes.NodeCategoryType {
+	return nodes.NodeCategoryDevice
 }
 
-func (ddi *DiskDeviceInfo) GetNodeDeviceType() NodeDeviceType {
-	return NodeDeviceDisk
+func (ddi *DiskDeviceInfo) GetNodeDeviceType() nodes.NodeDeviceType {
+	return nodes.NodeDeviceDisk
 }
 
 func (ddi *DiskDeviceInfo) GetNodeIdentifier() kexec.NodeIdentifier {

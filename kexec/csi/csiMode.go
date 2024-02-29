@@ -4,9 +4,11 @@
 
 package csi
 
-import "khalehla/kexec/facilitiesMgr"
+import (
+	"khalehla/kexec"
+)
 
-func handleMode(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
+func handleMode(pkt *handlerPacket) (*kexec.FacStatusResult, uint64) {
 
 	/*
 		@MODE,options filename [,noise/processor/tape/format/

@@ -4,9 +4,11 @@
 
 package csi
 
-import "khalehla/kexec/facilitiesMgr"
+import (
+	"khalehla/kexec"
+)
 
-func handleUse(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
+func handleUse(pkt *handlerPacket) (*kexec.FacStatusResult, uint64) {
 
 	/*
 		@USE[,I] fname-1,fname-2

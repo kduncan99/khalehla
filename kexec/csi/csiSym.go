@@ -4,9 +4,11 @@
 
 package csi
 
-import "khalehla/kexec/facilitiesMgr"
+import (
+	"khalehla/kexec"
+)
 
-func handleSym(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
+func handleSym(pkt *handlerPacket) (*kexec.FacStatusResult, uint64) {
 
 	/*
 		@SYM,options filename,[number,device,pname-1/pname-2/pname-3/.../pname-n,banner]

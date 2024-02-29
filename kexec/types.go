@@ -5,13 +5,12 @@
 package kexec
 
 import (
-	"khalehla/kexec/exec"
 	"khalehla/pkg"
 )
 
 // BlockCount represents a number of pseudo-physical blocks.
-// For disk nodes, a block contains a fixed number of words which corresponds to the relevant medium's prep factor.
-// For tape nodes, a block contains a variable number of words.
+// For disk Nodes, a block contains a fixed number of words which corresponds to the relevant medium's prep factor.
+// For tape Nodes, a block contains a variable number of words.
 type BlockCount uint64
 
 // BlockId uniquely identifies a particular pseudo-physical block on a disk medium
@@ -66,7 +65,7 @@ type DiskPackGeometry struct {
 // TODO move them to ConsoleManager maybe?
 
 type ConsoleReadOnlyMessage struct {
-	Source         *exec.RunControlEntry
+	Source         *RunControlEntry
 	Routing        *ConsoleIdentifier // may be nil
 	RunId          *string            // for logging purposes, may not match RCE - may be nil
 	Text           string             // message to be displayed
@@ -74,7 +73,7 @@ type ConsoleReadOnlyMessage struct {
 }
 
 type ConsoleReadReplyMessage struct {
-	Source         *exec.RunControlEntry
+	Source         *RunControlEntry
 	Routing        *ConsoleIdentifier // may be nil
 	RunId          *string            // for logging purposes, may not match RCE - may be nil
 	Text           string             // message to be displayed

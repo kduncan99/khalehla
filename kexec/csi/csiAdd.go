@@ -4,10 +4,12 @@
 
 package csi
 
-import "khalehla/kexec/facilitiesMgr"
+import (
+	"khalehla/kexec"
+)
 
 // handleAdd
-func handleAdd(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
+func handleAdd(pkt *handlerPacket) (*kexec.FacStatusResult, uint64) {
 	/*
 		@ADD[,options] name
 		options:

@@ -8,14 +8,14 @@ import (
 	"fmt"
 	"io"
 	"khalehla/kexec"
-	"khalehla/kexec/pkg"
+	"khalehla/kexec/nodes"
 	"khalehla/pkg"
 )
 
 type TapeChannelInfo struct {
 	nodeName       string
 	nodeIdentifier kexec.NodeIdentifier
-	channel        *TapeChannel
+	channel        *nodes.TapeChannel
 	deviceInfos    []*TapeDeviceInfo
 }
 
@@ -28,10 +28,10 @@ func NewTapeChannelInfo(nodeName string) *TapeChannelInfo {
 }
 
 func (tci *TapeChannelInfo) CreateNode() {
-	tci.channel = NewTapeChannel()
+	tci.channel = nodes.NewTapeChannel()
 }
 
-func (tci *TapeChannelInfo) GetChannel() Channel {
+func (tci *TapeChannelInfo) GetChannel() nodes.Channel {
 	return tci.channel
 }
 
@@ -43,12 +43,12 @@ func (tci *TapeChannelInfo) GetDeviceInfos() []DeviceInfo {
 	return result
 }
 
-func (tci *TapeChannelInfo) GetNodeCategoryType() NodeCategoryType {
-	return NodeCategoryChannel
+func (tci *TapeChannelInfo) GetNodeCategoryType() nodes.NodeCategoryType {
+	return nodes.NodeCategoryChannel
 }
 
-func (tci *TapeChannelInfo) GetNodeDeviceType() NodeDeviceType {
-	return NodeDeviceTape
+func (tci *TapeChannelInfo) GetNodeDeviceType() nodes.NodeDeviceType {
+	return nodes.NodeDeviceTape
 }
 
 func (tci *TapeChannelInfo) GetNodeIdentifier() kexec.NodeIdentifier {

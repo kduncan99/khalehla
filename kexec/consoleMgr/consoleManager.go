@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"khalehla/kexec"
-	"khalehla/kexec/pkg"
 	"khalehla/pkg"
 	"log"
 	"sync"

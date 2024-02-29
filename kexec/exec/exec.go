@@ -29,8 +29,8 @@ type Exec struct {
 	mfdMgr        kexec.IMFDManager
 	nodeMgr       kexec.INodeManager
 
-	runControlEntry *RunControlEntry
-	runControlTable map[string]*RunControlEntry // indexed by runid
+	runControlEntry *kexec.RunControlEntry
+	runControlTable map[string]*kexec.RunControlEntry // indexed by runid
 
 	jumpKeys []bool
 	phase    kexec.ExecPhase
@@ -60,7 +60,7 @@ func (e *Exec) Boot(session uint, jumpKeys []bool, invokerChannel chan kexec.Sto
 	e.phase = kexec.ExecPhaseInitializing
 
 	// ExecRunControlEntry is the RCE for the EXEC - it always exists and is always (or should always be) in the RCT
-	e.runControlEntry = NewRunControlEntry(
+	e.runControlEntry = kexec.NewRunControlEntry(
 		e.configuration.SystemRunId,
 		e.configuration.SystemRunId,
 		e.configuration.SystemAccountId,
@@ -70,7 +70,7 @@ func (e *Exec) Boot(session uint, jumpKeys []bool, invokerChannel chan kexec.Sto
 	e.runControlEntry.ImpliedQualifier = e.configuration.SystemQualifier
 	e.runControlEntry.IsExec = true
 
-	e.runControlTable = make(map[string]*RunControlEntry)
+	e.runControlTable = make(map[string]*kexec.RunControlEntry)
 	e.runControlTable[e.runControlEntry.RunId] = e.runControlEntry
 
 	managers := []kexec.IManager{
@@ -170,7 +170,7 @@ func (e *Exec) GetPhase() kexec.ExecPhase {
 	return e.phase
 }
 
-func (e *Exec) GetRunControlEntry() *RunControlEntry {
+func (e *Exec) GetRunControlEntry() *kexec.RunControlEntry {
 	return e.runControlEntry
 }
 

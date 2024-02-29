@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 	"khalehla/kexec"
-	"khalehla/kexec/pkg"
+	"khalehla/kexec/nodes"
 	"khalehla/pkg"
 	"log"
 	"sync"
@@ -127,7 +127,7 @@ func (mgr *NodeManager) Initialize() error {
 	errors := false
 	for cid, cInfo := range mgr.channelInfos {
 		switch cInfo.GetNodeDeviceType() {
-		case NodeDeviceDisk:
+		case nodes.NodeDeviceDisk:
 			dchInfo := cInfo.(*DiskChannelInfo)
 			for _, dInfo := range dchInfo.deviceInfos {
 				did := dInfo.GetNodeIdentifier()
@@ -140,7 +140,7 @@ func (mgr *NodeManager) Initialize() error {
 					dInfo.SetIsAccessible(true)
 				}
 			}
-		case NodeDeviceTape:
+		case nodes.NodeDeviceTape:
 			tchInfo := cInfo.(*TapeChannelInfo)
 			for _, dInfo := range tchInfo.deviceInfos {
 				did := dInfo.GetNodeIdentifier()
@@ -230,22 +230,22 @@ func (mgr *NodeManager) GetNodeInfoByIdentifier(nodeId kexec.NodeIdentifier) (No
 }
 
 // RouteIo handles all disk and tape IO for the exec
-func (mgr *NodeManager) RouteIo(ioPacket IoPacket) {
+func (mgr *NodeManager) RouteIo(ioPacket nodes.IoPacket) {
 	if mgr.exec.GetConfiguration().LogIOs {
 		devId := pkg.Word36(ioPacket.GetNodeIdentifier())
 		devName := devId.ToStringAsFieldata()
 		switch ioPacket.GetNodeDeviceType() {
-		case NodeDeviceDisk:
-			iop := ioPacket.(*DiskIoPacket)
-			log.Printf("NodeMgr:RouteIO %v iof:%v blk:%v", devName, iop.ioFunction, iop.blockId)
-		case NodeDeviceTape:
-			iop := ioPacket.(*TapeIoPacket)
-			log.Printf("NodeMgr:RouteIO %v iof:%v", devName, iop.ioFunction)
+		case nodes.NodeDeviceDisk:
+			iop := ioPacket.(*nodes.DiskIoPacket)
+			log.Printf("NodeMgr:RouteIO %v iof:%v blk:%v", devName, iop.GetIoFunction(), iop.GetBlockId())
+		case nodes.NodeDeviceTape:
+			iop := ioPacket.(*nodes.TapeIoPacket)
+			log.Printf("NodeMgr:RouteIO %v iof:%v", devName, iop.GetIoFunction())
 		}
 	}
 
 	if ioPacket == nil {
-		ioPacket.SetIoStatus(IosInternalError)
+		ioPacket.SetIoStatus(nodes.IosInternalError)
 		mgr.exec.Stop(kexec.StopErrorInSystemIOTable)
 		return
 	}
@@ -255,23 +255,23 @@ func (mgr *NodeManager) RouteIo(ioPacket IoPacket) {
 
 	devInfo, ok := mgr.deviceInfos[ioPacket.GetNodeIdentifier()]
 	if !ok {
-		ioPacket.SetIoStatus(IosDeviceDoesNotExist)
+		ioPacket.SetIoStatus(nodes.IosDeviceDoesNotExist)
 		return
 	}
 
 	if !devInfo.IsAccessible() {
-		ioPacket.SetIoStatus(IosDeviceIsNotAccessible)
+		ioPacket.SetIoStatus(nodes.IosDeviceIsNotAccessible)
 		return
 	}
 
 	chInfo, err := mgr.selectChannelForDevice(devInfo)
 	if err != nil {
-		ioPacket.SetIoStatus(IosInternalError)
+		ioPacket.SetIoStatus(nodes.IosInternalError)
 		mgr.exec.Stop(kexec.StopErrorInSystemIOTable)
 		return
 	}
 
-	ioPacket.SetIoStatus(IosInProgress)
+	ioPacket.SetIoStatus(nodes.IosInProgress)
 	chInfo.GetChannel().StartIo(ioPacket)
 }
 

@@ -9,116 +9,11 @@ package mfdMgr
 import (
 	"fmt"
 	"khalehla/kexec"
-	"khalehla/kexec/facilitiesMgr"
 	"khalehla/kexec/nodeMgr"
+	"khalehla/kexec/nodes"
 	"khalehla/pkg"
 	"log"
 )
-
-// InitializeMassStorage handles MFD initialization for what is effectively a JK13 boot.
-// If we return an error, we must previously stop the exec.
-func (mgr *MFDManager) InitializeMassStorage() {
-	// Get the list of disks from the node manager
-	disks := make([]*nodeMgr.DiskDeviceInfo, 0)
-	fm := mgr.exec.GetFacilitiesManager().(*facilitiesMgr.FacilitiesManager)
-	nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
-	for _, dInfo := range nm.GetDeviceInfos() {
-		if dInfo.GetNodeDeviceType() == nodeMgr.NodeDeviceDisk {
-			disks = append(disks, dInfo.(*nodeMgr.DiskDeviceInfo))
-		}
-	}
-
-	// Check the labels on the disks so that we may segregate them into fixed and isRemovable lists.
-	// Any problems at this point will lead us to DN the unit.
-	// At this point, FacMgr should know about all the disks.
-	fixedDisks := make(map[*nodeMgr.DiskDeviceInfo]*facilitiesMgr.DiskAttributes)
-	removableDisks := make(map[*nodeMgr.DiskDeviceInfo]*facilitiesMgr.DiskAttributes)
-	for _, ddInfo := range disks {
-		nodeAttr, _ := fm.GetNodeAttributes(ddInfo.GetNodeIdentifier())
-		if nodeAttr.GetFacNodeStatus() == facilitiesMgr.FacNodeStatusUp {
-			// Get the pack attributes from fac mgr
-			diskAttr, ok := fm.GetDiskAttributes(ddInfo.GetNodeIdentifier())
-			if !ok {
-				mgr.exec.SendExecReadOnlyMessage("Internal configuration error", nil)
-				mgr.exec.Stop(kexec.StopInitializationSystemConfigurationError)
-				return
-			}
-
-			if diskAttr.PackLabelInfo == nil {
-				msg := fmt.Sprintf("No valid label exists for pack on device %v", ddInfo.GetNodeName())
-				mgr.exec.SendExecReadOnlyMessage(msg, nil)
-				_ = fm.SetNodeStatus(ddInfo.GetNodeIdentifier(), facilitiesMgr.FacNodeStatusDown)
-				continue
-			}
-
-			// Read sector 1 of the initial directory track.
-			// This is a little messy due to the potential of problematic block sizes.
-			wordsPerBlock := uint64(diskAttr.PackLabelInfo.WordsPerRecord)
-			dirTrackWordAddr := uint64(diskAttr.PackLabelInfo.FirstDirectoryTrackAddress)
-			dirTrackBlockId := kexec.BlockId(dirTrackWordAddr / wordsPerBlock)
-			if wordsPerBlock == 28 {
-				dirTrackBlockId++
-			}
-
-			buf := make([]pkg.Word36, wordsPerBlock)
-			pkt := nodeMgr.NewDiskIoPacketRead(ddInfo.GetNodeIdentifier(), dirTrackBlockId, buf)
-			nm.RouteIo(pkt)
-			ioStat := pkt.GetIoStatus()
-			if ioStat != nodeMgr.IosComplete {
-				msg := fmt.Sprintf("IO error reading directory track on device %v", ddInfo.GetNodeName())
-				log.Printf("MFDMgr:%v", msg)
-				mgr.exec.SendExecReadOnlyMessage(msg, nil)
-				_ = fm.SetNodeStatus(ddInfo.GetNodeIdentifier(), facilitiesMgr.FacNodeStatusDown)
-				continue
-			}
-
-			var sector1 []pkg.Word36
-			if wordsPerBlock == 28 {
-				sector1 = buf
-			} else {
-				sector1 = buf[28:56]
-			}
-
-			// get the LDAT field from sector 1
-			// If it is 0, it is a isRemovable pack
-			// 0400000, it is an uninitialized fixed pack
-			// anything else, it is a pre-used fixed pack which we're going to initialize
-			ldat := sector1[5].GetH1()
-			if ldat == 0 {
-				removableDisks[ddInfo] = diskAttr
-			} else {
-				fixedDisks[ddInfo] = diskAttr
-				diskAttr.IsFixed = true
-			}
-		}
-	}
-
-	err := mgr.initializeFixed(fixedDisks)
-	if err != nil {
-		return
-	}
-
-	// Make sure we have at least one fixed pack after the previous shenanigans
-	if len(mgr.fixedPackDescriptors) == 0 {
-		mgr.exec.SendExecReadOnlyMessage("No Fixed Disks - Cannot Continue Initialization", nil)
-		mgr.exec.Stop(kexec.StopInitializationSystemConfigurationError)
-		return
-	}
-
-	err = mgr.initializeRemovable(removableDisks)
-	return
-}
-
-// RecoverMassStorage handles MFD recovery for what is NOT a JK13 boot.
-// If we return an error, we must previously stop the exec.
-func (mgr *MFDManager) RecoverMassStorage() {
-	// TODO
-	mgr.exec.SendExecReadOnlyMessage("MFD Recovery is not implemented", nil)
-	mgr.exec.Stop(kexec.StopDirectoryErrors)
-	return
-}
-
-// ------------------------------------------------------------------------------------------------
 
 // allocateDirectorySector allocates an MFD directory sector for the caller.
 // If preferredLDAT is not InvalidLDAT we will try to allocate a sector from this pack first.
@@ -205,7 +100,7 @@ func (mgr *MFDManager) allocateDirectoryTrack(
 		packDesc, ok := mgr.fixedPackDescriptors[preferredLDAT]
 		if ok {
 			availMFDTracks := 07777 - packDesc.mfdTrackCount
-			availTracks := packDesc.freeSpaceTable.getFreeTrackCount()
+			availTracks := packDesc.freeSpaceTable.GetFreeTrackCount()
 			if availMFDTracks > 0 && availTracks > 0 {
 				chosenLDAT = preferredLDAT
 				chosenDesc = packDesc
@@ -217,7 +112,7 @@ func (mgr *MFDManager) allocateDirectoryTrack(
 	if chosenLDAT == kexec.InvalidLDAT {
 		for ldat, packDesc := range mgr.fixedPackDescriptors {
 			availMFDTracks := 07777 - packDesc.mfdTrackCount
-			availTracks := packDesc.freeSpaceTable.getFreeTrackCount()
+			availTracks := packDesc.freeSpaceTable.GetFreeTrackCount()
 			if availMFDTracks > 0 && availTracks > chosenAvailableTracks {
 				chosenLDAT = ldat
 				chosenDesc = packDesc
@@ -245,9 +140,58 @@ func (mgr *MFDManager) allocateDirectoryTrack(
 
 	// Now allocate a track (any track) from the pack for the chosen LDAT.
 	// Make sure we update the MFD track count.
-	trackId, _ = chosenDesc.freeSpaceTable.allocateTrack()
+	trackId, _ = chosenDesc.freeSpaceTable.AllocateTrack()
 	chosenDesc.mfdTrackCount++
 	return chosenLDAT, trackId, nil
+}
+
+// allocateTrack allocates a track for the file associated with the given mainItem0Address.
+// If provided (preferred != 0), we will try to allocate a track using the preferred ldat index.
+// Otherwise:
+//
+//	If possible we will allocate a track to extend an already-allocated region of the file
+//	Else, we will try to allocate a track from the same pack as the first allocation of the file.
+//	Finally, we will allocate from any available pack.
+//
+// If we return an error, we've already stopped the exec
+// CALL UNDER LOCK
+func (mgr *MFDManager) allocateTrack(
+	mainItem0Address kexec.MFDRelativeAddress,
+	preferred kexec.LDATIndex,
+	fileTrackId kexec.TrackId) error {
+
+	// TODO
+
+	return nil
+}
+
+// allocateSpecificTrack allocates particular contiguous specified physical tracks
+// to be associated with the indicated file-relative tracks.
+// If we return an error, we've already stopped the exec
+// ONLY FOR VERY SPECIFIC USE-CASES - CALL UNDER LOCK, OR DURING MFD INIT
+func (mgr *MFDManager) allocateSpecificTrack(
+	mainItem0Address kexec.MFDRelativeAddress,
+	fileTrackId kexec.TrackId,
+	trackCount kexec.TrackCount,
+	ldatIndex kexec.LDATIndex,
+	deviceTrackId kexec.TrackId) error {
+
+	fae, ok := mgr.assignedFileAllocations[mainItem0Address]
+	if !ok {
+		log.Printf("MFDMgr:allocateSpecificTrack Cannot find fae for address %012o", mainItem0Address)
+		mgr.exec.Stop(kexec.StopDirectoryErrors)
+		return fmt.Errorf("fae not loaded")
+	}
+
+	re := kexec.NewMFDFileAllocation(fileTrackId, trackCount, ldatIndex, deviceTrackId)
+	fae.MergeIntoFileAllocationEntry(re)
+
+	if fileTrackId > fae.HighestTrackAllocated {
+		fae.HighestTrackAllocated = fileTrackId
+	}
+	fae.IsUpdated = true
+
+	return nil
 }
 
 // bootstrapMFD creates the various MFD structures as part of MFD initialization.
@@ -298,7 +242,7 @@ func (mgr *MFDManager) bootstrapMFD() error {
 	// including *particularly* the file allocation table.
 	// We need to create one allocation region for each pack's initial directory track.
 	highestMFDTrackId := kexec.TrackId(0)
-	fae := newFileAllocationEntry(mainAddr0, 0_400000_000000)
+	fae := kexec.NewMFDFileAllocationEntry(mainAddr0, 0_400000_000000)
 	mgr.assignedFileAllocations[mainAddr0] = fae
 
 	for ldat, desc := range mgr.fixedPackDescriptors {
@@ -358,6 +302,46 @@ func composeMFDAddress(
 ) kexec.MFDRelativeAddress {
 
 	return kexec.MFDRelativeAddress(uint64(ldatIndex&07777)<<18 | uint64(trackId&07777)<<6 | uint64(sectorId&077))
+}
+
+// convertFileRelativeAddress takes a file-relative track-id (i.e., word offset from start of file divided by 1792)
+// and uses the fae entries in the fat for the given file instance to determine the device LDAT and
+// the device-relative track id which contains that file address.
+// If the logical track is not allocated, we will return 0_400000 and 0 for those values (since 0 is an invalid LDAT index)
+// If the fae is not loaded, we will throw an error - even an empty file has an fae, albeit a puny one.
+// If we return an error, we've already stopped the exec
+// CALL UNDER LOCK
+func (mgr *MFDManager) convertFileRelativeTrackId(
+	mainItem0Address kexec.MFDRelativeAddress,
+	fileTrackId kexec.TrackId,
+) (kexec.LDATIndex, kexec.TrackId, error) {
+
+	fae, ok := mgr.assignedFileAllocations[mainItem0Address]
+	if !ok {
+		log.Printf("MFDMgr:convertFileRelativeTrackId Cannot find fae for address %012o", mainItem0Address)
+		mgr.exec.Stop(kexec.StopDirectoryErrors)
+		return 0, 0, fmt.Errorf("fae not loaded")
+	}
+
+	ldat := kexec.LDATIndex(0_400000)
+	devTrackId := kexec.TrackId(0)
+	if fileTrackId <= fae.HighestTrackAllocated {
+		for _, fileAlloc := range fae.FileAllocations {
+			if fileTrackId < fileAlloc.FileRegion.TrackId {
+				// list is ascending - if we get here, there's no point in continuing
+				break
+			}
+			upperLimit := kexec.TrackId(uint64(fileAlloc.FileRegion.TrackId) + uint64(fileAlloc.FileRegion.TrackCount))
+			if fileTrackId < upperLimit {
+				// found a good region - update results and stop looking
+				ldat = fileAlloc.LDATIndex
+				devTrackId = fileAlloc.DeviceTrackId + (fileTrackId - fileAlloc.FileRegion.TrackId)
+				return ldat, devTrackId, nil
+			}
+		}
+	}
+
+	return ldat, devTrackId, nil
 }
 
 // findDASEntryForSector chases the appropriate DAS chain to find the DAS which describes the given sector address,
@@ -475,7 +459,7 @@ func (mgr *MFDManager) getMFDSector(address kexec.MFDRelativeAddress) ([]pkg.Wor
 }
 
 // initializeFixed initializes the fixed pool for a jk13 boot
-func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*facilitiesMgr.DiskAttributes) error {
+func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*kexec.DiskAttributes) error {
 	msg := fmt.Sprintf("Fixed Disk Pool = %v Devices", len(disks))
 	mgr.exec.SendExecReadOnlyMessage(msg, nil)
 
@@ -533,7 +517,7 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*facili
 		// Mark VOL1 and first directory track as allocated
 		fpDesc.mfdTrackCount = 1
 		fpDesc.mfdSectorsUsed = 2
-		_ = fpDesc.freeSpaceTable.allocateSpecificTrackRegion(ldatIndex, 0, 2)
+		_ = fpDesc.freeSpaceTable.AllocateSpecificTrackRegion(ldatIndex, 0, 2)
 
 		// Set up first directory track for the pack within our cache to be eventually rewritten
 		mgr.fixedPackDescriptors[ldatIndex] = fpDesc
@@ -555,10 +539,10 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*facili
 		wx := uint(0)
 		for bx := 0; bx < int(blocksPerTrack); bx++ {
 			sub := data[wx : wx+wordsPerBlock]
-			ioPkt := nodeMgr.NewDiskIoPacketRead(fpDesc.nodeId, blockId, sub)
+			ioPkt := nodes.NewDiskIoPacketRead(fpDesc.nodeId, blockId, sub)
 			nm.RouteIo(ioPkt)
 			ioStat := ioPkt.GetIoStatus()
-			if ioStat != nodeMgr.IosComplete {
+			if ioStat != nodes.IosComplete {
 				log.Printf("MFDMgr:initializeFixed cannot read directory track dev:%v blockId:%v",
 					fpDesc.nodeId, blockId)
 				mgr.exec.Stop(kexec.StopInternalExecIOFailed)
@@ -618,8 +602,64 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*facili
 }
 
 // initializeRemovable registers the isRemovable packs (if any) as part of a JK13 boot.
-func (mgr *MFDManager) initializeRemovable(disks map[*nodeMgr.DiskDeviceInfo]*facilitiesMgr.DiskAttributes) error {
+func (mgr *MFDManager) initializeRemovable(disks map[*nodeMgr.DiskDeviceInfo]*kexec.DiskAttributes) error {
 	return nil
+}
+
+// loadFileAllocationEntry initializes the fae for a particular file instance.
+// If we return an error, we've already stopped the exec
+// CALL UNDER LOCK
+func (mgr *MFDManager) loadFileAllocationEntry(
+	mainItem0Address kexec.MFDRelativeAddress,
+) (*kexec.MFDFileAllocationEntry, error) {
+	_, ok := mgr.assignedFileAllocations[mainItem0Address]
+	if ok {
+		log.Printf("MFDMgr:loadFileAllocationEntry fae already loaded for address %012o", mainItem0Address)
+		mgr.exec.Stop(kexec.StopDirectoryErrors)
+		return nil, fmt.Errorf("fae already loaded")
+	}
+
+	mainItem0, err := mgr.getMFDSector(mainItem0Address)
+	if err != nil {
+		return nil, err
+	}
+
+	dadAddr := kexec.MFDRelativeAddress(mainItem0[0])
+	fae := &kexec.MFDFileAllocationEntry{
+		DadItem0Address:  dadAddr,
+		MainItem0Address: mainItem0Address,
+	}
+
+	for dadAddr&0_400000_000000 == 0 {
+		dadItem, err := mgr.getMFDSector(dadAddr)
+		if err != nil {
+			return nil, err
+		}
+
+		fileWordAddress := dadItem[02].GetW()
+		fileWordLimit := dadItem[03].GetW()
+		ex := 0
+		dx := 3
+		for ex < 8 && fileWordAddress < fileWordLimit {
+			devAddr := kexec.DeviceRelativeWordAddress(dadItem[dx].GetW())
+			words := dadItem[dx+1].GetW()
+			ldat := kexec.LDATIndex(dadItem[dx+2].GetH2())
+			if ldat != 0_400000 {
+				re := kexec.NewMFDFileAllocation(kexec.TrackId(fileWordAddress/1792),
+					kexec.TrackCount(words/1792),
+					ldat,
+					kexec.TrackId(devAddr/1792))
+				fae.MergeIntoFileAllocationEntry(re)
+			}
+			ex++
+			dx++
+		}
+
+		dadAddr = kexec.MFDRelativeAddress(dadItem[0].GetW())
+	}
+
+	mgr.assignedFileAllocations[mainItem0Address] = fae
+	return fae, nil
 }
 
 // markDirectorySectorAllocated finds the appropriate DAS entry for the given sector address
@@ -671,6 +711,29 @@ func (mgr *MFDManager) markDirectorySectorUnallocated(sectorAddr kexec.MFDRelati
 	return nil
 }
 
+// writeFileAllocationEntryUpdates writes an updated fae to the on-disk MFD
+// If we return an error, we've already stopped the exec
+// CALL UNDER LOCK
+func (mgr *MFDManager) writeFileAllocationEntryUpdates(mainItem0Address kexec.MFDRelativeAddress) error {
+	fae, ok := mgr.assignedFileAllocations[mainItem0Address]
+	if !ok {
+		log.Printf("MFDMgr:convertFileRelativeTrackId Cannot find fae for address %012o", mainItem0Address)
+		mgr.exec.Stop(kexec.StopDirectoryErrors)
+		return fmt.Errorf("fae not loaded")
+	}
+
+	if fae.IsUpdated {
+		// TODO process
+		//	rewrite the entire set of DAD entries, allocate a new one if we need to do so,
+		//  and release any left over when we're done.
+		//  Don't forget to write hole DADs (see pg 2-63 for Device index field)
+
+		fae.IsUpdated = false
+	}
+
+	return nil
+}
+
 func (mgr *MFDManager) writeLookupTableEntry(
 	qualifier string,
 	filename string,
@@ -700,11 +763,11 @@ func (mgr *MFDManager) writeMFDCache() error {
 
 		ldat, devTrackId, err := mgr.convertFileRelativeTrackId(mgr.mfdFileMainItem0Address, kexec.TrackId(mfdTrackId))
 		if err != nil {
-			log.Printf("MFDMgr:writeMFDCache error converting mfdaddr:%012o trackId:%06v", mgr.mfdFileMainItem0Address, mfdTrackId)
+			log.Printf("MFDMgr:writeMFDCache error converting mfdaddr:%012o TrackId:%06v", mgr.mfdFileMainItem0Address, mfdTrackId)
 			mgr.exec.Stop(kexec.StopDirectoryErrors)
 			return fmt.Errorf("error draining MFD cache")
 		} else if ldat == 0_400000 {
-			log.Printf("MFDMgr:writeMFDCache error converting mfdaddr:%012o trackId:%06v track not allocated",
+			log.Printf("MFDMgr:writeMFDCache error converting mfdaddr:%012o TrackId:%06v track not allocated",
 				mgr.mfdFileMainItem0Address, mfdTrackId)
 			mgr.exec.Stop(kexec.StopDirectoryErrors)
 			return fmt.Errorf("error draining MFD cache")
@@ -721,11 +784,11 @@ func (mgr *MFDManager) writeMFDCache() error {
 		sectorsPerBlock := packDesc.prepFactor / 28
 		devBlockId := uint64(devTrackId) * uint64(blocksPerTrack)
 		devBlockId += uint64(mfdSectorId) / uint64(sectorsPerBlock)
-		ioPkt := nodeMgr.NewDiskIoPacketWrite(packDesc.nodeId, kexec.BlockId(devBlockId), block)
+		ioPkt := nodes.NewDiskIoPacketWrite(packDesc.nodeId, kexec.BlockId(devBlockId), block)
 		nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
 		nm.RouteIo(ioPkt)
 		ioStat := ioPkt.GetIoStatus()
-		if ioStat != nodeMgr.IosComplete {
+		if ioStat != nodes.IosComplete {
 			log.Printf("MFDMgr:writeMFDCache error writing MFD block status=%v", ioStat)
 			mgr.exec.Stop(kexec.StopInternalExecIOFailed)
 			return fmt.Errorf("error draining MFD cache")

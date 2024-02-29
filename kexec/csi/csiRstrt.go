@@ -4,9 +4,11 @@
 
 package csi
 
-import "khalehla/kexec/facilitiesMgr"
+import (
+	"khalehla/kexec"
+)
 
-func handleRstrt(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
+func handleRstrt(pkt *handlerPacket) (*kexec.FacStatusResult, uint64) {
 
 	/*
 		@RSTRT[,scheduling-priority/options/processor-dispatching-priority]

@@ -7,7 +7,6 @@ package csi
 import (
 	"fmt"
 	"khalehla/kexec"
-	"khalehla/kexec/facilitiesMgr"
 	"log"
 )
 
@@ -17,13 +16,13 @@ import (
 //
 // Inserts a message into the system log.
 // The entire message is in pcs.operandFields[0][0]
-func handleLog(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, resultCode uint64) {
-	facResult = facilitiesMgr.NewFacResult()
+func handleLog(pkt *handlerPacket) (facResult *kexec.FacStatusResult, resultCode uint64) {
+	facResult = kexec.NewFacResult()
 	resultCode = 0
 
 	optWord, ok := cleanOptions(pkt)
 	if !ok {
-		facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, nil)
+		facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, nil)
 		resultCode = 0_400000_000000
 		return
 	}

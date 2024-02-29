@@ -5,20 +5,21 @@
 package facilitiesMgr
 
 import (
+	"khalehla/kexec"
 	"khalehla/kexec/config"
-	"khalehla/kexec/exec"
 	"khalehla/kexec/mfdMgr"
-	"khalehla/kexec/nodeMgr"
+	"khalehla/kexec/nodes"
+	"log"
 )
 
 func (mgr *FacilitiesManager) catalogFixedFile(
-	rce *exec.RunControlEntry,
-	fileSpecification *FileSpecification,
+	rce *kexec.RunControlEntry,
+	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
-	fileSetInfo *mfdMgr.FileSetInfo,
+	fileSetInfo *kexec.MFDFileSetInfo,
 	usage config.EquipmentUsage,
-) (facResult *FacStatusResult, resultCode uint64) {
+) (facResult *kexec.FacStatusResult, resultCode uint64) {
 	//	For Mass Storage Files
 	//		@CAT[,options] filename[,type/reserve/granule/maximum,pack-id-1/.../pack-id-n,,,ACR-name]
 	//	maximum of 6 fields in argument
@@ -31,14 +32,22 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 	//		W: make the file write-only
 	//		Z: run should not be held (probably only happens on removable when the pack is not mounted)
 	//
+	allowedOpts := uint64(kexec.BOption | kexec.GOption | kexec.POption |
+		kexec.ROption | kexec.VOption | kexec.WOption | kexec.ZOption)
+	if !rce.CheckIllegalOptions(optionWord, allowedOpts, facResult, rce.IsExec) {
 
-	if (usage != config.EquipmentUsageWordAddressableMassStorage) &&
-		(usage != config.EquipmentUsageSectorAddressableMassStorage) {
-		// oops
 	}
 
-	// check options for disk
-	// TODO ensure nothing isn't there that we don't like
+	// saveOnCheckpoint := optionWord&kexec.BOption != 0
+	// guardedFile := optionWord&kexec.GOption != 0
+	// publicFile := optionWord&kexec.POption != 0
+	// readOnly := optionWord&kexec.ROption != 0
+	// inhibitUnload := optionWord&kexec.VOption != 0
+	// writeOnly := optionWord&kexec.WOption != 0
+	// doNotHold := optionWord&kexec.ZOption != 0
+	// wordAddressable := usage == config.EquipmentUsageWordAddressableMassStorage
+
+	// TODO ensure nothing is there that we don't like
 
 	// If removable, ensure the pack list is compatible with the files in the fileset (if there is a fileset)
 	// Is it okay to just use the highest cycle?
@@ -50,16 +59,17 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 	// If we are removable ensure each pack name is known and mounted.
 	// Do not wait for mount if Z option is set
 	// TODO
+	return nil, 0 // TODO
 }
 
 func (mgr *FacilitiesManager) catalogRemovableFile(
-	rce *exec.RunControlEntry,
-	fileSpecification *FileSpecification,
+	rce *kexec.RunControlEntry,
+	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
-	fileSetInfo *mfdMgr.FileSetInfo,
+	fileSetInfo *kexec.MFDFileSetInfo,
 	usage config.EquipmentUsage,
-) (facResult *FacStatusResult, resultCode uint64) {
+) (facResult *kexec.FacStatusResult, resultCode uint64) {
 	//	For Mass Storage Files
 	//		@CAT[,options] filename[,type/reserve/granule/maximum,pack-id-1/.../pack-id-n,,,ACR-name]
 	//	maximum of 6 fields in argument
@@ -78,17 +88,17 @@ func (mgr *FacilitiesManager) catalogRemovableFile(
 		// oops
 	}
 
-	// TODO
+	return nil, 0 // TODO
 }
 
 func (mgr *FacilitiesManager) catalogTapeFile(
-	rce *exec.RunControlEntry,
-	fileSpecification *FileSpecification,
+	rce *kexec.RunControlEntry,
+	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
-	fileSetInfo *mfdMgr.FileSetInfo,
+	fileSetInfo *kexec.MFDFileSetInfo,
 	usage config.EquipmentUsage,
-) (facResult *FacStatusResult, resultCode uint64) {
+) (facResult *kexec.FacStatusResult, resultCode uint64) {
 	//	For Tape Files
 	//		@CAT,options filename,type[/units/log/noise/processor/tape/
 	//			format/data-converter/block-numbering/data-compression/
@@ -114,19 +124,45 @@ func (mgr *FacilitiesManager) catalogTapeFile(
 		// oops
 	}
 
-	// TODO
+	return nil, 0 // TODO
+}
+
+func (mgr *FacilitiesManager) fallOver(
+	rce *kexec.RunControlEntry,
+	logMessage string,
+	facResult *kexec.FacStatusResult,
+	fsCode kexec.FacStatusCode,
+	messageParameters []string,
+) {
+	log.Printf("%v:%v", rce.RunId, logMessage)
+	facResult.PostMessage(fsCode, messageParameters)
+}
+
+func (mgr *FacilitiesManager) fallOverWithContingency(
+	rce *kexec.RunControlEntry,
+	logMessage string,
+	facResult *kexec.FacStatusResult,
+	fsCode kexec.FacStatusCode,
+	messageParameters []string,
+	contingencyType kexec.ContingencyType,
+	contingencyErrorType uint,
+	contingencyErrorCode uint,
+) {
+	log.Printf("%v:%v", rce.RunId, logMessage)
+	rce.PostContingency(contingencyType, contingencyErrorType, contingencyErrorCode)
+	facResult.PostMessage(fsCode, messageParameters)
 }
 
 // selectEquipmentModel accepts an equipment mnemonic (likely from a control statement)
-// and an optional FileSetInfo struct, and returns a list of NodeModel structs
+// and an optional MFDFileSetInfo struct, and returns a list of NodeModel structs
 // representing the various equipment models which can be used to satisfy the mnemonic.
 // If the mnemonic is an @ASG or @CAT for a file cycle of an existing file set,
-// the corresponding FileSetInfo struct must be specified.
+// the corresponding MFDFileSetInfo struct must be specified.
 // A false return indicates that the mnemonic is not found.
 func (mgr *FacilitiesManager) selectEquipmentModel(
 	mnemonic string,
-	fileSetInfo *mfdMgr.FileSetInfo,
-) ([]nodeMgr.NodeModel, config.EquipmentUsage, bool) {
+	fileSetInfo *kexec.MFDFileSetInfo,
+) ([]nodes.NodeModel, config.EquipmentUsage, bool) {
 
 	effectiveMnemonic := mnemonic
 
@@ -157,10 +193,10 @@ func (mgr *FacilitiesManager) selectEquipmentModel(
 		return nil, 0, false
 	}
 
-	models := make([]nodeMgr.NodeModel, 0)
+	models := make([]nodes.NodeModel, 0)
 	usage := entry.Usage
 	for _, modelName := range entry.SelectableEquipment {
-		model, ok := nodeMgr.NodeModelTable[modelName]
+		model, ok := nodes.NodeModelTable[modelName]
 		if ok {
 			models = append(models, model)
 		}

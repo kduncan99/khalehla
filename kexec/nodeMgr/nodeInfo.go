@@ -7,14 +7,15 @@ package nodeMgr
 import (
 	"io"
 	"khalehla/kexec"
+	"khalehla/kexec/nodes"
 )
 
 // NodeInfo contains all the exec-managed information regarding a particular node
 type NodeInfo interface {
 	CreateNode()
 	Dump(destination io.Writer, indent string)
-	GetNodeCategoryType() NodeCategoryType
-	GetNodeDeviceType() NodeDeviceType
+	GetNodeCategoryType() nodes.NodeCategoryType
+	GetNodeDeviceType() nodes.NodeDeviceType
 	GetNodeIdentifier() kexec.NodeIdentifier
 	GetNodeName() string
 	IsAccessible() bool

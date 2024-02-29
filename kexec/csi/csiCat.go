@@ -12,14 +12,14 @@ import (
 // handleCat updates the default and/or implied qualifier for the run control entry.
 // pcs.operandFields[0] contains the full file specification in a single subfield
 // pcs.operandFields[1..n] may contain multiple subfields
-func handleCat(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, resultCode uint64) {
-	facResult = facilitiesMgr.NewFacResult()
+func handleCat(pkt *handlerPacket) (facResult *kexec.FacStatusResult, resultCode uint64) {
+	facResult = kexec.NewFacResult()
 	resultCode = 0
 
 	// basic options validation - we'll do more specific checks later
 	optWord, ok := cleanOptions(pkt)
 	if !ok {
-		facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, nil)
+		facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, nil)
 		resultCode = 0_600000_000000
 		return
 	}
@@ -31,7 +31,7 @@ func handleCat(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, re
 	}
 
 	p := kexec.NewParser(fsString)
-	fileSpec, fsCode, ok := facilitiesMgr.ParseFileSpecification(p)
+	fileSpec, fsCode, ok := kexec.ParseFileSpecification(p)
 	if !ok {
 		if pkt.sourceIsExecRequest {
 			pkt.rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)

@@ -4,9 +4,11 @@
 
 package csi
 
-import "khalehla/kexec/facilitiesMgr"
+import (
+	"khalehla/kexec"
+)
 
-func handleBrkpt(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, resultCode uint64) {
+func handleBrkpt(pkt *handlerPacket) (facResult *kexec.FacStatusResult, resultCode uint64) {
 
 	/*
 			For primary print files

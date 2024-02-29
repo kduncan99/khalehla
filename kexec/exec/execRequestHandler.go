@@ -4,8 +4,10 @@
 
 package exec
 
+import "khalehla/kexec"
+
 type erContext struct {
-	rce *RunControlEntry
+	rce *kexec.RunControlEntry
 	// need GRS
 	// need current memory (but that is obtainable through GRS, I think)
 }
@@ -222,15 +224,15 @@ func (h *erABORTHandler) Invoke(ctx *erContext) {
 }
 
 func (h *erACSFHandler) Invoke(ctx *erContext) {
-	//L A0,(image-length,image-address)
+	// L A0,(image-length,image-address)
 }
 
 func (h *erCSFHandler) Invoke(ctx *erContext) {
-	//L A0,(image-length,image-address)
+	// L A0,(image-length,image-address)
 }
 
 func (h *erCSIHandler) Invoke(ctx *erContext) {
-	//L A0,(image-length,image-address)
+	// L A0,(image-length,image-address)
 }
 
 func (h *erEABTHandler) Invoke(ctx *erContext) {

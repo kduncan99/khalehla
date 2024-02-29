@@ -4,9 +4,11 @@
 
 package csi
 
-import "khalehla/kexec/facilitiesMgr"
+import (
+	"khalehla/kexec"
+)
 
-func handleFree(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
+func handleFree(pkt *handlerPacket) (*kexec.FacStatusResult, uint64) {
 
 	/*
 		@FREE[,options] filename

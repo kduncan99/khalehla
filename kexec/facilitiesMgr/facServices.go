@@ -5,29 +5,29 @@
 package facilitiesMgr
 
 import (
+	"fmt"
 	"khalehla/kexec"
-	"khalehla/kexec/exec"
 	"khalehla/kexec/mfdMgr"
-	"khalehla/kexec/nodeMgr"
+	"khalehla/kexec/nodes"
 	"khalehla/pkg"
 )
 
-func (mgr *FacilitiesManager) AssignFile() (FacStatusResult, bool) {
-	var facResult FacStatusResult
+func (mgr *FacilitiesManager) AssignFile() (kexec.FacStatusResult, bool) {
+	var facResult kexec.FacStatusResult
 	// TODO
 	return facResult, false
 }
 
 func (mgr *FacilitiesManager) CatalogFile(
-	rce *exec.RunControlEntry,
-	fileSpecification *FileSpecification,
+	rce *kexec.RunControlEntry,
+	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
-) (facResult *FacStatusResult, resultCode uint64) {
+) (facResult *kexec.FacStatusResult, resultCode uint64) {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
-	facResult = NewFacResult()
+	facResult = kexec.NewFacResult()
 	resultCode = 0
 
 	// See if there is already a fileset
@@ -44,23 +44,35 @@ func (mgr *FacilitiesManager) CatalogFile(
 	if len(operandFields) >= 2 && len(operandFields[1]) >= 1 {
 		mnemonic = operandFields[1][0]
 	}
+
+	if len(mnemonic) > 6 {
+		mgr.fallOver(rce,
+			fmt.Sprintf("Mnemonic %v too long", mnemonic),
+			facResult,
+			kexec.FacStatusAssignMnemonicTooLong,
+			[]string{mnemonic})
+		return
+	}
+
 	models, usage, ok := mgr.selectEquipmentModel(mnemonic, fsInfo)
 	if !ok {
 		// This isn't going to work for us.
-		facResult.PostMessage(FacStatusMnemonicIsNotConfigured, []string{mnemonic})
-		return facResult, 0_600000_000000
+		resultCode = 0_600000_000000
+		mgr.fallOver(rce,
+			fmt.Sprintf("Mnemonic %v not configured", mnemonic),
+			facResult,
+			kexec.FacStatusMnemonicIsNotConfigured,
+			[]string{mnemonic})
+		return
 	}
 
 	// We now know whether we are word-addressable, sector-addressable, or tape.
-	// We don't yet know whether we are fixed or removable, and the possibility exists
-	// that there is still some conflict between what we know about usage from equipment type,
-	// and what the caller is implying based on options, arguments, pack/reel names, etc.
-	// If there is a fileset, the answer is already there.
-	var fileType kexec.FileType
+	// We don't yet know whether we are fixed or removable.
+	var fileType kexec.MFDFileType
 	if fsInfo != nil {
 		fileType = fsInfo.FileType
 	} else {
-		if models[0].DeviceType == nodeMgr.NodeDeviceTape {
+		if models[0].DeviceType == nodes.NodeDeviceTape {
 			fileType = kexec.FileTypeTape
 		} else {
 			// fixed or removable?
@@ -83,11 +95,11 @@ func (mgr *FacilitiesManager) CatalogFile(
 }
 
 func (mgr *FacilitiesManager) FreeFile(
-	rce *exec.RunControlEntry,
-	fileSpecification FileSpecification,
+	rce *kexec.RunControlEntry,
+	fileSpecification kexec.FileSpecification,
 	options pkg.Word36,
-) (FacStatusResult, bool) {
-	var facResult FacStatusResult
+) (kexec.FacStatusResult, bool) {
+	var facResult kexec.FacStatusResult
 	// TODO
 	return facResult, false
 }

@@ -5,8 +5,12 @@
 package mfdMgr
 
 import (
+	"fmt"
 	"khalehla/kexec"
+	"khalehla/kexec/nodeMgr"
+	"khalehla/kexec/nodes"
 	"khalehla/pkg"
+	"log"
 	"time"
 )
 
@@ -33,7 +37,7 @@ func (mgr *MFDManager) CreateFileSet(
 	projectId string,
 	readKey string,
 	writeKey string,
-	fileType kexec.FileType,
+	fileType kexec.MFDFileType,
 ) (leadItem0Address kexec.MFDRelativeAddress, result MFDResult) {
 	leadItem0Address = kexec.InvalidLink
 	result = MFDSuccessful
@@ -78,12 +82,12 @@ func (mgr *MFDManager) GetFileInfo(
 	qualifier string,
 	filename string,
 	absoluteCycle uint,
-) (fi FileInfo, mainItem0Address kexec.MFDRelativeAddress, err error) {
+) (fi kexec.MFDFileInfo, mainItem0Address kexec.MFDRelativeAddress, err error) {
 	// TODO
 	return nil, 0, nil
 }
 
-// GetFileSetInfo returns a FileSetInfo struct representing the file set
+// GetFileSetInfo returns a MFDFileSetInfo struct representing the file set
 // and the file set's lead item 0 address.
 // corresponding to the given qualifier and filename.
 // If we return MFDInternalError, the exec has been stopped
@@ -91,7 +95,7 @@ func (mgr *MFDManager) GetFileInfo(
 func (mgr *MFDManager) GetFileSetInfo(
 	qualifier string,
 	filename string,
-) (fsInfo *FileSetInfo, leadItem0Address kexec.MFDRelativeAddress, mfdResult MFDResult) {
+) (fsInfo *kexec.MFDFileSetInfo, leadItem0Address kexec.MFDRelativeAddress, mfdResult MFDResult) {
 	fsInfo = nil
 	leadItem0Address = kexec.InvalidLink
 	mfdResult = MFDSuccessful
@@ -121,8 +125,111 @@ func (mgr *MFDManager) GetFileSetInfo(
 		}
 	}
 
-	fsInfo = &FileSetInfo{}
+	fsInfo = &kexec.MFDFileSetInfo{}
 	fsInfo.PopulateFromLeadItems(leadItem0, leadItem1)
+	return
+}
+
+// InitializeMassStorage handles MFD initialization for what is effectively a JK13 boot.
+// If we return an error, we must previously stop the exec.
+func (mgr *MFDManager) InitializeMassStorage() {
+	// Get the list of disks from the node manager
+	disks := make([]*nodeMgr.DiskDeviceInfo, 0)
+	fm := mgr.exec.GetFacilitiesManager()
+	nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
+	for _, dInfo := range nm.GetDeviceInfos() {
+		if dInfo.GetNodeDeviceType() == nodes.NodeDeviceDisk {
+			disks = append(disks, dInfo.(*nodeMgr.DiskDeviceInfo))
+		}
+	}
+
+	// Check the labels on the disks so that we may segregate them into fixed and isRemovable lists.
+	// Any problems at this point will lead us to DN the unit.
+	// At this point, FacMgr should know about all the disks.
+	fixedDisks := make(map[*nodeMgr.DiskDeviceInfo]*kexec.DiskAttributes)
+	removableDisks := make(map[*nodeMgr.DiskDeviceInfo]*kexec.DiskAttributes)
+	for _, ddInfo := range disks {
+		nodeAttr, _ := fm.GetNodeAttributes(ddInfo.GetNodeIdentifier())
+		if nodeAttr.GetFacNodeStatus() == kexec.FacNodeStatusUp {
+			// Get the pack attributes from fac mgr
+			diskAttr, ok := fm.GetDiskAttributes(ddInfo.GetNodeIdentifier())
+			if !ok {
+				mgr.exec.SendExecReadOnlyMessage("Internal configuration error", nil)
+				mgr.exec.Stop(kexec.StopInitializationSystemConfigurationError)
+				return
+			}
+
+			if diskAttr.PackLabelInfo == nil {
+				msg := fmt.Sprintf("No valid label exists for pack on device %v", ddInfo.GetNodeName())
+				mgr.exec.SendExecReadOnlyMessage(msg, nil)
+				_ = fm.SetNodeStatus(ddInfo.GetNodeIdentifier(), kexec.FacNodeStatusDown)
+				continue
+			}
+
+			// Read sector 1 of the initial directory track.
+			// This is a little messy due to the potential of problematic block sizes.
+			wordsPerBlock := uint64(diskAttr.PackLabelInfo.WordsPerRecord)
+			dirTrackWordAddr := uint64(diskAttr.PackLabelInfo.FirstDirectoryTrackAddress)
+			dirTrackBlockId := kexec.BlockId(dirTrackWordAddr / wordsPerBlock)
+			if wordsPerBlock == 28 {
+				dirTrackBlockId++
+			}
+
+			buf := make([]pkg.Word36, wordsPerBlock)
+			pkt := nodes.NewDiskIoPacketRead(ddInfo.GetNodeIdentifier(), dirTrackBlockId, buf)
+			nm.RouteIo(pkt)
+			ioStat := pkt.GetIoStatus()
+			if ioStat != nodes.IosComplete {
+				msg := fmt.Sprintf("IO error reading directory track on device %v", ddInfo.GetNodeName())
+				log.Printf("MFDMgr:%v", msg)
+				mgr.exec.SendExecReadOnlyMessage(msg, nil)
+				_ = fm.SetNodeStatus(ddInfo.GetNodeIdentifier(), kexec.FacNodeStatusDown)
+				continue
+			}
+
+			var sector1 []pkg.Word36
+			if wordsPerBlock == 28 {
+				sector1 = buf
+			} else {
+				sector1 = buf[28:56]
+			}
+
+			// get the LDAT field from sector 1
+			// If it is 0, it is a isRemovable pack
+			// 0400000, it is an uninitialized fixed pack
+			// anything else, it is a pre-used fixed pack which we're going to initialize
+			ldat := sector1[5].GetH1()
+			if ldat == 0 {
+				removableDisks[ddInfo] = diskAttr
+			} else {
+				fixedDisks[ddInfo] = diskAttr
+				diskAttr.IsFixed = true
+			}
+		}
+	}
+
+	err := mgr.initializeFixed(fixedDisks)
+	if err != nil {
+		return
+	}
+
+	// Make sure we have at least one fixed pack after the previous shenanigans
+	if len(mgr.fixedPackDescriptors) == 0 {
+		mgr.exec.SendExecReadOnlyMessage("No Fixed Disks - Cannot Continue Initialization", nil)
+		mgr.exec.Stop(kexec.StopInitializationSystemConfigurationError)
+		return
+	}
+
+	err = mgr.initializeRemovable(removableDisks)
+	return
+}
+
+// RecoverMassStorage handles MFD recovery for what is NOT a JK13 boot.
+// If we return an error, we must previously stop the exec.
+func (mgr *MFDManager) RecoverMassStorage() {
+	// TODO
+	mgr.exec.SendExecReadOnlyMessage("MFD Recovery is not implemented", nil)
+	mgr.exec.Stop(kexec.StopDirectoryErrors)
 	return
 }
 

@@ -4,9 +4,11 @@
 
 package csi
 
-import "khalehla/kexec/facilitiesMgr"
+import (
+	"khalehla/kexec"
+)
 
-func handleAsg(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
+func handleAsg(pkt *handlerPacket) (*kexec.FacStatusResult, uint64) {
 	/*
 		Mass-Storage:
 			@ASG[,options] filename[,type/reserve/granule/maximum/placement][,pack-id-1/.../pack-id-n,,,ACR-name]

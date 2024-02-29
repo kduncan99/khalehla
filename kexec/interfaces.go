@@ -7,7 +7,6 @@ package kexec
 import (
 	"io"
 	"khalehla/kexec/config"
-	"khalehla/kexec/exec"
 )
 
 // IConsole is a unit which actually acts as an operating system console endpoint.
@@ -49,7 +48,7 @@ type IExec interface {
 	GetMFDManager() IMFDManager
 	GetNodeManager() INodeManager
 	GetPhase() ExecPhase
-	GetRunControlEntry() *exec.RunControlEntry
+	GetRunControlEntry() *RunControlEntry
 	GetStopCode() StopCode
 	GetStopFlag() bool
 	Initialize() error
@@ -68,6 +67,7 @@ type IFacilitiesManager interface {
 	Initialize() error // invoked when the application is starting up
 	Stop()             // invoked when the exec is stopping
 	AssignDiskDeviceToExec(nodeId NodeIdentifier) error
+	GetNodeAttributes(nodeId NodeIdentifier) (NodeAttributes, bool)
 	IsDeviceAssigned(nodeId NodeIdentifier) bool
 	NotifyDeviceReady(nodeId NodeIdentifier, isReady bool)
 }
