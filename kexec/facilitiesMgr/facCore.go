@@ -10,9 +10,151 @@ import (
 	"khalehla/kexec/mfdMgr"
 	"khalehla/kexec/nodeMgr"
 	"log"
+	"strconv"
+	"strings"
 )
 
+type fieldSubfieldIndex struct {
+	fieldIndex    int
+	subFieldIndex int
+	allSubfields  bool
+}
+
+type fieldSubfieldIndices struct {
+	content []fieldSubfieldIndex
+}
+
+func newFieldSubfieldIndices() *fieldSubfieldIndices {
+	return &fieldSubfieldIndices{
+		content: make([]fieldSubfieldIndex, 0),
+	}
+}
+
+func (fsi *fieldSubfieldIndices) add(fieldIndex int, subfieldIndex int) *fieldSubfieldIndices {
+	index := fieldSubfieldIndex{
+		fieldIndex:    fieldIndex,
+		subFieldIndex: subfieldIndex,
+	}
+	fsi.content = append(fsi.content, index)
+	return fsi
+}
+
+func (fsi *fieldSubfieldIndices) addAll(fieldIndex int) *fieldSubfieldIndices {
+	index := fieldSubfieldIndex{
+		fieldIndex:   fieldIndex,
+		allSubfields: true,
+	}
+	fsi.content = append(fsi.content, index)
+	return fsi
+}
+
+func (fsi *fieldSubfieldIndices) contains(fieldIndex int, subfieldIndex int) bool {
+	for _, fsx := range fsi.content {
+		if fieldIndex == fsx.fieldIndex && subfieldIndex == fsx.subFieldIndex {
+			return true
+		}
+	}
+	return false
+}
+
+// -----------------------------------------------------------------------------
+
+var catFixedFSIs = newFieldSubfieldIndices().
+	add(0, 0).
+	add(1, 0).
+	add(1, 1).
+	add(1, 2).
+	add(1, 3).
+	add(5, 0)
+
+var catRemovableFSIs = newFieldSubfieldIndices().
+	add(0, 0).
+	add(1, 0).
+	add(1, 1).
+	add(1, 2).
+	add(1, 3).
+	addAll(2).
+	add(5, 0)
+
+// -----------------------------------------------------------------------------
+
+// checkSubFields
+// Checks the user-provided operation fields against a list of accepted field/subfield combinations
+// to see whether the user provided a subfield which is not acceptable.
+// Returns true if all is well, else false
+func (mgr *FacilitiesManager) checkSubFields(operandFields [][]string, accepted *fieldSubfieldIndices) bool {
+	for fx := 0; fx < len(operandFields); fx++ {
+		for fy := 0; fy < len(operandFields[fx]); fy++ {
+			if len(operandFields[fx][fy]) > 0 && !accepted.contains(fx, fy) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// getField
+// Retrieves the field indicated by the given field index as an array of strings.
+// If the field was not specified, we return an empty array.
+func (mgr *FacilitiesManager) getField(operandFields [][]string, fieldIndex int) []string {
+	if fieldIndex < len(operandFields) {
+		return operandFields[fieldIndex]
+	} else {
+		return []string{}
+	}
+}
+
+// getSubField
+// Retrieves the subfield indicated by the given field and subfield indicies.
+// If the subfield was not specified, we return a blank string.
+func (mgr *FacilitiesManager) getSubField(operandFields [][]string, fieldIndex int, subfieldIndex int) string {
+	if fieldIndex < len(operandFields) && subfieldIndex < len(operandFields[fieldIndex]) {
+		return operandFields[fieldIndex][subfieldIndex]
+	} else {
+		return ""
+	}
+}
+
+// -----------------------------------------------------------------------------
+
+func (mgr *FacilitiesManager) assignFixedFile(
+	exec kexec.IExec,
+	rce *kexec.RunControlEntry,
+	fileSpecification *kexec.FileSpecification,
+	optionWord uint64,
+	operandFields [][]string,
+	fileSetInfo *mfdMgr.FileSetInfo,
+	usage config.EquipmentUsage,
+) (facResult *kexec.FacStatusResult, resultCode uint64) {
+	return nil, 0 // TODO
+}
+
+func (mgr *FacilitiesManager) assignRemovableFile(
+	exec kexec.IExec,
+	rce *kexec.RunControlEntry,
+	fileSpecification *kexec.FileSpecification,
+	optionWord uint64,
+	operandFields [][]string,
+	fileSetInfo *mfdMgr.FileSetInfo,
+	usage config.EquipmentUsage,
+) (facResult *kexec.FacStatusResult, resultCode uint64) {
+	return nil, 0 // TODO
+}
+
+func (mgr *FacilitiesManager) assignTapeFile(
+	exec kexec.IExec,
+	rce *kexec.RunControlEntry,
+	fileSpecification *kexec.FileSpecification,
+	optionWord uint64,
+	operandFields [][]string,
+	fileSetInfo *mfdMgr.FileSetInfo,
+	usage config.EquipmentUsage,
+) (facResult *kexec.FacStatusResult, resultCode uint64) {
+	return nil, 0 // TODO
+}
+
 func (mgr *FacilitiesManager) catalogFixedFile(
+	exec kexec.IExec,
 	rce *kexec.RunControlEntry,
 	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
@@ -31,67 +173,191 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 	//		V: file will not be unloaded
 	//		W: make the file write-only
 	//		Z: run should not be held (probably only happens on removable when the pack is not mounted)
-	//
 	allowedOpts := uint64(kexec.BOption | kexec.GOption | kexec.POption |
 		kexec.ROption | kexec.VOption | kexec.WOption | kexec.ZOption)
 	if !rce.CheckIllegalOptions(optionWord, allowedOpts, facResult, rce.IsExec) {
-
+		// TODO
 	}
 
-	// saveOnCheckpoint := optionWord&kexec.BOption != 0
-	// guardedFile := optionWord&kexec.GOption != 0
-	// publicFile := optionWord&kexec.POption != 0
-	// readOnly := optionWord&kexec.ROption != 0
-	// inhibitUnload := optionWord&kexec.VOption != 0
-	// writeOnly := optionWord&kexec.WOption != 0
-	// doNotHold := optionWord&kexec.ZOption != 0
-	// wordAddressable := usage == config.EquipmentUsageWordAddressableMassStorage
+	if !mgr.checkSubFields(operandFields, catFixedFSIs) {
+		// TODO
+		// E:252133 Placement field is not allowed with CAT.
+		//E:252233 Placement requested on a non--mass storage device.
+		//E:252333 Placement is not allowed with a removable disk file.
+		//E:252433 Illegal syntax in placement subfield.
+		//E:255733 Image contains an undefined field or subfield.
+	}
 
-	// TODO ensure nothing is there that we don't like
-
-	// If removable, ensure the pack list is compatible with the files in the fileset (if there is a fileset)
-	// Is it okay to just use the highest cycle?
-	// TODO
+	saveOnCheckpoint := optionWord&kexec.BOption != 0
+	guardedFile := optionWord&kexec.GOption != 0
+	publicFile := optionWord&kexec.POption != 0
+	readOnly := optionWord&kexec.ROption != 0
+	inhibitUnload := optionWord&kexec.VOption != 0
+	writeOnly := optionWord&kexec.WOption != 0
+	doNotHold := optionWord&kexec.ZOption != 0
+	wordAddressable := usage == config.EquipmentUsageWordAddressableMassStorage
 
 	// ensure initial reserve <= max allocations (means words or granules, depending on word/sector addressable)
+	initStr := mgr.getSubField(operandFields, 1, 1)
+	granStr := strings.ToUpper(mgr.getSubField(operandFields, 1, 2))
+	maxStr := mgr.getSubField(operandFields, 1, 3)
+	acrStr := mgr.getSubField(operandFields, 5, 0)
+
+	var granularity kexec.Granularity
+	if len(granStr) == 0 || granStr == "TRK" {
+		granularity = kexec.TrackGranularity
+	} else if granStr == "POS" {
+		granularity = kexec.PositionGranularity
+	} else {
+		// TODO illegal value for granularity
+		//E:245233 Illegal value specified for granularity.
+	}
+
+	var initReserve uint64
+	if len(initStr) > 12 {
+		facResult.PostMessage(kexec.FacStatusIllegalInitialReserve, nil)
+		resultCode = 0_600000_000000
+		return
+	} else if len(initStr) > 0 {
+		initReserve, err := strconv.Atoi(initStr)
+		if err != nil || initReserve < 0 {
+			// TODO illegal value for initial reserve
+			//E:246233 File initial reserve granule limits exceeded.
+			//E:246333 Illegal value specified for initial reserve.
+		}
+	}
+
+	maxGranules := exec.GetConfiguration().MaxGranules
+	if len(granStr) > 12 {
+		// TODO illegal max granules
+	} else if len(granStr) > 0 {
+		maxGranules, err := strconv.Atoi(granStr)
+		if err != nil || initReserve < 0 {
+			// TODO illegal value for max granules
+		}
+	}
+
+	if len(acrStr) > 0 {
+		// TODO we don't do ACRs... yet...
+	}
+
+	/*
+		E:242533 File cycle out of range.
+		E:242633 Cannot catalog file because read or write access not allowed.
+		E:243233 Creation of file would require illegal dropping of private file.
+		E:244433 File is already catalogued.
+		E:246433 Read and/or write keys are needed.
+		E:247133 Maximum granules less than highest granule allocated.
+		E:247233 File maximum granule limits exceeded.
+		E:247333 Illegal value specified for maximum.
+		E:247433 Maximum is less than the initial reserve.
+		E:247633 Maximum number of packids exceeded.
+		E:253333 Incorrect read key.
+		E:253433 File is not cataloged with read key.
+		E:253733 Relative F-cycle conflict.
+		E:256633 Incorrect write key.
+		E:256733 File is not cataloged with write key.
+
+	*/
+
+	// If there isn't an existing fileset, create one.
+	// Otherwise, do sanity checking on the requested file cycle.
+	mm := exec.GetMFDManager().(*mfdMgr.MFDManager)
+	if fileSetInfo == nil {
+		fileSetInfo = mfdMgr.NewFileSetInfo(
+			fileSpecification.Qualifier,
+			fileSpecification.Filename,
+			rce.ProjectId,
+			fileSpecification.ReadKey,
+			fileSpecification.WriteKey,
+			mfdMgr.FileTypeFixed)
+		_, result := mm.CreateFileSet(fileSetInfo)
+		if result == mfdMgr.MFDInternalError {
+			return
+		} else if result != mfdMgr.MFDSuccessful {
+			log.Printf("FacMgr:MFD failed to create file set")
+			exec.Stop(kexec.StopFacilitiesComplex)
+			return
+		}
+	} else {
+		if fileSpecification.AbsoluteCycle != nil {
+			// TODO
+			// If a file is created by its absolute cycle and the absolute cycle is not the next numerically sequential
+			// absolute F-cycle available, the sequence of F-cycles is updated to point at the newly created F-cycle.
+			// In addition, a buffer of noncataloged F-cycles exists between the newly cataloged F-cycle and the
+			// previously cataloged F-cycles. This increases the F-cycle range by more than 1.
+		} else if fileSpecification.RelativeCycle != nil {
+			// TODO
+			// To create the next sequential absolute F-cycle, you can use the relative specification +1.
+			// If files have been deleted, the relative specification +1 creates the highest numbered deleted F-cycle.
+			// When this +1 file is cataloged (by freeing the file or by run termination), its relative F-cycle number
+			// is set to 0 and other existing files of the set have their relative F-cycle numbers decreased by 1,
+			// thus maintaining consecutive relative numbering.
+		} else {
+			// We're here with a file set but no cycle spec on a @CAT request. That won't fly.
+			facResult.PostMessage(kexec.FacStatusFileAlreadyCataloged, nil)
+			resultCode = 0_500000_000000
+			return
+		}
+	}
+
+	return nil, 0 // TODO
+}
+
+func (mgr *FacilitiesManager) catalogRemovableFile(
+	exec kexec.IExec,
+	rce *kexec.RunControlEntry,
+	fileSpecification *kexec.FileSpecification,
+	optionWord uint64,
+	operandFields [][]string,
+	fileSetInfo *mfdMgr.FileSetInfo,
+	usage config.EquipmentUsage,
+) (facResult *kexec.FacStatusResult, resultCode uint64) {
+	//	For Mass Storage Files
+	//		@CAT[,options] filename[,type/reserve/granule/maximum,pack-id-1/.../pack-id-n,,,ACR-name]
+	//	maximum of 6 fields in argument
+	//	options include
+	//		B: save on checkpoint
+	//		G: guarded file
+	//		P: make the file public (not private)
+	//		R: make the file read-only
+	//		V: file will not be unloaded
+	//		W: make the file write-only
+	//		Z: run should not be held (probably only happens on removable when the pack is not mounted)
+	allowedOpts := uint64(kexec.BOption | kexec.GOption | kexec.POption |
+		kexec.ROption | kexec.VOption | kexec.WOption | kexec.ZOption)
+	if !rce.CheckIllegalOptions(optionWord, allowedOpts, facResult, rce.IsExec) {
+		// TODO
+	}
+
+	if !mgr.checkSubFields(operandFields, catRemovableFSIs) {
+		// TODO
+	}
+
+	saveOnCheckpoint := optionWord&kexec.BOption != 0
+	guardedFile := optionWord&kexec.GOption != 0
+	publicFile := optionWord&kexec.POption != 0
+	readOnly := optionWord&kexec.ROption != 0
+	inhibitUnload := optionWord&kexec.VOption != 0
+	writeOnly := optionWord&kexec.WOption != 0
+	doNotHold := optionWord&kexec.ZOption != 0
+	wordAddressable := usage == config.EquipmentUsageWordAddressableMassStorage
+
+	// TODO granularity, initial-reserve, max-granules
+
+	// Ensure the pack list is compatible with the files in the fileset (if there is a fileset)
+	// Is it okay to just use the highest cycle?
 	// TODO
 
 	// If we are removable ensure each pack name is known and mounted.
 	// Do not wait for mount if Z option is set
 	// TODO
-	return nil, 0 // TODO
-}
-
-func (mgr *FacilitiesManager) catalogRemovableFile(
-	rce *kexec.RunControlEntry,
-	fileSpecification *kexec.FileSpecification,
-	optionWord uint64,
-	operandFields [][]string,
-	fileSetInfo *mfdMgr.FileSetInfo,
-	usage config.EquipmentUsage,
-) (facResult *kexec.FacStatusResult, resultCode uint64) {
-	//	For Mass Storage Files
-	//		@CAT[,options] filename[,type/reserve/granule/maximum,pack-id-1/.../pack-id-n,,,ACR-name]
-	//	maximum of 6 fields in argument
-	//	options include
-	//		B: save on checkpoint
-	//		G: guarded file
-	//		P: make the file public (not private)
-	//		R: make the file read-only
-	//		V: file will not be unloaded
-	//		W: make the file write-only
-	//		Z: run should not be held (probably only happens on removable when the pack is not mounted)
-	//
-
-	if (usage != config.EquipmentUsageWordAddressableMassStorage) &&
-		(usage != config.EquipmentUsageSectorAddressableMassStorage) {
-		// oops
-	}
 
 	return nil, 0 // TODO
 }
 
 func (mgr *FacilitiesManager) catalogTapeFile(
+	exec kexec.IExec,
 	rce *kexec.RunControlEntry,
 	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
@@ -119,9 +385,11 @@ func (mgr *FacilitiesManager) catalogTapeFile(
 	//		V: 1600 BPI (only for SCSI 9-track - future)
 	//		W: make the file write-only
 	//		Z: run should not be held (probably only happens on removable when the pack is not mounted)
-
-	if usage != config.EquipmentUsageTape {
-		// oops
+	allowedOpts := uint64(kexec.EOption|kexec.GOption|kexec.HOption|kexec.JOption|
+		kexec.LOption|kexec.MOption|kexec.OOption) | kexec.POption | kexec.ROption |
+		kexec.SOption | kexec.VOption | kexec.WOption | kexec.ZOption
+	if !rce.CheckIllegalOptions(optionWord, allowedOpts, facResult, rce.IsExec) {
+		// TODO
 	}
 
 	return nil, 0 // TODO

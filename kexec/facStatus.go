@@ -44,17 +44,13 @@ const (
 	FacStatusSyntaxErrorInImage                      = 0243533
 	FacStatusIllegalControlStatement                 = 0243733
 	FacStatusFilenameIsRequired                      = 0244333
+	FacStatusFileAlreadyCataloged                    = 244433
+	FacStatusIllegalInitialReserve                   = 246333
 	FacStatusDirectoryAndQualifierMayNotAppear       = 0262633
 	FacStatusDirectoryOrQualifierMustAppear          = 0263033
 )
 
 /*
-0*
-2
-3 4*
-6
-7
-8*† 9*†
 	Bit Description
 	0*	Request not accepted; check other bits for reason.
 	1*	Field error in control statement other than syntax.

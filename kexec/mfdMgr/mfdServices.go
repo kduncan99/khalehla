@@ -31,12 +31,7 @@ func (mgr *MFDManager) ChangeFileSetName(
 // If we return MFDInternalError, the exec has been stopped
 // If we return MFDFileNameConflict, a file set already exists with this file name.
 func (mgr *MFDManager) CreateFileSet(
-	qualifier string,
-	filename string,
-	projectId string,
-	readKey string,
-	writeKey string,
-	fileType FileType,
+	fsInfo *FileSetInfo,
 ) (leadItem0Address kexec.MFDRelativeAddress, result MFDResult) {
 	leadItem0Address = kexec.InvalidLink
 	result = MFDSuccessful
@@ -44,7 +39,7 @@ func (mgr *MFDManager) CreateFileSet(
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
-	_, ok := mgr.fileLeadItemLookupTable[qualifier][filename]
+	_, ok := mgr.fileLeadItemLookupTable[fsInfo.Qualifier][fsInfo.Filename]
 	if ok {
 		result = MFDFileNameConflict
 		return
@@ -59,12 +54,12 @@ func (mgr *MFDManager) CreateFileSet(
 	leadItem0[0].SetW(uint64(kexec.InvalidLink))
 	leadItem0[0].Or(0_500000_000000)
 
-	pkg.FromStringToFieldata(qualifier, leadItem0[1:3])
-	pkg.FromStringToFieldata(filename, leadItem0[3:5])
-	pkg.FromStringToFieldata(projectId, leadItem0[5:7])
-	leadItem0[7].FromStringToFieldata(readKey)
-	leadItem0[8].FromStringToAscii(writeKey)
-	leadItem0[9].SetS1(uint64(fileType))
+	pkg.FromStringToFieldata(fsInfo.Qualifier, leadItem0[1:3])
+	pkg.FromStringToFieldata(fsInfo.Filename, leadItem0[3:5])
+	pkg.FromStringToFieldata(fsInfo.ProjectId, leadItem0[5:7])
+	leadItem0[7].FromStringToFieldata(fsInfo.ReadKey)
+	leadItem0[8].FromStringToAscii(fsInfo.WriteKey)
+	leadItem0[9].SetS1(uint64(fsInfo.FileType))
 
 	mgr.markDirectorySectorDirty(leadItem0Address)
 	return

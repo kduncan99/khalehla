@@ -17,6 +17,29 @@ func (mgr *FacilitiesManager) AssignFile() (kexec.FacStatusResult, bool) {
 	return facResult, false
 }
 
+// CatalogFile is the front end which all code should invoke when asking for a file to be cataloged.
+// The values allowed in optionWord depend upon whether we are cataloging a disk or a tape file.
+// The operand fields are:
+//
+//	[0][0] file specification string including qual, file, cycle, read key, and write key.
+//	[1][0] assign mnemonic
+//	[1][1] reserve or number-of-units (n/a for @CAT)
+//	[1][2] [ TRK | POS ] or logical-control-unit (n/a for @CAT)
+//	[1][3] max grans or noise-constant (1 to 63)
+//	[1][4] blank or processor [ASCII | EBCDIC | FLDATA ]
+//	[1][5] blank or tape [ EBCDIC | FLATA | ASCII | BCD ]
+//	[1][6] blank or format [ Q | 8 ]
+//	[1][7] blank or data-converter (n/a)
+//	[1][8] blank or block-numbering
+//	[1][9] blank or data-compression
+//	[1][10] blank or buffered-write
+//	[1][11] blank or expanded-buffer
+//	[2][0..] pack-ids or reel-numbers
+//	[3][0] blank or expiration-period
+//	[3][1] blank or mmspec
+//	[4]    blank
+//	[5][0] ACR-name
+//	[6][0] blank or CTL-pool
 func (mgr *FacilitiesManager) CatalogFile(
 	rce *kexec.RunControlEntry,
 	fileSpecification *kexec.FileSpecification,
@@ -85,11 +108,11 @@ func (mgr *FacilitiesManager) CatalogFile(
 	}
 
 	if fileType == mfdMgr.FileTypeFixed {
-		return mgr.catalogFixedFile(rce, fileSpecification, optionWord, operandFields, fsInfo, usage)
+		return mgr.catalogFixedFile(mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, usage)
 	} else if fileType == mfdMgr.FileTypeRemovable {
-		return mgr.catalogRemovableFile(rce, fileSpecification, optionWord, operandFields, fsInfo, usage)
+		return mgr.catalogRemovableFile(mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, usage)
 	} else { // fileType == kexec.FileTypeTape
-		return mgr.catalogTapeFile(rce, fileSpecification, optionWord, operandFields, fsInfo, usage)
+		return mgr.catalogTapeFile(mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, usage)
 	}
 }
 

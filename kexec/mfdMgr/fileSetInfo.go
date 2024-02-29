@@ -30,6 +30,24 @@ type FileSetInfo struct {
 	CycleInfo       []FileSetCycleInfo
 }
 
+func NewFileSetInfo(
+	qualifier string,
+	filename string,
+	projectId string,
+	readKey string,
+	writeKey string,
+	fileType FileType,
+) *FileSetInfo {
+	return &FileSetInfo{
+		Qualifier: qualifier,
+		Filename:  filename,
+		ProjectId: projectId,
+		ReadKey:   readKey,
+		WriteKey:  writeKey,
+		FileType:  fileType,
+	}
+}
+
 // PopulateFromLeadItems populates the FileSetInfo object from the Content of the
 // given leadItem0 and (optional) leadItem1 sectors.
 // If there is no leadItem1, that argument should be nil.
