@@ -4,12 +4,14 @@
 
 package csi
 
-func handleSymcn(pkt *handlerPacket) uint64 {
+import "khalehla/kexec/facilitiesMgr"
+
+func handleSymcn(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
 
 	/*
 		@SYMCN,L
 		@SYMCN,N [{n}]
 	*/
 	// TODO
-	return 0
+	return nil, 0
 }

@@ -4,7 +4,9 @@
 
 package csi
 
-func handleFree(pkt *handlerPacket) uint64 {
+import "khalehla/kexec/facilitiesMgr"
+
+func handleFree(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
 
 	/*
 		@FREE[,options] filename
@@ -12,5 +14,5 @@ func handleFree(pkt *handlerPacket) uint64 {
 			A, B, D, I, R, S, X
 	*/
 	// TODO
-	return 0
+	return nil, 0
 }

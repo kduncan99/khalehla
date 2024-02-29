@@ -6,9 +6,8 @@ package csi
 
 import (
 	"khalehla/kexec"
-	"khalehla/kexec/exec"
+	"khalehla/kexec/facilitiesMgr"
 	"log"
-	"strings"
 )
 
 // handleQual updates the default and/or implied qualifier for the run control entry.
@@ -20,68 +19,102 @@ import (
 // With 'R' option, the default and implied qualifiers are reset to the project-id
 // D and R are mutually exclusive.
 // We do not support directory-id at the moment
-func handleQual(pkt *handlerPacket) uint64 {
-	cleanOpts := ""
-	if len(pkt.options) > 0 {
-		var ok bool
-		cleanOpts, ok = cleanOptions(pkt)
-		if !ok {
-			return 0_400000_000000
-		}
+func handleQual(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, resultCode uint64) {
+	facResult = facilitiesMgr.NewFacResult()
+	resultCode = 0
+
+	optWord, ok := cleanOptions(pkt)
+	if !ok {
+		facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, nil)
+		resultCode = 0_600000_000000
+		return
 	}
 
-	var cleanQualifier string
-	if len(pkt.arguments) > 0 {
-		temp := strings.ToUpper(pkt.arguments)
-		if !exec.IsValidQualifier(temp) {
-			log.Printf("%v:Invalid qualifier '%v'", pkt.rce.RunId, pkt.statement)
-			if pkt.sourceIsExecRequest {
-				pkt.rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
+	validMask := uint64(kexec.DOption | kexec.ROption)
+	if !checkIllegalOptions(pkt, optWord, validMask, facResult) {
+		resultCode = 0_600000_000000
+		return
+	}
+
+	var qualifier string
+	if len(pkt.pcs.operandFields) > 1 {
+		log.Printf("%v:Too many op fields '%v'", pkt.rce.RunId, pkt.pcs.originalStatement)
+		goto syntaxError
+	} else if len(pkt.pcs.operandFields) == 1 {
+		if len(pkt.pcs.operandFields[0]) != 1 {
+			log.Printf("%v:Wrong # op subfields '%v'", pkt.rce.RunId, pkt.pcs.originalStatement)
+			goto syntaxError
+		} else {
+			qualifier = pkt.pcs.operandFields[0][0]
+			if !kexec.IsValidQualifier(qualifier) {
+				log.Printf("%v:Invalid qualifier '%v'", pkt.rce.RunId, pkt.pcs.originalStatement)
+				goto syntaxError
 			}
-			return 0_600000_000000
 		}
 	}
 
-	if cleanOpts == "" {
+	if optWord == 0 {
 		// set implied qualifier
-		if len(cleanQualifier) == 0 {
-			log.Printf("%v: Missing qualifier '%v'", pkt.rce.RunId, pkt.statement)
+		if len(qualifier) == 0 {
+			log.Printf("%v: Missing qualifier '%v'", pkt.rce.RunId, pkt.pcs.originalStatement)
 			if pkt.sourceIsExecRequest {
 				pkt.rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
 			}
-			return 0_600000_000000
+			facResult.PostMessage(facilitiesMgr.FacStatusDirectoryOrQualifierMustAppear, nil)
+			resultCode = 0_600000_000000
+			return
 		}
-		pkt.rce.ImpliedQualifier = cleanQualifier
-		return 0
-	} else if cleanOpts == "D" {
+
+		pkt.rce.ImpliedQualifier = qualifier
+		facResult.PostMessage(facilitiesMgr.FacStatusComplete, []string{"QUAL"})
+		return
+	} else if optWord == kexec.DOption {
 		// set default qualifier
-		if len(cleanQualifier) == 0 {
-			log.Printf("%v: Missing qualifier '%v'", pkt.rce.RunId, pkt.statement)
+		if len(qualifier) == 0 {
+			log.Printf("%v: Missing qualifier '%v'", pkt.rce.RunId, pkt.pcs.originalStatement)
 			if pkt.sourceIsExecRequest {
 				pkt.rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
 			}
-			return 0_600000_000000
+			facResult.PostMessage(facilitiesMgr.FacStatusDirectoryOrQualifierMustAppear, nil)
+			resultCode = 0_600000_000000
+			return
 		}
-		pkt.rce.DefaultQualifier = cleanQualifier
-		return 0
-	} else if cleanOpts == "R" {
+
+		pkt.rce.DefaultQualifier = qualifier
+		facResult.PostMessage(facilitiesMgr.FacStatusComplete, []string{"QUAL"})
+		return
+	} else if optWord == kexec.ROption {
 		// revert default and implied qualifiers
-		if len(cleanQualifier) > 0 {
-			log.Printf("%v: Should not specify qualifier with R option '%v'", pkt.rce.RunId, pkt.statement)
+		if len(qualifier) > 0 {
+			log.Printf("%v: Should not specify qualifier with R option '%v'",
+				pkt.rce.RunId, pkt.pcs.originalStatement)
 			if pkt.sourceIsExecRequest {
 				pkt.rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
 			}
-			return 0_600000_000000
+			facResult.PostMessage(facilitiesMgr.FacStatusDirectoryAndQualifierMayNotAppear, nil)
+			resultCode = 0_600000_000000
+			return
 		}
+
 		pkt.rce.DefaultQualifier = pkt.rce.ProjectId
 		pkt.rce.ImpliedQualifier = pkt.rce.ProjectId
-		return 0
+		facResult.PostMessage(facilitiesMgr.FacStatusComplete, []string{"QUAL"})
+		return
 	} else {
-		// option error
-		log.Printf("%v: Conflicting options '%v'", pkt.rce.RunId, pkt.statement)
+		log.Printf("%v: Conflicting options '%v'", pkt.rce.RunId, pkt.pcs.originalStatement)
 		if pkt.sourceIsExecRequest {
 			pkt.rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
 		}
-		return 0_600000_000000
+
+		facResult.PostMessage(facilitiesMgr.FacStatusIllegalOptionCombination, []string{"D", "R"})
+		return nil, 0_600000_000000
 	}
+
+syntaxError:
+	if pkt.sourceIsExecRequest {
+		pkt.rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
+	}
+	facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, nil)
+	resultCode = 0_600000_000000
+	return
 }

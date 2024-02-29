@@ -4,7 +4,9 @@
 
 package csi
 
-func handleCkpt(pkt *handlerPacket) uint64 {
+import "khalehla/kexec/facilitiesMgr"
+
+func handleCkpt(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
 
 	/*
 		@CKPT[,options] [filename.element,,eqpmnt-type,reel-1/.../reel-n,,,,CTL-pool]
@@ -12,5 +14,5 @@ func handleCkpt(pkt *handlerPacket) uint64 {
 			A, B, C, J, M, N, P, Q, R, S, T, Z
 	*/
 	// TODO
-	return 0
+	return nil, 0
 }

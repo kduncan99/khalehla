@@ -4,9 +4,10 @@
 
 package csi
 
-// handleAdd
-func handleAdd(pkt *handlerPacket) uint64 {
+import "khalehla/kexec/facilitiesMgr"
 
+// handleAdd
+func handleAdd(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
 	/*
 		@ADD[,options] name
 		options:
@@ -19,5 +20,5 @@ func handleAdd(pkt *handlerPacket) uint64 {
 			R Prioritize added runstream over deferred ctrl stmt execution statck
 	*/
 	// TODO
-	return 0
+	return nil, 0
 }

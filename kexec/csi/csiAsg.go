@@ -4,7 +4,9 @@
 
 package csi
 
-func handleAsg(pkt *handlerPacket) uint64 {
+import "khalehla/kexec/facilitiesMgr"
+
+func handleAsg(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
 	/*
 		Mass-Storage:
 			@ASG[,options] filename[,type/reserve/granule/maximum/placement][,pack-id-1/.../pack-id-n,,,ACR-name]
@@ -37,5 +39,5 @@ func handleAsg(pkt *handlerPacket) uint64 {
 	*/
 
 	// TODO
-	return 0
+	return nil, 0
 }

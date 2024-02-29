@@ -4,7 +4,10 @@
 
 package exec
 
-import "khalehla/kexec"
+import (
+	"khalehla/kexec"
+	"khalehla/kexec/facilitiesMgr"
+)
 
 /*
 TIP:
@@ -62,7 +65,7 @@ func NewRunControlEntry(
 	}
 }
 
-func (rce *RunControlEntry) GetEffectiveQualifier(fileSpec *kexec.FileSpecification) string {
+func (rce *RunControlEntry) GetEffectiveQualifier(fileSpec *facilitiesMgr.FileSpecification) string {
 	if fileSpec.HasAsterisk {
 		if len(fileSpec.Qualifier) == 0 {
 			return fileSpec.Qualifier

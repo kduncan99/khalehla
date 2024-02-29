@@ -4,7 +4,9 @@
 
 package csi
 
-func handleRstrt(pkt *handlerPacket) uint64 {
+import "khalehla/kexec/facilitiesMgr"
+
+func handleRstrt(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
 
 	/*
 		@RSTRT[,scheduling-priority/options/processor-dispatching-priority]
@@ -14,5 +16,5 @@ func handleRstrt(pkt *handlerPacket) uint64 {
 			A, B, J, M, N, P, Q, R, S, U, V, Y, Z
 	*/
 	// TODO
-	return 0
+	return nil, 0
 }

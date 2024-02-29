@@ -4,7 +4,9 @@
 
 package csi
 
-func handleMode(pkt *handlerPacket) uint64 {
+import "khalehla/kexec/facilitiesMgr"
+
+func handleMode(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
 
 	/*
 		@MODE,options filename [,noise/processor/tape/format/
@@ -13,5 +15,5 @@ func handleMode(pkt *handlerPacket) uint64 {
 			E, H, L, M, O, S, V
 	*/
 	// TODO
-	return 0
+	return nil, 0
 }

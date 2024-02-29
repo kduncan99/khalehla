@@ -6,122 +6,88 @@ package facilitiesMgr
 
 import (
 	"khalehla/kexec"
-	"khalehla/kexec/config"
 	"khalehla/kexec/exec"
 	"khalehla/kexec/mfdMgr"
+	"khalehla/kexec/nodeMgr"
 	"khalehla/pkg"
 )
 
-func (mgr *FacilitiesManager) AssignFile() (FacResult, bool) {
-	var facResult FacResult
+func (mgr *FacilitiesManager) AssignFile() (FacStatusResult, bool) {
+	var facResult FacStatusResult
 	// TODO
 	return facResult, false
 }
 
 func (mgr *FacilitiesManager) CatalogFile(
 	rce *exec.RunControlEntry,
-	fileSpecification *kexec.FileSpecification,
-	options pkg.Word36,
-	mnemonic string,
-	granularity kexec.Granularity,
-	initialReserve uint64,
-	maxGranules uint64,
-	packNames []string,
-) (*FacResult, bool) {
+	fileSpecification *FileSpecification,
+	optionWord uint64,
+	operandFields [][]string,
+) (facResult *FacStatusResult, resultCode uint64) {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
-	facResult := NewFacResult()
+	facResult = NewFacResult()
+	resultCode = 0
 
 	// See if there is already a fileset
 	mm := mgr.exec.GetMFDManager().(*mfdMgr.MFDManager)
 	effectiveQual := rce.GetEffectiveQualifier(fileSpecification)
-	fsInfo, leadItem0Address, mfdResult := mm.GetFileSetInfo(effectiveQual, fileSpecification.Filename)
-	if mfdResult == mfdMgr.MFDNotFound {
-		// TODO
-	} else if mfdResult != mfdMgr.MFDSuccessful {
-		// TODO oops
+	fsInfo, _, mfdResult := mm.GetFileSetInfo(effectiveQual, fileSpecification.Filename)
+	if mfdResult == mfdMgr.MFDInternalError {
+		return
 	}
 
 	// Resolve the mnemonic (or lack of one) to a short list of acceptable node models
 	// and a guide as to the usage of the model (sector, word, tape).
+	var mnemonic string
+	if len(operandFields) >= 2 && len(operandFields[1]) >= 1 {
+		mnemonic = operandFields[1][0]
+	}
 	models, usage, ok := mgr.selectEquipmentModel(mnemonic, fsInfo)
 	if !ok {
 		// This isn't going to work for us.
 		facResult.PostMessage(FacStatusMnemonicIsNotConfigured, []string{mnemonic})
-		return facResult, false
+		return facResult, 0_600000_000000
 	}
 
-	// Are we fixed, removable, or tape? If there is a fileset, we know the answer.
-	// Otherwise, we have to figure it out.
-	// If the pack name list is empty, assume fixed.
-	// If it is *not* empty, ensure the packs are either all fixed, or all removable.
-	// While we're here, make sure the usage we got from the equipment selection matches
-	// the usage we've decided to use here.
-	// TODO (not sure the algorithm above is quite right... keep in mind that we have usage from equipment selection)
-
-	if usage == config.EquipmentUsageSectorAddressableMassStorage ||
-		usage == config.EquipmentUsageWordAddressableMassStorage {
-		// check options for disk
-		//		B: save on checkpoint
-		//		G: guarded file
-		//		P: make the file public (not private)
-		//		R: make the file read-only
-		//		V: file will not be unloaded
-		//		W: make the file write-only
-		//		Z: run should not be held (probably only happens on removable when the pack is not mounted)
-		// we ignore any inapplicable options, and there are no mutually exclusive ones
-		// TODO ensure nothing isn't there that we don't like
-		saveOnCheckpoint := options&kexec.BOption != 0
-		guardedFile := options&kexec.GOption != 0
-		makePublic := options&kexec.POption != 0
-		makeReadOnly := options&kexec.ROption != 0
-		inhibitUnload := options&kexec.VOption != 0
-		makeWriteOnly := options&kexec.WOption != 0
-		doNotHold := options&kexec.ZOption != 0
-
-		// If removable, ensure the pack list is compatible with the files in the fileset (if there is a fileset)
-		// Is it okay to just use the highest cycle?
-		// TODO
-
-		// ensure initial reserve <= max allocations (means words or granules, depending on word/sector addressable)
-		// TODO
-
-		// If we are removable ensure each pack name is known and mounted.
-		// Do not wait for mount if Z option is set
-		// TODO
-
+	// We now know whether we are word-addressable, sector-addressable, or tape.
+	// We don't yet know whether we are fixed or removable, and the possibility exists
+	// that there is still some conflict between what we know about usage from equipment type,
+	// and what the caller is implying based on options, arguments, pack/reel names, etc.
+	// If there is a fileset, the answer is already there.
+	var fileType kexec.FileType
+	if fsInfo != nil {
+		fileType = fsInfo.FileType
 	} else {
-		// check options for tape
-		// TODO
-
-		// TODO do we need to validate the reel names? that they're not used elsewhere or something?
+		if models[0].DeviceType == nodeMgr.NodeDeviceTape {
+			fileType = kexec.FileTypeTape
+		} else {
+			// fixed or removable?
+			// if there's anything in field 2 (pack names) then we'll assume it's removable
+			if len(operandFields) >= 3 && len(operandFields[2]) > 0 {
+				fileType = kexec.FileTypeRemovable
+			} else {
+				fileType = kexec.FileTypeFixed
+			}
+		}
 	}
 
-	// Now deal with MFDManager
-	// TODO
-
-	return facResult, false
-}
-
-func (mgr *FacilitiesManager) CatalogTapeFile(
-	rce *exec.RunControlEntry,
-	fileSpecification *kexec.FileSpecification,
-	options pkg.Word36,
-	mnemonic string,
-	// TODO other parameters
-) (FacResult, bool) {
-	var facResult FacResult
-	// TODO
-	return facResult, false
+	if fileType == kexec.FileTypeFixed {
+		return mgr.catalogFixedFile(rce, fileSpecification, optionWord, operandFields, fsInfo, usage)
+	} else if fileType == kexec.FileTypeRemovable {
+		return mgr.catalogRemovableFile(rce, fileSpecification, optionWord, operandFields, fsInfo, usage)
+	} else { // fileType == kexec.FileTypeTape
+		return mgr.catalogTapeFile(rce, fileSpecification, optionWord, operandFields, fsInfo, usage)
+	}
 }
 
 func (mgr *FacilitiesManager) FreeFile(
 	rce *exec.RunControlEntry,
-	fileSpecification kexec.FileSpecification,
+	fileSpecification FileSpecification,
 	options pkg.Word36,
-) (FacResult, bool) {
-	var facResult FacResult
+) (FacStatusResult, bool) {
+	var facResult FacStatusResult
 	// TODO
 	return facResult, false
 }
