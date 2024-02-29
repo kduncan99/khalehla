@@ -2,10 +2,11 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package nodes
+package nodeMgr
 
 import (
 	"io"
+	"khalehla/kexec"
 	"os"
 	"sync"
 )
@@ -26,12 +27,12 @@ func NewFileSystemTapeDevice() *FileSystemTapeDevice {
 	}
 }
 
-func (tape *FileSystemTapeDevice) GetNodeCategoryType() NodeCategoryType {
-	return NodeCategoryDevice
+func (tape *FileSystemTapeDevice) GetNodeCategoryType() kexec.NodeCategoryType {
+	return kexec.NodeCategoryDevice
 }
 
-func (tape *FileSystemTapeDevice) GetNodeDeviceType() NodeDeviceType {
-	return NodeDeviceTape
+func (tape *FileSystemTapeDevice) GetNodeDeviceType() kexec.NodeDeviceType {
+	return kexec.NodeDeviceTape
 }
 
 func (tape *FileSystemTapeDevice) GetNodeModelType() NodeModelType {

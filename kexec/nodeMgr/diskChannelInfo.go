@@ -8,14 +8,13 @@ import (
 	"fmt"
 	"io"
 	"khalehla/kexec"
-	"khalehla/kexec/nodes"
 	"khalehla/pkg"
 )
 
 type DiskChannelInfo struct {
 	nodeName       string
 	nodeIdentifier kexec.NodeIdentifier
-	channel        *nodes.DiskChannel
+	channel        *DiskChannel
 	deviceInfos    []*DiskDeviceInfo
 }
 
@@ -28,10 +27,10 @@ func NewDiskChannelInfo(nodeName string) *DiskChannelInfo {
 }
 
 func (dci *DiskChannelInfo) CreateNode() {
-	dci.channel = nodes.NewDiskChannel()
+	dci.channel = NewDiskChannel()
 }
 
-func (dci *DiskChannelInfo) GetChannel() nodes.Channel {
+func (dci *DiskChannelInfo) GetChannel() Channel {
 	return dci.channel
 }
 
@@ -43,12 +42,12 @@ func (dci *DiskChannelInfo) GetDeviceInfos() []DeviceInfo {
 	return result
 }
 
-func (dci *DiskChannelInfo) GetNodeCategoryType() nodes.NodeCategoryType {
-	return nodes.NodeCategoryChannel
+func (dci *DiskChannelInfo) GetNodeCategoryType() kexec.NodeCategoryType {
+	return kexec.NodeCategoryChannel
 }
 
-func (dci *DiskChannelInfo) GetNodeDeviceType() nodes.NodeDeviceType {
-	return nodes.NodeDeviceDisk
+func (dci *DiskChannelInfo) GetNodeDeviceType() kexec.NodeDeviceType {
+	return kexec.NodeDeviceDisk
 }
 
 func (dci *DiskChannelInfo) GetNodeIdentifier() kexec.NodeIdentifier {

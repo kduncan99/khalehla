@@ -9,19 +9,19 @@ import (
 )
 
 // BlockCount represents a number of pseudo-physical blocks.
-// For disk Nodes, a block contains a fixed number of words which corresponds to the relevant medium's prep factor.
-// For tape Nodes, a block contains a variable number of words.
+// For disk nodes, a block contains a fixed number of words which corresponds to the relevant medium's prep factor.
+// For tape nodes, a block contains a variable number of words.
 type BlockCount uint64
 
 // BlockId uniquely identifies a particular pseudo-physical block on a disk medium
 type BlockId uint64
 
-// ConsoleIdentifier is a 36-bit word implemented as uint64, containing a unique identifier for the console.
-// It *might* be the console name, but that is merely by convention.
+// ConsoleIdentifier is a 36-bit word implemented as uint64, containing a unique Identifier for the console.
+// It *might* be the console Name, but that is merely by convention.
 type ConsoleIdentifier pkg.Word36
 
 // NodeIdentifier uniquely identifies a particular device or channel (or anything else identifiable which we manage)
-// It is currently implemented as the 1-6 character device name, all caps alphas and/or digits LJSF
+// It is currently implemented as the 1-6 character device Name, all caps alphas and/or digits LJSF
 // stored as Fieldata in a Word36 struct
 type NodeIdentifier pkg.Word36
 
@@ -32,7 +32,7 @@ type PrepFactor uint
 // TrackCount represents a number of software tracks, each of which contain 1792 words of storage
 type TrackCount uint
 
-// TrackId represents a software track identifier, relative to the start of a particular pack
+// TrackId represents a software track Identifier, relative to the start of a particular pack
 type TrackId uint
 
 // pseudo-enumeration pkg

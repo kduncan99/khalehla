@@ -9,8 +9,8 @@ package mfdMgr
 import (
 	"fmt"
 	"khalehla/kexec"
+	//	"khalehla/kexec/facilitiesMgr"
 	"khalehla/kexec/nodeMgr"
-	"khalehla/kexec/nodes"
 	"khalehla/pkg"
 	"log"
 )
@@ -183,7 +183,7 @@ func (mgr *MFDManager) allocateSpecificTrack(
 		return fmt.Errorf("fae not loaded")
 	}
 
-	re := kexec.NewMFDFileAllocation(fileTrackId, trackCount, ldatIndex, deviceTrackId)
+	re := NewFileAllocation(fileTrackId, trackCount, ldatIndex, deviceTrackId)
 	fae.MergeIntoFileAllocationEntry(re)
 
 	if fileTrackId > fae.HighestTrackAllocated {
@@ -242,7 +242,7 @@ func (mgr *MFDManager) bootstrapMFD() error {
 	// including *particularly* the file allocation table.
 	// We need to create one allocation region for each pack's initial directory track.
 	highestMFDTrackId := kexec.TrackId(0)
-	fae := kexec.NewMFDFileAllocationEntry(mainAddr0, 0_400000_000000)
+	fae := NewFileAllocationEntry(mainAddr0, 0_400000_000000)
 	mgr.assignedFileAllocations[mainAddr0] = fae
 
 	for ldat, desc := range mgr.fixedPackDescriptors {
@@ -539,10 +539,10 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*kexec.
 		wx := uint(0)
 		for bx := 0; bx < int(blocksPerTrack); bx++ {
 			sub := data[wx : wx+wordsPerBlock]
-			ioPkt := nodes.NewDiskIoPacketRead(fpDesc.nodeId, blockId, sub)
+			ioPkt := nodeMgr.NewDiskIoPacketRead(fpDesc.nodeId, blockId, sub)
 			nm.RouteIo(ioPkt)
 			ioStat := ioPkt.GetIoStatus()
-			if ioStat != nodes.IosComplete {
+			if ioStat != nodeMgr.IosComplete {
 				log.Printf("MFDMgr:initializeFixed cannot read directory track dev:%v blockId:%v",
 					fpDesc.nodeId, blockId)
 				mgr.exec.Stop(kexec.StopInternalExecIOFailed)
@@ -611,7 +611,7 @@ func (mgr *MFDManager) initializeRemovable(disks map[*nodeMgr.DiskDeviceInfo]*ke
 // CALL UNDER LOCK
 func (mgr *MFDManager) loadFileAllocationEntry(
 	mainItem0Address kexec.MFDRelativeAddress,
-) (*kexec.MFDFileAllocationEntry, error) {
+) (*FileAllocationEntry, error) {
 	_, ok := mgr.assignedFileAllocations[mainItem0Address]
 	if ok {
 		log.Printf("MFDMgr:loadFileAllocationEntry fae already loaded for address %012o", mainItem0Address)
@@ -625,7 +625,7 @@ func (mgr *MFDManager) loadFileAllocationEntry(
 	}
 
 	dadAddr := kexec.MFDRelativeAddress(mainItem0[0])
-	fae := &kexec.MFDFileAllocationEntry{
+	fae := &FileAllocationEntry{
 		DadItem0Address:  dadAddr,
 		MainItem0Address: mainItem0Address,
 	}
@@ -645,7 +645,7 @@ func (mgr *MFDManager) loadFileAllocationEntry(
 			words := dadItem[dx+1].GetW()
 			ldat := kexec.LDATIndex(dadItem[dx+2].GetH2())
 			if ldat != 0_400000 {
-				re := kexec.NewMFDFileAllocation(kexec.TrackId(fileWordAddress/1792),
+				re := NewFileAllocation(kexec.TrackId(fileWordAddress/1792),
 					kexec.TrackCount(words/1792),
 					ldat,
 					kexec.TrackId(devAddr/1792))
@@ -784,11 +784,11 @@ func (mgr *MFDManager) writeMFDCache() error {
 		sectorsPerBlock := packDesc.prepFactor / 28
 		devBlockId := uint64(devTrackId) * uint64(blocksPerTrack)
 		devBlockId += uint64(mfdSectorId) / uint64(sectorsPerBlock)
-		ioPkt := nodes.NewDiskIoPacketWrite(packDesc.nodeId, kexec.BlockId(devBlockId), block)
+		ioPkt := nodeMgr.NewDiskIoPacketWrite(packDesc.nodeId, kexec.BlockId(devBlockId), block)
 		nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
 		nm.RouteIo(ioPkt)
 		ioStat := ioPkt.GetIoStatus()
-		if ioStat != nodes.IosComplete {
+		if ioStat != nodeMgr.IosComplete {
 			log.Printf("MFDMgr:writeMFDCache error writing MFD block status=%v", ioStat)
 			mgr.exec.Stop(kexec.StopInternalExecIOFailed)
 			return fmt.Errorf("error draining MFD cache")

@@ -4,14 +4,10 @@
 
 package kexec
 
-import (
-	"khalehla/kexec/nodes"
-)
-
 type DiskAttributes struct {
-	identifier    NodeIdentifier
-	name          string
-	status        FacNodeStatus
+	Identifier    NodeIdentifier
+	Name          string
+	Status        FacNodeStatus
 	AssignedTo    *RunControlEntry
 	PackLabelInfo *PackLabelInfo
 	IsPrepped     bool
@@ -19,25 +15,25 @@ type DiskAttributes struct {
 }
 
 func (da *DiskAttributes) GetFacNodeStatus() FacNodeStatus {
-	return da.status
+	return da.Status
 }
 
-func (da *DiskAttributes) GetNodeCategoryType() nodes.NodeCategoryType {
-	return nodes.NodeCategoryDevice
+func (da *DiskAttributes) GetNodeCategoryType() NodeCategoryType {
+	return NodeCategoryDevice
 }
 
-func (da *DiskAttributes) GetNodeDeviceType() nodes.NodeDeviceType {
-	return nodes.NodeDeviceDisk
+func (da *DiskAttributes) GetNodeDeviceType() NodeDeviceType {
+	return NodeDeviceDisk
 }
 
 func (da *DiskAttributes) GetNodeIdentifier() NodeIdentifier {
-	return da.identifier
+	return da.Identifier
 }
 
 func (da *DiskAttributes) GetNodeName() string {
-	return da.name
+	return da.Name
 }
 
 func (da *DiskAttributes) SetFacNodeStatus(status FacNodeStatus) {
-	da.status = status
+	da.Status = status
 }

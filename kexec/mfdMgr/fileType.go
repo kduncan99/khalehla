@@ -2,9 +2,9 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package kexec
+package mfdMgr
 
-type MFDFileType uint
+type FileType uint
 
 const (
 	FileTypeFixed     = 000
@@ -12,7 +12,7 @@ const (
 	FileTypeRemovable = 040
 )
 
-func NewMFDFileTypeFromField(field uint64) MFDFileType {
+func NewFileTypeFromField(field uint64) FileType {
 	switch field {
 	case 001:
 		return FileTypeTape

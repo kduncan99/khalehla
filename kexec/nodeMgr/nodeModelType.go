@@ -2,7 +2,9 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package nodes
+package nodeMgr
+
+import "khalehla/kexec"
 
 type NodeModelType uint
 
@@ -25,35 +27,35 @@ const (
 )
 
 type NodeModel struct {
-	CategoryType NodeCategoryType
-	DeviceType   NodeDeviceType
+	CategoryType kexec.NodeCategoryType
+	DeviceType   kexec.NodeDeviceType
 	ModelType    NodeModelType
 }
 
 var NodeModelTable = map[string]NodeModel{
 	"FSDISK": {
-		CategoryType: NodeCategoryDevice,
-		DeviceType:   NodeDeviceDisk,
+		CategoryType: kexec.NodeCategoryDevice,
+		DeviceType:   kexec.NodeDeviceDisk,
 		ModelType:    NodeModelFileSystemDiskDevice,
 	},
 	"RMDISK": {
-		CategoryType: NodeCategoryDevice,
-		DeviceType:   NodeDeviceDisk,
+		CategoryType: kexec.NodeCategoryDevice,
+		DeviceType:   kexec.NodeDeviceDisk,
 		ModelType:    NodeModelRAMDiskDevice,
 	},
 	"SCDISK": {
-		CategoryType: NodeCategoryDevice,
-		DeviceType:   NodeDeviceDisk,
+		CategoryType: kexec.NodeCategoryDevice,
+		DeviceType:   kexec.NodeDeviceDisk,
 		ModelType:    NodeModelSCSIDiskDevice,
 	},
 	"FSTAPE": {
-		CategoryType: NodeCategoryDevice,
-		DeviceType:   NodeDeviceTape,
+		CategoryType: kexec.NodeCategoryDevice,
+		DeviceType:   kexec.NodeDeviceTape,
 		ModelType:    NodeModelFileSystemTapeDevice,
 	},
 	"SCTAPE": {
-		CategoryType: NodeCategoryDevice,
-		DeviceType:   NodeDeviceTape,
+		CategoryType: kexec.NodeCategoryDevice,
+		DeviceType:   kexec.NodeDeviceTape,
 		ModelType:    NodeModelSCSITapeDevice,
 	},
 }

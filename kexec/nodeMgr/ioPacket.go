@@ -2,7 +2,7 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package nodes
+package nodeMgr
 
 import (
 	"khalehla/kexec"
@@ -12,7 +12,7 @@ import (
 // and for a device to perform that IO operation.
 type IoPacket interface {
 	GetNodeIdentifier() kexec.NodeIdentifier
-	GetNodeDeviceType() NodeDeviceType
+	GetNodeDeviceType() kexec.NodeDeviceType
 	GetIoFunction() IoFunction
 	GetIoStatus() IoStatus
 	GetString() string

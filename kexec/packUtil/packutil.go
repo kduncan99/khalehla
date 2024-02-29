@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"khalehla/kexec"
 	"khalehla/kexec/nodeMgr"
-	"khalehla/kexec/nodes"
 	"khalehla/kexec/pkg"
 	"khalehla/pkg"
 	"os"
@@ -58,26 +57,26 @@ func DoPrep(args []string) error {
 		removable = true
 	}
 
-	dc := nodes.NewDiskChannel()
-	dd := nodes.NewFileSystemDiskDevice(nil)
+	dc := nodeMgr.NewDiskChannel()
+	dd := nodeMgr.NewFileSystemDiskDevice(nil)
 	devId := pkg.DeviceIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
 	_ = dc.AssignDevice(devId, dd)
 
-	pkt := nodes.NewDiskIoPacketMount(devId, fileName, false)
+	pkt := nodeMgr.NewDiskIoPacketMount(devId, fileName, false)
 	dc.StartIo(pkt)
-	if pkt.GetIoStatus() != nodes.IosComplete {
+	if pkt.GetIoStatus() != nodeMgr.IosComplete {
 		return fmt.Errorf("status %v returned while mounting pack file %v", pkt.GetIoStatus(), fileName)
 	}
 
-	pkt = nodes.NewDiskIoPacketPrep(devId, packName, kexec.PrepFactor(prepFactor), kexec.TrackCount(trackCount), removable)
+	pkt = nodeMgr.NewDiskIoPacketPrep(devId, packName, kexec.PrepFactor(prepFactor), kexec.TrackCount(trackCount), removable)
 	dc.StartIo(pkt)
-	if pkt.GetIoStatus() != nodes.IosComplete {
+	if pkt.GetIoStatus() != nodeMgr.IosComplete {
 		return fmt.Errorf("status %v returned while prepping pack file %v", pkt.GetIoStatus(), fileName)
 	}
 
 	showLabelRecord(dc, devId, true)
 
-	pkt = nodes.NewDiskIoPacketUnmount(devId)
+	pkt = nodeMgr.NewDiskIoPacketUnmount(devId)
 	dc.StartIo(pkt)
 
 	return nil
@@ -97,12 +96,12 @@ func DoShow(args []string) error {
 		return fmt.Errorf("cannot open file %v:%v", fileName, err)
 	}
 
-	dc := nodes.NewDiskChannel()
-	dd := nodes.NewFileSystemDiskDevice(nil)
+	dc := nodeMgr.NewDiskChannel()
+	dd := nodeMgr.NewFileSystemDiskDevice(nil)
 	devId := pkg.DeviceIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
 	_ = dc.AssignDevice(devId, dd)
 
-	pkt := nodes.NewDiskIoPacketMount(devId, fileName, false)
+	pkt := nodeMgr.NewDiskIoPacketMount(devId, fileName, false)
 	dc.StartIo(pkt)
 	if !dd.IsPrepped() {
 		return fmt.Errorf("pack is not prepped")
@@ -110,7 +109,7 @@ func DoShow(args []string) error {
 
 	showLabelRecord(dc, devId, true)
 
-	pkt = nodes.NewDiskIoPacketUnmount(devId)
+	pkt = nodeMgr.NewDiskIoPacketUnmount(devId)
 	dc.StartIo(pkt)
 
 	return nil
@@ -118,9 +117,9 @@ func DoShow(args []string) error {
 
 func showLabelRecord(channel pkg.Channel, devId pkg.DeviceIdentifier, interpret bool) {
 	label := make([]pkg.Word36, 28)
-	pkt := nodes.NewDiskIoPacketReadLabel(devId, label)
+	pkt := nodeMgr.NewDiskIoPacketReadLabel(devId, label)
 	channel.StartIo(pkt)
-	if pkt.GetIoStatus() != nodes.IosComplete {
+	if pkt.GetIoStatus() != nodeMgr.IosComplete {
 		fmt.Printf("Status %v returned while reading label\n", pkt.GetIoStatus())
 		return
 	}

@@ -67,9 +67,11 @@ type IFacilitiesManager interface {
 	Initialize() error // invoked when the application is starting up
 	Stop()             // invoked when the exec is stopping
 	AssignDiskDeviceToExec(nodeId NodeIdentifier) error
+	GetDiskAttributes(identifier NodeIdentifier) (*DiskAttributes, bool)
 	GetNodeAttributes(nodeId NodeIdentifier) (NodeAttributes, bool)
 	IsDeviceAssigned(nodeId NodeIdentifier) bool
 	NotifyDeviceReady(nodeId NodeIdentifier, isReady bool)
+	SetNodeStatus(nodeId NodeIdentifier, status FacNodeStatus) error
 }
 
 type IKeyinManager interface {

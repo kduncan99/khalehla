@@ -7,7 +7,7 @@ package kexec
 /*
 TIP:
 When TIP initializes a TIP program or a program connected to TIP, control parameters are inserted into the
-program control table (PCT). These parameters are inserted in that portion of the PCT called the status list of the
+program control table (PCT). These parameters are inserted in that portion of the PCT called the Status list of the
 operating program (SLOP) table. The SLOP control word (currently, word 0337) of the PCT indicates whether the SLOP table
 is being used. The SLOP table starts immediately after the SLOP control word (currently, word 0340 of the PCT).
 
@@ -35,7 +35,7 @@ type RunControlEntry struct {
 	ImpliedQualifier string
 	RunConditionWord RunConditionWord
 	FacilityItems    []FacilitiesItem
-	UseItems         map[string]UseItem // key is internal file name
+	UseItems         map[string]UseItem // key is internal file Name
 	// TODO Program Control Entry
 }
 

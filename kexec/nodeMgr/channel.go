@@ -2,7 +2,7 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package nodes
+package nodeMgr
 
 import (
 	"io"
@@ -15,8 +15,8 @@ import (
 type Channel interface {
 	AssignDevice(nodeIdentifier kexec.NodeIdentifier, device Device) error
 	Dump(destination io.Writer, indent string)
-	GetNodeCategoryType() NodeCategoryType
-	GetNodeDeviceType() NodeDeviceType
+	GetNodeCategoryType() kexec.NodeCategoryType
+	GetNodeDeviceType() kexec.NodeDeviceType
 	GetNodeModelType() NodeModelType
 	StartIo(ioPacket IoPacket)
 }

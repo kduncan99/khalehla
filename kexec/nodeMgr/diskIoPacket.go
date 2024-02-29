@@ -2,7 +2,7 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package nodes
+package nodeMgr
 
 import (
 	"fmt"
@@ -32,8 +32,8 @@ func (pkt *DiskIoPacket) GetNodeIdentifier() kexec.NodeIdentifier {
 	return pkt.nodeId
 }
 
-func (pkt *DiskIoPacket) GetNodeDeviceType() NodeDeviceType {
-	return NodeDeviceDisk
+func (pkt *DiskIoPacket) GetNodeDeviceType() kexec.NodeDeviceType {
+	return kexec.NodeDeviceDisk
 }
 
 func (pkt *DiskIoPacket) GetIoFunction() IoFunction {

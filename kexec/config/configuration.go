@@ -72,6 +72,7 @@ func NewConfiguration() *Configuration {
 	cfg.SystemRunId = defaultSystemRunId
 	cfg.SystemUserId = defaultSystemUserId
 	cfg.SystemWriteKey = defaultSystemWriteKey
+	cfg.EquipmentTable = make(map[string]*EquipmentEntry)
 
 	cfg.importEquipmentEntry(&EquipmentEntry{
 		Mnemonic:            "F",

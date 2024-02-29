@@ -2,14 +2,16 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package kexec
+package mfdMgr
 
-type MFDDiskPackEntry struct {
-	packName     string
-	mainItemLink uint64
+import "khalehla/kexec"
+
+type DiskPackEntry struct {
+	PackName     string
+	MainItemLink uint64
 }
 
-type MFDFileInfo interface {
+type FileInfo interface {
 	GetAccountId() string
 	GetAbsoluteFileCycle() uint
 	GetAssignMnemonic() string
@@ -17,18 +19,18 @@ type MFDFileInfo interface {
 
 // -----------------------------------------------------------------------------
 
-type MFDFixedFileInfo struct {
-	accountId                string
+type FixedFileInfo struct {
+	AccountId                string
 	AbsoluteFileCycle        uint
 	TimeOfFirstWriteOrUnload uint64
-	DescriptorFlags          MFDDescriptorFlags
+	DescriptorFlags          DescriptorFlags
 	WrittenTo                bool
-	Granularity              Granularity
+	Granularity              kexec.Granularity
 	WordAddressable          bool
 	AssignMnemonic           string
 	HasSmoqueEntry           bool
 	NumberOfTimesAssigned    uint64
-	InhibitFlags             MFDInhibitFlags
+	InhibitFlags             InhibitFlags
 	TimeOfLastReference      uint64
 	TimeCataloged            uint64
 	InitialGranulesReserved  uint64
@@ -36,37 +38,37 @@ type MFDFixedFileInfo struct {
 	HighestGranuleAssigned   uint64
 	HighestTrackWritten      uint64
 	QuotaGroupGranules       []uint64
-	BackupInfo               MFDBackupInfo
-	DiskPackEntries          []MFDDiskPackEntry
-	FileAllocations          []MFDFileAllocation
+	BackupInfo               BackupInfo
+	DiskPackEntries          []DiskPackEntry
+	FileAllocations          []FileAllocation
 }
 
-func (fi *MFDFixedFileInfo) GetAccountId() string {
-	return fi.accountId
+func (fi *FixedFileInfo) GetAccountId() string {
+	return fi.AccountId
 }
 
-func (fi *MFDFixedFileInfo) GetAbsoluteFileCycle() uint {
+func (fi *FixedFileInfo) GetAbsoluteFileCycle() uint {
 	return fi.AbsoluteFileCycle
 }
 
-func (fi *MFDFixedFileInfo) GetAssignMnemonic() string {
+func (fi *FixedFileInfo) GetAssignMnemonic() string {
 	return fi.AssignMnemonic
 }
 
 // -----------------------------------------------------------------------------
 
-type MFDRemovableFileInfo struct {
+type RemovableFileInfo struct {
 	AccountId                string
 	AbsoluteFileCycle        uint
 	TimeOfFirstWriteOrUnload uint64
-	DescriptorFlags          MFDDescriptorFlags
+	DescriptorFlags          DescriptorFlags
 	WrittenTo                bool
-	Granularity              Granularity
+	Granularity              kexec.Granularity
 	WordAddressable          bool
 	AssignMnemonic           string
 	HasSmoqueEntry           bool
 	NumberOfTimesAssigned    uint64
-	InhibitFlags             MFDInhibitFlags
+	InhibitFlags             InhibitFlags
 	TimeOfLastReference      uint64
 	TimeCataloged            uint64
 	InitialGranulesReserved  uint64
@@ -76,32 +78,32 @@ type MFDRemovableFileInfo struct {
 	ReadKey                  string
 	WriteKey                 string
 	QuotaGroupGranules       []uint64
-	BackupInfo               MFDBackupInfo
-	DiskPackEntries          []MFDDiskPackEntry
-	FileAllocations          []MFDFileAllocation
+	BackupInfo               BackupInfo
+	DiskPackEntries          []DiskPackEntry
+	FileAllocations          []FileAllocation
 }
 
-func (fi *MFDRemovableFileInfo) GetAccountId() string {
+func (fi *RemovableFileInfo) GetAccountId() string {
 	return fi.AccountId
 }
 
-func (fi *MFDRemovableFileInfo) GetAbsoluteFileCycle() uint {
+func (fi *RemovableFileInfo) GetAbsoluteFileCycle() uint {
 	return fi.AbsoluteFileCycle
 }
 
-func (fi *MFDRemovableFileInfo) GetAssignMnemonic() string {
+func (fi *RemovableFileInfo) GetAssignMnemonic() string {
 	return fi.AssignMnemonic
 }
 
 // -----------------------------------------------------------------------------
 
-type MFDTapeFileInfo struct {
+type TapeFileInfo struct {
 	AccountId              string
 	AbsoluteFileCycle      uint
-	DescriptorFlags        MFDDescriptorFlags
+	DescriptorFlags        DescriptorFlags
 	AssignMnemonic         string
 	NumberOfTimesAssigned  uint64
-	InhibitFlags           MFDInhibitFlags
+	InhibitFlags           InhibitFlags
 	CurrentAssignCount     uint64
 	TimeOfLastReference    uint64
 	TimeCataloged          uint64
@@ -118,14 +120,14 @@ type MFDTapeFileInfo struct {
 	ReelNumber             []string
 }
 
-func (fi *MFDTapeFileInfo) GetAccountId() string {
+func (fi *TapeFileInfo) GetAccountId() string {
 	return fi.AccountId
 }
 
-func (fi *MFDTapeFileInfo) GetAbsoluteFileCycle() uint {
+func (fi *TapeFileInfo) GetAbsoluteFileCycle() uint {
 	return fi.AbsoluteFileCycle
 }
 
-func (fi *MFDTapeFileInfo) GetAssignMnemonic() string {
+func (fi *TapeFileInfo) GetAssignMnemonic() string {
 	return fi.AssignMnemonic
 }

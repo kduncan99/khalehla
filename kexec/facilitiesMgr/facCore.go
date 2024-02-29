@@ -8,7 +8,7 @@ import (
 	"khalehla/kexec"
 	"khalehla/kexec/config"
 	"khalehla/kexec/mfdMgr"
-	"khalehla/kexec/nodes"
+	"khalehla/kexec/nodeMgr"
 	"log"
 )
 
@@ -17,7 +17,7 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
-	fileSetInfo *kexec.MFDFileSetInfo,
+	fileSetInfo *mfdMgr.FileSetInfo,
 	usage config.EquipmentUsage,
 ) (facResult *kexec.FacStatusResult, resultCode uint64) {
 	//	For Mass Storage Files
@@ -67,7 +67,7 @@ func (mgr *FacilitiesManager) catalogRemovableFile(
 	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
-	fileSetInfo *kexec.MFDFileSetInfo,
+	fileSetInfo *mfdMgr.FileSetInfo,
 	usage config.EquipmentUsage,
 ) (facResult *kexec.FacStatusResult, resultCode uint64) {
 	//	For Mass Storage Files
@@ -96,7 +96,7 @@ func (mgr *FacilitiesManager) catalogTapeFile(
 	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
-	fileSetInfo *kexec.MFDFileSetInfo,
+	fileSetInfo *mfdMgr.FileSetInfo,
 	usage config.EquipmentUsage,
 ) (facResult *kexec.FacStatusResult, resultCode uint64) {
 	//	For Tape Files
@@ -154,15 +154,15 @@ func (mgr *FacilitiesManager) fallOverWithContingency(
 }
 
 // selectEquipmentModel accepts an equipment mnemonic (likely from a control statement)
-// and an optional MFDFileSetInfo struct, and returns a list of NodeModel structs
+// and an optional FileSetInfo struct, and returns a list of NodeModel structs
 // representing the various equipment models which can be used to satisfy the mnemonic.
 // If the mnemonic is an @ASG or @CAT for a file cycle of an existing file set,
-// the corresponding MFDFileSetInfo struct must be specified.
+// the corresponding FileSetInfo struct must be specified.
 // A false return indicates that the mnemonic is not found.
 func (mgr *FacilitiesManager) selectEquipmentModel(
 	mnemonic string,
-	fileSetInfo *kexec.MFDFileSetInfo,
-) ([]nodes.NodeModel, config.EquipmentUsage, bool) {
+	fileSetInfo *mfdMgr.FileSetInfo,
+) ([]nodeMgr.NodeModel, config.EquipmentUsage, bool) {
 
 	effectiveMnemonic := mnemonic
 
@@ -193,10 +193,10 @@ func (mgr *FacilitiesManager) selectEquipmentModel(
 		return nil, 0, false
 	}
 
-	models := make([]nodes.NodeModel, 0)
+	models := make([]nodeMgr.NodeModel, 0)
 	usage := entry.Usage
 	for _, modelName := range entry.SelectableEquipment {
-		model, ok := nodes.NodeModelTable[modelName]
+		model, ok := nodeMgr.NodeModelTable[modelName]
 		if ok {
 			models = append(models, model)
 		}

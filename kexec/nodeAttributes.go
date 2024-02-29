@@ -4,14 +4,10 @@
 
 package kexec
 
-import (
-	"khalehla/kexec/nodes"
-)
-
 type NodeAttributes interface {
 	GetFacNodeStatus() FacNodeStatus
-	GetNodeCategoryType() nodes.NodeCategoryType
-	GetNodeDeviceType() nodes.NodeDeviceType
+	GetNodeCategoryType() NodeCategoryType
+	GetNodeDeviceType() NodeDeviceType
 	GetNodeIdentifier() NodeIdentifier
 	GetNodeName() string
 	SetFacNodeStatus(status FacNodeStatus)

@@ -60,7 +60,7 @@ const (
 	1*	Field error in control statement other than syntax.
 		Option conflict (for example, MHL, OE, or IB) or noise constant specification error.
 		Requested hardware not currently part of the system.
-		CSF$ returns a status of 600000000000 when there is not adequate storage available for either
+		CSF$ returns a Status of 600000000000 when there is not adequate storage available for either
 		a fixed (absolute request) or removable request.
 	2	File specified is already assigned or cataloged (@ASG and @CAT), already released (@FREE),
 		or not assigned (@MODE). The request is rejected for @CAT and @MODE control statements.
@@ -68,8 +68,8 @@ const (
 	4*	Equipment type specified on the @ASG control statement is not compatible with the cataloged type,
 		or file specified on the @MODE control statement is not magnetic tape.
 	5	Data bank overflow attempting to acquire file-related buffer space.
-		Down pack environment full. (Either the local or shared pack status table is full.)
-	6	That portion of the file name used as the internal name for I/O packets is not unique.
+		Down pack environment full. (Either the local or shared pack Status table is full.)
+	6	That portion of the file Name used as the internal Name for I/O packets is not unique.
 	7	X option specified; file already in exclusive use.
 	8*†	Incorrect read key for cataloged file
 	9*†	Incorrect write key for cataloged file
@@ -79,14 +79,14 @@ const (
 		(file assigned in the write-only mode).
 	12*†Read key specified in the @ASG control statement; none exists in the master file directory.
 	13*†Write key specified in the @ASG control statement; none exists in the master file directory.
-	14*	An A option was specified in the @ASG control statement and the file name cannot be found
+	14*	An A option was specified in the @ASG control statement and the file Name cannot be found
 		in the master file directory.
 	15*	Invalid or duplicate reel number or pack-id specified on an @ASG control statement for a cataloged tape
 		or removable or fixed pack file; or, duplicate reel numbers or pack-ids specified on an @ASG control statement
 		for a temporary tape or removable or fixed pack file. The requested tape reel is already assigned by this run.
 	16*	Mass storage file has been rolled out (only if the Z option is used;
 		otherwise, the run is held until the file is rolled in).
-	17*	Request on wait status for facilities. For a tape file, this usually means a tape unit is not currently
+	17*	Request on wait Status for facilities. For a tape file, this usually means a tape unit is not currently
 		available. For a disk file, this usually is caused by an exclusive use conflict with another run
 		(only if the Z option is used; otherwise, the run is held).
 	18*	For cataloged files, an option conflict occurred:
@@ -121,8 +121,8 @@ const (
 			An attempt was made to create shared files by a user who does not have correct privileges.
 			An attempt was made to assign shared files by a user who does not have correct privileges.
 
-	* Request was rejected. For dynamic requests through ER CSF$, bit 0 is set in the status word returned in register A0.
-	† If the statement was submitted by ER CSF$, the run is aborted and no status word is returned in A0.
+	* Request was rejected. For dynamic requests through ER CSF$, bit 0 is set in the Status word returned in register A0.
+	† If the statement was submitted by ER CSF$, the run is aborted and no Status word is returned in A0.
 */
 
 /*
@@ -140,7 +140,7 @@ I:001333 Run xxxxxx held for disk unit availability for nn min.
 I:001433 Run xxxxxx held for rollback of unloaded file for nn min.
 I:001533 Run xxxxxx held for file cycle conflict for nn min.
 I:001633 Run nn held for disk pack to be mounted for nn min.
-I:001733 device-name is selected reel-id filename-index run-id
+I:001733 device-Name is selected reel-id filename-index run-id
 I:002033 Run xxxxxx held for control of caching for nn min.
 I:002133 Run xxxxxx held for diskette unit availability for nn min.
 I:002233 Run xxxxxx held for diskette to be mounted for nn min.
@@ -180,24 +180,24 @@ W:123533 Security compartments allow read only access.
 W:123633 The file cycle set is private and owned - therefore this cycle is private.
 W:123733 The file cycle set is semi-private and owned - therefore this cycle is semi-private.
 W:124033 The file cycle set is public and owned-therefore this cycle is public
-W:124133 Security does not allow the use of unlabeled Tapes. If written to, this tape will become labeled.
+W:124133 Security does not allow the use of unlabeled tapes. If written to, this tape will become labeled.
 W:124233 The file is security disabled.
 W:124333 Media Manager is not available.
 W:124433 File cannot be deleted because an XPC contains data for this file.
 W:124733 The memory assign mnemonic specification is ignored for an XPC cached file.
 W:125133 The file created is semiprivate because the caller has a to-be-attached ACR.
 
-E:200033 Unit device-name not compatible with assign mnemonic.
-E:200133 device-name is an invalid device/control unit name.
-E:200233 device-name is an invalid device name.
-E:200333 Device device-name already in use by this run.
-E:200433 Device device-name is fixed.
-E:200533 Device not available on control unit unit-name.
+E:200033 Unit device-Name not compatible with assign mnemonic.
+E:200133 device-Name is an invalid device/control unit Name.
+E:200233 device-Name is an invalid device Name.
+E:200333 Device device-Name already in use by this run.
+E:200433 Device device-Name is fixed.
+E:200533 Device not available on control unit unit-Name.
 E:200633 Pack pack-id cannot be mounted-equipment type does not permit interchanging of packs.
-E:200733 Insufficient number of units available on control unit unit-name.
+E:200733 Insufficient number of units available on control unit unit-Name.
 E:201033 asg-mnem is not a configured assign mnemonic.
-E:201133 device-name is not a configured name.
-E:201233 name is not a line name or group name.
+E:201133 device-Name is not a configured Name.
+E:201233 Name is not a line Name or group Name.
 E:201333 The operator does not allow absolute assignment of pack pack-id.
 E:201433 Illegal option combination fj.
 E:201533 Illegal option x.
@@ -211,15 +211,15 @@ E:202433 Quota does not allow use of x option.
 E:202533 reel nnnnnn already in use by this run.
 E:202633 reel nnnnnn is not in the master file directory.
 E:202733 Security does not allow use of x option.
-E:203033 Available unit not found on CU unit-name because space is not available or quota limit exceeded.
-E:203133 unit-name is not in the reserved state.
-E:203233 device-name is not up.
-E:203333 name is not in the up or reserved state.
-E:203433 Device device-name is already actively caching.
-E:203533 Device device-name is not capable of caching.
-E:203733 Directory of device device-name is not equal to directory of file.
+E:203033 Available unit not found on CU unit-Name because space is not available or quota limit exceeded.
+E:203133 unit-Name is not in the reserved state.
+E:203233 device-Name is not up.
+E:203333 Name is not in the up or reserved state.
+E:203433 Device device-Name is already actively caching.
+E:203533 Device device-Name is not capable of caching.
+E:203733 Directory of device device-Name is not equal to directory of file.
 E:204033 Directory of pack pack-id is not equal to directory of file.
-E:204133 Directory of placement device device-name is not equal to directory of file.
+E:204133 Directory of placement device device-Name is not equal to directory of file.
 E:204233 Assignment of pack pack-id could not be completed due to insufficient system resources.
 E:204333 Assignments not allowed on pack pack-id because the operator has placed assignment restrictions on the pack.
 E:204433 Assign mnemonic asg-mnem does not support 6-bit packed format.
@@ -235,7 +235,7 @@ E:206433 [mmspec] is an invalid Media Manager specification.
 E:206533 [cartridge|non-cartridge] equipment type specified for [non-cartridge|cartridge] tape
 E:206633 Volume [volume] unknown to Media Manager; FJ option combination is not allowed.
 E:206733 Volume [volume] unknown to Media Manager, and BYPASS of Media Manager is not allowed.
-E:207033 ACS name acs-name is not a legal name
+E:207033 ACS Name acs-Name is not a legal Name
 E:207233 Assign mnemonic aaaaaa does not support the media type xxxxxx for volume vvvvvv.
 E:207333 Packs cannot be added due to the lack of removable directory space on pack pack-id.
 E:207433 File cannot be created due to lack of removable directory space on pack pack-id
@@ -283,7 +283,7 @@ E:245133 Attempt to delete via @FREE,D but file was not assigned
 E:245233 Illegal value specified for granularity.
 E:245333 Illegal character(s) in placement field.
 E:245433 Insufficient number of units available.
-E:245533 Internal name is required.
+E:245533 Internal Name is required.
 E:245633 I/O error encountered on MFD assign count not decremented.
 E:245733 I/O error encountered on the master file directory.
 E:246033 I/O error encountered on MFD mediaids not read successfully.
@@ -342,7 +342,7 @@ E:254433 Security does not allow absolute device assignment.
 E:254533 Security access list does not allow access.
 E:254633 Security clearance level does not allow access.
 E:254733 Security does not allow delete access.
-E:255033 Security group name validation failed.
+E:255033 Security group Name validation failed.
 E:255133 Facility FacInventory internal error - Security packet error.
 E:233233 Simulation is not allowed for a C/SP line.
 E:255333 Simulation is not configured.
@@ -383,7 +383,7 @@ E:261533 A diskette id is required on the image.
 E:261633 CAT of diskette file is not allowed.
 E:261733 Hold for diskette unit rejected because of Z option.
 E:262033 Too many diskette ids on the image.
-E:262133 Illegal ACR name.
+E:262133 Illegal ACR Name.
 E:262233 All cycles of a file must be same access mode.
 E:262333 Acr specification illegal with A or T options.
 E:262433 Quota does not allow creation of shared files.
@@ -411,22 +411,22 @@ E:264733 Security compartment validation failed.
 E:265033 A cartridge allows only L density option.
 E:265133 Illegal value in buffered write subfield.
 E:265233 File is privately assigned to an application. Access is not allowed.
-E:265333 Security does not allow the use of unlabeled Tapes, the J option is not allowed.
+E:265333 Security does not allow the use of unlabeled tapes, the J option is not allowed.
 E:266033 The file is security disabled, no access allowed.
-E:266133 The file name section you were pointed to has been deleted.
+E:266133 The file Name section you were pointed to has been deleted.
 E:266233 Free not allowed. File is in use by the exec.
 E:266333 Hold for CTL availability rejected due to `Z' option.
 E:266433 Cartridge-id is not available in the CTL.
 E:266533 All cartridges be located in the same CLU.
 E:266633 Cartridge tape library system is not available.
-E:266733 Ctl-pool name is not recognized.
+E:266733 Ctl-pool Name is not recognized.
 E:267033 Memory files must be in the local directory.
 E:267133 Media manager is not loaded.
 E:267233 Bypass of Media Manager is not allowed.
 E:267333 File contains data for a TIP duplexed file. Access is allowed only via TIP.
 E:267433 Illegal value for the expanded buffer capability option.
 E:267533 A file cannot be assigned with both the old and new names within the same run.
-E:267633 CTL-pool name cannot be used with a non-library mnemonic.
+E:267633 CTL-pool Name cannot be used with a non-library mnemonic.
 E:267733 NONCTL cannot be used with a library mnemonic.
 E:270033 Hold for network device availability because of the Z option.
 E:270133 Facility Inventory internal error: network device could not be marked assigned.
@@ -436,7 +436,7 @@ E:270533 A file is cataloged in a different directory.
 E:270633 Security does not allow creation of Shared Files.
 E:270733 Security does not allow assignment of Shared Files.
 E:271033 Read-only equipment is requested in a way that implies writing to it.
-E:271133 Impersonated user-ids are not allowed to assign Tapes.
+E:271133 Impersonated user-ids are not allowed to assign tapes.
 E:271233 Impersonated user-ids are not allowed to do absolute assigns.
 E:271333 Packs can only be added to removable files using an A option assignment.
 E:271433 Packs cannot be added to removable files using a Y option assignment.

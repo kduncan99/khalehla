@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"khalehla/kexec"
 	"khalehla/kexec/nodeMgr"
-	"khalehla/kexec/nodes"
 	"khalehla/pkg"
 	"log"
 	"time"
@@ -37,7 +36,7 @@ func (mgr *MFDManager) CreateFileSet(
 	projectId string,
 	readKey string,
 	writeKey string,
-	fileType kexec.MFDFileType,
+	fileType FileType,
 ) (leadItem0Address kexec.MFDRelativeAddress, result MFDResult) {
 	leadItem0Address = kexec.InvalidLink
 	result = MFDSuccessful
@@ -82,12 +81,12 @@ func (mgr *MFDManager) GetFileInfo(
 	qualifier string,
 	filename string,
 	absoluteCycle uint,
-) (fi kexec.MFDFileInfo, mainItem0Address kexec.MFDRelativeAddress, err error) {
+) (fi FileInfo, mainItem0Address kexec.MFDRelativeAddress, err error) {
 	// TODO
 	return nil, 0, nil
 }
 
-// GetFileSetInfo returns a MFDFileSetInfo struct representing the file set
+// GetFileSetInfo returns a FileSetInfo struct representing the file set
 // and the file set's lead item 0 address.
 // corresponding to the given qualifier and filename.
 // If we return MFDInternalError, the exec has been stopped
@@ -95,7 +94,7 @@ func (mgr *MFDManager) GetFileInfo(
 func (mgr *MFDManager) GetFileSetInfo(
 	qualifier string,
 	filename string,
-) (fsInfo *kexec.MFDFileSetInfo, leadItem0Address kexec.MFDRelativeAddress, mfdResult MFDResult) {
+) (fsInfo *FileSetInfo, leadItem0Address kexec.MFDRelativeAddress, mfdResult MFDResult) {
 	fsInfo = nil
 	leadItem0Address = kexec.InvalidLink
 	mfdResult = MFDSuccessful
@@ -125,7 +124,7 @@ func (mgr *MFDManager) GetFileSetInfo(
 		}
 	}
 
-	fsInfo = &kexec.MFDFileSetInfo{}
+	fsInfo = &FileSetInfo{}
 	fsInfo.PopulateFromLeadItems(leadItem0, leadItem1)
 	return
 }
@@ -138,7 +137,7 @@ func (mgr *MFDManager) InitializeMassStorage() {
 	fm := mgr.exec.GetFacilitiesManager()
 	nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
 	for _, dInfo := range nm.GetDeviceInfos() {
-		if dInfo.GetNodeDeviceType() == nodes.NodeDeviceDisk {
+		if dInfo.GetNodeDeviceType() == kexec.NodeDeviceDisk {
 			disks = append(disks, dInfo.(*nodeMgr.DiskDeviceInfo))
 		}
 	}
@@ -176,10 +175,10 @@ func (mgr *MFDManager) InitializeMassStorage() {
 			}
 
 			buf := make([]pkg.Word36, wordsPerBlock)
-			pkt := nodes.NewDiskIoPacketRead(ddInfo.GetNodeIdentifier(), dirTrackBlockId, buf)
+			pkt := nodeMgr.NewDiskIoPacketRead(ddInfo.GetNodeIdentifier(), dirTrackBlockId, buf)
 			nm.RouteIo(pkt)
 			ioStat := pkt.GetIoStatus()
-			if ioStat != nodes.IosComplete {
+			if ioStat != nodeMgr.IosComplete {
 				msg := fmt.Sprintf("IO error reading directory track on device %v", ddInfo.GetNodeName())
 				log.Printf("MFDMgr:%v", msg)
 				mgr.exec.SendExecReadOnlyMessage(msg, nil)
@@ -215,7 +214,7 @@ func (mgr *MFDManager) InitializeMassStorage() {
 
 	// Make sure we have at least one fixed pack after the previous shenanigans
 	if len(mgr.fixedPackDescriptors) == 0 {
-		mgr.exec.SendExecReadOnlyMessage("No Fixed Disks - Cannot Continue Initialization", nil)
+		mgr.exec.SendExecReadOnlyMessage("No Fixed disks - Cannot Continue Initialization", nil)
 		mgr.exec.Stop(kexec.StopInitializationSystemConfigurationError)
 		return
 	}
@@ -259,11 +258,11 @@ func (mgr *MFDManager) SetFileToBeDeleted(
 //	readKey           string
 //	writeKey          string
 //	projectId         string
-//	accountId         string
+//	AccountId         string
 //	granularity       pkg.Granularity
 //	isRemovable       bool
 //	wordAddressable   bool
-//	saveOnCheckpoint  bool
+//	SaveOnCheckpoint  bool
 //	equipment         string
 //	isGuarded         bool
 //	inhibitUnloadFlag bool
@@ -636,8 +635,8 @@ func populateTapeMainItem1(
 //
 //		if !parameters.isTape {
 //			populateMassStorageMainItem0(mainItem0, parameters.qualifier, parameters.filename, parameters.projectId,
-//				parameters.readKey, parameters.writeKey, parameters.accountId, leadAddr0, mainAddr1,
-//				parameters.saveOnCheckpoint, false, parameters.isRemovable,
+//				parameters.readKey, parameters.writeKey, parameters.AccountId, leadAddr0, mainAddr1,
+//				parameters.SaveOnCheckpoint, false, parameters.isRemovable,
 //				parameters.granularity == pkg.PositionGranularity, parameters.wordAddressable,
 //				equip, parameters.isGuarded, parameters.inhibitUnloadFlag,
 //				parameters.isPrivate, parameters.isWriteOnly, parameters.isReadOnly, effectiveAbsolute,
@@ -654,7 +653,7 @@ func populateTapeMainItem1(
 //		} else {
 //			reelAddr0 := pkg.InvalidLink // TODO REEL table address or InvalidLink
 //			populateTapeMainItem0(mainItem0, parameters.qualifier, parameters.filename, parameters.projectId,
-//				parameters.accountId, reelAddr0, leadAddr0, mainAddr1, false,
+//				parameters.AccountId, reelAddr0, leadAddr0, mainAddr1, false,
 //				parameters.isGuarded, parameters.isPrivate, parameters.isWriteOnly, parameters.isReadOnly,
 //				effectiveAbsolute, parameters.density, parameters.format, parameters.features,
 //				parameters.featuresExtension, parameters.mtapop, parameters.ctlPool)

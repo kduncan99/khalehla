@@ -15,10 +15,10 @@ type FacilitiesItem interface {
 
 /*
 All facility items:
-+00,W   internal file name - Fieldata LJSF
-+01,W   (internal file name cont)
-+02,W   file name - Fieldata LJSF
-+03,W   (file name cont)
++00,W   internal file Name - Fieldata LJSF
++01,W   (internal file Name cont)
++02,W   file Name - Fieldata LJSF
++03,W   (file Name cont)
 +04,W   qualifier - Fieldata LJSF
 +05,W   (qualifier cont)
 +06,S1  equipment code
@@ -36,7 +36,7 @@ Unit record and non-standard peripherals
 +07,S1  attributes
          040 tape labeling is supported
          020 file is temporary
-         010 internal name is a use name
+         010 internal Name is a use Name
 
 Sector-formatted mass storage
 +06,S2  file mode
@@ -52,7 +52,7 @@ Sector-formatted mass storage
 +06,T3  absolute file-cycle
 +07,S1  attributes
          020 file is temporary
-         010 internal name is a use name
+         010 internal Name is a use Name
          004 shared file
          002 large file
 +010,H1 initial granule count (initial reserve)
@@ -75,7 +75,7 @@ Magnetic tape peripherals
 +07,S1  attributes
          040 tape labeling is supported
          020 file is temporary
-         010 internal name is a use name
+         010 internal Name is a use Name
          004 file is a shared file
 +010,S1 total reel count
 +010,S2 logical channel
@@ -101,7 +101,7 @@ Word addressable
 +06,T3  absolute file-cycle
 +07,S1  attributes
          020 file is temporary
-         010 internal name is a use name
+         010 internal Name is a use Name
          004 shared file
 +010,W  length of file in words
 +011,W  maximum file length in words

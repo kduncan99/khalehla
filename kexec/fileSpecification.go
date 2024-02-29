@@ -79,14 +79,14 @@ func (fs *FileSpecification) parseAbsoluteCycle(p *Parser) (found bool, fsCode F
 	found = true
 
 	p.SkipSpaces()
-	value, err := p.ParseUnsignedInteger()
-	if err != nil {
+	value, found, err := p.ParseUnsignedInteger()
+	if err != nil || !found {
 		fsCode = FacStatusSyntaxErrorInImage
 		ok = false
 		return
 	}
 
-	if *value < 1 || *value > 999 {
+	if value < 1 || value > 999 {
 		fsCode = FacStatusIllegalValueForFCycle
 		ok = false
 		return
@@ -99,7 +99,7 @@ func (fs *FileSpecification) parseAbsoluteCycle(p *Parser) (found bool, fsCode F
 		return
 	}
 
-	abs := uint(*value)
+	abs := uint(value)
 	fs.AbsoluteCycle = &abs
 	return
 }
@@ -129,8 +129,8 @@ func (fs *FileSpecification) parseRelativeCycle(p *Parser) (found bool, fsCode F
 	found = true
 
 	p.SkipSpaces()
-	value, err := p.ParseUnsignedInteger()
-	if err != nil {
+	value, found, err := p.ParseUnsignedInteger()
+	if err != nil || !found {
 		fsCode = FacStatusSyntaxErrorInImage
 		ok = false
 		return
@@ -144,8 +144,8 @@ func (fs *FileSpecification) parseRelativeCycle(p *Parser) (found bool, fsCode F
 	}
 
 	if pos {
-		if *value == 1 {
-			iVal := int(*value)
+		if value == 1 {
+			iVal := int(value)
 			fs.RelativeCycle = &iVal
 			found = true
 			return
@@ -155,12 +155,12 @@ func (fs *FileSpecification) parseRelativeCycle(p *Parser) (found bool, fsCode F
 			return
 		}
 	} else {
-		if *value < 1 || *value > 31 {
+		if value < 1 || value > 31 {
 			fsCode = FacStatusIllegalValueForFCycle
 			ok = false
 			return
 		} else {
-			iVal := int(*value) * -1
+			iVal := int(value) * -1
 			fs.RelativeCycle = &iVal
 			found = true
 			return

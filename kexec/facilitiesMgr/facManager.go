@@ -10,7 +10,6 @@ import (
 	"io"
 	"khalehla/kexec"
 	"khalehla/kexec/nodeMgr"
-	"khalehla/kexec/nodes"
 	"khalehla/pkg"
 	"log"
 	"sync"
@@ -21,14 +20,14 @@ type FacilitiesManager struct {
 	exec                         kexec.IExec
 	mutex                        sync.Mutex
 	threadDone                   bool
-	inventory                    *kexec.inventory
+	inventory                    *inventory
 	deviceReadyNotificationQueue map[kexec.NodeIdentifier]bool
 }
 
 func NewFacilitiesManager(exec kexec.IExec) *FacilitiesManager {
 	return &FacilitiesManager{
 		exec:                         exec,
-		inventory:                    kexec.newInventory(),
+		inventory:                    newInventory(),
 		deviceReadyNotificationQueue: make(map[kexec.NodeIdentifier]bool),
 	}
 }
@@ -44,7 +43,7 @@ func (mgr *FacilitiesManager) Boot() error {
 	// this implies that nodeMgr.Boot() MUST be invoked before invoking us.
 	// TODO at some point, it might be nice to add the channels in here
 	// TODO should we really do this? don't we want to preserve the inventory for the previous session?
-	mgr.inventory = kexec.newInventory()
+	mgr.inventory = newInventory()
 	nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
 	for _, devInfo := range nm.GetDeviceInfos() {
 		mgr.inventory.injectNode(devInfo)
@@ -207,7 +206,7 @@ func (mgr *FacilitiesManager) SetNodeStatus(nodeId kexec.NodeIdentifier, status 
 	}
 
 	// for now, we do not allow changing status of anything except devices
-	if nodeAttr.GetNodeCategoryType() != nodes.NodeCategoryDevice {
+	if nodeAttr.GetNodeCategoryType() != kexec.NodeCategoryDevice {
 		return fmt.Errorf("not allowed")
 	}
 
@@ -216,14 +215,14 @@ func (mgr *FacilitiesManager) SetNodeStatus(nodeId kexec.NodeIdentifier, status 
 
 	switch status {
 	case kexec.FacNodeStatusDown:
-		if nodeAttr.GetNodeCategoryType() == nodes.NodeCategoryDevice {
-			if nodeAttr.GetNodeDeviceType() == nodes.NodeDeviceDisk {
+		if nodeAttr.GetNodeCategoryType() == kexec.NodeCategoryDevice {
+			if nodeAttr.GetNodeDeviceType() == kexec.NodeDeviceDisk {
 				nodeAttr.SetFacNodeStatus(status)
 				stopExec = mgr.IsDeviceAssigned(nodeId)
 				break
-			} else if nodeAttr.GetNodeDeviceType() == nodes.NodeDeviceDisk {
+			} else if nodeAttr.GetNodeDeviceType() == kexec.NodeDeviceDisk {
 				// reset the tape device (unmounts it as part of the process)
-				ioPkt := nodes.NewTapeIoPacketReset(nodeId)
+				ioPkt := nodeMgr.NewTapeIoPacketReset(nodeId)
 				nodeManager.RouteIo(ioPkt)
 				nodeAttr.SetFacNodeStatus(status)
 				if mgr.IsDeviceAssigned(nodeId) {
@@ -237,7 +236,7 @@ func (mgr *FacilitiesManager) SetNodeStatus(nodeId kexec.NodeIdentifier, status 
 		return fmt.Errorf("not allowed")
 
 	case kexec.FacNodeStatusReserved:
-		if nodeAttr.GetNodeCategoryType() == nodes.NodeCategoryDevice {
+		if nodeAttr.GetNodeCategoryType() == kexec.NodeCategoryDevice {
 			nodeAttr.SetFacNodeStatus(status)
 		} else {
 			// anything other than disk or tape
@@ -245,8 +244,8 @@ func (mgr *FacilitiesManager) SetNodeStatus(nodeId kexec.NodeIdentifier, status 
 		}
 
 	case kexec.FacNodeStatusSuspended:
-		if nodeAttr.GetNodeCategoryType() == nodes.NodeCategoryDevice &&
-			nodeAttr.GetNodeDeviceType() == nodes.NodeDeviceDisk {
+		if nodeAttr.GetNodeCategoryType() == kexec.NodeCategoryDevice &&
+			nodeAttr.GetNodeDeviceType() == kexec.NodeDeviceDisk {
 			nodeAttr.SetFacNodeStatus(status)
 		} else {
 			// anything other than disk
@@ -254,7 +253,7 @@ func (mgr *FacilitiesManager) SetNodeStatus(nodeId kexec.NodeIdentifier, status 
 		}
 
 	case kexec.FacNodeStatusUp:
-		if nodeAttr.GetNodeCategoryType() == nodes.NodeCategoryDevice {
+		if nodeAttr.GetNodeCategoryType() == kexec.NodeCategoryDevice {
 			nodeAttr.SetFacNodeStatus(status)
 		} else {
 			// anything other than disk or tape
@@ -287,13 +286,13 @@ func (mgr *FacilitiesManager) diskBecameReady(nodeId kexec.NodeIdentifier) {
 	if facStat != kexec.FacNodeStatusDown {
 		label := make([]pkg.Word36, 28)
 		nodeManager := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
-		ioPkt := nodes.NewDiskIoPacketReadLabel(nodeId, label)
+		ioPkt := nodeMgr.NewDiskIoPacketReadLabel(nodeId, label)
 		nodeManager.RouteIo(ioPkt)
 		ioStat := ioPkt.GetIoStatus()
-		if ioStat == nodes.IosInternalError {
+		if ioStat == nodeMgr.IosInternalError {
 			mgr.mutex.Unlock()
 			return
-		} else if ioStat != nodes.IosComplete {
+		} else if ioStat != nodeMgr.IosComplete {
 			mgr.mutex.Unlock()
 
 			log.Printf("FacMgr:IO Error reading label disk:%v %v", nodeId, ioPkt.GetString())

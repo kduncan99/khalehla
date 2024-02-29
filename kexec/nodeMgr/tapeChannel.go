@@ -2,7 +2,7 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package nodes
+package nodeMgr
 
 import (
 	"fmt"
@@ -22,12 +22,12 @@ func NewTapeChannel() *TapeChannel {
 	}
 }
 
-func (ch *TapeChannel) GetNodeCategoryType() NodeCategoryType {
-	return NodeCategoryChannel
+func (ch *TapeChannel) GetNodeCategoryType() kexec.NodeCategoryType {
+	return kexec.NodeCategoryChannel
 }
 
-func (ch *TapeChannel) GetNodeDeviceType() NodeDeviceType {
-	return NodeDeviceTape
+func (ch *TapeChannel) GetNodeDeviceType() kexec.NodeDeviceType {
+	return kexec.NodeDeviceTape
 }
 
 func (ch *TapeChannel) GetNodeModelType() NodeModelType {
@@ -35,7 +35,7 @@ func (ch *TapeChannel) GetNodeModelType() NodeModelType {
 }
 
 func (ch *TapeChannel) AssignDevice(nodeIdentifier kexec.NodeIdentifier, device Device) error {
-	if device.GetNodeDeviceType() != NodeDeviceTape {
+	if device.GetNodeDeviceType() != kexec.NodeDeviceTape {
 		return fmt.Errorf("device is not a tape")
 	}
 

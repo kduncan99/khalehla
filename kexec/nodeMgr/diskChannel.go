@@ -2,7 +2,7 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package nodes
+package nodeMgr
 
 import (
 	"fmt"
@@ -22,12 +22,12 @@ func NewDiskChannel() *DiskChannel {
 	}
 }
 
-func (ch *DiskChannel) GetNodeCategoryType() NodeCategoryType {
-	return NodeCategoryChannel
+func (ch *DiskChannel) GetNodeCategoryType() kexec.NodeCategoryType {
+	return kexec.NodeCategoryChannel
 }
 
-func (ch *DiskChannel) GetNodeDeviceType() NodeDeviceType {
-	return NodeDeviceDisk
+func (ch *DiskChannel) GetNodeDeviceType() kexec.NodeDeviceType {
+	return kexec.NodeDeviceDisk
 }
 
 func (ch *DiskChannel) GetNodeModelType() NodeModelType {
@@ -35,7 +35,7 @@ func (ch *DiskChannel) GetNodeModelType() NodeModelType {
 }
 
 func (ch *DiskChannel) AssignDevice(nodeIdentifier kexec.NodeIdentifier, device Device) error {
-	if device.GetNodeDeviceType() != NodeDeviceDisk {
+	if device.GetNodeDeviceType() != kexec.NodeDeviceDisk {
 		return fmt.Errorf("device is not a disk")
 	}
 

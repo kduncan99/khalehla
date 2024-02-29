@@ -2,7 +2,7 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package nodes
+package nodeMgr
 
 import (
 	"fmt"
@@ -80,16 +80,16 @@ func NewFileSystemDiskDevice(initialFileName *string) *FileSystemDiskDevice {
 	return dd
 }
 
-func (disk *FileSystemDiskDevice) GetNodeCategoryType() NodeCategoryType {
-	return NodeCategoryDevice
+func (disk *FileSystemDiskDevice) GetNodeCategoryType() kexec.NodeCategoryType {
+	return kexec.NodeCategoryDevice
 }
 
 func (disk *FileSystemDiskDevice) GetNodeModelType() NodeModelType {
 	return NodeModelFileSystemDiskDevice
 }
 
-func (disk *FileSystemDiskDevice) GetNodeDeviceType() NodeDeviceType {
-	return NodeDeviceDisk
+func (disk *FileSystemDiskDevice) GetNodeDeviceType() kexec.NodeDeviceType {
+	return kexec.NodeDeviceDisk
 }
 
 func (disk *FileSystemDiskDevice) GetGeometry() *kexec.DiskPackGeometry {

@@ -2,9 +2,9 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package kexec
+package mfdMgr
 
-type MFDBackupInfo struct {
+type BackupInfo struct {
 	timeBackupCreated          uint64
 	maxBackupLevels            uint64
 	currentBackupLevels        uint64

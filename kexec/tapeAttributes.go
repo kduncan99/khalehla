@@ -4,43 +4,39 @@
 
 package kexec
 
-import (
-	"khalehla/kexec/nodes"
-)
-
 type ReelAttributes struct {
 	ReelNumber string
 	IsLabeled  bool
 }
 
 type TapeAttributes struct {
-	identifier NodeIdentifier
-	name       string
-	status     FacNodeStatus
+	Identifier NodeIdentifier
+	Name       string
+	Status     FacNodeStatus
 	AssignedTo *RunControlEntry
 	ReelAttrs  *ReelAttributes
 }
 
 func (ta *TapeAttributes) GetFacNodeStatus() FacNodeStatus {
-	return ta.status
+	return ta.Status
 }
 
-func (ta *TapeAttributes) GetNodeCategoryType() nodes.NodeCategoryType {
-	return nodes.NodeCategoryDevice
+func (ta *TapeAttributes) GetNodeCategoryType() NodeCategoryType {
+	return NodeCategoryDevice
 }
 
-func (ta *TapeAttributes) GetNodeDeviceType() nodes.NodeDeviceType {
-	return nodes.NodeDeviceTape
+func (ta *TapeAttributes) GetNodeDeviceType() NodeDeviceType {
+	return NodeDeviceTape
 }
 
 func (ta *TapeAttributes) GetNodeIdentifier() NodeIdentifier {
-	return ta.identifier
+	return ta.Identifier
 }
 
 func (ta *TapeAttributes) GetNodeName() string {
-	return ta.name
+	return ta.Name
 }
 
 func (ta *TapeAttributes) SetFacNodeStatus(status FacNodeStatus) {
-	ta.status = status
+	ta.Status = status
 }

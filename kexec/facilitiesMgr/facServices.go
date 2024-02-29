@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"khalehla/kexec"
 	"khalehla/kexec/mfdMgr"
-	"khalehla/kexec/nodes"
 	"khalehla/pkg"
 )
 
@@ -68,26 +67,26 @@ func (mgr *FacilitiesManager) CatalogFile(
 
 	// We now know whether we are word-addressable, sector-addressable, or tape.
 	// We don't yet know whether we are fixed or removable.
-	var fileType kexec.MFDFileType
+	var fileType mfdMgr.FileType
 	if fsInfo != nil {
 		fileType = fsInfo.FileType
 	} else {
-		if models[0].DeviceType == nodes.NodeDeviceTape {
-			fileType = kexec.FileTypeTape
+		if models[0].DeviceType == kexec.NodeDeviceTape {
+			fileType = mfdMgr.FileTypeTape
 		} else {
 			// fixed or removable?
 			// if there's anything in field 2 (pack names) then we'll assume it's removable
 			if len(operandFields) >= 3 && len(operandFields[2]) > 0 {
-				fileType = kexec.FileTypeRemovable
+				fileType = mfdMgr.FileTypeRemovable
 			} else {
-				fileType = kexec.FileTypeFixed
+				fileType = mfdMgr.FileTypeFixed
 			}
 		}
 	}
 
-	if fileType == kexec.FileTypeFixed {
+	if fileType == mfdMgr.FileTypeFixed {
 		return mgr.catalogFixedFile(rce, fileSpecification, optionWord, operandFields, fsInfo, usage)
-	} else if fileType == kexec.FileTypeRemovable {
+	} else if fileType == mfdMgr.FileTypeRemovable {
 		return mgr.catalogRemovableFile(rce, fileSpecification, optionWord, operandFields, fsInfo, usage)
 	} else { // fileType == kexec.FileTypeTape
 		return mgr.catalogTapeFile(rce, fileSpecification, optionWord, operandFields, fsInfo, usage)

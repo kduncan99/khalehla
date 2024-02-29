@@ -8,14 +8,13 @@ import (
 	"fmt"
 	"io"
 	"khalehla/kexec"
-	"khalehla/kexec/nodes"
 	"khalehla/pkg"
 )
 
 type TapeDeviceInfo struct {
 	nodeName       string
 	nodeIdentifier kexec.NodeIdentifier
-	device         *nodes.FileSystemTapeDevice
+	device         *FileSystemTapeDevice
 	channelInfos   []*TapeChannelInfo
 	isAccessible   bool // can only be true if status is UP, RV, or SU and the device is assigned to at least one channel
 	isReady        bool // cached version of device.IsReady() - when there is a mismatch, we need to do something
@@ -31,7 +30,7 @@ func NewTapeDeviceInfo(nodeName string) *TapeDeviceInfo {
 }
 
 func (tdi *TapeDeviceInfo) CreateNode() {
-	tdi.device = nodes.NewFileSystemTapeDevice()
+	tdi.device = NewFileSystemTapeDevice()
 }
 
 func (tdi *TapeDeviceInfo) GetChannelInfos() []ChannelInfo {
@@ -42,16 +41,16 @@ func (tdi *TapeDeviceInfo) GetChannelInfos() []ChannelInfo {
 	return result
 }
 
-func (tdi *TapeDeviceInfo) GetDevice() nodes.Device {
+func (tdi *TapeDeviceInfo) GetDevice() Device {
 	return tdi.device
 }
 
-func (tdi *TapeDeviceInfo) GetNodeCategoryType() nodes.NodeCategoryType {
-	return nodes.NodeCategoryDevice
+func (tdi *TapeDeviceInfo) GetNodeCategoryType() kexec.NodeCategoryType {
+	return kexec.NodeCategoryDevice
 }
 
-func (tdi *TapeDeviceInfo) GetNodeDeviceType() nodes.NodeDeviceType {
-	return nodes.NodeDeviceTape
+func (tdi *TapeDeviceInfo) GetNodeDeviceType() kexec.NodeDeviceType {
+	return kexec.NodeDeviceTape
 }
 
 func (tdi *TapeDeviceInfo) GetNodeIdentifier() kexec.NodeIdentifier {

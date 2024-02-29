@@ -7,7 +7,6 @@ package nodeMgr
 import (
 	"io"
 	"khalehla/kexec"
-	"khalehla/kexec/nodes"
 )
 
 // DeviceInfo is intended primarily as a means of documenting the use of a more generic NodeInfo
@@ -15,9 +14,9 @@ type DeviceInfo interface {
 	CreateNode()
 	Dump(destination io.Writer, indent string)
 	GetChannelInfos() []ChannelInfo
-	GetDevice() nodes.Device
-	GetNodeCategoryType() nodes.NodeCategoryType
-	GetNodeDeviceType() nodes.NodeDeviceType
+	GetDevice() Device
+	GetNodeCategoryType() kexec.NodeCategoryType
+	GetNodeDeviceType() kexec.NodeDeviceType
 	GetNodeIdentifier() kexec.NodeIdentifier
 	GetNodeName() string
 	IsAccessible() bool

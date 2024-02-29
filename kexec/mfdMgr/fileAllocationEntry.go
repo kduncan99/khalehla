@@ -2,31 +2,33 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package kexec
+package mfdMgr
 
-// MFDFileAllocationEntry describes the current allocation of tracks to a particular file instance.
+import "khalehla/kexec"
+
+// FileAllocationEntry describes the current allocation of tracks to a particular file instance.
 // These exist in-memory for every file which is currently assigned.
-type MFDFileAllocationEntry struct {
-	DadItem0Address       MFDRelativeAddress
-	MainItem0Address      MFDRelativeAddress
+type FileAllocationEntry struct {
+	DadItem0Address       kexec.MFDRelativeAddress
+	MainItem0Address      kexec.MFDRelativeAddress
 	IsUpdated             bool
-	HighestTrackAllocated TrackId
-	FileAllocations       []*MFDFileAllocation
+	HighestTrackAllocated kexec.TrackId
+	FileAllocations       []*FileAllocation
 }
 
-func NewMFDFileAllocationEntry(
-	mainItem0Address MFDRelativeAddress,
-	dadItem0Address MFDRelativeAddress) *MFDFileAllocationEntry {
-	return &MFDFileAllocationEntry{
+func NewFileAllocationEntry(
+	mainItem0Address kexec.MFDRelativeAddress,
+	dadItem0Address kexec.MFDRelativeAddress) *FileAllocationEntry {
+	return &FileAllocationEntry{
 		DadItem0Address:       dadItem0Address,
 		MainItem0Address:      mainItem0Address,
 		IsUpdated:             false,
 		HighestTrackAllocated: 0,
-		FileAllocations:       make([]*MFDFileAllocation, 0),
+		FileAllocations:       make([]*FileAllocation, 0),
 	}
 }
 
-func (fae *MFDFileAllocationEntry) MergeIntoFileAllocationEntry(newEntry *MFDFileAllocation) {
+func (fae *FileAllocationEntry) MergeIntoFileAllocationEntry(newEntry *FileAllocation) {
 	// puts a new fileAlloc into the fae at the appropriate location.
 	// if it appends to an existing fileAlloc, then just update that fileAlloc.
 	// we are only called by other code in this file, and those callers *MUST* ensure no overlaps occur.
@@ -35,7 +37,7 @@ func (fae *MFDFileAllocationEntry) MergeIntoFileAllocationEntry(newEntry *MFDFil
 			// the new entry appears before the indexed entry and after the previous entry
 			// if they are the same LDAT, see whether we need to merge
 			if newEntry.LDATIndex == fileAlloc.LDATIndex {
-				next := TrackId(uint64(newEntry.FileRegion.TrackId) + uint64(newEntry.FileRegion.TrackCount))
+				next := kexec.TrackId(uint64(newEntry.FileRegion.TrackId) + uint64(newEntry.FileRegion.TrackCount))
 				if next == fileAlloc.FileRegion.TrackId {
 					// merge them
 					fileAlloc.FileRegion = newEntry.FileRegion
@@ -57,7 +59,7 @@ func (fae *MFDFileAllocationEntry) MergeIntoFileAllocationEntry(newEntry *MFDFil
 		// If the new entry is on the same pack as the indexed entry, see if the new entry is contiguous
 		// with the end of the indexed entry
 		if newEntry.LDATIndex == fileAlloc.LDATIndex {
-			next := TrackId(uint64(fileAlloc.FileRegion.TrackId) + uint64(fileAlloc.FileRegion.TrackCount))
+			next := kexec.TrackId(uint64(fileAlloc.FileRegion.TrackId) + uint64(fileAlloc.FileRegion.TrackCount))
 			if next == newEntry.FileRegion.TrackId {
 				fileAlloc.FileRegion.TrackCount += newEntry.FileRegion.TrackCount
 				return
