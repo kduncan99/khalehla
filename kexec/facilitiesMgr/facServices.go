@@ -55,10 +55,13 @@ func (mgr *FacilitiesManager) CatalogFile(
 	// See if there is already a fileset
 	mm := mgr.exec.GetMFDManager().(*mfdMgr.MFDManager)
 	effectiveQual := rce.GetEffectiveQualifier(fileSpecification)
-	fsInfo, _, mfdResult := mm.GetFileSetInfo(effectiveQual, fileSpecification.Filename)
+	fsIdent, mfdResult := mm.GetFileSetIdentifier(effectiveQual, fileSpecification.Filename)
 	if mfdResult == mfdMgr.MFDInternalError {
 		return
 	}
+
+	var fsInfo *mfdMgr.FileSetInfo
+	fsInfo, mfdResult = mm.GetFileSetInfo(fsIdent)
 
 	// Resolve the mnemonic (or lack of one) to a short list of acceptable node models
 	// and a guide as to the usage of the model (sector, word, tape).
@@ -108,11 +111,11 @@ func (mgr *FacilitiesManager) CatalogFile(
 	}
 
 	if fileType == mfdMgr.FileTypeFixed {
-		return mgr.catalogFixedFile(mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, usage)
+		return mgr.catalogFixedFile(mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, mnemonic, usage)
 	} else if fileType == mfdMgr.FileTypeRemovable {
-		return mgr.catalogRemovableFile(mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, usage)
+		return mgr.catalogRemovableFile(mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, mnemonic, usage)
 	} else { // fileType == kexec.FileTypeTape
-		return mgr.catalogTapeFile(mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, usage)
+		return mgr.catalogTapeFile(mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, mnemonic, usage)
 	}
 }
 

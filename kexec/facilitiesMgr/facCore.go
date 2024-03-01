@@ -122,6 +122,7 @@ func (mgr *FacilitiesManager) assignFixedFile(
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
+	mnemonic string,
 	usage config.EquipmentUsage,
 ) (facResult *kexec.FacStatusResult, resultCode uint64) {
 	return nil, 0 // TODO
@@ -134,6 +135,7 @@ func (mgr *FacilitiesManager) assignRemovableFile(
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
+	mnemonic string,
 	usage config.EquipmentUsage,
 ) (facResult *kexec.FacStatusResult, resultCode uint64) {
 	return nil, 0 // TODO
@@ -146,6 +148,7 @@ func (mgr *FacilitiesManager) assignTapeFile(
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
+	mnemonic string,
 	usage config.EquipmentUsage,
 ) (facResult *kexec.FacStatusResult, resultCode uint64) {
 	return nil, 0 // TODO
@@ -161,6 +164,7 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
+	mnemonic string,
 	usage config.EquipmentUsage,
 ) (facResult *kexec.FacStatusResult, resultCode uint64) {
 	//	For Mass Storage Files
@@ -173,6 +177,7 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 	//		V: file will not be unloaded
 	//		W: make the file write-only
 	//		Z: run should not be held (probably only happens on removable when the pack is not mounted)
+	facResult = kexec.NewFacResult()
 	resultCode = 0
 
 	allowedOpts := uint64(kexec.BOption | kexec.GOption | kexec.POption |
@@ -195,7 +200,6 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 	readOnly := optionWord&kexec.ROption != 0
 	inhibitUnload := optionWord&kexec.VOption != 0
 	writeOnly := optionWord&kexec.WOption != 0
-	doNotHold := optionWord&kexec.ZOption != 0
 	wordAddressable := usage == config.EquipmentUsageWordAddressableMassStorage
 
 	// ensure initial reserve <= max allocations (means words or granules, depending on word/sector addressable)
@@ -245,26 +249,8 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 		return
 	}
 
-	// If there isn't an existing fileset, create one.
-	// Otherwise, do sanity checking on the requested file cycle.
-	mm := exec.GetMFDManager().(*mfdMgr.MFDManager)
-	if fileSetInfo == nil {
-		fileSetInfo = mfdMgr.NewFileSetInfo(
-			fileSpecification.Qualifier,
-			fileSpecification.Filename,
-			rce.ProjectId,
-			fileSpecification.ReadKey,
-			fileSpecification.WriteKey,
-			mfdMgr.FileTypeFixed)
-		_, result := mm.CreateFileSet(fileSetInfo)
-		if result == mfdMgr.MFDInternalError {
-			return
-		} else if result != mfdMgr.MFDSuccessful {
-			log.Printf("FacMgr:MFD failed to create file set")
-			exec.Stop(kexec.StopFacilitiesComplex)
-			return
-		}
-	} else {
+	// If there is an existing fileset do sanity checking on the requested file cycle.
+	if fileSetInfo != nil {
 		gaveReadKey := len(fileSpecification.ReadKey) > 0
 		gaveWriteKey := len(fileSpecification.WriteKey) > 0
 		hasReadKey := len(fileSetInfo.ReadKey) > 0
@@ -339,9 +325,68 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 		return
 	}
 
-	// TODO call mfd services to create the file
+	// If there isn't an existing fileset, create one.
+	mm := exec.GetMFDManager().(*mfdMgr.MFDManager)
+	if fileSetInfo == nil {
+		_, result := mm.CreateFileSet(
+			mfdMgr.FileTypeFixed,
+			fileSpecification.Qualifier,
+			fileSpecification.Filename,
+			rce.ProjectId,
+			fileSpecification.ReadKey,
+			fileSpecification.WriteKey)
+		if result == mfdMgr.MFDInternalError {
+			return
+		} else if result != mfdMgr.MFDSuccessful {
+			log.Printf("FacMgr:MFD failed to create file set")
+			exec.Stop(kexec.StopFacilitiesComplex)
+			return
+		}
+	}
 
-	return nil, 0 // TODO
+	// Create the file cycle for the file set.
+	var absCycle *uint // TODO
+	var relCycle *int  // TODO
+	descriptorFlags := mfdMgr.DescriptorFlags{
+		SaveOnCheckpoint:    saveOnCheckpoint,
+		IsTapeFile:          false,
+		IsRemovableDiskFile: false,
+	}
+	fileFlags := mfdMgr.FileFlags{
+		IsLargeFile: false, // TODO should we set this here, and how do we know?
+	}
+	pcharFlags := mfdMgr.PCHARFlags{
+		Granularity:       granularity,
+		IsWordAddressable: wordAddressable,
+	}
+	inhibitFlags := mfdMgr.InhibitFlags{
+		IsGuarded:         guardedFile,
+		IsUnloadInhibited: inhibitUnload,
+		IsPrivate:         publicFile,
+		IsWriteOnly:       writeOnly,
+		IsReadOnly:        readOnly,
+	}
+	unitSelection := mfdMgr.UnitSelectionIndicators{}
+	_, mfdResult := mm.CreateFixedDiskFileCycle(
+		fileSetInfo.FileSetIdentifier,
+		absCycle,
+		relCycle,
+		rce.AccountId,
+		mnemonic,
+		descriptorFlags,
+		fileFlags,
+		pcharFlags,
+		inhibitFlags,
+		initReserve,
+		maxGranules,
+		unitSelection,
+		make([]mfdMgr.DiskPackEntry, 0))
+
+	if mfdResult != mfdMgr.MFDSuccessful {
+		// TODO what various things should we look for here?
+	}
+
+	return
 }
 
 func (mgr *FacilitiesManager) catalogRemovableFile(
@@ -351,6 +396,7 @@ func (mgr *FacilitiesManager) catalogRemovableFile(
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
+	mnemonic string,
 	usage config.EquipmentUsage,
 ) (facResult *kexec.FacStatusResult, resultCode uint64) {
 	//	For Mass Storage Files
@@ -373,14 +419,14 @@ func (mgr *FacilitiesManager) catalogRemovableFile(
 		// TODO
 	}
 
-	saveOnCheckpoint := optionWord&kexec.BOption != 0
-	guardedFile := optionWord&kexec.GOption != 0
-	publicFile := optionWord&kexec.POption != 0
-	readOnly := optionWord&kexec.ROption != 0
-	inhibitUnload := optionWord&kexec.VOption != 0
-	writeOnly := optionWord&kexec.WOption != 0
-	doNotHold := optionWord&kexec.ZOption != 0
-	wordAddressable := usage == config.EquipmentUsageWordAddressableMassStorage
+	//saveOnCheckpoint := optionWord&kexec.BOption != 0
+	//guardedFile := optionWord&kexec.GOption != 0
+	//publicFile := optionWord&kexec.POption != 0
+	//readOnly := optionWord&kexec.ROption != 0
+	//inhibitUnload := optionWord&kexec.VOption != 0
+	//writeOnly := optionWord&kexec.WOption != 0
+	//doNotHold := optionWord&kexec.ZOption != 0
+	//wordAddressable := usage == config.EquipmentUsageWordAddressableMassStorage
 
 	// TODO granularity, initial-reserve, max-granules
 
@@ -402,6 +448,7 @@ func (mgr *FacilitiesManager) catalogTapeFile(
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
+	mnemonic string,
 	usage config.EquipmentUsage,
 ) (facResult *kexec.FacStatusResult, resultCode uint64) {
 	//	For Tape Files
@@ -478,11 +525,15 @@ func (mgr *FacilitiesManager) selectEquipmentModel(
 		//	(an existing file cycle which is not to-be-cataloged or to-be-deleted)... if there is one.
 		// Otherwise, use the equipment type from the highest absolute fcycle entry of a to-be file cycle
 		for _, preventToBe := range []bool{true, false} {
-			for _, fsi := range fileSetInfo.CycleInfo {
-				if !preventToBe || (!fsi.ToBeCataloged && !fsi.ToBeDropped) {
+			for _, fsCycleInfo := range fileSetInfo.CycleInfo {
+				if !preventToBe || (!fsCycleInfo.ToBeCataloged && !fsCycleInfo.ToBeDropped) {
 					mm := mgr.exec.GetMFDManager().(*mfdMgr.MFDManager)
-					fileInfo, _, _ := mm.GetFileInfo(fileSetInfo.Qualifier, fileSetInfo.Filename, fsi.AbsoluteCycle)
-					effectiveMnemonic = fileInfo.GetAssignMnemonic()
+					fcInfo, mfdResult := mm.GetFileCycleInfo(fsCycleInfo.FileCycleIdentifier)
+					if mfdResult != mfdMgr.MFDSuccessful {
+						mgr.exec.Stop(kexec.StopFacilitiesComplex)
+						return nil, 0, false
+					}
+					effectiveMnemonic = fcInfo.GetAssignMnemonic()
 				}
 			}
 		}
@@ -490,7 +541,7 @@ func (mgr *FacilitiesManager) selectEquipmentModel(
 
 	// If we still do not have an effective mnemonic use the default sector-formatted mass storage mnemonic.
 	if len(effectiveMnemonic) == 0 {
-		effectiveMnemonic = "F"
+		effectiveMnemonic = "F" // TODO why not word-addressable? Also, get this from config
 	}
 
 	// Now go look for the mnemonic in the configured equipment entry table.

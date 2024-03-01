@@ -15,6 +15,8 @@ import (
 
 // mfdServices contains code which provides directory-level services to all other exec code
 // (but mostly facilities manager) such as assigning files, cataloging files, and general file allocation.
+// It is *PRIMARILY* a service for facilities - it should be rare that any other component uses it
+// except via fac manager.
 
 func (mgr *MFDManager) ChangeFileSetName(
 	leadItem0Address kexec.MFDRelativeAddress,
@@ -31,15 +33,20 @@ func (mgr *MFDManager) ChangeFileSetName(
 // If we return MFDInternalError, the exec has been stopped
 // If we return MFDFileNameConflict, a file set already exists with this file name.
 func (mgr *MFDManager) CreateFileSet(
-	fsInfo *FileSetInfo,
-) (leadItem0Address kexec.MFDRelativeAddress, result MFDResult) {
-	leadItem0Address = kexec.InvalidLink
+	fileType FileType,
+	qualifier string,
+	filename string,
+	projectId string,
+	readKey string,
+	writeKey string,
+) (fsIdentifier FileSetIdentifier, result MFDResult) {
+	leadItem0Address := kexec.InvalidLink
 	result = MFDSuccessful
 
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
-	_, ok := mgr.fileLeadItemLookupTable[fsInfo.Qualifier][fsInfo.Filename]
+	_, ok := mgr.fileLeadItemLookupTable[qualifier][filename]
 	if ok {
 		result = MFDFileNameConflict
 		return
@@ -54,134 +61,137 @@ func (mgr *MFDManager) CreateFileSet(
 	leadItem0[0].SetW(uint64(kexec.InvalidLink))
 	leadItem0[0].Or(0_500000_000000)
 
-	pkg.FromStringToFieldata(fsInfo.Qualifier, leadItem0[1:3])
-	pkg.FromStringToFieldata(fsInfo.Filename, leadItem0[3:5])
-	pkg.FromStringToFieldata(fsInfo.ProjectId, leadItem0[5:7])
-	leadItem0[7].FromStringToFieldata(fsInfo.ReadKey)
-	leadItem0[8].FromStringToAscii(fsInfo.WriteKey)
-	leadItem0[9].SetS1(uint64(fsInfo.FileType))
+	pkg.FromStringToFieldata(qualifier, leadItem0[1:3])
+	pkg.FromStringToFieldata(filename, leadItem0[3:5])
+	pkg.FromStringToFieldata(projectId, leadItem0[5:7])
+	leadItem0[7].FromStringToFieldata(readKey)
+	leadItem0[8].FromStringToAscii(writeKey)
+	leadItem0[9].SetS1(uint64(fileType))
 
 	mgr.markDirectorySectorDirty(leadItem0Address)
+	fsIdentifier = FileSetIdentifier(leadItem0Address)
 	return
 }
 
-func (mgr *MFDManager) CreateFileCycle(
-	leadItem0Address kexec.MFDRelativeAddress,
-) (kexec.MFDRelativeAddress, error) {
-	// TODO
-	return 0, nil
-}
-
-func (mgr *MFDManager) GetFileInfo(
-	qualifier string,
-	filename string,
-	absoluteCycle uint,
-) (fInfo FileInfo, mainItem0Address kexec.MFDRelativeAddress, mfdResult MFDResult) {
-	fInfo = nil
-	mainItem0Address = kexec.InvalidLink
-	mfdResult = MFDSuccessful
-
-	// sanity check
-	if absoluteCycle < 1 || absoluteCycle > 999 {
-		log.Printf("MFDMgr:GetFileInfo called with invalid abs cycle %v", absoluteCycle)
-		mfdResult = MFDInternalError
-		return
-	}
+// CreateFixedDiskFileCycle creates a new file cycle within the file set specified by fsIdentifier.
+// Either absoluteCycle or relativeCycle must be specified (but not both).
+func (mgr *MFDManager) CreateFixedDiskFileCycle(
+	fsIdentifier FileSetIdentifier,
+	absoluteCycle *uint,
+	relativeCycle *int,
+	accountId string,
+	assignMnemonic string,
+	descriptorFlags DescriptorFlags,
+	fileFlags FileFlags,
+	pcharFlags PCHARFlags,
+	inhibitFlags InhibitFlags,
+	initialReserve uint64,
+	maxGranules uint64,
+	unitSelection UnitSelectionIndicators,
+	diskPacks []DiskPackEntry,
+) (fcIdentifier FileCycleIdentifier, result MFDResult) {
+	mainItem0Address := kexec.InvalidLink
+	result = MFDSuccessful
 
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
-	leadItem0Address, ok := mgr.fileLeadItemLookupTable[qualifier][filename]
-	if !ok {
+	/*
+		DescriptorFlags          DescriptorFlags
+		FileFlags                FileFlags ?
+		PCHARFlags               PCHARFlags
+		AssignMnemonic           string
+		InhibitFlags             InhibitFlags
+		AbsoluteFCycle           uint64
+		TimeCataloged            uint64
+		InitialGranulesReserved  uint64
+		MaxGranules              uint64
+		HighestGranuleAssigned   uint64
+		UnitSelectionIndicators  UnitSelectionIndicators
+		DiskPackEntries          []DiskPackEntry
+		FileAllocations          []FileAllocation
+	*/
+	// TODO
+
+	fsIdentifier = FileSetIdentifier(mainItem0Address)
+	return
+}
+
+// GetFileCycleInfo returns a FileCycleInfo struct representing the file cycle corresponding to the given
+// file cycle identifier.
+// If we return MFDInternalError, the exec has been stopped
+// If we return MFDNotFound then there is no such file cycle
+func (mgr *MFDManager) GetFileCycleInfo(
+	fcIdentifier FileCycleIdentifier,
+) (fcInfo *FixedFileCycleInfo, mfdResult MFDResult) {
+	fcInfo = nil
+	mfdResult = MFDSuccessful
+
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
+	mainItem0, err := mgr.getMFDSector(kexec.MFDRelativeAddress(fcIdentifier))
+	if err != nil {
 		mfdResult = MFDNotFound
 		return
 	}
 
-	leadItem0, err := mgr.getMFDSector(leadItem0Address)
-	if err != nil {
-		mfdResult = MFDInternalError
-		return
-	}
-
-	highestAbs := uint(leadItem0[011].GetT3())
-	if highestAbs < absoluteCycle {
-		highestAbs += 999
-	}
-
-	offset := highestAbs - absoluteCycle + 11
-	if offset < 28 {
-		mainItem0Address = kexec.MFDRelativeAddress(leadItem0[offset].GetW()) & 0_077777_777777
-	} else {
-		if leadItem0[0].IsNegative() {
-			// error - we want cycle info which should be in sector 1, but there isn't a sector 1
-			log.Printf("MFDMgr:Need sector 1 but there is no link")
-			mfdResult = MFDInternalError
-			mgr.exec.Stop(kexec.StopDirectoryErrors)
-			return
-		}
-
-		leadItem1Address := kexec.MFDRelativeAddress(leadItem0[0].GetW()) & 0_077777_777777
-		leadItem1, err := mgr.getMFDSector(leadItem1Address)
-		if err != nil {
-			mfdResult = MFDInternalError
-			return
-		}
-
-		offset -= 28
-		mainItem0Address = kexec.MFDRelativeAddress(leadItem1[offset].GetW()) & 0_077777_777777
-	}
-
-	if mainItem0Address == 0 {
-		log.Printf("MFDMgr:Main item link is zero")
-		mfdResult = MFDInternalError
-		mgr.exec.Stop(kexec.StopDirectoryErrors)
-		return
-	}
-
-	mainItem0, err := mgr.getMFDSector(mainItem0Address)
-	if err != nil {
-		mfdResult = MFDInternalError
-		return
-	}
-
-	mainItem1Address := kexec.MFDRelativeAddress(mainItem0[015].GetW()) & 0_077777_777777
+	mainItem1Address := kexec.MFDRelativeAddress(mainItem0[015].GetW()) & 0_007777_777777
 	mainItem1, err := mgr.getMFDSector(mainItem1Address)
 	if err != nil {
 		mfdResult = MFDInternalError
 		return
 	}
 
-	fInfo.PopulateFromMainItems(mainItem0, mainItem1)
+	mainItems := make([][]pkg.Word36, 2)
+	mainItems[0] = mainItem0
+	mainItems[1] = mainItem1
+	link := mainItem1[0].GetW()
+	for link&0_400000_000000 == 0 {
+		mi, err := mgr.getMFDSector(kexec.MFDRelativeAddress(link & 0_007777_777777))
+		if err != nil {
+			mfdResult = MFDInternalError
+			return
+		}
+		mainItems = append(mainItems, mi)
+	}
 
-	// TODO
-	return nil, 0, nil
+	fcInfo = &FixedFileCycleInfo{}
+	fcInfo.setFileCycleIdentifier(fcIdentifier)
+	fcInfo.setFileSetIdentifier(FileSetIdentifier(mainItem0[013] & 0_007777_777777))
+	fcInfo.populateFromMainItems(mainItems)
+
+	return fcInfo, MFDSuccessful
 }
 
-// GetFileSetInfo returns a FileSetInfo struct representing the file set
-// and the file set's lead item 0 address.
-// corresponding to the given qualifier and filename.
+func (mgr *MFDManager) GetFileSetIdentifier(
+	qualifier string,
+	filename string,
+) (fsi FileSetIdentifier, mfdResult MFDResult) {
+	leadItem0Address, ok := mgr.fileLeadItemLookupTable[qualifier][filename]
+	if !ok {
+		return 0, MFDNotFound
+	} else {
+		return FileSetIdentifier(leadItem0Address), MFDSuccessful
+	}
+}
+
+// GetFileSetInfo returns a FileSetInfo struct representing the file set corresponding to the given
+// file set identifier.
 // If we return MFDInternalError, the exec has been stopped
 // If we return MFDNotFound then there is no such file set
 func (mgr *MFDManager) GetFileSetInfo(
-	qualifier string,
-	filename string,
-) (fsInfo *FileSetInfo, leadItem0Address kexec.MFDRelativeAddress, mfdResult MFDResult) {
+	fsIdentifier FileSetIdentifier,
+) (fsInfo *FileSetInfo, mfdResult MFDResult) {
 	fsInfo = nil
-	leadItem0Address = kexec.InvalidLink
 	mfdResult = MFDSuccessful
 
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
-	leadItem0Address, ok := mgr.fileLeadItemLookupTable[qualifier][filename]
-	if !ok {
-		mfdResult = MFDNotFound
-		return
-	}
-
-	leadItem0, err := mgr.getMFDSector(leadItem0Address)
+	leadItem0, err := mgr.getMFDSector(kexec.MFDRelativeAddress(fsIdentifier))
 	if err != nil {
-		mfdResult = MFDInternalError
+		mfdResult = MFDNotFound
 		return
 	}
 
@@ -196,7 +206,8 @@ func (mgr *MFDManager) GetFileSetInfo(
 	}
 
 	fsInfo = &FileSetInfo{}
-	fsInfo.PopulateFromLeadItems(leadItem0, leadItem1)
+	fsInfo.FileSetIdentifier = fsIdentifier
+	fsInfo.populateFromLeadItems(leadItem0, leadItem1)
 	return
 }
 

@@ -9,27 +9,61 @@ import (
 	"strings"
 )
 
-type FileSetCycleInfo struct {
-	ToBeCataloged bool
-	ToBeDropped   bool
-	AbsoluteCycle uint
-}
-
+// FileSetInfo contains all the relevant information about a file set which is known to the MFD.
+// It is presented to the client as a result of certain queries, and to the MFD as part of some requests.
 type FileSetInfo struct {
-	Qualifier       string
-	Filename        string
-	ProjectId       string
-	ReadKey         string
-	WriteKey        string
-	FileType        FileType
-	PlusOneExists   bool
-	Count           uint
-	MaxCycleRange   uint
-	CurrentRange    uint
-	HighestAbsolute uint
-	CycleInfo       []FileSetCycleInfo
+	FileSetIdentifier FileSetIdentifier
+	Qualifier         string
+	Filename          string
+	ProjectId         string
+	ReadKey           string
+	WriteKey          string
+	FileType          FileType
+	PlusOneExists     bool
+	Count             uint
+	MaxCycleRange     uint
+	CurrentRange      uint
+	HighestAbsolute   uint
+	CycleInfo         []FileSetCycleInfo
 }
 
+// FileSetIdentifier is a unique opaque identifier allowing clients to refer to a fileset
+// without using qualifier and filename. Internally it is the lead item sector 0 address
+// for the file set - but clients should not be concerned with, nor rely on, that.
+type FileSetIdentifier uint64
+
+// FileSetCycleInfo contains a few bits of information regarding a particular file cycle.
+// It is contained within a FileSetInfo struct.
+type FileSetCycleInfo struct {
+	ToBeCataloged       bool
+	ToBeDropped         bool
+	AbsoluteCycle       uint
+	FileCycleIdentifier FileCycleIdentifier
+}
+
+// FileType describes whether a file is fixed, removable, or tape.
+// Clients should refer only to the constant values.
+type FileType uint
+
+const (
+	FileTypeFixed     = 000
+	FileTypeTape      = 001
+	FileTypeRemovable = 040
+)
+
+func NewFileTypeFromField(field uint64) FileType {
+	switch field {
+	case 001:
+		return FileTypeTape
+	case 040:
+		return FileTypeRemovable
+	default:
+		return FileTypeFixed
+	}
+}
+
+// NewFileSetInfo populate a FileSetInfo struct.
+// It is intended to be used by clients in preparation for a subsequent call on MFD services.
 func NewFileSetInfo(
 	qualifier string,
 	filename string,
@@ -48,10 +82,9 @@ func NewFileSetInfo(
 	}
 }
 
-// PopulateFromLeadItems populates the FileSetInfo object from the Content of the
-// given leadItem0 and (optional) leadItem1 sectors.
-// If there is no leadItem1, that argument should be nil.
-func (fsi *FileSetInfo) PopulateFromLeadItems(leadItem0 []pkg.Word36, leadItem1 []pkg.Word36) {
+// populateFromLeadItems populates the FileSetInfo object from the Content of the given leadItem0 and
+// (optional) leadItem1 sectors. If there is no leadItem1, that argument should be nil.
+func (fsi *FileSetInfo) populateFromLeadItems(leadItem0 []pkg.Word36, leadItem1 []pkg.Word36) {
 	fsi.Qualifier = strings.TrimRight(leadItem0[1].ToStringAsFieldata()+leadItem0[2].ToStringAsFieldata(), " ")
 	fsi.Filename = strings.TrimRight(leadItem0[3].ToStringAsFieldata()+leadItem0[4].ToStringAsFieldata(), " ")
 	fsi.ProjectId = strings.TrimRight(leadItem0[5].ToStringAsFieldata()+leadItem0[6].ToStringAsFieldata(), " ")
@@ -78,12 +111,13 @@ func (fsi *FileSetInfo) PopulateFromLeadItems(leadItem0 []pkg.Word36, leadItem1 
 			wx = 1
 		}
 		w := leadItems[lx][wx].GetW()
-		link := w & 0_077777_777777
+		link := w & 0_007777_777777
 		if link > 0 {
 			fsi.CycleInfo[ax] = FileSetCycleInfo{
-				ToBeCataloged: w&0_200000_000000 != 0,
-				ToBeDropped:   w&0_100000_000000 != 0,
-				AbsoluteCycle: absCycle,
+				ToBeCataloged:       w&0_200000_000000 != 0,
+				ToBeDropped:         w&0_100000_000000 != 0,
+				AbsoluteCycle:       absCycle,
+				FileCycleIdentifier: FileCycleIdentifier(link),
 			}
 		}
 	}
