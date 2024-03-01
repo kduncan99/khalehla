@@ -76,7 +76,83 @@ func (mgr *MFDManager) GetFileInfo(
 	qualifier string,
 	filename string,
 	absoluteCycle uint,
-) (fi FileInfo, mainItem0Address kexec.MFDRelativeAddress, err error) {
+) (fInfo FileInfo, mainItem0Address kexec.MFDRelativeAddress, mfdResult MFDResult) {
+	fInfo = nil
+	mainItem0Address = kexec.InvalidLink
+	mfdResult = MFDSuccessful
+
+	// sanity check
+	if absoluteCycle < 1 || absoluteCycle > 999 {
+		log.Printf("MFDMgr:GetFileInfo called with invalid abs cycle %v", absoluteCycle)
+		mfdResult = MFDInternalError
+		return
+	}
+
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
+	leadItem0Address, ok := mgr.fileLeadItemLookupTable[qualifier][filename]
+	if !ok {
+		mfdResult = MFDNotFound
+		return
+	}
+
+	leadItem0, err := mgr.getMFDSector(leadItem0Address)
+	if err != nil {
+		mfdResult = MFDInternalError
+		return
+	}
+
+	highestAbs := uint(leadItem0[011].GetT3())
+	if highestAbs < absoluteCycle {
+		highestAbs += 999
+	}
+
+	offset := highestAbs - absoluteCycle + 11
+	if offset < 28 {
+		mainItem0Address = kexec.MFDRelativeAddress(leadItem0[offset].GetW()) & 0_077777_777777
+	} else {
+		if leadItem0[0].IsNegative() {
+			// error - we want cycle info which should be in sector 1, but there isn't a sector 1
+			log.Printf("MFDMgr:Need sector 1 but there is no link")
+			mfdResult = MFDInternalError
+			mgr.exec.Stop(kexec.StopDirectoryErrors)
+			return
+		}
+
+		leadItem1Address := kexec.MFDRelativeAddress(leadItem0[0].GetW()) & 0_077777_777777
+		leadItem1, err := mgr.getMFDSector(leadItem1Address)
+		if err != nil {
+			mfdResult = MFDInternalError
+			return
+		}
+
+		offset -= 28
+		mainItem0Address = kexec.MFDRelativeAddress(leadItem1[offset].GetW()) & 0_077777_777777
+	}
+
+	if mainItem0Address == 0 {
+		log.Printf("MFDMgr:Main item link is zero")
+		mfdResult = MFDInternalError
+		mgr.exec.Stop(kexec.StopDirectoryErrors)
+		return
+	}
+
+	mainItem0, err := mgr.getMFDSector(mainItem0Address)
+	if err != nil {
+		mfdResult = MFDInternalError
+		return
+	}
+
+	mainItem1Address := kexec.MFDRelativeAddress(mainItem0[015].GetW()) & 0_077777_777777
+	mainItem1, err := mgr.getMFDSector(mainItem1Address)
+	if err != nil {
+		mfdResult = MFDInternalError
+		return
+	}
+
+	fInfo.PopulateFromMainItems(mainItem0, mainItem1)
+
 	// TODO
 	return nil, 0, nil
 }

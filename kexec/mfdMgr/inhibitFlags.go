@@ -15,34 +15,34 @@ type InhibitFlags struct {
 	isReadOnly          bool
 }
 
-func (inf *InhibitFlags) Compose() uint64 {
+func (pf *InhibitFlags) Compose() uint64 {
 	value := uint64(0)
-	if inf.isGuarded {
+	if pf.isGuarded {
 		value |= 040
 	}
-	if inf.isUnloadInhibited {
+	if pf.isUnloadInhibited {
 		value |= 020
 	}
-	if inf.isPrivate {
+	if pf.isPrivate {
 		value |= 010
 	}
-	if inf.isAssignedExclusive {
+	if pf.isAssignedExclusive {
 		value |= 004
 	}
-	if inf.isWriteOnly {
+	if pf.isWriteOnly {
 		value |= 002
 	}
-	if inf.isReadOnly {
+	if pf.isReadOnly {
 		value |= 001
 	}
 	return value
 }
 
-func (inf *InhibitFlags) ExtractFrom(field uint64) {
-	inf.isGuarded = field&040 != 0
-	inf.isUnloadInhibited = field&020 != 0
-	inf.isPrivate = field&010 != 0
-	inf.isAssignedExclusive = field&004 != 0
-	inf.isWriteOnly = field&002 != 0
-	inf.isReadOnly = field&001 != 0
+func (pf *InhibitFlags) ExtractFrom(field uint64) {
+	pf.isGuarded = field&040 != 0
+	pf.isUnloadInhibited = field&020 != 0
+	pf.isPrivate = field&010 != 0
+	pf.isAssignedExclusive = field&004 != 0
+	pf.isWriteOnly = field&002 != 0
+	pf.isReadOnly = field&001 != 0
 }

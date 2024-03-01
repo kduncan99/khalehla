@@ -47,6 +47,8 @@ const (
 	FacStatusFileAlreadyCataloged                    = 244433
 	FacStatusIllegalValueForGranularity              = 245233
 	FacStatusIllegalInitialReserve                   = 246333
+	FacStatusIllegalMaxGranules                      = 247333
+	FacStatusMaximumIsLessThanInitialReserve         = 247433
 	FacStatusPlacementFieldNotAllowed                = 252133
 	FacStatusUndefinedFieldOrSubfield                = 255733
 	FacStatusDirectoryAndQualifierMayNotAppear       = 0262633

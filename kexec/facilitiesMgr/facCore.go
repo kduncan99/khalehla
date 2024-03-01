@@ -227,16 +227,17 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 
 	maxGranules := exec.GetConfiguration().MaxGranules
 	if len(maxStr) > 12 {
-		// TODO illegal max granules
+		facResult.PostMessage(kexec.FacStatusIllegalMaxGranules, nil)
+		resultCode |= 0_600000_000000
 	} else if len(maxStr) > 0 {
 		iMaxGran, err := strconv.Atoi(maxStr)
 		maxGranules = uint64(iMaxGran)
 		if err != nil || maxGranules < 0 || maxGranules > 262143 {
-			// TODO illegal value for max granules
-			//E:247333 Illegal value specified for maximum.
+			facResult.PostMessage(kexec.FacStatusIllegalMaxGranules, nil)
+			resultCode |= 0_600000_000000
 		} else if maxGranules < initReserve {
-			//TODO
-			//E:247433 Maximum is less than the initial reserve.
+			facResult.PostMessage(kexec.FacStatusMaximumIsLessThanInitialReserve, nil)
+			resultCode |= 0_600000_000000
 		}
 	}
 
@@ -334,7 +335,7 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 		}
 	}
 
-	if resultCode & 0_400000_000000 != 0 {
+	if resultCode&0_400000_000000 != 0 {
 		return
 	}
 
