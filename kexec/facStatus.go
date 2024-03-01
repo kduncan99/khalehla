@@ -45,7 +45,10 @@ const (
 	FacStatusIllegalControlStatement                 = 0243733
 	FacStatusFilenameIsRequired                      = 0244333
 	FacStatusFileAlreadyCataloged                    = 244433
+	FacStatusIllegalValueForGranularity              = 245233
 	FacStatusIllegalInitialReserve                   = 246333
+	FacStatusPlacementFieldNotAllowed                = 252133
+	FacStatusUndefinedFieldOrSubfield                = 255733
 	FacStatusDirectoryAndQualifierMayNotAppear       = 0262633
 	FacStatusDirectoryOrQualifierMustAppear          = 0263033
 )

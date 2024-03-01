@@ -40,6 +40,7 @@ func importTemplates() map[FacStatusCode]*FacStatusMessageTemplate {
 	result := make(map[FacStatusCode]*FacStatusMessageTemplate)
 
 	// in order by info/warning/error, and then alphabetically by code -- some of these are never used
+	// info
 	importInfoTemplate(result, FacStatusComplete, "%v complete")
 	importInfoTemplate(result, FacStatusDeviceIsSelected, "%v is selected %v %v %v")
 	importInfoTemplate(result, FacStatusRunHeldForCacheControl, "Run %v held for control of caching for %v min.")
@@ -60,6 +61,7 @@ func importTemplates() map[FacStatusCode]*FacStatusMessageTemplate {
 	importInfoTemplate(result, FacStatusRunHeldForRollback, "Run %v held for rollback of unloaded file for %v min.")
 	importInfoTemplate(result, FacStatusRunHeldForTapeUnitAvailability, "Run %v held for tape unit availability for %v min.")
 
+	// error
 	importErrorTemplate(result, FacStatusAssignMnemonicMustBeSpecifiedWithPackId, "Assign mnemonic must be specified with a packid.")
 	importErrorTemplate(result, FacStatusAssignMnemonicMustBeWordAddressable, "Assign mnemonic must be word addressable.")
 	importErrorTemplate(result, FacStatusAssignMnemonicTooLong, "Assign mnemonic cannot be longer than 6 characters.")
@@ -72,8 +74,11 @@ func importTemplates() map[FacStatusCode]*FacStatusMessageTemplate {
 	importErrorTemplate(result, FacStatusIllegalOption, "Illegal option %v.")
 	importErrorTemplate(result, FacStatusIllegalOptionCombination, "Illegal option combination %v%v.")
 	importErrorTemplate(result, FacStatusIllegalValueForFCycle, "Illegal value specified for F-cycle.")
+	importErrorTemplate(result, FacStatusIllegalValueForGranularity, "Illegal value specified for granularity.")
 	importErrorTemplate(result, FacStatusMnemonicIsNotConfigured, "%v is not a configured assign mnemonic.")
+	importErrorTemplate(result, FacStatusPlacementFieldNotAllowed, "Placement field is not allowed with CAT.")
 	importErrorTemplate(result, FacStatusSyntaxErrorInImage, "Syntax error in image submitted to ER CSI$.")
+	importErrorTemplate(result, FacStatusUndefinedFieldOrSubfield, "Image contains an undefined field or subfield.")
 
 	return result
 }

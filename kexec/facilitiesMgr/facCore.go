@@ -64,8 +64,7 @@ var catFixedFSIs = newFieldSubfieldIndices().
 	add(1, 0).
 	add(1, 1).
 	add(1, 2).
-	add(1, 3).
-	add(5, 0)
+	add(1, 3)
 
 var catRemovableFSIs = newFieldSubfieldIndices().
 	add(0, 0).
@@ -73,8 +72,7 @@ var catRemovableFSIs = newFieldSubfieldIndices().
 	add(1, 1).
 	add(1, 2).
 	add(1, 3).
-	addAll(2).
-	add(5, 0)
+	addAll(2)
 
 // -----------------------------------------------------------------------------
 
@@ -153,6 +151,9 @@ func (mgr *FacilitiesManager) assignTapeFile(
 	return nil, 0 // TODO
 }
 
+// catalogFixedFile takes the various inputs, validates them, and then invokes
+// mfd services to create the appropriate file cycle (and file set, if necessary).
+// Caller should immediately check whether the exec has stopped upon return.
 func (mgr *FacilitiesManager) catalogFixedFile(
 	exec kexec.IExec,
 	rce *kexec.RunControlEntry,
@@ -164,7 +165,6 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 ) (facResult *kexec.FacStatusResult, resultCode uint64) {
 	//	For Mass Storage Files
 	//		@CAT[,options] filename[,type/reserve/granule/maximum,pack-id-1/.../pack-id-n,,,ACR-name]
-	//	maximum of 6 fields in argument
 	//	options include
 	//		B: save on checkpoint
 	//		G: guarded file
@@ -173,19 +173,20 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 	//		V: file will not be unloaded
 	//		W: make the file write-only
 	//		Z: run should not be held (probably only happens on removable when the pack is not mounted)
+	resultCode = 0
+
 	allowedOpts := uint64(kexec.BOption | kexec.GOption | kexec.POption |
 		kexec.ROption | kexec.VOption | kexec.WOption | kexec.ZOption)
 	if !rce.CheckIllegalOptions(optionWord, allowedOpts, facResult, rce.IsExec) {
-		// TODO
+		resultCode |= 0_600000_000000
 	}
 
 	if !mgr.checkSubFields(operandFields, catFixedFSIs) {
-		// TODO
-		// E:252133 Placement field is not allowed with CAT.
-		//E:252233 Placement requested on a non--mass storage device.
-		//E:252333 Placement is not allowed with a removable disk file.
-		//E:252433 Illegal syntax in placement subfield.
-		//E:255733 Image contains an undefined field or subfield.
+		if len(mgr.getSubField(operandFields, 1, 4)) > 0 {
+			facResult.PostMessage(kexec.FacStatusPlacementFieldNotAllowed, nil)
+		}
+		facResult.PostMessage(kexec.FacStatusUndefinedFieldOrSubfield, nil)
+		resultCode |= 0_600000_000000
 	}
 
 	saveOnCheckpoint := optionWord&kexec.BOption != 0
@@ -201,7 +202,6 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 	initStr := mgr.getSubField(operandFields, 1, 1)
 	granStr := strings.ToUpper(mgr.getSubField(operandFields, 1, 2))
 	maxStr := mgr.getSubField(operandFields, 1, 3)
-	acrStr := mgr.getSubField(operandFields, 5, 0)
 
 	var granularity kexec.Granularity
 	if len(granStr) == 0 || granStr == "TRK" {
@@ -209,56 +209,40 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 	} else if granStr == "POS" {
 		granularity = kexec.PositionGranularity
 	} else {
-		// TODO illegal value for granularity
-		//E:245233 Illegal value specified for granularity.
+		facResult.PostMessage(kexec.FacStatusIllegalValueForGranularity, nil)
+		resultCode |= 0_600000_000000
 	}
 
 	var initReserve uint64
 	if len(initStr) > 12 {
 		facResult.PostMessage(kexec.FacStatusIllegalInitialReserve, nil)
-		resultCode = 0_600000_000000
-		return
+		resultCode |= 0_600000_000000
 	} else if len(initStr) > 0 {
 		initReserve, err := strconv.Atoi(initStr)
 		if err != nil || initReserve < 0 {
-			// TODO illegal value for initial reserve
-			//E:246233 File initial reserve granule limits exceeded.
-			//E:246333 Illegal value specified for initial reserve.
+			facResult.PostMessage(kexec.FacStatusIllegalInitialReserve, nil)
+			resultCode |= 0_600000_000000
 		}
 	}
 
 	maxGranules := exec.GetConfiguration().MaxGranules
-	if len(granStr) > 12 {
+	if len(maxStr) > 12 {
 		// TODO illegal max granules
-	} else if len(granStr) > 0 {
-		maxGranules, err := strconv.Atoi(granStr)
-		if err != nil || initReserve < 0 {
+	} else if len(maxStr) > 0 {
+		iMaxGran, err := strconv.Atoi(maxStr)
+		maxGranules = uint64(iMaxGran)
+		if err != nil || maxGranules < 0 || maxGranules > 262143 {
 			// TODO illegal value for max granules
+			//E:247333 Illegal value specified for maximum.
+		} else if maxGranules < initReserve {
+			//TODO
+			//E:247433 Maximum is less than the initial reserve.
 		}
 	}
 
-	if len(acrStr) > 0 {
-		// TODO we don't do ACRs... yet...
+	if resultCode&0_400000_000000 != 0 {
+		return
 	}
-
-	/*
-		E:242533 File cycle out of range.
-		E:242633 Cannot catalog file because read or write access not allowed.
-		E:243233 Creation of file would require illegal dropping of private file.
-		E:244433 File is already catalogued.
-		E:246433 Read and/or write keys are needed.
-		E:247133 Maximum granules less than highest granule allocated.
-		E:247233 File maximum granule limits exceeded.
-		E:247333 Illegal value specified for maximum.
-		E:247433 Maximum is less than the initial reserve.
-		E:247633 Maximum number of packids exceeded.
-		E:253333 Incorrect read key.
-		E:253433 File is not cataloged with read key.
-		E:253733 Relative F-cycle conflict.
-		E:256633 Incorrect write key.
-		E:256733 File is not cataloged with write key.
-
-	*/
 
 	// If there isn't an existing fileset, create one.
 	// Otherwise, do sanity checking on the requested file cycle.
@@ -280,6 +264,56 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 			return
 		}
 	} else {
+		gaveReadKey := len(fileSpecification.ReadKey) > 0
+		gaveWriteKey := len(fileSpecification.WriteKey) > 0
+		hasReadKey := len(fileSetInfo.ReadKey) > 0
+		hasWriteKey := len(fileSetInfo.WriteKey) > 0
+		if hasReadKey {
+			if !gaveReadKey {
+				// TODO E:246433 Read and/or write keys are needed.
+				resultCode |= 0_600000_000000
+			} else if fileSetInfo.ReadKey != fileSpecification.ReadKey {
+				// TODO E:253333 Incorrect read key.
+				resultCode |= 0_401000_000000
+				// TODO if ER CSF$, abort the run
+			}
+		} else {
+			if gaveReadKey {
+				// TODO E:253433 File is not cataloged with read key.
+				resultCode |= 0_400040_000000
+				// TODO if ER CSF$, abort the run
+			}
+		}
+
+		if hasWriteKey {
+			if !gaveWriteKey {
+				// TODO E:246433 Read and/or write keys are needed.
+				resultCode |= 0_600000_000000
+			} else if fileSetInfo.WriteKey != fileSpecification.WriteKey {
+				// TODO E:256633 Incorrect write key.
+				resultCode |= 0_400400_000000
+				// TODO if ER CSF$, abort the run
+			}
+		} else {
+			if gaveWriteKey {
+				// E:256733 File is not cataloged with write key.
+				resultCode |= 0_400020_000000
+				// TODO if ER CSF$, abort the run
+			}
+		}
+
+		if resultCode&0_400000_000000 != 0 {
+			return
+		}
+
+		/*
+			E:242533 File cycle out of range.
+			E:242633 Cannot catalog file because read or write access not allowed.
+			E:243233 Creation of file would require illegal dropping of private file.
+			E:244433 File is already catalogued.
+			E:253733 Relative F-cycle conflict.
+		*/
+
 		if fileSpecification.AbsoluteCycle != nil {
 			// TODO
 			// If a file is created by its absolute cycle and the absolute cycle is not the next numerically sequential
@@ -296,10 +330,15 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 		} else {
 			// We're here with a file set but no cycle spec on a @CAT request. That won't fly.
 			facResult.PostMessage(kexec.FacStatusFileAlreadyCataloged, nil)
-			resultCode = 0_500000_000000
-			return
+			resultCode |= 0_500000_000000
 		}
 	}
+
+	if resultCode & 0_400000_000000 != 0 {
+		return
+	}
+
+	// TODO call mfd services to create the file
 
 	return nil, 0 // TODO
 }
@@ -315,7 +354,6 @@ func (mgr *FacilitiesManager) catalogRemovableFile(
 ) (facResult *kexec.FacStatusResult, resultCode uint64) {
 	//	For Mass Storage Files
 	//		@CAT[,options] filename[,type/reserve/granule/maximum,pack-id-1/.../pack-id-n,,,ACR-name]
-	//	maximum of 6 fields in argument
 	//	options include
 	//		B: save on checkpoint
 	//		G: guarded file
@@ -370,7 +408,6 @@ func (mgr *FacilitiesManager) catalogTapeFile(
 	//			format/data-converter/block-numbering/data-compression/
 	//			buffered-write/expanded-buffer,reel-1/reel-2/.../reel-n,
 	//			expiration-period/mmspec,,ACR-name,CTL-pool]
-	//	maximum of 7 fields in argument
 	//	options include
 	//		E: even parity (not supported)
 	//		G: guarded file
