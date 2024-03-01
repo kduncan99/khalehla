@@ -124,6 +124,7 @@ func (mgr *FacilitiesManager) assignFixedFile(
 	fileSetInfo *mfdMgr.FileSetInfo,
 	mnemonic string,
 	usage config.EquipmentUsage,
+	sourceIsExecRequest bool,
 ) (facResult *kexec.FacStatusResult, resultCode uint64) {
 	return nil, 0 // TODO
 }
@@ -137,6 +138,7 @@ func (mgr *FacilitiesManager) assignRemovableFile(
 	fileSetInfo *mfdMgr.FileSetInfo,
 	mnemonic string,
 	usage config.EquipmentUsage,
+	sourceIsExecRequest bool,
 ) (facResult *kexec.FacStatusResult, resultCode uint64) {
 	return nil, 0 // TODO
 }
@@ -150,6 +152,7 @@ func (mgr *FacilitiesManager) assignTapeFile(
 	fileSetInfo *mfdMgr.FileSetInfo,
 	mnemonic string,
 	usage config.EquipmentUsage,
+	sourceIsExecRequest bool,
 ) (facResult *kexec.FacStatusResult, resultCode uint64) {
 	return nil, 0 // TODO
 }
@@ -159,13 +162,14 @@ func (mgr *FacilitiesManager) assignTapeFile(
 // Caller should immediately check whether the exec has stopped upon return.
 func (mgr *FacilitiesManager) catalogFixedFile(
 	exec kexec.IExec,
-	rce *kexec.RunControlEntry,
+	rce kexec.RunControlEntry,
 	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
 	mnemonic string,
 	usage config.EquipmentUsage,
+	sourceIsExecRequest bool,
 ) (facResult *kexec.FacStatusResult, resultCode uint64) {
 	//	For Mass Storage Files
 	//		@CAT[,options] filename[,type/reserve/granule/maximum,pack-id-1/.../pack-id-n,,,ACR-name]
@@ -177,12 +181,13 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 	//		V: file will not be unloaded
 	//		W: make the file write-only
 	//		Z: run should not be held (probably only happens on removable when the pack is not mounted)
+	//			I'm unaware of any situation where cataloging a fixed file would result in a hold.
 	facResult = kexec.NewFacResult()
 	resultCode = 0
 
 	allowedOpts := uint64(kexec.BOption | kexec.GOption | kexec.POption |
 		kexec.ROption | kexec.VOption | kexec.WOption | kexec.ZOption)
-	if !rce.CheckIllegalOptions(optionWord, allowedOpts, facResult, rce.IsExec) {
+	if !checkIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
 		resultCode |= 0_600000_000000
 	}
 
@@ -255,37 +260,47 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 		gaveWriteKey := len(fileSpecification.WriteKey) > 0
 		hasReadKey := len(fileSetInfo.ReadKey) > 0
 		hasWriteKey := len(fileSetInfo.WriteKey) > 0
+		needsMsg := false
 		if hasReadKey {
 			if !gaveReadKey {
-				// TODO E:246433 Read and/or write keys are needed.
+				facResult.PostMessage(kexec.FacStatusReadWriteKeysNeeded, nil)
+				needsMsg = true
 				resultCode |= 0_600000_000000
 			} else if fileSetInfo.ReadKey != fileSpecification.ReadKey {
-				// TODO E:253333 Incorrect read key.
+				facResult.PostMessage(kexec.FacStatusIncorrectReadKey, nil)
 				resultCode |= 0_401000_000000
-				// TODO if ER CSF$, abort the run
+				if sourceIsExecRequest {
+					rce.PostContingencyWithAuxiliary(017, 0, 0, 015)
+				}
 			}
 		} else {
 			if gaveReadKey {
-				// TODO E:253433 File is not cataloged with read key.
+				facResult.PostMessage(kexec.FacStatusFileNotCatalogedWithReadKey, nil)
 				resultCode |= 0_400040_000000
-				// TODO if ER CSF$, abort the run
+				if sourceIsExecRequest {
+					rce.PostContingencyWithAuxiliary(017, 0, 0, 015)
+				}
 			}
 		}
 
 		if hasWriteKey {
-			if !gaveWriteKey {
-				// TODO E:246433 Read and/or write keys are needed.
+			if !gaveWriteKey && !needsMsg {
+				facResult.PostMessage(kexec.FacStatusReadWriteKeysNeeded, nil)
 				resultCode |= 0_600000_000000
 			} else if fileSetInfo.WriteKey != fileSpecification.WriteKey {
-				// TODO E:256633 Incorrect write key.
+				facResult.PostMessage(kexec.FacStatusIncorrectWriteKey, nil)
 				resultCode |= 0_400400_000000
-				// TODO if ER CSF$, abort the run
+				if sourceIsExecRequest {
+					rce.PostContingencyWithAuxiliary(017, 0, 0, 015)
+				}
 			}
 		} else {
 			if gaveWriteKey {
-				// E:256733 File is not cataloged with write key.
+				facResult.PostMessage(kexec.FacStatusFileNotCatalogedWithWriteKey, nil)
 				resultCode |= 0_400020_000000
-				// TODO if ER CSF$, abort the run
+				if sourceIsExecRequest {
+					rce.PostContingencyWithAuxiliary(017, 0, 0, 015)
+				}
 			}
 		}
 
@@ -305,15 +320,21 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 			// TODO
 			// If a file is created by its absolute cycle and the absolute cycle is not the next numerically sequential
 			// absolute F-cycle available, the sequence of F-cycles is updated to point at the newly created F-cycle.
-			// In addition, a buffer of noncataloged F-cycles exists between the newly cataloged F-cycle and the
+			// In addition, a buffer of non-cataloged F-cycles exists between the newly cataloged F-cycle and the
 			// previously cataloged F-cycles. This increases the F-cycle range by more than 1.
 		} else if fileSpecification.RelativeCycle != nil {
+			// Is there already a +1?
+			if fileSetInfo.PlusOneExists {
+				// TODO
+			}
+
 			// TODO
 			// To create the next sequential absolute F-cycle, you can use the relative specification +1.
 			// If files have been deleted, the relative specification +1 creates the highest numbered deleted F-cycle.
 			// When this +1 file is cataloged (by freeing the file or by run termination), its relative F-cycle number
 			// is set to 0 and other existing files of the set have their relative F-cycle numbers decreased by 1,
 			// thus maintaining consecutive relative numbering.
+			// *** what if highest deleted cycle is less than a non-deleted cycle? ***
 		} else {
 			// We're here with a file set but no cycle spec on a @CAT request. That won't fly.
 			facResult.PostMessage(kexec.FacStatusFileAlreadyCataloged, nil)
@@ -332,7 +353,7 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 			mfdMgr.FileTypeFixed,
 			fileSpecification.Qualifier,
 			fileSpecification.Filename,
-			rce.ProjectId,
+			rce.GetProjectId(),
 			fileSpecification.ReadKey,
 			fileSpecification.WriteKey)
 		if result == mfdMgr.MFDInternalError {
@@ -371,7 +392,7 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 		fileSetInfo.FileSetIdentifier,
 		absCycle,
 		relCycle,
-		rce.AccountId,
+		rce.GetAccountId(),
 		mnemonic,
 		descriptorFlags,
 		fileFlags,
@@ -391,13 +412,14 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 
 func (mgr *FacilitiesManager) catalogRemovableFile(
 	exec kexec.IExec,
-	rce *kexec.RunControlEntry,
+	rce kexec.RunControlEntry,
 	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
 	mnemonic string,
 	usage config.EquipmentUsage,
+	sourceIsExecRequest bool,
 ) (facResult *kexec.FacStatusResult, resultCode uint64) {
 	//	For Mass Storage Files
 	//		@CAT[,options] filename[,type/reserve/granule/maximum,pack-id-1/.../pack-id-n,,,ACR-name]
@@ -411,7 +433,7 @@ func (mgr *FacilitiesManager) catalogRemovableFile(
 	//		Z: run should not be held (probably only happens on removable when the pack is not mounted)
 	allowedOpts := uint64(kexec.BOption | kexec.GOption | kexec.POption |
 		kexec.ROption | kexec.VOption | kexec.WOption | kexec.ZOption)
-	if !rce.CheckIllegalOptions(optionWord, allowedOpts, facResult, rce.IsExec) {
+	if !checkIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
 		// TODO
 	}
 
@@ -443,13 +465,14 @@ func (mgr *FacilitiesManager) catalogRemovableFile(
 
 func (mgr *FacilitiesManager) catalogTapeFile(
 	exec kexec.IExec,
-	rce *kexec.RunControlEntry,
+	rce kexec.RunControlEntry,
 	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
 	mnemonic string,
 	usage config.EquipmentUsage,
+	sourceIsExecRequest bool,
 ) (facResult *kexec.FacStatusResult, resultCode uint64) {
 	//	For Tape Files
 	//		@CAT,options filename,type[/units/log/noise/processor/tape/
@@ -473,37 +496,50 @@ func (mgr *FacilitiesManager) catalogTapeFile(
 	allowedOpts := uint64(kexec.EOption|kexec.GOption|kexec.HOption|kexec.JOption|
 		kexec.LOption|kexec.MOption|kexec.OOption) | kexec.POption | kexec.ROption |
 		kexec.SOption | kexec.VOption | kexec.WOption | kexec.ZOption
-	if !rce.CheckIllegalOptions(optionWord, allowedOpts, facResult, rce.IsExec) {
+	if !checkIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
 		// TODO
 	}
 
 	return nil, 0 // TODO
 }
 
-func (mgr *FacilitiesManager) fallOver(
-	rce *kexec.RunControlEntry,
-	logMessage string,
+// checkIllegalOptions compares the given options word to the allowed options word,
+// producing a fac message for each option set in the given word which does not appear in the allowed word.
+// Returns true if no such instances were found, else false
+// If not ok and the source is an ER CSF$/ACSF$/CSI$, we post a contingency
+func checkIllegalOptions(
+	rce kexec.RunControlEntry,
+	givenOptions uint64,
+	allowedOptions uint64,
 	facResult *kexec.FacStatusResult,
-	fsCode kexec.FacStatusCode,
-	messageParameters []string,
-) {
-	log.Printf("%v:%v", rce.RunId, logMessage)
-	facResult.PostMessage(fsCode, messageParameters)
-}
+	sourceIsExec bool,
+) bool {
+	bit := uint64(kexec.AOption)
+	letter := 'A'
+	ok := true
 
-func (mgr *FacilitiesManager) fallOverWithContingency(
-	rce *kexec.RunControlEntry,
-	logMessage string,
-	facResult *kexec.FacStatusResult,
-	fsCode kexec.FacStatusCode,
-	messageParameters []string,
-	contingencyType kexec.ContingencyType,
-	contingencyErrorType uint,
-	contingencyErrorCode uint,
-) {
-	log.Printf("%v:%v", rce.RunId, logMessage)
-	rce.PostContingency(contingencyType, contingencyErrorType, contingencyErrorCode)
-	facResult.PostMessage(fsCode, messageParameters)
+	for {
+		if bit&givenOptions != 0 && bit&allowedOptions == 0 {
+			param := string(letter)
+			facResult.PostMessage(kexec.FacStatusIllegalOption, []string{param})
+			ok = false
+		}
+
+		if bit == kexec.ZOption {
+			break
+		} else {
+			letter++
+			bit >>= 1
+		}
+	}
+
+	if !ok {
+		if sourceIsExec {
+			rce.PostContingency(012, 04, 040)
+		}
+	}
+
+	return ok
 }
 
 // selectEquipmentModel accepts an equipment mnemonic (likely from a control statement)

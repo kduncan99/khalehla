@@ -5,10 +5,10 @@
 package facilitiesMgr
 
 import (
-	"fmt"
 	"khalehla/kexec"
 	"khalehla/kexec/mfdMgr"
 	"khalehla/pkg"
+	"log"
 )
 
 func (mgr *FacilitiesManager) AssignFile() (kexec.FacStatusResult, bool) {
@@ -38,10 +38,11 @@ func (mgr *FacilitiesManager) AssignFile() (kexec.FacStatusResult, bool) {
 //	[3][0] blank or expiration-period
 //	[3][1] blank or mmspec
 //	[4]    blank
-//	[5][0] ACR-name
+//	[5][0] ACR-name (we don't do ACRs yet)
 //	[6][0] blank or CTL-pool
 func (mgr *FacilitiesManager) CatalogFile(
-	rce *kexec.RunControlEntry,
+	rce kexec.RunControlEntry,
+	sourceIsExecRequest bool,
 	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
@@ -52,10 +53,16 @@ func (mgr *FacilitiesManager) CatalogFile(
 	facResult = kexec.NewFacResult()
 	resultCode = 0
 
+	if fileSpecification.RelativeCycle != nil && *fileSpecification.RelativeCycle < 0 {
+		facResult.PostMessage(kexec.FacStatusRelativeFCycleConflict, nil)
+		resultCode |= 0_400000_000040
+		return
+	}
+
 	// See if there is already a fileset
 	mm := mgr.exec.GetMFDManager().(*mfdMgr.MFDManager)
-	effectiveQual := rce.GetEffectiveQualifier(fileSpecification)
-	fsIdent, mfdResult := mm.GetFileSetIdentifier(effectiveQual, fileSpecification.Filename)
+	effectiveQualifier := kexec.GetEffectiveQualifier(rce, fileSpecification)
+	fsIdent, mfdResult := mm.GetFileSetIdentifier(effectiveQualifier, fileSpecification.Filename)
 	if mfdResult == mfdMgr.MFDInternalError {
 		return
 	}
@@ -71,23 +78,18 @@ func (mgr *FacilitiesManager) CatalogFile(
 	}
 
 	if len(mnemonic) > 6 {
-		mgr.fallOver(rce,
-			fmt.Sprintf("Mnemonic %v too long", mnemonic),
-			facResult,
-			kexec.FacStatusAssignMnemonicTooLong,
-			[]string{mnemonic})
+		log.Printf("%v:Mnemonic %v too long", rce.GetRunId(), mnemonic)
+		facResult.PostMessage(kexec.FacStatusAssignMnemonicTooLong, []string{mnemonic})
+		resultCode |= 0_600000_000000
 		return
 	}
 
 	models, usage, ok := mgr.selectEquipmentModel(mnemonic, fsInfo)
 	if !ok {
 		// This isn't going to work for us.
-		resultCode = 0_600000_000000
-		mgr.fallOver(rce,
-			fmt.Sprintf("Mnemonic %v not configured", mnemonic),
-			facResult,
-			kexec.FacStatusMnemonicIsNotConfigured,
-			[]string{mnemonic})
+		log.Printf("%v:Mnemonic %v not configured", rce.GetRunId(), mnemonic)
+		facResult.PostMessage(kexec.FacStatusMnemonicIsNotConfigured, []string{mnemonic})
+		resultCode |= 0_600000_000000
 		return
 	}
 
@@ -111,16 +113,16 @@ func (mgr *FacilitiesManager) CatalogFile(
 	}
 
 	if fileType == mfdMgr.FileTypeFixed {
-		return mgr.catalogFixedFile(mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, mnemonic, usage)
+		return mgr.catalogFixedFile(mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, mnemonic, usage, sourceIsExecRequest)
 	} else if fileType == mfdMgr.FileTypeRemovable {
-		return mgr.catalogRemovableFile(mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, mnemonic, usage)
+		return mgr.catalogRemovableFile(mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, mnemonic, usage, sourceIsExecRequest)
 	} else { // fileType == kexec.FileTypeTape
-		return mgr.catalogTapeFile(mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, mnemonic, usage)
+		return mgr.catalogTapeFile(mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, mnemonic, usage, sourceIsExecRequest)
 	}
 }
 
 func (mgr *FacilitiesManager) FreeFile(
-	rce *kexec.RunControlEntry,
+	rce kexec.RunControlEntry,
 	fileSpecification kexec.FileSpecification,
 	options pkg.Word36,
 ) (kexec.FacStatusResult, bool) {

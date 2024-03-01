@@ -21,7 +21,7 @@ const (
 
 type handlerPacket struct {
 	exec                kexec.IExec
-	rce                 *kexec.RunControlEntry
+	rce                 kexec.RunControlEntry
 	isTip               bool
 	source              controlStatementSource
 	sourceIsExecRequest bool
@@ -44,7 +44,7 @@ type ParsedControlStatement struct {
 // as well as a more generic resultCode, suitable for return in A0 from ER CSF$/ACSF$.
 func HandleControlStatement(
 	exec kexec.IExec,
-	rce *kexec.RunControlEntry,
+	rce kexec.RunControlEntry,
 	source controlStatementSource,
 	pcs *ParsedControlStatement,
 ) (facResult *kexec.FacStatusResult, resultCode uint64) {
@@ -52,7 +52,7 @@ func HandleControlStatement(
 	pkt := handlerPacket{
 		exec:                exec,
 		rce:                 rce,
-		isTip:               rce.IsTIPTransaction(),
+		isTip:               rce.IsTIP(),
 		source:              source,
 		sourceIsExecRequest: source == CSTSourceERCSF || source == CSTSourceERCSI,
 	}
@@ -60,8 +60,8 @@ func HandleControlStatement(
 	switch pcs.mnemonic {
 	case "ADD":
 		if pkt.isTip || source == CSTSourceERCSI {
-			log.Printf("%v:CS '%v' not allowed for TIP or ER CSI$", rce.RunId, pcs.originalStatement)
-			rce.PostContingency(kexec.ContingencyErrorMode, 04, 042)
+			log.Printf("%v:CS '%v' not allowed for TIP or ER CSI$", rce.GetRunId(), pcs.originalStatement)
+			rce.PostContingency(012, 04, 042)
 
 			facResult = kexec.NewFacResult()
 			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
@@ -75,8 +75,8 @@ func HandleControlStatement(
 
 	case "BRKPT":
 		if pkt.isTip || source == CSTSourceERCSI {
-			log.Printf("%v:CS '%v' not allowed for TIP or ER CSI$", rce.RunId, pcs.originalStatement)
-			rce.PostContingency(kexec.ContingencyErrorMode, 04, 042)
+			log.Printf("%v:CS '%v' not allowed for TIP or ER CSI$", rce.GetRunId(), pcs.originalStatement)
+			rce.PostContingency(012, 04, 042)
 
 			facResult = kexec.NewFacResult()
 			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
@@ -90,8 +90,8 @@ func HandleControlStatement(
 
 	case "@CKPT":
 		if pkt.isTip || source == CSTSourceERCSI {
-			log.Printf("%v:CS '%v' not allowed for TIP or ER CSI$", rce.RunId, pcs.originalStatement)
-			rce.PostContingency(kexec.ContingencyErrorMode, 04, 042)
+			log.Printf("%v:CS '%v' not allowed for TIP or ER CSI$", rce.GetRunId(), pcs.originalStatement)
+			rce.PostContingency(012, 04, 042)
 
 			facResult = kexec.NewFacResult()
 			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
@@ -105,8 +105,8 @@ func HandleControlStatement(
 
 	case "@LOG":
 		if source == CSTSourceERCSI {
-			log.Printf("%v:CS '%v' not allowed for ER CSI$", rce.RunId, pcs.originalStatement)
-			rce.PostContingency(kexec.ContingencyErrorMode, 04, 042)
+			log.Printf("%v:CS '%v' not allowed for ER CSI$", rce.GetRunId(), pcs.originalStatement)
+			rce.PostContingency(012, 04, 042)
 
 			facResult = kexec.NewFacResult()
 			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
@@ -126,9 +126,9 @@ func HandleControlStatement(
 
 	case "@START":
 		if source == CSTSourceERCSI {
-			log.Printf("%v:CS '%v' not allowed for ER CSI$", rce.RunId, pcs.originalStatement)
+			log.Printf("%v:CS '%v' not allowed for ER CSI$", rce.GetRunId(), pcs.originalStatement)
 
-			rce.PostContingency(kexec.ContingencyErrorMode, 04, 042)
+			rce.PostContingency(012, 04, 042)
 			facResult = kexec.NewFacResult()
 			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
@@ -138,9 +138,9 @@ func HandleControlStatement(
 
 	case "@SYM":
 		if source == CSTSourceERCSI {
-			log.Printf("%v:CS '%v' not allowed for ER CSI$", rce.RunId, pcs.originalStatement)
+			log.Printf("%v:CS '%v' not allowed for ER CSI$", rce.GetRunId(), pcs.originalStatement)
 
-			rce.PostContingency(kexec.ContingencyErrorMode, 04, 042)
+			rce.PostContingency(012, 04, 042)
 			facResult = kexec.NewFacResult()
 			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
@@ -150,9 +150,9 @@ func HandleControlStatement(
 
 	case "@SYMCN":
 		if pkt.isTip || source == CSTSourceERCSI {
-			log.Printf("%v:CS '%v' not allowed for TIP or ER CSI$", rce.RunId, pcs.originalStatement)
+			log.Printf("%v:CS '%v' not allowed for TIP or ER CSI$", rce.GetRunId(), pcs.originalStatement)
 
-			rce.PostContingency(kexec.ContingencyErrorMode, 04, 042)
+			rce.PostContingency(012, 04, 042)
 			facResult = kexec.NewFacResult()
 			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
@@ -165,8 +165,8 @@ func HandleControlStatement(
 	}
 
 	// syntax error
-	log.Printf("%v:CS '%v' invalid control statement", rce.RunId, pcs.originalStatement)
-	rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
+	log.Printf("%v:CS '%v' invalid control statement", rce.GetRunId(), pcs.originalStatement)
+	rce.PostContingency(012, 04, 040)
 
 	facResult = kexec.NewFacResult()
 	facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
@@ -198,7 +198,7 @@ func HandleControlStatement(
 // fully-composed multi-line statement passed to us as a single string.
 // We do not check image length here - that must be dealt with at a higher level.
 func ParseControlStatement(
-	rce *kexec.RunControlEntry,
+	rce kexec.RunControlEntry,
 	statement string,
 ) (pcs *ParsedControlStatement, facResult *kexec.FacStatusResult, resultCode uint64) {
 	pcs = &ParsedControlStatement{
@@ -222,8 +222,8 @@ func ParseControlStatement(
 	p := kexec.NewParser(working)
 	if p.IsAtEnd() || !p.ParseSpecificCharacter('@') {
 		// does not start with '@' - invalid statement
-		log.Printf("%v:CS Syntax Error '%v' does not start with @", rce.RunId, statement)
-		rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
+		log.Printf("%v:CS Syntax Error '%v' does not start with @", rce.GetRunId(), statement)
+		rce.PostContingency(012, 04, 040)
 
 		facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
 		resultCode = 0_400000_000000
@@ -348,9 +348,9 @@ func cleanOptions(pkt *handlerPacket) (result uint64, ok bool) {
 
 	for _, opt := range strings.ToUpper(pkt.pcs.optionsFields[0]) {
 		if opt < 'A' || opt > 'Z' {
-			log.Printf("%v:CS Syntax Error in options field", pkt.rce.RunId)
+			log.Printf("%v:CS Syntax Error in options field", pkt.rce.GetRunId())
 			if pkt.sourceIsExecRequest {
-				pkt.rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
+				pkt.rce.PostContingency(012, 04, 040)
 			}
 
 			ok = false

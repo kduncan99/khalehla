@@ -8,21 +8,9 @@ import (
 	"fmt"
 )
 
-var defaultAssignMnemonic = "F"
-var defaultLogIOs = false
-var defaultMasterAccountId = ""
-var defaultMaxGranules = uint64(256)
-var defaultOverheadAccountId = "INSTALLATION"
-var defaultOverheadUserId = "INSTALLATION"
-var defaultPrivilegedAccountId = "123456"
+var defaultMasterAccount = ""
+var defaultMaxGranules = 256
 var defaultSecurityOfficerUserId = ""
-var defaultSystemAccountId = "SYSTEM"
-var defaultSystemProjectId = "SYSTEM"
-var defaultSystemQualifier = "SYS$"
-var defaultSystemReadKey = "RDKEY"
-var defaultSystemRunId = "EXEC-8"
-var defaultSystemUserId = "EXEC-8"
-var defaultSystemWriteKey = "WRKEY"
 
 type EquipmentUsage uint
 
@@ -39,22 +27,25 @@ type EquipmentEntry struct {
 }
 
 type Configuration struct {
-	AssignMnemonic      string
-	LogIOs              bool
-	MasterAccountId     string
-	MaxGranules         uint64
-	OverheadAccountId   string
-	OverheadUserId      string
-	PrivilegedAccountId string
-	SecurityOfficerId   string
-	SystemAccountId     string
-	SystemProjectId     string
-	SystemQualifier     string
-	SystemReadKey       string
-	SystemRunId         string
-	SystemUserId        string
-	SystemWriteKey      string
-	EquipmentTable      map[string]*EquipmentEntry // key is mnemonic
+	//AssignMnemonic      string
+	//LogIOs              bool
+	//MasterAccountId     string
+	//MaxGranules         uint64
+	//OverheadAccountId   string
+	//OverheadUserId      string
+	//PrivilegedAccountId string
+	//SecurityOfficerId   string
+	//SystemAccountId     string
+	//SystemProjectId     string
+	//SystemQualifier     string
+	//SystemReadKey       string
+	//SystemRunId         string
+	//SystemUserId        string
+	//SystemWriteKey      string
+	MasterAccountId       string                     // could be empty, in which case operator is prompted when ACCOUNT$R1 is created
+	MaxGranules           uint64                     // max granules if not specified on @ASG or @CAT
+	SecurityOfficerUserId string                     // could be empty, in which case operator is prompted at boot time
+	EquipmentTable        map[string]*EquipmentEntry // key is mnemonic
 
 	// TODO -- and this is not exhaustive...
 	// RESDUCLR (residue_clear) zeroes tracks when allocating them
@@ -67,10 +58,13 @@ type Configuration struct {
 	// LIBINTRES (ditto) initial reserve [0]
 	// LIBMAXSIZ (ditto) max size [99999]
 	// MAXCRD max cards [100]
-	// MAXGRN already done
+	// MAXGRN max granules if not specified
 	// MAXPAG max pages [100]
 	// MDFALT deafult sector-addressable mnemonic ['F']
 	// MSTRACC master account [''] when blank and ACCOUNT$R1 is being initialized, prompt operator
+	// OVRACC account ID for overhead runs (e.g., SYS, ROLBAK, ROLOUT)
+	// OVRUSR user ID for overhead runs
+	// PRIVAC '123456' privileged account number prevents tape label blocks from being read
 	// RELUNUSEDREM release unused allocated space on removable packs at @FREE
 	// RELUNUSEDRES release unused initial reserve at @FREE for fixed
 	// RUNASGMNE SYS$*RUN$ assign mnemonic
@@ -103,21 +97,9 @@ type Configuration struct {
 func NewConfiguration() *Configuration {
 	cfg := &Configuration{}
 
-	cfg.AssignMnemonic = defaultAssignMnemonic
-	cfg.LogIOs = defaultLogIOs
-	cfg.MasterAccountId = defaultMasterAccountId
-	cfg.MaxGranules = defaultMaxGranules
-	cfg.OverheadAccountId = defaultOverheadAccountId
-	cfg.OverheadUserId = defaultOverheadUserId
-	cfg.PrivilegedAccountId = defaultPrivilegedAccountId
-	cfg.SecurityOfficerId = defaultSecurityOfficerUserId
-	cfg.SystemAccountId = defaultSystemAccountId
-	cfg.SystemProjectId = defaultSystemProjectId
-	cfg.SystemQualifier = defaultSystemQualifier
-	cfg.SystemReadKey = defaultSystemReadKey
-	cfg.SystemRunId = defaultSystemRunId
-	cfg.SystemUserId = defaultSystemUserId
-	cfg.SystemWriteKey = defaultSystemWriteKey
+	cfg.MasterAccountId = defaultMasterAccount
+	cfg.SecurityOfficerUserId = defaultSecurityOfficerUserId
+
 	cfg.EquipmentTable = make(map[string]*EquipmentEntry)
 
 	cfg.importEquipmentEntry(&EquipmentEntry{

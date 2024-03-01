@@ -34,7 +34,7 @@ func handleCat(pkt *handlerPacket) (facResult *kexec.FacStatusResult, resultCode
 	fileSpec, fsCode, ok := kexec.ParseFileSpecification(p)
 	if !ok {
 		if pkt.sourceIsExecRequest {
-			pkt.rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
+			pkt.rce.PostContingency(012, 04, 040)
 		}
 		facResult.PostMessage(fsCode, []string{})
 		resultCode = 0_600000_000000
@@ -42,5 +42,5 @@ func handleCat(pkt *handlerPacket) (facResult *kexec.FacStatusResult, resultCode
 	}
 
 	fm := pkt.exec.GetFacilitiesManager().(*facilitiesMgr.FacilitiesManager)
-	return fm.CatalogFile(pkt.rce, fileSpec, optWord, pkt.pcs.operandFields)
+	return fm.CatalogFile(pkt.rce, pkt.sourceIsExecRequest, fileSpec, optWord, pkt.pcs.operandFields)
 }

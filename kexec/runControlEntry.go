@@ -4,6 +4,8 @@
 
 package kexec
 
+import "khalehla/pkg"
+
 /*
 TIP:
 When TIP initializes a TIP program or a program connected to TIP, control parameters are inserted into the
@@ -24,100 +26,35 @@ scw,T3 transaction program state
 
 // RunControlEntry is the portion of the canonical PCT which contains information specific to a thread,
 // but not to a program or any activities of the program.
-type RunControlEntry struct {
-	IsExec           bool
-	RunId            string
-	OriginalRunId    string
-	AccountId        string
-	ProjectId        string
-	Userid           string
-	DefaultQualifier string
-	ImpliedQualifier string
-	RunConditionWord RunConditionWord
-	FacilityItems    []FacilitiesItem
-	UseItems         map[string]UseItem // key is internal file Name
-	// TODO Program Control Entry
+type RunControlEntry interface {
+	GetAccountId() string
+	GetDefaultQualifier() string
+	GetImpliedQualifier() string
+	GetOriginalRunId() string
+	GetProjectId() string
+	GetRunConditionWord() uint64
+	GetRunId() string
+	GetUserId() string
+	IsBatch() bool
+	IsDemand() bool
+	IsExec() bool
+	IsTIP() bool
+	PostContingency(contingencyType ContingencyType, errorType uint, errorCode uint)
+	PostContingencyWithAuxiliary(contingencyType ContingencyType, errorType uint, errorCode uint, aux pkg.Word36)
+	PostToTailSheet(message string)
+	SetDefaultQualifier(string)
+	SetImpliedQualifier(string)
+	SetRunConditionWord(uint64)
 }
 
-func NewRunControlEntry(
-	runId string,
-	originalRunId string,
-	accountId string,
-	projectId string,
-	userId string) *RunControlEntry {
-	return &RunControlEntry{
-		IsExec:           false,
-		RunId:            runId,
-		OriginalRunId:    originalRunId,
-		AccountId:        accountId,
-		ProjectId:        projectId,
-		Userid:           userId,
-		DefaultQualifier: projectId,
-		ImpliedQualifier: projectId,
-		RunConditionWord: RunConditionWord{},
-		FacilityItems:    make([]FacilitiesItem, 0),
-		UseItems:         make(map[string]UseItem),
-	}
-}
-
-// CheckIllegalOptions compares the given options word to the allowed options word,
-// producing a fac message for each option set in the given word which does not appear in the allowed word.
-// Returns true if no such instances were found, else false
-// If not ok and the source is an ER CSF$/ACSF$/CSI$, we post a contingency
-func (rce *RunControlEntry) CheckIllegalOptions(
-	givenOptions uint64,
-	allowedOptions uint64,
-	facResult *FacStatusResult,
-	sourceIsExec bool,
-) bool {
-	bit := uint64(AOption)
-	letter := 'A'
-	ok := true
-
-	for {
-		if bit&givenOptions != 0 && bit&allowedOptions == 0 {
-			param := string(letter)
-			facResult.PostMessage(FacStatusIllegalOption, []string{param})
-			ok = false
-		}
-
-		if bit == ZOption {
-			break
-		} else {
-			letter++
-			bit >>= 1
-		}
-	}
-
-	if !ok {
-		if sourceIsExec {
-			rce.PostContingency(ContingencyErrorMode, 04, 040)
-		}
-	}
-
-	return ok
-}
-
-func (rce *RunControlEntry) GetEffectiveQualifier(fileSpec *FileSpecification) string {
+func GetEffectiveQualifier(rce RunControlEntry, fileSpec *FileSpecification) string {
 	if fileSpec.HasAsterisk {
 		if len(fileSpec.Qualifier) == 0 {
 			return fileSpec.Qualifier
 		} else {
-			return rce.ImpliedQualifier
+			return rce.GetImpliedQualifier()
 		}
 	} else {
-		return rce.DefaultQualifier
+		return rce.GetDefaultQualifier()
 	}
-}
-
-func (rce *RunControlEntry) IsTIPTransaction() bool {
-	return false // TODO
-}
-
-func (rce *RunControlEntry) PostContingency(contingencyType ContingencyType, errorType uint, errorCode uint) {
-	// TODO
-}
-
-func (rce *RunControlEntry) PrintToTailSheet(message string) {
-	// TODO
 }

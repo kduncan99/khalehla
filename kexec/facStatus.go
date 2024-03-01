@@ -47,10 +47,16 @@ const (
 	FacStatusFileAlreadyCataloged                    = 244433
 	FacStatusIllegalValueForGranularity              = 245233
 	FacStatusIllegalInitialReserve                   = 246333
+	FacStatusReadWriteKeysNeeded                     = 246433
 	FacStatusIllegalMaxGranules                      = 247333
 	FacStatusMaximumIsLessThanInitialReserve         = 247433
 	FacStatusPlacementFieldNotAllowed                = 252133
+	FacStatusIncorrectReadKey                        = 253333
+	FacStatusFileNotCatalogedWithReadKey             = 253433
+	FacStatusRelativeFCycleConflict                  = 253733
 	FacStatusUndefinedFieldOrSubfield                = 255733
+	FacStatusIncorrectWriteKey                       = 256633
+	FacStatusFileNotCatalogedWithWriteKey            = 256733
 	FacStatusDirectoryAndQualifierMayNotAppear       = 0262633
 	FacStatusDirectoryOrQualifierMustAppear          = 0263033
 )

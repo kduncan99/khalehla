@@ -37,7 +37,7 @@ func handleLog(pkt *handlerPacket) (facResult *kexec.FacStatusResult, resultCode
 	if len(text) == 0 {
 		log.Printf("%v:Missing log message '%v'", pkt.rce.RunId, pkt.pcs.originalStatement)
 		if pkt.sourceIsExecRequest {
-			pkt.rce.PostContingency(kexec.ContingencyErrorMode, 04, 040)
+			pkt.rce.PostContingency(kexec.ContingencyTypeErrorMode, 04, 040)
 		}
 
 		return nil, 0_600000_000000
