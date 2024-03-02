@@ -10,21 +10,27 @@ const (
 	_ IoFunction = iota
 	IofMount
 	IofPrep
-	IofReset
 	IofRead
 	IofReadLabel
+	IofReset
+	IofRewind
+	IofRewindAndUnload
 	IofUnmount
 	IofWrite
 	IofWriteLabel
+	IofWriteTapeMark
 )
 
 var IoFunctionTable = map[IoFunction]string{
-	IofMount:      "Mount",
-	IofPrep:       "Prep",
-	IofRead:       "Read",
-	IofReadLabel:  "ReadLabel",
-	IofReset:      "Reset",
-	IofUnmount:    "Unmount",
-	IofWrite:      "Write",
-	IofWriteLabel: "WriteLabel",
+	IofMount:           "Mount",
+	IofPrep:            "Prep",
+	IofRead:            "Read",
+	IofReadLabel:       "ReadLabel",
+	IofReset:           "Reset",
+	IofRewind:          "Rewind",
+	IofRewindAndUnload: "RewindUnload",
+	IofUnmount:         "Unmount",
+	IofWrite:           "Write",
+	IofWriteLabel:      "WriteLabel",
+	IofWriteTapeMark:   "WriteMark",
 }

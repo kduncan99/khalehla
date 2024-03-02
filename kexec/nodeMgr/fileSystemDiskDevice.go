@@ -80,6 +80,8 @@ func NewFileSystemDiskDevice(initialFileName *string) *FileSystemDiskDevice {
 	return dd
 }
 
+// TODO use SetIoStatus everywhere
+
 func (disk *FileSystemDiskDevice) GetNodeCategoryType() kexec.NodeCategoryType {
 	return kexec.NodeCategoryDevice
 }
@@ -121,31 +123,35 @@ func (disk *FileSystemDiskDevice) SetIsWriteProtected(flag bool) {
 }
 
 func (disk *FileSystemDiskDevice) StartIo(pkt IoPacket) {
+	// TODO need to do logging correctly
 	pkt.SetIoStatus(IosInProgress)
 
 	if pkt.GetNodeDeviceType() != disk.GetNodeDeviceType() {
 		pkt.SetIoStatus(IosInvalidNodeType)
-	}
+	} else if !disk.IsReady() {
+		pkt.SetIoStatus(IosDeviceIsNotReady)
+	} else {
 
-	switch pkt.GetIoFunction() {
-	case IofMount:
-		disk.doMount(pkt.(*DiskIoPacket))
-	case IofPrep:
-		disk.doPrep(pkt.(*DiskIoPacket))
-	case IofRead:
-		disk.doRead(pkt.(*DiskIoPacket))
-	case IofReadLabel:
-		disk.doReadLabel(pkt.(*DiskIoPacket))
-	case IofReset:
-		disk.doReset(pkt.(*DiskIoPacket))
-	case IofUnmount:
-		disk.doUnmount(pkt.(*DiskIoPacket))
-	case IofWrite:
-		disk.doWrite(pkt.(*DiskIoPacket))
-	case IofWriteLabel:
-		disk.doWriteLabel(pkt.(*DiskIoPacket))
-	default:
-		pkt.SetIoStatus(IosInvalidFunction)
+		switch pkt.GetIoFunction() {
+		case IofMount:
+			disk.doMount(pkt.(*DiskIoPacket))
+		case IofPrep:
+			disk.doPrep(pkt.(*DiskIoPacket))
+		case IofRead:
+			disk.doRead(pkt.(*DiskIoPacket))
+		case IofReadLabel:
+			disk.doReadLabel(pkt.(*DiskIoPacket))
+		case IofReset:
+			disk.doReset(pkt.(*DiskIoPacket))
+		case IofUnmount:
+			disk.doUnmount(pkt.(*DiskIoPacket))
+		case IofWrite:
+			disk.doWrite(pkt.(*DiskIoPacket))
+		case IofWriteLabel:
+			disk.doWriteLabel(pkt.(*DiskIoPacket))
+		default:
+			pkt.SetIoStatus(IosInvalidFunction)
+		}
 	}
 
 	if disk.Verbose {
@@ -436,6 +442,7 @@ func (disk *FileSystemDiskDevice) doUnmount(pkt *DiskIoPacket) {
 
 	disk.geometry = nil
 	disk.file = nil
+	disk.isReady = false
 	pkt.SetIoStatus(IosComplete)
 }
 

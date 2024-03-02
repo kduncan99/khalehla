@@ -7,14 +7,20 @@ package nodeMgr
 import (
 	"fmt"
 	"khalehla/kexec"
+	"khalehla/pkg"
 )
 
 type TapeIoPacket struct {
 	nodeId         kexec.NodeIdentifier
 	ioFunction     IoFunction
 	ioStatus       IoStatus
+	buffer         []pkg.Word36
 	fileName       string // for mount
 	writeProtected bool   // for mount
+}
+
+func (pkt *TapeIoPacket) GetBuffer() []pkg.Word36 {
+	return pkt.buffer
 }
 
 func (pkt *TapeIoPacket) GetNodeIdentifier() kexec.NodeIdentifier {
@@ -64,6 +70,14 @@ func NewTapeIoPacketMount(nodeId kexec.NodeIdentifier, fileName string, writePro
 	}
 }
 
+func NewTapeIoPacketRead(nodeId kexec.NodeIdentifier) *TapeIoPacket {
+	return &TapeIoPacket{
+		nodeId:     nodeId,
+		ioFunction: IofRead,
+		ioStatus:   IosNotStarted,
+	}
+}
+
 func NewTapeIoPacketReset(nodeId kexec.NodeIdentifier) *TapeIoPacket {
 	return &TapeIoPacket{
 		nodeId:     nodeId,
@@ -72,10 +86,43 @@ func NewTapeIoPacketReset(nodeId kexec.NodeIdentifier) *TapeIoPacket {
 	}
 }
 
+func NewTapeIoPacketRewind(nodeId kexec.NodeIdentifier) *TapeIoPacket {
+	return &TapeIoPacket{
+		nodeId:     nodeId,
+		ioFunction: IofRewind,
+		ioStatus:   IosNotStarted,
+	}
+}
+
+func NewTapeIoPacketRewindAndUnload(nodeId kexec.NodeIdentifier) *TapeIoPacket {
+	return &TapeIoPacket{
+		nodeId:     nodeId,
+		ioFunction: IofRewindAndUnload,
+		ioStatus:   IosNotStarted,
+	}
+}
+
 func NewTapeIoPacketUnmount(nodeId kexec.NodeIdentifier) *TapeIoPacket {
 	return &TapeIoPacket{
 		nodeId:     nodeId,
 		ioFunction: IofUnmount,
+		ioStatus:   IosNotStarted,
+	}
+}
+
+func NewTapeIoPacketWrite(nodeId kexec.NodeIdentifier, buffer []pkg.Word36) *TapeIoPacket {
+	return &TapeIoPacket{
+		nodeId:     nodeId,
+		ioFunction: IofWrite,
+		ioStatus:   IosNotStarted,
+		buffer:     buffer,
+	}
+}
+
+func NewTapeIoPacketWriteTapeMark(nodeId kexec.NodeIdentifier) *TapeIoPacket {
+	return &TapeIoPacket{
+		nodeId:     nodeId,
+		ioFunction: IofWriteTapeMark,
 		ioStatus:   IosNotStarted,
 	}
 }

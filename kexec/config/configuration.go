@@ -8,10 +8,6 @@ import (
 	"fmt"
 )
 
-var defaultMasterAccount = ""
-var defaultMaxGranules = 256
-var defaultSecurityOfficerUserId = ""
-
 type EquipmentUsage uint
 
 const (
@@ -27,23 +23,10 @@ type EquipmentEntry struct {
 }
 
 type Configuration struct {
-	//AssignMnemonic      string
-	//LogIOs              bool
-	//MasterAccountId     string
-	//MaxGranules         uint64
-	//OverheadAccountId   string
-	//OverheadUserId      string
-	//PrivilegedAccountId string
-	//SecurityOfficerId   string
-	//SystemAccountId     string
-	//SystemProjectId     string
-	//SystemQualifier     string
-	//SystemReadKey       string
-	//SystemRunId         string
-	//SystemUserId        string
-	//SystemWriteKey      string
-	MasterAccountId       string                     // could be empty, in which case operator is prompted when ACCOUNT$R1 is created
-	MaxGranules           uint64                     // max granules if not specified on @ASG or @CAT
+	MasterAccountId       string // could be empty, in which case operator is prompted when ACCOUNT$R1 is created
+	MaxGranules           uint64 // max granules if not specified on @ASG or @CAT
+	LogConsoleOn          bool
+	LogIOs                bool
 	SecurityOfficerUserId string                     // could be empty, in which case operator is prompted at boot time
 	EquipmentTable        map[string]*EquipmentEntry // key is mnemonic
 
@@ -57,6 +40,8 @@ type Configuration struct {
 	// LIBASGMNE SYS$*LIB$ assign mnemonic
 	// LIBINTRES (ditto) initial reserve [0]
 	// LIBMAXSIZ (ditto) max size [99999]
+	// LOGCONSOLEON [true]
+	// LOGIOS [false]
 	// MAXCRD max cards [100]
 	// MAXGRN max granules if not specified
 	// MAXPAG max pages [100]
@@ -97,8 +82,11 @@ type Configuration struct {
 func NewConfiguration() *Configuration {
 	cfg := &Configuration{}
 
-	cfg.MasterAccountId = defaultMasterAccount
-	cfg.SecurityOfficerUserId = defaultSecurityOfficerUserId
+	cfg.MasterAccountId = ""
+	cfg.MaxGranules = 256
+	cfg.LogConsoleOn = true
+	cfg.LogIOs = true // TODO false
+	cfg.SecurityOfficerUserId = ""
 
 	cfg.EquipmentTable = make(map[string]*EquipmentEntry)
 

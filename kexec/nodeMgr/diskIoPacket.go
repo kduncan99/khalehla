@@ -28,6 +28,10 @@ func (pkt *DiskIoPacket) GetBlockId() kexec.BlockId {
 	return pkt.blockId
 }
 
+func (pkt *DiskIoPacket) GetBuffer() []pkg.Word36 {
+	return pkt.buffer
+}
+
 func (pkt *DiskIoPacket) GetNodeIdentifier() kexec.NodeIdentifier {
 	return pkt.nodeId
 }

@@ -29,7 +29,7 @@ type Exec struct {
 	mfdMgr        kexec.IMFDManager
 	nodeMgr       kexec.INodeManager
 
-	runControlEntry *kexec.RunControlEntry
+	runControlEntry *ExecRunControlEntry
 	runControlTable map[string]*kexec.RunControlEntry // indexed by runid
 
 	jumpKeys []bool
@@ -170,7 +170,7 @@ func (e *Exec) GetPhase() kexec.ExecPhase {
 	return e.phase
 }
 
-func (e *Exec) GetRunControlEntry() *kexec.RunControlEntry {
+func (e *Exec) GetRunControlEntry() kexec.RunControlEntry {
 	return e.runControlEntry
 }
 

@@ -9,34 +9,41 @@ type IoStatus uint
 const (
 	_ IoStatus = iota
 	IosNotStarted
-	IosInProgress
 	IosComplete
-	IosSystemError
-	IosInternalError // usually means the Exec fell over
+	IosInProgress
 
 	IosDeviceDoesNotExist
 	IosDeviceIsDown
 	IosDeviceIsNotAccessible
-	IosInvalidFunction
-	IosNilBuffer
-	IosInvalidBufferSize
+	IosDeviceIsNotReady
+	IosEndOfFile
+	IosInternalError // usually means the Exec fell over
 	IosInvalidBlockId
+	IosInvalidBufferSize
+	IosInvalidFunction
 	IosInvalidNodeType
 	IosInvalidPackName
 	IosInvalidPrepFactor
+	IosInvalidTapeBlock
 	IosInvalidTrackCount
 	IosMediaAlreadyMounted
 	IosMediaNotMounted
+	IosNilBuffer
 	IosPackNotPrepped
+	IosReadNotAllowed
+	IosSystemError
 	IosWriteProtected
 )
 
 var IoStatusTable = map[IoStatus]string{
+	IosNotStarted:            "NotStarted",
 	IosComplete:              "Complete",
+	IosInProgress:            "InProgress",
 	IosDeviceDoesNotExist:    "DeviceDoesNotExist",
 	IosDeviceIsDown:          "DeviceIsDown",
 	IosDeviceIsNotAccessible: "DeviceNotAccessible",
-	IosInProgress:            "InProgress",
+	IosDeviceIsNotReady:      "DeviceNotReady",
+	IosEndOfFile:             "EndOfFile",
 	IosInternalError:         "InternalError",
 	IosInvalidBlockId:        "InvalidBlockId",
 	IosInvalidBufferSize:     "InvalidBufferSize",
@@ -44,12 +51,13 @@ var IoStatusTable = map[IoStatus]string{
 	IosInvalidNodeType:       "InvalidNodeType",
 	IosInvalidPackName:       "InvalidPackName",
 	IosInvalidPrepFactor:     "InvalidPrepFactor",
+	IosInvalidTapeBlock:      "InvalidTapeBlock",
 	IosInvalidTrackCount:     "InvalidTrackCount",
 	IosMediaAlreadyMounted:   "MediaAlreadyMounted",
 	IosMediaNotMounted:       "MediaNotMounted",
 	IosNilBuffer:             "NilBuffer",
-	IosNotStarted:            "NotStarted",
 	IosPackNotPrepped:        "PackNotPrepped",
+	IosReadNotAllowed:        "ReadNotAllowed",
 	IosSystemError:           "SystemError",
 	IosWriteProtected:        "WriteProtected",
 }

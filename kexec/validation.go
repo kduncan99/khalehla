@@ -86,3 +86,17 @@ func IsValidPrepFactor(prepFactor PrepFactor) bool {
 	return prepFactor == 28 || prepFactor == 56 || prepFactor == 112 || prepFactor == 224 ||
 		prepFactor == 448 || prepFactor == 896 || prepFactor == 1792
 }
+
+func IsValidReelNumber(name string) bool {
+	if len(name) < 1 || len(name) > 6 {
+		return false
+	}
+
+	for nx := 0; nx < len(name); nx++ {
+		if (name[nx] < 'A' || name[nx] > 'Z') && (name[nx] < '0' || name[nx] > '9') {
+			return false
+		}
+	}
+
+	return true
+}

@@ -8,7 +8,7 @@ type DiskAttributes struct {
 	Identifier    NodeIdentifier
 	Name          string
 	Status        FacNodeStatus
-	AssignedTo    *RunControlEntry
+	AssignedTo    RunControlEntry
 	PackLabelInfo *PackLabelInfo
 	IsPrepped     bool
 	IsFixed       bool
