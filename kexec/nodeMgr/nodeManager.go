@@ -74,13 +74,13 @@ func (mgr *NodeManager) Initialize() error {
 	mgr.channelInfos[chan0.GetNodeIdentifier()] = chan0
 	mgr.channelInfos[chan1.GetNodeIdentifier()] = chan1
 
-	fn1 := "resources/fix000.pack"
+	fn1 := "media/fix000.pack"
 	disk0 := NewDiskDeviceInfo("DISK0", &fn1)
-	fn2 := "resources/fix001.pack"
+	fn2 := "media/fix001.pack"
 	disk1 := NewDiskDeviceInfo("DISK1", &fn2)
-	fn3 := "resources/fix002.pack"
+	fn3 := "media/fix002.pack"
 	disk2 := NewDiskDeviceInfo("DISK2", &fn3)
-	fn4 := "resources/rem000.pack"
+	fn4 := "media/rem000.pack"
 	disk3 := NewDiskDeviceInfo("DISK3", &fn4)
 
 	tape0 := NewTapeDeviceInfo("TAPE0")
