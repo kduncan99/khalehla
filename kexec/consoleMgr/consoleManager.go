@@ -101,9 +101,9 @@ func (mgr *ConsoleManager) Stop() {
 // The ConsoleManager thread will handle actually sending the message to all the consoles if/as appropriate.
 func (mgr *ConsoleManager) SendReadOnlyMessage(message *kexec.ConsoleReadOnlyMessage) {
 	// Log it and put it in the RCE tail sheet (unless it is the Exec)
-	log.Printf("ConsMgr:Queueing %v*%v", message.Source.RunId, message.Text)
-	if !message.Source.IsExec {
-		message.Source.PrintToTailSheet(message.Text)
+	log.Printf("ConsMgr:Queueing %v*%v", message.Source.GetRunId(), message.Text)
+	if !message.Source.IsExec() {
+		message.Source.PostToTailSheet(message.Text)
 	}
 
 	mgr.mutex.Lock()
@@ -116,9 +116,9 @@ func (mgr *ConsoleManager) SendReadOnlyMessage(message *kexec.ConsoleReadOnlyMes
 // During the waiting period, the ConsoleManager thread will send the message, then poll for a reply as necessary.
 func (mgr *ConsoleManager) SendReadReplyMessage(message *kexec.ConsoleReadReplyMessage) error {
 	// Log it and put it in the RCE tail sheet (unless it is the Exec)
-	log.Printf("ConsMgr:Queueing n-%v:%v", message.Source.RunId, message.Text)
-	if !message.Source.IsExec {
-		message.Source.PrintToTailSheet(message.Text)
+	log.Printf("ConsMgr:Queueing n-%v:%v", message.Source.GetRunId(), message.Text)
+	if !message.Source.IsExec() {
+		message.Source.PostToTailSheet(message.Text)
 	}
 
 	tracker := mgr.newReadReplyTracker(message)
@@ -164,7 +164,7 @@ func (mgr *ConsoleManager) checkForReadOnlyMessages() bool {
 		// Construct output text
 		text := ""
 		if !msg.DoNotEmitRunId {
-			text = msg.Source.RunId + "*"
+			text = msg.Source.GetRunId() + "*"
 		}
 		text += msg.Text
 
@@ -223,7 +223,7 @@ func (mgr *ConsoleManager) checkForReadReplyMessages() bool {
 			// Construct output text
 			text := ""
 			if !tracker.message.DoNotEmitRunId {
-				text = tracker.message.Source.RunId + "*"
+				text = tracker.message.Source.GetRunId() + "*"
 			}
 			text += tracker.message.Text
 
@@ -304,7 +304,7 @@ func (mgr *ConsoleManager) checkForSolicitedInput() bool {
 			if !tracker.message.DoNotLogReply {
 				consw36 := pkg.Word36(consId)
 				log.Printf("ConsMgr:%v %v %v", consw36.ToStringAsFieldata(), msgId, *reply)
-				tracker.message.Source.PrintToTailSheet(fmt.Sprintf("%v %v", msgId, reply))
+				tracker.message.Source.PostToTailSheet(fmt.Sprintf("%v %v", msgId, reply))
 			}
 
 			tracker.message.Reply = *reply
@@ -443,7 +443,7 @@ func (mgr *ConsoleManager) Dump(dest io.Writer, indent string) {
 
 	_, _ = fmt.Fprintf(dest, "%v  QueuedReadOnly:\n", indent)
 	for _, msg := range mgr.queuedReadOnly {
-		str := "[" + msg.Source.RunId + "] " + msg.Text
+		str := "[" + msg.Source.GetRunId() + "] " + msg.Text
 
 		if msg.DoNotEmitRunId {
 			str += " !emitRunId "
@@ -471,7 +471,7 @@ func (mgr *ConsoleManager) Dump(dest io.Writer, indent string) {
 		_, _ = fmt.Fprintf(dest, "%v    %v\n", indent, str)
 
 		msg := tracker.message
-		str = "[ " + msg.Source.RunId + "] " + msg.Text
+		str = "[ " + msg.Source.GetRunId() + "] " + msg.Text
 
 		if msg.DoNotEmitRunId {
 			str += " !emitRunId "

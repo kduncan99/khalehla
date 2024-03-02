@@ -23,12 +23,13 @@ type EquipmentEntry struct {
 }
 
 type Configuration struct {
-	MasterAccountId       string // could be empty, in which case operator is prompted when ACCOUNT$R1 is created
-	MaxGranules           uint64 // max granules if not specified on @ASG or @CAT
-	LogConsoleOn          bool
-	LogIOs                bool
-	SecurityOfficerUserId string                     // could be empty, in which case operator is prompted at boot time
-	EquipmentTable        map[string]*EquipmentEntry // key is mnemonic
+	MasterAccountId            string // could be empty, in which case operator is prompted when ACCOUNT$R1 is created
+	MassStorageDefaultMnemonic string // Usually 'F'
+	MaxGranules                uint64 // max granules if not specified on @ASG or @CAT
+	LogConsoleOn               bool
+	LogIOs                     bool
+	SecurityOfficerUserId      string                     // could be empty, in which case operator is prompted at boot time
+	EquipmentTable             map[string]*EquipmentEntry // key is mnemonic
 
 	// TODO -- and this is not exhaustive...
 	// RESDUCLR (residue_clear) zeroes tracks when allocating them
@@ -82,7 +83,8 @@ type Configuration struct {
 func NewConfiguration() *Configuration {
 	cfg := &Configuration{}
 
-	cfg.MasterAccountId = ""
+	cfg.MassStorageDefaultMnemonic = "F"
+	cfg.MasterAccountId = "SYSTEM"
 	cfg.MaxGranules = 256
 	cfg.LogConsoleOn = true
 	cfg.LogIOs = true // TODO false

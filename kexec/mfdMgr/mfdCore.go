@@ -229,14 +229,14 @@ func (mgr *MFDManager) bootstrapMFD() error {
 	mgr.mfdFileMainItem0Address = mainAddr0 // we'll need this later
 
 	mfdFileName := "MFD$$"
-	populateNewLeadItem0(leadItem0, cfg.SystemQualifier, mfdFileName, cfg.SystemProjectId,
-		cfg.SystemReadKey, cfg.SystemWriteKey, 0, 1, true, uint64(mainAddr0))
-	populateMassStorageMainItem0(mainItem0, cfg.SystemQualifier, mfdFileName, cfg.SystemProjectId,
-		cfg.SystemReadKey, cfg.SystemWriteKey, cfg.SystemAccountId, leadAddr0, mainAddr1,
+	populateNewLeadItem0(leadItem0, "SYS$", mfdFileName, "EXEC-8",
+		"", "", 0, 1, true, uint64(mainAddr0))
+	populateMassStorageMainItem0(mainItem0, "SYS$", mfdFileName, "EXEC-8",
+		"", "", cfg.MasterAccountId, leadAddr0, mainAddr1,
 		false, false, false, false, false,
-		cfg.AssignMnemonic, true, true, true, false, false,
+		cfg.MassStorageDefaultMnemonic, true, true, true, false, false,
 		1, 0, 262153, []string{})
-	populateFixedMainItem1(mainItem1, cfg.SystemQualifier, mfdFileName, mainAddr0, 1, []string{})
+	populateFixedMainItem1(mainItem1, "SYS$", mfdFileName, mainAddr0, 1, []string{})
 
 	// Before we can play DAD table games, we have to get the MFD$$ in-core structures in place,
 	// including *particularly* the file allocation table.
@@ -281,7 +281,7 @@ func (mgr *MFDManager) bootstrapMFD() error {
 	mgr.markDirectorySectorDirty(mainAddr1)
 
 	// Update lookup table
-	mgr.writeLookupTableEntry(cfg.SystemQualifier, "MFD$$", leadAddr0)
+	mgr.writeLookupTableEntry("SYS$", "MFD$$", leadAddr0)
 
 	// Set file assigned in facmgr, RCE, or wherever it makes sense
 	// TODO
