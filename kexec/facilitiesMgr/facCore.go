@@ -357,7 +357,6 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 			// At this point, we only care about the latter case, in that we are checking whether
 			// it is necessary and possible to delete an oldest cycle.
 			if fileSetInfo.CycleInfo[0] != nil && fileSetInfo.CycleInfo[fileSetInfo.CurrentRange-1] != nil {
-				// TODO can we drop the oldest cycle?
 				dropOldest = true
 			}
 		} else {
@@ -366,12 +365,30 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 			resultCode |= 0_500000_000000
 		}
 
-		if resultCode&0_400000_000000 != 0 {
-			return
-		}
-
-		// Do we need to drop the oldest file cycle?
 		if dropOldest {
+			oldestFCIdent := fileSetInfo.CycleInfo[fileSetInfo.CurrentRange-1].FileCycleIdentifier
+			fcInfo, mfdResult := mm.GetFileCycleInfo(oldestFCIdent)
+			if mfdResult != mfdMgr.MFDSuccessful {
+				log.Printf("FacMgr:MFD can't find a filecycle which should exist")
+				mgr.exec.Stop(kexec.StopDirectoryErrors)
+				return
+			}
+
+			if fcInfo.AssignedIndicator {
+				// TODO can't drop it
+			}
+
+			// TODO check the following
+			//  should we deal with Guarded and private earlier? Can we?
+			//fcInfo.InhibitFlags.IsGuarded
+			//fcInfo.InhibitFlags.IsPrivate
+			//fcInfo.InhibitFlags.IsReadOnly
+			//fcInfo.InhibitFlags.IsWriteOnly
+
+			if resultCode&0_400000_000000 != 0 {
+				return
+			}
+
 			// TODO invoke MFD services to do so
 		}
 	}
