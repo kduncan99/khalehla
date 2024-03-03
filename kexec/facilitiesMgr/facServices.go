@@ -11,8 +11,8 @@ import (
 	"log"
 )
 
-func (mgr *FacilitiesManager) AssignFile() (kexec.FacStatusResult, bool) {
-	var facResult kexec.FacStatusResult
+func (mgr *FacilitiesManager) AssignFile() (FacStatusResult, bool) {
+	var facResult FacStatusResult
 	// TODO
 	return facResult, false
 }
@@ -43,25 +43,25 @@ func (mgr *FacilitiesManager) AssignFile() (kexec.FacStatusResult, bool) {
 func (mgr *FacilitiesManager) CatalogFile(
 	rce kexec.RunControlEntry,
 	sourceIsExecRequest bool,
-	fileSpecification *kexec.FileSpecification,
+	fileSpecification *FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
-) (facResult *kexec.FacStatusResult, resultCode uint64) {
+) (facResult *FacStatusResult, resultCode uint64) {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
-	facResult = kexec.NewFacResult()
+	facResult = NewFacResult()
 	resultCode = 0
 
 	if fileSpecification.RelativeCycle != nil && *fileSpecification.RelativeCycle < 0 {
-		facResult.PostMessage(kexec.FacStatusRelativeFCycleConflict, nil)
+		facResult.PostMessage(FacStatusRelativeFCycleConflict, nil)
 		resultCode |= 0_400000_000040
 		return
 	}
 
 	// See if there is already a fileset
 	mm := mgr.exec.GetMFDManager().(*mfdMgr.MFDManager)
-	effectiveQualifier := kexec.GetEffectiveQualifier(rce, fileSpecification)
+	effectiveQualifier := getEffectiveQualifier(rce, fileSpecification)
 	fsIdent, mfdResult := mm.GetFileSetIdentifier(effectiveQualifier, fileSpecification.Filename)
 	if mfdResult == mfdMgr.MFDInternalError {
 		return
@@ -79,7 +79,7 @@ func (mgr *FacilitiesManager) CatalogFile(
 
 	if len(mnemonic) > 6 {
 		log.Printf("%v:Mnemonic %v too long", rce.GetRunId(), mnemonic)
-		facResult.PostMessage(kexec.FacStatusAssignMnemonicTooLong, []string{mnemonic})
+		facResult.PostMessage(FacStatusAssignMnemonicTooLong, []string{mnemonic})
 		resultCode |= 0_600000_000000
 		return
 	}
@@ -88,7 +88,7 @@ func (mgr *FacilitiesManager) CatalogFile(
 	if !ok {
 		// This isn't going to work for us.
 		log.Printf("%v:Mnemonic %v not configured", rce.GetRunId(), mnemonic)
-		facResult.PostMessage(kexec.FacStatusMnemonicIsNotConfigured, []string{mnemonic})
+		facResult.PostMessage(FacStatusMnemonicIsNotConfigured, []string{mnemonic})
 		resultCode |= 0_600000_000000
 		return
 	}
@@ -123,10 +123,10 @@ func (mgr *FacilitiesManager) CatalogFile(
 
 func (mgr *FacilitiesManager) FreeFile(
 	rce kexec.RunControlEntry,
-	fileSpecification kexec.FileSpecification,
+	fileSpecification FileSpecification,
 	options pkg.Word36,
-) (kexec.FacStatusResult, bool) {
-	var facResult kexec.FacStatusResult
+) (FacStatusResult, bool) {
+	var facResult FacStatusResult
 	// TODO
 	return facResult, false
 }

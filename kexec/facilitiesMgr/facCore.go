@@ -118,42 +118,42 @@ func (mgr *FacilitiesManager) getSubField(operandFields [][]string, fieldIndex i
 func (mgr *FacilitiesManager) assignFixedFile(
 	exec kexec.IExec,
 	rce *kexec.RunControlEntry,
-	fileSpecification *kexec.FileSpecification,
+	fileSpecification *FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
 	mnemonic string,
 	usage config.EquipmentUsage,
 	sourceIsExecRequest bool,
-) (facResult *kexec.FacStatusResult, resultCode uint64) {
+) (facResult *FacStatusResult, resultCode uint64) {
 	return nil, 0 // TODO
 }
 
 func (mgr *FacilitiesManager) assignRemovableFile(
 	exec kexec.IExec,
 	rce *kexec.RunControlEntry,
-	fileSpecification *kexec.FileSpecification,
+	fileSpecification *FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
 	mnemonic string,
 	usage config.EquipmentUsage,
 	sourceIsExecRequest bool,
-) (facResult *kexec.FacStatusResult, resultCode uint64) {
+) (facResult *FacStatusResult, resultCode uint64) {
 	return nil, 0 // TODO
 }
 
 func (mgr *FacilitiesManager) assignTapeFile(
 	exec kexec.IExec,
 	rce *kexec.RunControlEntry,
-	fileSpecification *kexec.FileSpecification,
+	fileSpecification *FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
 	mnemonic string,
 	usage config.EquipmentUsage,
 	sourceIsExecRequest bool,
-) (facResult *kexec.FacStatusResult, resultCode uint64) {
+) (facResult *FacStatusResult, resultCode uint64) {
 	return nil, 0 // TODO
 }
 
@@ -163,14 +163,14 @@ func (mgr *FacilitiesManager) assignTapeFile(
 func (mgr *FacilitiesManager) catalogFixedFile(
 	exec kexec.IExec,
 	rce kexec.RunControlEntry,
-	fileSpecification *kexec.FileSpecification,
+	fileSpecification *FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
 	mnemonic string,
 	usage config.EquipmentUsage,
 	sourceIsExecRequest bool,
-) (facResult *kexec.FacStatusResult, resultCode uint64) {
+) (facResult *FacStatusResult, resultCode uint64) {
 	//	For Mass Storage Files
 	//		@CAT[,options] filename[,type/reserve/granule/maximum,pack-id-1/.../pack-id-n,,,ACR-name]
 	//	options include
@@ -182,7 +182,7 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 	//		W: make the file write-only
 	//		Z: run should not be held (probably only happens on removable when the pack is not mounted)
 	//			I'm unaware of any situation where cataloging a fixed file would result in a hold.
-	facResult = kexec.NewFacResult()
+	facResult = NewFacResult()
 	resultCode = 0
 
 	allowedOpts := uint64(kexec.BOption | kexec.GOption | kexec.POption |
@@ -193,9 +193,9 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 
 	if !mgr.checkSubFields(operandFields, catFixedFSIs) {
 		if len(mgr.getSubField(operandFields, 1, 4)) > 0 {
-			facResult.PostMessage(kexec.FacStatusPlacementFieldNotAllowed, nil)
+			facResult.PostMessage(FacStatusPlacementFieldNotAllowed, nil)
 		}
-		facResult.PostMessage(kexec.FacStatusUndefinedFieldOrSubfield, nil)
+		facResult.PostMessage(FacStatusUndefinedFieldOrSubfield, nil)
 		resultCode |= 0_600000_000000
 	}
 
@@ -218,34 +218,34 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 	} else if granStr == "POS" {
 		granularity = kexec.PositionGranularity
 	} else {
-		facResult.PostMessage(kexec.FacStatusIllegalValueForGranularity, nil)
+		facResult.PostMessage(FacStatusIllegalValueForGranularity, nil)
 		resultCode |= 0_600000_000000
 	}
 
 	var initReserve uint64
 	if len(initStr) > 12 {
-		facResult.PostMessage(kexec.FacStatusIllegalInitialReserve, nil)
+		facResult.PostMessage(FacStatusIllegalInitialReserve, nil)
 		resultCode |= 0_600000_000000
 	} else if len(initStr) > 0 {
 		initReserve, err := strconv.Atoi(initStr)
 		if err != nil || initReserve < 0 {
-			facResult.PostMessage(kexec.FacStatusIllegalInitialReserve, nil)
+			facResult.PostMessage(FacStatusIllegalInitialReserve, nil)
 			resultCode |= 0_600000_000000
 		}
 	}
 
 	maxGranules := exec.GetConfiguration().MaxGranules
 	if len(maxStr) > 12 {
-		facResult.PostMessage(kexec.FacStatusIllegalMaxGranules, nil)
+		facResult.PostMessage(FacStatusIllegalMaxGranules, nil)
 		resultCode |= 0_600000_000000
 	} else if len(maxStr) > 0 {
 		iMaxGran, err := strconv.Atoi(maxStr)
 		maxGranules = uint64(iMaxGran)
 		if err != nil || maxGranules < 0 || maxGranules > 262143 {
-			facResult.PostMessage(kexec.FacStatusIllegalMaxGranules, nil)
+			facResult.PostMessage(FacStatusIllegalMaxGranules, nil)
 			resultCode |= 0_600000_000000
 		} else if maxGranules < initReserve {
-			facResult.PostMessage(kexec.FacStatusMaximumIsLessThanInitialReserve, nil)
+			facResult.PostMessage(FacStatusMaximumIsLessThanInitialReserve, nil)
 			resultCode |= 0_600000_000000
 		}
 	}
@@ -263,11 +263,11 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 		needsMsg := false
 		if hasReadKey {
 			if !gaveReadKey {
-				facResult.PostMessage(kexec.FacStatusReadWriteKeysNeeded, nil)
+				facResult.PostMessage(FacStatusReadWriteKeysNeeded, nil)
 				needsMsg = true
 				resultCode |= 0_600000_000000
 			} else if fileSetInfo.ReadKey != fileSpecification.ReadKey {
-				facResult.PostMessage(kexec.FacStatusIncorrectReadKey, nil)
+				facResult.PostMessage(FacStatusIncorrectReadKey, nil)
 				resultCode |= 0_401000_000000
 				if sourceIsExecRequest {
 					rce.PostContingencyWithAuxiliary(017, 0, 0, 015)
@@ -275,7 +275,7 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 			}
 		} else {
 			if gaveReadKey {
-				facResult.PostMessage(kexec.FacStatusFileNotCatalogedWithReadKey, nil)
+				facResult.PostMessage(FacStatusFileNotCatalogedWithReadKey, nil)
 				resultCode |= 0_400040_000000
 				if sourceIsExecRequest {
 					rce.PostContingencyWithAuxiliary(017, 0, 0, 015)
@@ -285,10 +285,10 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 
 		if hasWriteKey {
 			if !gaveWriteKey && !needsMsg {
-				facResult.PostMessage(kexec.FacStatusReadWriteKeysNeeded, nil)
+				facResult.PostMessage(FacStatusReadWriteKeysNeeded, nil)
 				resultCode |= 0_600000_000000
 			} else if fileSetInfo.WriteKey != fileSpecification.WriteKey {
-				facResult.PostMessage(kexec.FacStatusIncorrectWriteKey, nil)
+				facResult.PostMessage(FacStatusIncorrectWriteKey, nil)
 				resultCode |= 0_400400_000000
 				if sourceIsExecRequest {
 					rce.PostContingencyWithAuxiliary(017, 0, 0, 015)
@@ -296,7 +296,7 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 			}
 		} else {
 			if gaveWriteKey {
-				facResult.PostMessage(kexec.FacStatusFileNotCatalogedWithWriteKey, nil)
+				facResult.PostMessage(FacStatusFileNotCatalogedWithWriteKey, nil)
 				resultCode |= 0_400020_000000
 				if sourceIsExecRequest {
 					rce.PostContingencyWithAuxiliary(017, 0, 0, 015)
@@ -337,7 +337,7 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 			// *** what if highest deleted cycle is less than a non-deleted cycle? ***
 		} else {
 			// We're here with a file set but no cycle spec on a @CAT request. That won't fly.
-			facResult.PostMessage(kexec.FacStatusFileAlreadyCataloged, nil)
+			facResult.PostMessage(FacStatusFileAlreadyCataloged, nil)
 			resultCode |= 0_500000_000000
 		}
 	}
@@ -413,14 +413,14 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 func (mgr *FacilitiesManager) catalogRemovableFile(
 	exec kexec.IExec,
 	rce kexec.RunControlEntry,
-	fileSpecification *kexec.FileSpecification,
+	fileSpecification *FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
 	mnemonic string,
 	usage config.EquipmentUsage,
 	sourceIsExecRequest bool,
-) (facResult *kexec.FacStatusResult, resultCode uint64) {
+) (facResult *FacStatusResult, resultCode uint64) {
 	//	For Mass Storage Files
 	//		@CAT[,options] filename[,type/reserve/granule/maximum,pack-id-1/.../pack-id-n,,,ACR-name]
 	//	options include
@@ -441,14 +441,14 @@ func (mgr *FacilitiesManager) catalogRemovableFile(
 		// TODO
 	}
 
-	//saveOnCheckpoint := optionWord&kexec.BOption != 0
-	//guardedFile := optionWord&kexec.GOption != 0
-	//publicFile := optionWord&kexec.POption != 0
-	//readOnly := optionWord&kexec.ROption != 0
-	//inhibitUnload := optionWord&kexec.VOption != 0
-	//writeOnly := optionWord&kexec.WOption != 0
-	//doNotHold := optionWord&kexec.ZOption != 0
-	//wordAddressable := usage == config.EquipmentUsageWordAddressableMassStorage
+	// saveOnCheckpoint := optionWord&kexec.BOption != 0
+	// guardedFile := optionWord&kexec.GOption != 0
+	// publicFile := optionWord&kexec.POption != 0
+	// readOnly := optionWord&kexec.ROption != 0
+	// inhibitUnload := optionWord&kexec.VOption != 0
+	// writeOnly := optionWord&kexec.WOption != 0
+	// doNotHold := optionWord&kexec.ZOption != 0
+	// wordAddressable := usage == config.EquipmentUsageWordAddressableMassStorage
 
 	// TODO granularity, initial-reserve, max-granules
 
@@ -466,14 +466,14 @@ func (mgr *FacilitiesManager) catalogRemovableFile(
 func (mgr *FacilitiesManager) catalogTapeFile(
 	exec kexec.IExec,
 	rce kexec.RunControlEntry,
-	fileSpecification *kexec.FileSpecification,
+	fileSpecification *FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
 	mnemonic string,
 	usage config.EquipmentUsage,
 	sourceIsExecRequest bool,
-) (facResult *kexec.FacStatusResult, resultCode uint64) {
+) (facResult *FacStatusResult, resultCode uint64) {
 	//	For Tape Files
 	//		@CAT,options filename,type[/units/log/noise/processor/tape/
 	//			format/data-converter/block-numbering/data-compression/
@@ -511,7 +511,7 @@ func checkIllegalOptions(
 	rce kexec.RunControlEntry,
 	givenOptions uint64,
 	allowedOptions uint64,
-	facResult *kexec.FacStatusResult,
+	facResult *FacStatusResult,
 	sourceIsExec bool,
 ) bool {
 	bit := uint64(kexec.AOption)
@@ -521,7 +521,7 @@ func checkIllegalOptions(
 	for {
 		if bit&givenOptions != 0 && bit&allowedOptions == 0 {
 			param := string(letter)
-			facResult.PostMessage(kexec.FacStatusIllegalOption, []string{param})
+			facResult.PostMessage(FacStatusIllegalOption, []string{param})
 			ok = false
 		}
 
@@ -540,6 +540,18 @@ func checkIllegalOptions(
 	}
 
 	return ok
+}
+
+func getEffectiveQualifier(rce kexec.RunControlEntry, fileSpec *FileSpecification) string {
+	if fileSpec.HasAsterisk {
+		if len(fileSpec.Qualifier) == 0 {
+			return fileSpec.Qualifier
+		} else {
+			return rce.GetImpliedQualifier()
+		}
+	} else {
+		return rce.GetDefaultQualifier()
+	}
 }
 
 // selectEquipmentModel accepts an equipment mnemonic (likely from a control statement)

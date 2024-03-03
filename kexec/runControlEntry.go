@@ -4,7 +4,9 @@
 
 package kexec
 
-import "khalehla/pkg"
+import (
+	"khalehla/pkg"
+)
 
 /*
 TIP:
@@ -45,16 +47,4 @@ type RunControlEntry interface {
 	SetDefaultQualifier(string)
 	SetImpliedQualifier(string)
 	SetRunConditionWord(uint64)
-}
-
-func GetEffectiveQualifier(rce RunControlEntry, fileSpec *FileSpecification) string {
-	if fileSpec.HasAsterisk {
-		if len(fileSpec.Qualifier) == 0 {
-			return fileSpec.Qualifier
-		} else {
-			return rce.GetImpliedQualifier()
-		}
-	} else {
-		return rce.GetDefaultQualifier()
-	}
 }

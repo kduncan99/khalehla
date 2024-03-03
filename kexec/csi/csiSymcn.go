@@ -5,10 +5,10 @@
 package csi
 
 import (
-	"khalehla/kexec"
+	"khalehla/kexec/facilitiesMgr"
 )
 
-func handleSymcn(pkt *handlerPacket) (*kexec.FacStatusResult, uint64) {
+func handleSymcn(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
 
 	/*
 		@SYMCN,L

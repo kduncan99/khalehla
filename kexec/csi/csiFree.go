@@ -5,10 +5,10 @@
 package csi
 
 import (
-	"khalehla/kexec"
+	"khalehla/kexec/facilitiesMgr"
 )
 
-func handleFree(pkt *handlerPacket) (*kexec.FacStatusResult, uint64) {
+func handleFree(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
 
 	/*
 		@FREE[,options] filename

@@ -5,10 +5,10 @@
 package csi
 
 import (
-	"khalehla/kexec"
+	"khalehla/kexec/facilitiesMgr"
 )
 
-func handleCkpt(pkt *handlerPacket) (*kexec.FacStatusResult, uint64) {
+func handleCkpt(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
 
 	/*
 		@CKPT[,options] [filename.element,,eqpmnt-type,reel-1/.../reel-n,,,,CTL-pool]
