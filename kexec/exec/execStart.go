@@ -29,6 +29,14 @@ func (e *Exec) performInitialBoot() {
 
 	// TODO security officer setup
 
+	if e.jumpKeys[kexec.JumpKey4Index] {
+		// TODO
+		// libray tape (in lieu of boot tape) contains the following files in copy,g format...
+		//   SYS$*LIB$
+		//   SYS$*RUN$
+		//   SYS$*RLIB$
+	}
+
 	if e.jumpKeys[kexec.JumpKey7Index] {
 		// TODO
 	}

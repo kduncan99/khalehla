@@ -254,8 +254,25 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 		return
 	}
 
-	// If there is an existing fileset do sanity checking on the requested file cycle.
-	if fileSetInfo != nil {
+	// If there isn't an existing fileset, create one.
+	mm := exec.GetMFDManager().(*mfdMgr.MFDManager)
+	if fileSetInfo == nil {
+		_, result := mm.CreateFileSet(
+			mfdMgr.FileTypeFixed,
+			fileSpecification.Qualifier,
+			fileSpecification.Filename,
+			rce.GetProjectId(),
+			fileSpecification.ReadKey,
+			fileSpecification.WriteKey)
+		if result == mfdMgr.MFDInternalError {
+			return
+		} else if result != mfdMgr.MFDSuccessful {
+			log.Printf("FacMgr:MFD failed to create file set")
+			exec.Stop(kexec.StopFacilitiesComplex)
+			return
+		}
+	} else {
+		// Otherwise, do sanity checking on the file cycle and privacy settings on the existing file set.
 		gaveReadKey := len(fileSpecification.ReadKey) > 0
 		gaveWriteKey := len(fileSpecification.WriteKey) > 0
 		hasReadKey := len(fileSetInfo.ReadKey) > 0
@@ -316,52 +333,46 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 			E:253733 Relative F-cycle conflict.
 		*/
 
+		dropOldest := false
 		if fileSpecification.AbsoluteCycle != nil {
+			// Caller has given us a specific absolute cycle.
+			// We need to ensure that it is not so far below the highest existing cycle,
+			// and that it is not so far above the second-lowest existing cycle,
+			// that it would violate the max cycle range. It *can* be sufficiently above the lowest cycle that
+			// the lowest cycle needs to be dropped... and if that is the case, we need to ensure
+			// that we can actually drop that cycle.
 			// TODO
-			// If a file is created by its absolute cycle and the absolute cycle is not the next numerically sequential
-			// absolute F-cycle available, the sequence of F-cycles is updated to point at the newly created F-cycle.
-			// In addition, a buffer of non-cataloged F-cycles exists between the newly cataloged F-cycle and the
-			// previously cataloged F-cycles. This increases the F-cycle range by more than 1.
 		} else if fileSpecification.RelativeCycle != nil {
+			// If we get here, we've already limited relative cycle to only +1.
 			// Is there already a +1?
 			if fileSetInfo.PlusOneExists {
-				// TODO
+				facResult.PostMessage(FacStatusRelativeFCycleConflict, nil)
+				resultCode |= 0_600000_000040
 			}
 
-			// TODO
-			// To create the next sequential absolute F-cycle, you can use the relative specification +1.
-			// If files have been deleted, the relative specification +1 creates the highest numbered deleted F-cycle.
-			// When this +1 file is cataloged (by freeing the file or by run termination), its relative F-cycle number
-			// is set to 0 and other existing files of the set have their relative F-cycle numbers decreased by 1,
-			// thus maintaining consecutive relative numbering.
-			// *** what if highest deleted cycle is less than a non-deleted cycle? ***
+			// If the highest absolute cycle file is deleted, then that file is (re)cataloged.
+			// Otherwise, a new highest absolute cycle is created and all the other files are shifted
+			// downward by one cycle, which might cause the lowest cycle to be deleted
+			// (depending upon the current and max cycle ranges).
+			// At this point, we only care about the latter case, in that we are checking whether
+			// it is necessary and possible to delete an oldest cycle.
+			if fileSetInfo.CycleInfo[0] != nil && fileSetInfo.CycleInfo[fileSetInfo.CurrentRange-1] != nil {
+				// TODO can we drop the oldest cycle?
+				dropOldest = true
+			}
 		} else {
 			// We're here with a file set but no cycle spec on a @CAT request. That won't fly.
 			facResult.PostMessage(FacStatusFileAlreadyCataloged, nil)
 			resultCode |= 0_500000_000000
 		}
-	}
 
-	if resultCode&0_400000_000000 != 0 {
-		return
-	}
+		if resultCode&0_400000_000000 != 0 {
+			return
+		}
 
-	// If there isn't an existing fileset, create one.
-	mm := exec.GetMFDManager().(*mfdMgr.MFDManager)
-	if fileSetInfo == nil {
-		_, result := mm.CreateFileSet(
-			mfdMgr.FileTypeFixed,
-			fileSpecification.Qualifier,
-			fileSpecification.Filename,
-			rce.GetProjectId(),
-			fileSpecification.ReadKey,
-			fileSpecification.WriteKey)
-		if result == mfdMgr.MFDInternalError {
-			return
-		} else if result != mfdMgr.MFDSuccessful {
-			log.Printf("FacMgr:MFD failed to create file set")
-			exec.Stop(kexec.StopFacilitiesComplex)
-			return
+		// Do we need to drop the oldest file cycle?
+		if dropOldest {
+			// TODO invoke MFD services to do so
 		}
 	}
 
@@ -388,6 +399,9 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 		IsReadOnly:        readOnly,
 	}
 	unitSelection := mfdMgr.UnitSelectionIndicators{}
+	// TODO change the service below slightly... ?
+	//   we don't need variance b/w abs and rel cycles, because in the end, we're not creating
+	//   rel cycle (we're @CAT, so... yeah). BUT... maybe @ASG still needs that ability?
 	_, mfdResult := mm.CreateFixedDiskFileCycle(
 		fileSetInfo.FileSetIdentifier,
 		absCycle,

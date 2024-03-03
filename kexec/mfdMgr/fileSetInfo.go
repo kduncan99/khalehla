@@ -11,6 +11,9 @@ import (
 
 // FileSetInfo contains all the relevant information about a file set which is known to the MFD.
 // It is presented to the client as a result of certain queries, and to the MFD as part of some requests.
+// Note that CycleInfo is an array of pointers. If any particular entry is nil, then that entry refers
+// to a file cycle which does not exist, possibly having been deleted.
+// The size of the array will always correspond to the CurrentRange value.
 type FileSetInfo struct {
 	FileSetIdentifier FileSetIdentifier
 	Qualifier         string
@@ -24,7 +27,7 @@ type FileSetInfo struct {
 	MaxCycleRange     uint
 	CurrentRange      uint
 	HighestAbsolute   uint
-	CycleInfo         []FileSetCycleInfo
+	CycleInfo         []*FileSetCycleInfo
 }
 
 // FileSetIdentifier is a unique opaque identifier allowing clients to refer to a fileset
@@ -96,7 +99,7 @@ func (fsi *FileSetInfo) populateFromLeadItems(leadItem0 []pkg.Word36, leadItem1 
 	fsi.MaxCycleRange = uint(leadItem0[011].GetS3())
 	fsi.CurrentRange = uint(leadItem0[011].GetS4())
 	fsi.HighestAbsolute = uint(leadItem0[011].GetT3())
-	fsi.CycleInfo = make([]FileSetCycleInfo, fsi.MaxCycleRange)
+	fsi.CycleInfo = make([]*FileSetCycleInfo, fsi.CurrentRange)
 
 	leadItems := [][]pkg.Word36{leadItem0, leadItem1}
 	absCycle := fsi.HighestAbsolute
@@ -113,7 +116,7 @@ func (fsi *FileSetInfo) populateFromLeadItems(leadItem0 []pkg.Word36, leadItem1 
 		w := leadItems[lx][wx].GetW()
 		link := w & 0_007777_777777
 		if link > 0 {
-			fsi.CycleInfo[ax] = FileSetCycleInfo{
+			fsi.CycleInfo[ax] = &FileSetCycleInfo{
 				ToBeCataloged:       w&0_200000_000000 != 0,
 				ToBeDropped:         w&0_100000_000000 != 0,
 				AbsoluteCycle:       absCycle,
