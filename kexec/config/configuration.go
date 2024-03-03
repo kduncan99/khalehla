@@ -23,47 +23,43 @@ type EquipmentEntry struct {
 }
 
 type Configuration struct {
-	MasterAccountId            string // could be empty, in which case operator is prompted when ACCOUNT$R1 is created
-	MassStorageDefaultMnemonic string // Usually 'F'
-	MaxGranules                uint64 // max granules if not specified on @ASG or @CAT
-	LogConsoleOn               bool
-	LogIOs                     bool
-	SecurityOfficerUserId      string                     // could be empty, in which case operator is prompted at boot time
-	EquipmentTable             map[string]*EquipmentEntry // key is mnemonic
+	AccountInitialReserve         uint64 // initial reserve for SYS$*ACCOUNT$R1 and SYS$SEC@ACCTINFO files
+	AccountAssignMnemonic         string // assign mnemonic for SYS$*ACCOUNT$R1 and SYS$SEC@ACCTINFO files
+	DLOCAssignMnemonic            string // assign mnemonic for SYS$*DLOC$ file
+	GenFInitialReserve            uint64 // initial reserve for SYS$*GENF$ file
+	GenFAssignMnemonic            string // assign mnemonic for SYS$*GENF$ file
+	LibInitialReserve             uint64 // initial reserve for SYS$*LIB$ file
+	LibAssignMnemonic             string // assign mnemonic for SYS$*LIB$ file
+	LibMaximumSize                uint64 // max granules for SYS$*LIB$ file
+	LogConsoleOn                  bool
+	LogIOs                        bool
+	MasterAccountId               string // could be empty, in which case operator is prompted when ACCOUNT$R1 is created
+	MassStorageDefaultMnemonic    string // Usually 'F'
+	MaxCards                      uint64
+	MaxGranules                   uint64 // max granules if not specified on @ASG or @CAT
+	MaxPages                      uint64
+	OverheadAccountId             string // account ID for overhead runs such as SYS and ROLOUT/ROLBACK
+	OverheadUserId                string // User ID for overhead runs
+	PrivilegedAccountId           string // account ID which can override reading tape label blocks
+	ReleaseUnusedReserve          bool
+	ReleaseUnusedRemovableReserve bool
+	ResidueClear                  bool                       // zero out tracks when allocated
+	RunInitialReserve             uint64                     // initial reserve for SYS$*RUN$ file
+	RunAssignMnemonic             string                     // assign mnemonic for SYS$*RUN$ file
+	RunMaximumSize                uint64                     // max granules for SYS$*RUN$ file
+	SacrdInitialReserve           uint64                     // initial reserve for SYS$*SEC@ACR$ file
+	SacrdAssignMnemonic           string                     // assign mnemonic for SYS$*SEC@ACR$ file
+	SecurityOfficerUserId         string                     // could be empty, in which case operator is prompted at boot time
+	SymbiontBufferSize            uint64                     // Buffer size used for standard and alternate read/write buffers
+	SystemTapeEquipment           string                     // assign mnemonic for exec tape requests
+	UserInitialReserve            uint64                     // initial reserve for SYS$*SEC@USERID$ file
+	UserAssignMnemonic            string                     // assign mnemonic for SYS$*SEC@USERID$ file
+	EquipmentTable                map[string]*EquipmentEntry // key is mnemonic
 
 	// TODO -- and this is not exhaustive...
-	// RESDUCLR (residue_clear) zeroes tracks when allocating them
-	// ACCTINTRES SYS$*ACCOUNT$R1 SYS$*SEC@ACCTINFO files initial reserve
-	// ACCTASGMNE (ditto) assign mnemonic
-	// DLOCASGMNE SYS$*DLOC$ assign mnemonic
-	// GENFASGMNE SYS$*GENF$ assign mnemonic
-	// GENFINTRES (ditto) initial reserve
-	// LIBASGMNE SYS$*LIB$ assign mnemonic
-	// LIBINTRES (ditto) initial reserve [0]
-	// LIBMAXSIZ (ditto) max size [99999]
-	// LOGCONSOLEON [true]
-	// LOGIOS [false]
-	// MAXCRD max cards [100]
-	// MAXGRN max granules if not specified
-	// MAXPAG max pages [100]
-	// MDFALT deafult sector-addressable mnemonic ['F']
-	// MSTRACC master account [''] when blank and ACCOUNT$R1 is being initialized, prompt operator
-	// OVRACC account ID for overhead runs (e.g., SYS, ROLBAK, ROLOUT)
-	// OVRUSR user ID for overhead runs
-	// PRIVAC '123456' privileged account number prevents tape label blocks from being read
-	// RELUNUSEDREM release unused allocated space on removable packs at @FREE
-	// RELUNUSEDRES release unused initial reserve at @FREE for fixed
-	// RUNASGMNE SYS$*RUN$ assign mnemonic
-	// RUNINTRES (ditto) initial reserve [1]
-	// RUNMAXSIZE (ditto) [20000]
-	// SACRDASGMNE SYS$*SEC@ACR$ assign mnemonic
-	// SACRDINTRES (ditto) initial reserve [2]
-	// SECOFFDEF security officer userid
 	// SMDTFASGMNE SYS$*SMDTF$ (?) assign mnemonic
 	// SMDTFINTRES (ditto) initial reserve [1]
-	// SSEQPT default mnemonic for exec tape requests ['T']
 	// SSPBP files are private by account [true]
-	// SYMFBUF words used for standard/alt read/write buffers [224]
 	// TDFALT default mnemonic for user tape requests ['T']
 	// TLAUTO automatic tape labeling [false]
 	// TPFMAXSIZ initial max size of TPF$
@@ -75,20 +71,43 @@ type Configuration struct {
 	// TRMXCO terminate runs on max cards [false]
 	// TRMXPO terminate runs on max pages [false]
 	// TRMXT terminate runs on max time [false]
-	// USERASGMNE SYS$*SEC@USERID$ assign mnemonic
-	// USERINTRES (ditto) initial reserve [1]
 	// WDFALT default mnemonic for word-addressable requests ['D']
 }
 
 func NewConfiguration() *Configuration {
 	cfg := &Configuration{}
 
-	cfg.MassStorageDefaultMnemonic = "F"
-	cfg.MasterAccountId = "SYSTEM"
-	cfg.MaxGranules = 256
+	cfg.AccountInitialReserve = 10
+	cfg.AccountAssignMnemonic = "F"
+	cfg.DLOCAssignMnemonic = "F"
+	cfg.GenFInitialReserve = 128
+	cfg.GenFAssignMnemonic = "F"
+	cfg.LibInitialReserve = 128
+	cfg.LibAssignMnemonic = "F"
+	cfg.LibMaximumSize = 9999
 	cfg.LogConsoleOn = true
 	cfg.LogIOs = true // TODO false
+	cfg.MassStorageDefaultMnemonic = "F"
+	cfg.MasterAccountId = "SYSTEM"
+	cfg.MaxCards = 256
+	cfg.MaxGranules = 256
+	cfg.MaxPages = 256
+	cfg.OverheadUserId = "INSTALLATION"
+	cfg.OverheadAccountId = "INSTALLATION"
+	cfg.PrivilegedAccountId = "123456"
+	cfg.ReleaseUnusedReserve = true
+	cfg.ReleaseUnusedRemovableReserve = false
+	cfg.ResidueClear = true
+	cfg.RunInitialReserve = 10
+	cfg.RunAssignMnemonic = "F"
+	cfg.RunMaximumSize = 256
+	cfg.SacrdInitialReserve = 10
+	cfg.SacrdAssignMnemonic = "F"
 	cfg.SecurityOfficerUserId = ""
+	cfg.SymbiontBufferSize = 224
+	cfg.SystemTapeEquipment = "T"
+	cfg.UserInitialReserve = 10
+	cfg.UserAssignMnemonic = "F"
 
 	cfg.EquipmentTable = make(map[string]*EquipmentEntry)
 
