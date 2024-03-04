@@ -1,3 +1,4 @@
 media/
 test/data/
 test/out/
+.DS_Store
