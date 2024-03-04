@@ -23,55 +23,55 @@ type EquipmentEntry struct {
 }
 
 type Configuration struct {
-	AccountInitialReserve         uint64 // initial reserve for SYS$*ACCOUNT$R1 and SYS$SEC@ACCTINFO files
-	AccountAssignMnemonic         string // assign mnemonic for SYS$*ACCOUNT$R1 and SYS$SEC@ACCTINFO files
-	DLOCAssignMnemonic            string // assign mnemonic for SYS$*DLOC$ file
-	GenFInitialReserve            uint64 // initial reserve for SYS$*GENF$ file
-	GenFAssignMnemonic            string // assign mnemonic for SYS$*GENF$ file
-	LibInitialReserve             uint64 // initial reserve for SYS$*LIB$ file
-	LibAssignMnemonic             string // assign mnemonic for SYS$*LIB$ file
-	LibMaximumSize                uint64 // max granules for SYS$*LIB$ file
-	LogConsoleOn                  bool
-	LogIOs                        bool
-	MasterAccountId               string // could be empty, in which case operator is prompted when ACCOUNT$R1 is created
-	MassStorageDefaultMnemonic    string // Usually 'F'
-	MaxCards                      uint64
-	MaxGranules                   uint64 // max granules if not specified on @ASG or @CAT
-	MaxPages                      uint64
-	OverheadAccountId             string // account ID for overhead runs such as SYS and ROLOUT/ROLBACK
-	OverheadUserId                string // User ID for overhead runs
-	PrivilegedAccountId           string // account ID which can override reading tape label blocks
-	ReleaseUnusedReserve          bool
-	ReleaseUnusedRemovableReserve bool
-	ResidueClear                  bool                       // zero out tracks when allocated
-	RunInitialReserve             uint64                     // initial reserve for SYS$*RUN$ file
-	RunAssignMnemonic             string                     // assign mnemonic for SYS$*RUN$ file
-	RunMaximumSize                uint64                     // max granules for SYS$*RUN$ file
-	SacrdInitialReserve           uint64                     // initial reserve for SYS$*SEC@ACR$ file
-	SacrdAssignMnemonic           string                     // assign mnemonic for SYS$*SEC@ACR$ file
-	SecurityOfficerUserId         string                     // could be empty, in which case operator is prompted at boot time
-	SymbiontBufferSize            uint64                     // Buffer size used for standard and alternate read/write buffers
-	SystemTapeEquipment           string                     // assign mnemonic for exec tape requests
-	UserInitialReserve            uint64                     // initial reserve for SYS$*SEC@USERID$ file
-	UserAssignMnemonic            string                     // assign mnemonic for SYS$*SEC@USERID$ file
-	EquipmentTable                map[string]*EquipmentEntry // key is mnemonic
+	AccountInitialReserve          uint64 // initial reserve for SYS$*ACCOUNT$R1 and SYS$SEC@ACCTINFO files
+	AccountAssignMnemonic          string // assign mnemonic for SYS$*ACCOUNT$R1 and SYS$SEC@ACCTINFO files
+	DLOCAssignMnemonic             string // assign mnemonic for SYS$*DLOC$ file
+	FilesPrivateByAccount          bool
+	GenFInitialReserve             uint64 // initial reserve for SYS$*GENF$ file
+	GenFAssignMnemonic             string // assign mnemonic for SYS$*GENF$ file
+	LibInitialReserve              uint64 // initial reserve for SYS$*LIB$ file
+	LibAssignMnemonic              string // assign mnemonic for SYS$*LIB$ file
+	LibMaximumSize                 uint64 // max granules for SYS$*LIB$ file
+	LogConsoleOn                   bool
+	LogIOs                         bool
+	MasterAccountId                string // could be empty, in which case operator is prompted when ACCOUNT$R1 is created
+	MassStorageDefaultMnemonic     string // Usually 'F'
+	MaxCards                       uint64
+	MaxGranules                    uint64 // max granules if not specified on @ASG or @CAT
+	MaxPages                       uint64
+	OverheadAccountId              string // account ID for overhead runs such as SYS and ROLOUT/ROLBACK
+	OverheadUserId                 string // User ID for overhead runs
+	PrivilegedAccountId            string // account ID which can override reading tape label blocks
+	ReleaseUnusedReserve           bool
+	ReleaseUnusedRemovableReserve  bool
+	ResidueClear                   bool   // zero out tracks when allocated
+	RunInitialReserve              uint64 // initial reserve for SYS$*RUN$ file
+	RunAssignMnemonic              string // assign mnemonic for SYS$*RUN$ file
+	RunMaximumSize                 uint64 // max granules for SYS$*RUN$ file
+	SacrdInitialReserve            uint64 // initial reserve for SYS$*SEC@ACR$ file
+	SacrdAssignMnemonic            string // assign mnemonic for SYS$*SEC@ACR$ file
+	SecurityOfficerUserId          string // could be empty, in which case operator is prompted at boot time
+	SymbiontBufferSize             uint64 // Buffer size used for standard and alternate read/write buffers
+	SystemTapeEquipment            string // assign mnemonic for exec tape requests
+	TapeAccessRestrictedByAccount  bool
+	TapeDefaultMnemonic            string
+	TerminateMaxCards              bool
+	TerminateMaxPages              bool
+	TerminateMaxTime               bool
+	TIPQualifier                   string
+	TIPReadKey                     string
+	TIPWriteKey                    string
+	TPFAssignMnemonic              string
+	TPFMaxSize                     uint64
+	UserInitialReserve             uint64 // initial reserve for SYS$*SEC@USERID$ file
+	UserAssignMnemonic             string // assign mnemonic for SYS$*SEC@USERID$ file
+	WordAddressableDefaultMnemonic string
+	EquipmentTable                 map[string]*EquipmentEntry // key is mnemonic
 
 	// TODO -- and this is not exhaustive...
 	// SMDTFASGMNE SYS$*SMDTF$ (?) assign mnemonic
 	// SMDTFINTRES (ditto) initial reserve [1]
-	// SSPBP files are private by account [true]
-	// TDFALT default mnemonic for user tape requests ['T']
 	// TLAUTO automatic tape labeling [false]
-	// TPFMAXSIZ initial max size of TPF$
-	// TPFTYP equip type for TPF$ ['F']
-	// TPOWN tape access is restricted by account [false]
-	// TPQUAL qualifier for TIP/Exec files ['TIP$']
-	// TPRKEY TIP/Exec file read key ['++++++']
-	// TPWKEY TIP/Exec file write key ['++++++']
-	// TRMXCO terminate runs on max cards [false]
-	// TRMXPO terminate runs on max pages [false]
-	// TRMXT terminate runs on max time [false]
-	// WDFALT default mnemonic for word-addressable requests ['D']
 }
 
 func NewConfiguration() *Configuration {
@@ -80,6 +80,7 @@ func NewConfiguration() *Configuration {
 	cfg.AccountInitialReserve = 10
 	cfg.AccountAssignMnemonic = "F"
 	cfg.DLOCAssignMnemonic = "F"
+	cfg.FilesPrivateByAccount = true
 	cfg.GenFInitialReserve = 128
 	cfg.GenFAssignMnemonic = "F"
 	cfg.LibInitialReserve = 128
@@ -106,8 +107,19 @@ func NewConfiguration() *Configuration {
 	cfg.SecurityOfficerUserId = ""
 	cfg.SymbiontBufferSize = 224
 	cfg.SystemTapeEquipment = "T"
+	cfg.TapeAccessRestrictedByAccount = false
+	cfg.TapeDefaultMnemonic = "T"
+	cfg.TerminateMaxCards = false
+	cfg.TerminateMaxPages = false
+	cfg.TerminateMaxTime = false
+	cfg.TIPQualifier = "TIP$"
+	cfg.TIPReadKey = "++++++"
+	cfg.TIPWriteKey = "++++++"
+	cfg.TPFAssignMnemonic = "F"
+	cfg.TPFMaxSize = 128
 	cfg.UserInitialReserve = 10
 	cfg.UserAssignMnemonic = "F"
+	cfg.WordAddressableDefaultMnemonic = "D"
 
 	cfg.EquipmentTable = make(map[string]*EquipmentEntry)
 
