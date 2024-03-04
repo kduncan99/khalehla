@@ -32,8 +32,9 @@ type Configuration struct {
 	LibInitialReserve              uint64 // initial reserve for SYS$*LIB$ file
 	LibAssignMnemonic              string // assign mnemonic for SYS$*LIB$ file
 	LibMaximumSize                 uint64 // max granules for SYS$*LIB$ file
-	LogConsoleOn                   bool
+	LogConsoleMessages             bool
 	LogIOs                         bool
+	LogTrace                       bool
 	MasterAccountId                string // could be empty, in which case operator is prompted when ACCOUNT$R1 is created
 	MassStorageDefaultMnemonic     string // Usually 'F'
 	MaxCards                       uint64
@@ -86,8 +87,9 @@ func NewConfiguration() *Configuration {
 	cfg.LibInitialReserve = 128
 	cfg.LibAssignMnemonic = "F"
 	cfg.LibMaximumSize = 9999
-	cfg.LogConsoleOn = true
-	cfg.LogIOs = true // TODO false
+	cfg.LogConsoleMessages = true
+	cfg.LogIOs = true   // TODO false
+	cfg.LogTrace = true // TODO false
 	cfg.MassStorageDefaultMnemonic = "F"
 	cfg.MasterAccountId = "SYSTEM"
 	cfg.MaxCards = 256
