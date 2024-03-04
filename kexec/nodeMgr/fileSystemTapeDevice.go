@@ -44,7 +44,7 @@ type FileSystemTapeDevice struct {
 	currentOffset         int64
 	canRead               bool
 	previousPayloadLength uint32
-	Verbose               bool
+	verbose               bool
 }
 
 func NewFileSystemTapeDevice() *FileSystemTapeDevice {
@@ -52,8 +52,6 @@ func NewFileSystemTapeDevice() *FileSystemTapeDevice {
 		isWriteProtected: true,
 	}
 }
-
-// TODO use SetIoStatus everywhere
 
 func (tape *FileSystemTapeDevice) GetNodeCategoryType() kexec.NodeCategoryType {
 	return kexec.NodeCategoryDevice
@@ -87,8 +85,14 @@ func (tape *FileSystemTapeDevice) SetIsWriteProtected(flag bool) {
 	tape.isWriteProtected = flag
 }
 
+func (tape *FileSystemTapeDevice) SetVerbose(flag bool) {
+	tape.verbose = flag
+}
+
 func (tape *FileSystemTapeDevice) StartIo(pkt IoPacket) {
-	// TODO need to do logging correctly
+	if tape.verbose {
+		log.Printf("FSTAPE:%v", pkt.GetString())
+	}
 	pkt.SetIoStatus(IosInProgress)
 
 	if pkt.GetNodeDeviceType() != tape.GetNodeDeviceType() {
@@ -117,16 +121,12 @@ func (tape *FileSystemTapeDevice) StartIo(pkt IoPacket) {
 		}
 	}
 
-	if tape.Verbose {
-		log.Printf("  ioStatus:%v", pkt.GetIoStatus())
+	if tape.verbose {
+		log.Printf("FSTAPE:ioStatus=%v", pkt.GetIoStatus())
 	}
 }
 
 func (tape *FileSystemTapeDevice) doMount(pkt *TapeIoPacket) {
-	if tape.Verbose {
-		log.Printf("doMount fName:%v", pkt.fileName)
-	}
-
 	tape.mutex.Lock()
 	defer tape.mutex.Unlock()
 
@@ -206,10 +206,6 @@ func (tape *FileSystemTapeDevice) doRewind(pkt *TapeIoPacket) {
 
 // doUnmount unmounts the virtual volume from the device
 func (tape *FileSystemTapeDevice) doUnmount(pkt *TapeIoPacket) {
-	if tape.Verbose {
-		log.Printf("doRead Unmount")
-	}
-
 	tape.mutex.Lock()
 	defer tape.mutex.Unlock()
 
@@ -237,16 +233,16 @@ func (tape *FileSystemTapeDevice) doWrite(pkt *TapeIoPacket) {
 	if !tape.IsReady() {
 		pkt.SetIoStatus(IosDeviceIsNotReady)
 	} else if tape.isWriteProtected {
-		pkt.ioStatus = IosWriteProtected
+		pkt.SetIoStatus(IosWriteProtected)
 		return
 	} else if pkt.buffer == nil {
-		pkt.ioStatus = IosNilBuffer
+		pkt.SetIoStatus(IosNilBuffer)
 		return
 	}
 
 	dataLength := len(pkt.buffer)
 	if dataLength == 0 || dataLength&0x01 == 0x01 {
-		pkt.ioStatus = IosInvalidTapeBlock
+		pkt.SetIoStatus(IosInvalidTapeBlock)
 		return
 	}
 	payloadLength := uint32(dataLength * 9 / 2)
@@ -270,7 +266,7 @@ func (tape *FileSystemTapeDevice) doWrite(pkt *TapeIoPacket) {
 
 	tape.previousPayloadLength = payloadLength
 	tape.canRead = false
-	pkt.ioStatus = IosComplete
+	pkt.SetIoStatus(IosComplete)
 }
 
 func (tape *FileSystemTapeDevice) doWriteTapeMark(pkt *TapeIoPacket) {
@@ -280,7 +276,7 @@ func (tape *FileSystemTapeDevice) doWriteTapeMark(pkt *TapeIoPacket) {
 	if !tape.IsReady() {
 		pkt.SetIoStatus(IosDeviceIsNotReady)
 	} else if tape.isWriteProtected {
-		pkt.ioStatus = IosWriteProtected
+		pkt.SetIoStatus(IosWriteProtected)
 		return
 	}
 
@@ -296,13 +292,13 @@ func (tape *FileSystemTapeDevice) doWriteTapeMark(pkt *TapeIoPacket) {
 
 	_, err := tape.file.Write(bytes)
 	if err != nil {
-		pkt.ioStatus = IosSystemError
+		pkt.SetIoStatus(IosSystemError)
 		return
 	}
 
 	tape.previousPayloadLength = 0
 	tape.canRead = false
-	pkt.ioStatus = IosComplete
+	pkt.SetIoStatus(IosComplete)
 }
 
 func (tape *FileSystemTapeDevice) Dump(destination io.Writer, indent string) {

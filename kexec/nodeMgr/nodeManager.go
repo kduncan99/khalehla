@@ -120,6 +120,7 @@ func (mgr *NodeManager) Initialize() error {
 	// Create devices
 	for _, dInfo := range mgr.deviceInfos {
 		dInfo.CreateNode()
+		dInfo.GetDevice().SetVerbose(mgr.exec.GetConfiguration().LogIOs)
 	}
 
 	// Connect devices to channels

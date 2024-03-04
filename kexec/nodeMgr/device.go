@@ -18,5 +18,6 @@ type Device interface {
 	GetNodeModelType() NodeModelType
 	IsMounted() bool
 	IsReady() bool
+	SetVerbose(flag bool)
 	StartIo(ioPacket IoPacket)
 }

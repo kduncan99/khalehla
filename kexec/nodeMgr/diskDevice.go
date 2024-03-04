@@ -21,5 +21,6 @@ type DiskDevice interface {
 	IsWriteProtected() bool
 	SetIsReady(flag bool)
 	SetIsWriteProtected(flag bool)
+	SetVerbose(flag bool)
 	StartIo(pkt IoPacket)
 }

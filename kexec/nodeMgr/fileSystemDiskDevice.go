@@ -62,7 +62,7 @@ type FileSystemDiskDevice struct {
 	geometry         *kexec.DiskPackGeometry
 	mutex            sync.Mutex
 	buffer           []byte
-	Verbose          bool
+	verbose          bool
 }
 
 func NewFileSystemDiskDevice(initialFileName *string) *FileSystemDiskDevice {
@@ -79,8 +79,6 @@ func NewFileSystemDiskDevice(initialFileName *string) *FileSystemDiskDevice {
 
 	return dd
 }
-
-// TODO use SetIoStatus everywhere
 
 func (disk *FileSystemDiskDevice) GetNodeCategoryType() kexec.NodeCategoryType {
 	return kexec.NodeCategoryDevice
@@ -122,8 +120,14 @@ func (disk *FileSystemDiskDevice) SetIsWriteProtected(flag bool) {
 	disk.isWriteProtected = flag
 }
 
+func (disk *FileSystemDiskDevice) SetVerbose(flag bool) {
+	disk.verbose = flag
+}
+
 func (disk *FileSystemDiskDevice) StartIo(pkt IoPacket) {
-	// TODO need to do logging correctly
+	if disk.verbose {
+		log.Printf("FSTAPE:%v", pkt.GetString())
+	}
 	pkt.SetIoStatus(IosInProgress)
 
 	if pkt.GetNodeDeviceType() != disk.GetNodeDeviceType() {
@@ -154,16 +158,12 @@ func (disk *FileSystemDiskDevice) StartIo(pkt IoPacket) {
 		}
 	}
 
-	if disk.Verbose {
+	if disk.verbose {
 		log.Printf("  ioStatus:%v", pkt.GetIoStatus())
 	}
 }
 
 func (disk *FileSystemDiskDevice) doMount(pkt *DiskIoPacket) {
-	if disk.Verbose {
-		log.Printf("doMount fName:%v", pkt.fileName)
-	}
-
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
@@ -193,10 +193,6 @@ func (disk *FileSystemDiskDevice) doMount(pkt *DiskIoPacket) {
 }
 
 func (disk *FileSystemDiskDevice) doPrep(pkt *DiskIoPacket) {
-	if disk.Verbose {
-		log.Printf("doPrep prepF:%v tracks:%v", pkt.prepFactor, pkt.trackCount)
-	}
-
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
@@ -245,8 +241,7 @@ func (disk *FileSystemDiskDevice) doPrep(pkt *DiskIoPacket) {
 
 	buffer := make([]byte, 128)
 	pkg.PackWord36(label, buffer[:126])
-	if disk.Verbose {
-		pkg.DumpWord36Buffer(label, 7)
+	if disk.verbose {
 		log.Printf("  WriteAt offset=%v len=%v", 0, len(disk.buffer))
 	}
 
@@ -291,7 +286,7 @@ func (disk *FileSystemDiskDevice) doPrep(pkt *DiskIoPacket) {
 	byteCount := wLen * 9 / 2
 	for wx < 1792 {
 		pkg.PackWord36(dirTrack[wx:wx+wLen], buffer[0:byteCount])
-		if disk.Verbose {
+		if disk.verbose {
 			log.Printf("  WriteAt offset=%v len=%v", offset, len(disk.buffer))
 		}
 
@@ -311,14 +306,10 @@ func (disk *FileSystemDiskDevice) doPrep(pkt *DiskIoPacket) {
 		log.Printf("%v\n", err)
 	}
 
-	pkt.ioStatus = IosComplete
+	pkt.SetIoStatus(IosComplete)
 }
 
 func (disk *FileSystemDiskDevice) doRead(pkt *DiskIoPacket) {
-	if disk.Verbose {
-		log.Printf("doRead blkId:%v", pkt.blockId)
-	}
-
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
@@ -348,7 +339,7 @@ func (disk *FileSystemDiskDevice) doRead(pkt *DiskIoPacket) {
 	}
 
 	offset := int64(pkt.blockId) * int64(disk.geometry.PaddedBytesPerBlock)
-	if disk.Verbose {
+	if disk.verbose {
 		log.Printf("  ReadAt offset=%v len=%v", offset, len(disk.buffer))
 	}
 
@@ -359,18 +350,14 @@ func (disk *FileSystemDiskDevice) doRead(pkt *DiskIoPacket) {
 		return
 	}
 	pkg.UnpackWord36(disk.buffer[:disk.geometry.BytesPerBlock], pkt.buffer)
-	if disk.Verbose {
+	if disk.verbose {
 		pkg.DumpWord36Buffer(pkt.buffer, 7)
 	}
 
-	pkt.ioStatus = IosComplete
+	pkt.SetIoStatus(IosComplete)
 }
 
 func (disk *FileSystemDiskDevice) doReadLabel(pkt *DiskIoPacket) {
-	if disk.Verbose {
-		log.Printf("doReadLabel blkId:%v", pkt.blockId)
-	}
-
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
@@ -394,7 +381,7 @@ func (disk *FileSystemDiskDevice) doReadLabel(pkt *DiskIoPacket) {
 		return
 	}
 
-	if disk.Verbose {
+	if disk.verbose {
 		log.Printf("  ReadAt offset=%v len=%v", 0, len(disk.buffer))
 	}
 
@@ -406,27 +393,19 @@ func (disk *FileSystemDiskDevice) doReadLabel(pkt *DiskIoPacket) {
 	}
 	pkg.UnpackWord36(disk.buffer[:126], pkt.buffer)
 
-	pkt.ioStatus = IosComplete
+	pkt.SetIoStatus(IosComplete)
 }
 
 // doReset cancels any pending IOs. It is a NOP for us.
 func (disk *FileSystemDiskDevice) doReset(pkt *DiskIoPacket) {
-	if disk.Verbose {
-		log.Printf("doReset")
-	}
-
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
 	// nothing to do for now
-	pkt.ioStatus = IosComplete
+	pkt.SetIoStatus(IosComplete)
 }
 
 func (disk *FileSystemDiskDevice) doUnmount(pkt *DiskIoPacket) {
-	if disk.Verbose {
-		log.Printf("doRead Unmount")
-	}
-
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
@@ -447,10 +426,6 @@ func (disk *FileSystemDiskDevice) doUnmount(pkt *DiskIoPacket) {
 }
 
 func (disk *FileSystemDiskDevice) doWrite(pkt *DiskIoPacket) {
-	if disk.Verbose {
-		log.Printf("doWrite blkId:%v", pkt.blockId)
-	}
-
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
@@ -493,14 +468,10 @@ func (disk *FileSystemDiskDevice) doWrite(pkt *DiskIoPacket) {
 		return
 	}
 
-	pkt.ioStatus = IosComplete
+	pkt.SetIoStatus(IosComplete)
 }
 
 func (disk *FileSystemDiskDevice) doWriteLabel(pkt *DiskIoPacket) {
-	if disk.Verbose {
-		log.Printf("doWriteLabel")
-	}
-
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
@@ -529,7 +500,7 @@ func (disk *FileSystemDiskDevice) doWriteLabel(pkt *DiskIoPacket) {
 		return
 	}
 
-	if disk.Verbose {
+	if disk.verbose {
 		pkg.DumpWord36Buffer(pkt.buffer, 7)
 	}
 
@@ -541,20 +512,16 @@ func (disk *FileSystemDiskDevice) doWriteLabel(pkt *DiskIoPacket) {
 		return
 	}
 
-	pkt.ioStatus = IosComplete
+	pkt.SetIoStatus(IosComplete)
 }
 
 // do this any time we need to read the geometry from a (hopefully) prepped pack.
 // we will pretend the prep factor is 28 - this will work for block 0
 func (disk *FileSystemDiskDevice) probeGeometry() error {
-	if disk.Verbose {
-		log.Printf("probeGeometry()")
-	}
-
 	disk.geometry = nil
 
 	buffer := make([]byte, 128)
-	if disk.Verbose {
+	if disk.verbose {
 		log.Printf("  ReadAt offset=%v len=%v", 0, len(disk.buffer))
 	}
 
@@ -566,7 +533,7 @@ func (disk *FileSystemDiskDevice) probeGeometry() error {
 
 	label := make([]pkg.Word36, 28)
 	pkg.UnpackWord36(buffer[:126], label)
-	if disk.Verbose {
+	if disk.verbose {
 		pkg.DumpWord36Buffer(label, 7)
 	}
 
@@ -607,23 +574,6 @@ func (disk *FileSystemDiskDevice) probeGeometry() error {
 	disk.buffer = make([]byte, bytesPerBlockMap[prepFactor])
 
 	return nil
-}
-
-func dumpBuffer(buffer []byte) {
-	fmt.Println("Byte Buffer:")
-	incr := 32
-	for bx := 0; bx < len(buffer); bx += incr {
-		str := ""
-		for by := 0; by < incr; by++ {
-			bz := bx + by
-			if bz >= len(buffer) {
-				break
-			} else {
-				str += fmt.Sprintf("%02X ", buffer[bz])
-			}
-		}
-		fmt.Println(str)
-	}
 }
 
 func (disk *FileSystemDiskDevice) Dump(dest io.Writer, indent string) {

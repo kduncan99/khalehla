@@ -101,7 +101,9 @@ func (mgr *ConsoleManager) Stop() {
 // The ConsoleManager thread will handle actually sending the message to all the consoles if/as appropriate.
 func (mgr *ConsoleManager) SendReadOnlyMessage(message *kexec.ConsoleReadOnlyMessage) {
 	// Log it and put it in the RCE tail sheet (unless it is the Exec)
-	log.Printf("ConsMgr:Queueing %v*%v", message.Source.GetRunId(), message.Text)
+	if mgr.exec.GetConfiguration().LogTrace {
+		log.Printf("ConsMgr:Queueing %v*%v", message.Source.GetRunId(), message.Text)
+	}
 	if !message.Source.IsExec() {
 		message.Source.PostToTailSheet(message.Text)
 	}
@@ -116,7 +118,9 @@ func (mgr *ConsoleManager) SendReadOnlyMessage(message *kexec.ConsoleReadOnlyMes
 // During the waiting period, the ConsoleManager thread will send the message, then poll for a reply as necessary.
 func (mgr *ConsoleManager) SendReadReplyMessage(message *kexec.ConsoleReadReplyMessage) error {
 	// Log it and put it in the RCE tail sheet (unless it is the Exec)
-	log.Printf("ConsMgr:Queueing n-%v:%v", message.Source.GetRunId(), message.Text)
+	if mgr.exec.GetConfiguration().LogTrace {
+		log.Printf("ConsMgr:Queueing n-%v:%v", message.Source.GetRunId(), message.Text)
+	}
 	if !message.Source.IsExec() {
 		message.Source.PostToTailSheet(message.Text)
 	}
@@ -301,7 +305,7 @@ func (mgr *ConsoleManager) checkForSolicitedInput() bool {
 				continue
 			}
 
-			if !tracker.message.DoNotLogReply {
+			if mgr.exec.GetConfiguration().LogConsoleMessages && !tracker.message.DoNotLogReply {
 				consw36 := pkg.Word36(consId)
 				log.Printf("ConsMgr:%v %v %v", consw36.ToStringAsFieldata(), msgId, *reply)
 				tracker.message.Source.PostToTailSheet(fmt.Sprintf("%v %v", msgId, reply))
@@ -327,6 +331,9 @@ func (mgr *ConsoleManager) checkForUnsolicitedInput() bool {
 			mgr.dropConsole(consId)
 		} else if input != nil {
 			// send the raw input to the exec, and let it deal with parsing issues
+			if mgr.exec.GetConfiguration().LogConsoleMessages {
+				log.Printf("ConsMgr:%v", *input)
+			}
 			km := mgr.exec.GetKeyinManager()
 			km.PostKeyin(consId, *input)
 			return true
@@ -340,7 +347,9 @@ func (mgr *ConsoleManager) checkForUnsolicitedInput() bool {
 // call under lock
 func (mgr *ConsoleManager) dropConsole(consoleId kexec.ConsoleIdentifier) {
 	consId := pkg.Word36(consoleId)
-	log.Printf("ConsMgr: Deleting unreponsive console %v", consId.ToStringAsFieldata())
+	if mgr.exec.GetConfiguration().LogTrace {
+		log.Printf("ConsMgr: Deleting unreponsive console %v", consId.ToStringAsFieldata())
+	}
 	delete(mgr.consoles, consoleId)
 
 	for _, tracker := range mgr.queuedReadReply {
