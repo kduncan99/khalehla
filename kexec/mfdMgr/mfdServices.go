@@ -10,6 +10,7 @@ import (
 	"khalehla/kexec/nodeMgr"
 	"khalehla/pkg"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -115,6 +116,67 @@ func (mgr *MFDManager) CreateFixedDiskFileCycle(
 
 	fsIdentifier = FileSetIdentifier(mainItem0Address)
 	return
+}
+
+// DropFileCycle effectively deletes a file cycle.
+// It does *not* delete the fileset, even if the fileset is now empty.
+// This is the service wrapper which locks the manager before going to the core function.
+// Caller should NOT invoke this on any file which is still assigned.
+func (mgr *MFDManager) DropFileCycle(
+	fcIdentifier FileCycleIdentifier,
+) MFDResult {
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
+	return mgr.dropFileCycle(kexec.MFDRelativeAddress(fcIdentifier))
+}
+
+// DropFileSet deletes an entire (possibly -- actually, hopefully -- empty) file set.
+// Even though we would rather the caller drop the various cycles individually,
+// we'll honor the request on a non-empty file set as well.
+// Caller should NOT invoke this on any fileset which still has a file cycle assigned.
+func (mgr *MFDManager) DropFileSet(
+	fsIdentifier FileSetIdentifier,
+) MFDResult {
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
+	leadItem0Addr := kexec.MFDRelativeAddress(fsIdentifier)
+	leadItem0, err := mgr.getMFDSector(leadItem0Addr)
+	if err != nil {
+		return MFDNotFound
+	}
+
+	_ = mgr.markDirectorySectorUnallocated(leadItem0Addr)
+	leadItem1Addr := kexec.MFDRelativeAddress(leadItem0[0].GetW())
+	var leadItem1 []pkg.Word36
+	if leadItem1Addr&0_400000_000000 == 0 {
+		leadItem1Addr &= 0_007777_777777
+		leadItem1, err = mgr.getMFDSector(leadItem1Addr)
+		if err != nil {
+			return MFDNotFound
+		}
+		_ = mgr.markDirectorySectorUnallocated(leadItem1Addr)
+	}
+
+	links := leadItem0[013:]
+	if leadItem1 != nil {
+		links = append(links, leadItem1[1:]...)
+	}
+	currentRange := leadItem0[011].GetS4()
+	links = links[:currentRange]
+
+	for lx := 0; lx < len(links); lx++ {
+		if links[lx] != 0 {
+			mgr.DropFileCycle(FileCycleIdentifier(links[lx] & 0_007777_777777))
+		}
+	}
+
+	qualifier := strings.Trim(leadItem0[0].ToStringAsFieldata()+leadItem0[1].ToStringAsFieldata(), " ")
+	filename := strings.Trim(leadItem0[2].ToStringAsFieldata()+leadItem0[3].ToStringAsFieldata(), " ")
+	delete(mgr.fileLeadItemLookupTable[qualifier], filename)
+
+	return MFDSuccessful
 }
 
 // GetFileCycleInfo returns a FileCycleInfo struct representing the file cycle corresponding to the given
@@ -332,49 +394,6 @@ func (mgr *MFDManager) SetFileToBeDeleted(
 
 // ----- mostly obsolete below here -----
 
-// type MFDCatalogMassStorageFileRequest struct {
-//	qualifier         string
-//	filename          string
-//	absoluteFileCycle *uint
-//	relativeFileCycle *int
-//	readKey           string
-//	writeKey          string
-//	projectId         string
-//	AccountId         string
-//	granularity       pkg.Granularity
-//	isRemovable       bool
-//	wordAddressable   bool
-//	SaveOnCheckpoint  bool
-//	equipment         string
-//	isGuarded         bool
-//	inhibitUnloadFlag bool
-//	isPrivate         bool
-//	isWriteOnly       bool
-//	isReadOnly        bool
-//	// for disk
-//	reserve uint64
-//	maximum uint64
-//	packIds []string
-//	// for tape
-//	isTape            bool
-//	density           uint
-//	format            uint
-//	features          uint
-//	featuresExtension uint
-//	mtapop            uint
-//	ctlPool           string
-//	reelNumbers       []string
-// }
-//
-// type MFDDeleteFileRequest struct {
-//	qualifier         string
-//	filename          string
-//	absoluteFileCycle *uint
-//	relativeFileCycle *int
-//	readKey           string
-//	writeKey          string
-// }
-
 // populateNewLeadItem0 sets up a lead item sector 0 in the given buffer,
 // assuming we are cataloging a new file, will have one cycle, and the absolute cycle is given to us.
 // Implied is that there will be no sector 1 (since there aren't enough cycles to warrant it).
@@ -569,228 +588,86 @@ func populateFixedMainItem1(
 	}
 }
 
-func populateRemovableMainItem1(
-	mainItem1 []pkg.Word36,
-	mainItem0Address kexec.MFDRelativeAddress,
-	absoluteCycle uint64,
-	packIds []string,
-) {
-	for wx := 0; wx < 28; wx++ {
-		mainItem1[wx].SetW(0)
-	}
-
-	mainItem1[0].SetW(uint64(kexec.InvalidLink)) // no sector 2 (yet, anyway)
-	mainItem1[6].SetW(uint64(mainItem0Address))
-	mainItem1[7].SetT3(absoluteCycle)
-	mainItem1[17].SetT3(uint64(len(packIds)))
-
-	// TODO note that for >5 pack entries, we need additional main item sectors
-	//  one per 10 additional packs beyond 5
-	mix := 18
-	limit := len(packIds)
-	if limit > 5 {
-		limit = 5
-	}
-	for dpx := 0; dpx < limit; dpx++ {
-		mainItem1[mix].FromStringToFieldata(packIds[dpx])
-		// TODO for isRemovable, we need the main item address for this file on that pack
-		mix += 2
-	}
-}
-
-func populateTapeMainItem0(
-	mainItem0 []pkg.Word36,
-	qualifier string,
-	filename string,
-	projectId string,
-	accountId string,
-	reelTable0Address kexec.MFDRelativeAddress,
-	leadItem0Address kexec.MFDRelativeAddress,
-	mainItem1Address kexec.MFDRelativeAddress,
-	toBeCataloged bool, // for @ASG,C or @ASG,U
-	isGuarded bool,
-	isPrivate bool,
-	isWriteOnly bool,
-	isReadOnly bool,
-	absoluteCycle uint64,
-	density uint,
-	format uint,
-	features uint,
-	featuresExtension uint,
-	mtapop uint,
-	ctlPool string,
-) {
-	for wx := 0; wx < 28; wx++ {
-		mainItem0[wx].SetW(0)
-	}
-
-	mainItem0[0].SetW(uint64(reelTable0Address))
-	mainItem0[0].Or(0_200000_000000)
-	pkg.FromStringToFieldata(qualifier, mainItem0[1:3])
-	pkg.FromStringToFieldata(filename, mainItem0[3:5])
-	pkg.FromStringToFieldata(projectId, mainItem0[5:7])
-	pkg.FromStringToFieldata(accountId, mainItem0[7:9])
-
-	// TODO
-}
-
-func populateTapeMainItem1(
-	mainItem1 []pkg.Word36,
-	qualifier string,
-	filename string,
-	mainItem0Address kexec.MFDRelativeAddress,
-	absoluteCycle uint64,
-) {
-	for wx := 0; wx < 28; wx++ {
-		mainItem1[wx].SetW(0)
-	}
-
-	mainItem1[0].SetW(uint64(kexec.InvalidLink)) // no sector 2 (yet, anyway)
-	pkg.FromStringToFieldata(qualifier, mainItem1[1:3])
-	pkg.FromStringToFieldata(filename, mainItem1[3:5])
-	pkg.FromStringToFieldata("*No.1*", mainItem1[5:6])
-	mainItem1[6].SetW(uint64(mainItem0Address))
-	mainItem1[7].SetT3(absoluteCycle)
-}
-
-// // CatalogFile attempts to catalog a file on mass storage according to the given parameters.
-// // We really only expect to be invoked via fac mgr, and only for @CAT of word and sector addressable disk files.
-// // If we return err, we've stopped the exec
-// func (mgr *MFDManager) CatalogFile(parameters *MFDCatalogMassStorageFileRequest) (*facilitiesMgr.FacResult, error) {
-//
-//	facResult := facilitiesMgr.NewFacResult()
-//
-//	mgr.mutex.Lock()
-//	defer mgr.mutex.Unlock()
-//
-//	// get lead item(s) for the fileset if the fileset exists
-//	_ /*leadAddr0*/, fileSetExists := mgr.fileLeadItemLookupTable[parameters.qualifier][parameters.filename]
-//
-//	if !fileSetExists {
-//		// Create a lead and main items and mark them dirty
-//		leadAddr0, leadItem0, err := mgr.allocateDirectorySector(pkg.InvalidLDAT)
-//		if err != nil {
-//			return nil, err
-//		}
-//
-//		mainAddr0, mainItem0, err := mgr.allocateDirectorySector(pkg.InvalidLDAT)
-//		if err != nil {
-//			return nil, err
-//		}
-//
-//		mainAddr1, mainItem1, err := mgr.allocateDirectorySector(pkg.InvalidLDAT)
-//		if err != nil {
-//			return nil, err
-//		}
-//
-//		mgr.markDirectorySectorDirty(leadAddr0)
-//		mgr.markDirectorySectorDirty(mainAddr0)
-//		mgr.markDirectorySectorDirty(mainAddr1)
-//
-//		var effectiveAbsolute uint64
-//		if parameters.relativeFileCycle != nil {
-//			effectiveAbsolute = 1
-//		} else {
-//			effectiveAbsolute = uint64(*parameters.absoluteFileCycle)
-//		}
-//
-//		fileType := uint64(0)
-//		if parameters.isTape {
-//			fileType = 001
-//		} else if parameters.isRemovable {
-//			fileType = 040
-//		}
-//
-//		populateNewLeadItem0(
-//			leadItem0, parameters.qualifier, parameters.filename, parameters.projectId,
-//			parameters.readKey, parameters.writeKey, fileType,
-//			effectiveAbsolute, parameters.isGuarded, uint64(mainAddr0))
-//
-//		equip := parameters.equipment
-//		if len(equip) == 0 {
-//			if parameters.wordAddressable {
-//				equip = "D"
-//			} else {
-//				equip = "F"
-//			}
-//		}
-//
-//		if !parameters.isTape {
-//			populateMassStorageMainItem0(mainItem0, parameters.qualifier, parameters.filename, parameters.projectId,
-//				parameters.readKey, parameters.writeKey, parameters.AccountId, leadAddr0, mainAddr1,
-//				parameters.SaveOnCheckpoint, false, parameters.isRemovable,
-//				parameters.granularity == pkg.PositionGranularity, parameters.wordAddressable,
-//				equip, parameters.isGuarded, parameters.inhibitUnloadFlag,
-//				parameters.isPrivate, parameters.isWriteOnly, parameters.isReadOnly, effectiveAbsolute,
-//				parameters.reserve, parameters.maximum, parameters.packIds)
-//
-//			if !parameters.isRemovable {
-//				populateFixedMainItem1(mainItem1, parameters.qualifier, parameters.filename,
-//					mainAddr0, effectiveAbsolute, parameters.packIds)
-//				// TODO possibly more
-//			} else {
-//				populateRemovableMainItem1(mainItem1, mainAddr0, effectiveAbsolute, parameters.packIds)
-//				// TODO possibly more
-//			}
-//		} else {
-//			reelAddr0 := pkg.InvalidLink // TODO REEL table address or InvalidLink
-//			populateTapeMainItem0(mainItem0, parameters.qualifier, parameters.filename, parameters.projectId,
-//				parameters.AccountId, reelAddr0, leadAddr0, mainAddr1, false,
-//				parameters.isGuarded, parameters.isPrivate, parameters.isWriteOnly, parameters.isReadOnly,
-//				effectiveAbsolute, parameters.density, parameters.format, parameters.features,
-//				parameters.featuresExtension, parameters.mtapop, parameters.ctlPool)
-//			populateTapeMainItem1(mainItem1, parameters.qualifier, parameters.filename, mainAddr0, effectiveAbsolute)
-//			// TODO tape file reel table(s)
-//		}
-//	} else {
-//		// TODO check read/write keys
-//		//	 I suspect we have to meet write key verification, but probably not read key
-//
-//		// TODO check file cycles - zero? +1? absolute? negative relative cycles are not allowed
-//		// 	Absolute cycles are 1 to 999, Relative cycles are -{n}, 0, or +1
-//		//  if a +1 is currently assigned, we cannot catalog anything in this file set (a +1 can never exist if it is not assigned)
-//		//  if we are +0, and a fileset already exists, this is an error
-//		//  if we try to catalog a cycle which would delete the lowest-number cycle
-//		//  	and it is assigned, we have an f-cycle conflict
-//		//		and there are more than one such cycles (see formula below) we have an f-cycle conflict
-//		//		and the cycle to be deleted has a write key other than what we specificed, we have an f-cycle conflict
-//		//  For a new cycle to be created, its absolute F-cycle number must be within the following range:
-//		// 		(x-w) < z ≤ (x-y+w+1) where:
-//		// 		x is T3 of word 9 of the lead item (cycle number of latest F-cycle).
-//		// 		w is S3 of word 9 of the lead item (maximum number of F-cycles).
-//		// 		z is the absolute F-cycle number requested.
-//		// 		y is S4 of word 9 of the lead item (current range of F-cycles)
-//		//			this is the highest-absolute-f-cycle - lowest-absolute-f-cycle + 1
-//		//			*or* highest-absolute-f-cycle + 1000 - lowest-absolute-f-cycle
-//		//
-//		// e.g.: we have cycles 10, 11, 20, 21, 30, 31 and max cycles is 25
-//		// so x-w = 31 - 25 = 6
-//		// x-y+w+1 = 31 - (31 - 10 + 1) + 25 + 1 = 35
-//		// thus 6 < z <= 35
-//
-//		// leadItem0, _ := mgr.getMFDSector(leadAddr0)
-//		// var leadAddr1 = pkg.MFDRelativeAddress(leadItem0[0].GetW())
-//		// var leadItem1 []pkg.Word36
-//		// if leadAddr1 != pkg.InvalidLink {
-//		// 	leadItem1, _ = mgr.getMFDSector(leadAddr1)
-//		// }
-//		//
-//		// maxRange := leadItem0[9].GetS3()
-//		// currentRange := leadItem0[9].GetS4()
-//		// highestAbsolute := leadItem0[9].GetT3()
-//
-//		// TODO make sure the requested file cycle is valid
-//
-//		var effectiveEquipmentType = parameters.equipment
-//		if len(effectiveEquipmentType) == 0 {
-//			// Find the main item for the highest f-cycle.
-//			// To do this, we have to walk the list in the lead item(s).
-//			// TODO
-//		}
-//
-//		// TODO re-use whatever we can from the above code...
+//func populateRemovableMainItem1(
+//	mainItem1 []pkg.Word36,
+//	mainItem0Address kexec.MFDRelativeAddress,
+//	absoluteCycle uint64,
+//	packIds []string,
+//) {
+//	for wx := 0; wx < 28; wx++ {
+//		mainItem1[wx].SetW(0)
 //	}
 //
-//	facResult.PostMessage(facilitiesMgr.FacStatusComplete, []string{"CAT"})
-//	return facResult, nil
-// }
+//	mainItem1[0].SetW(uint64(kexec.InvalidLink)) // no sector 2 (yet, anyway)
+//	mainItem1[6].SetW(uint64(mainItem0Address))
+//	mainItem1[7].SetT3(absoluteCycle)
+//	mainItem1[17].SetT3(uint64(len(packIds)))
+//
+//	// TODO note that for >5 pack entries, we need additional main item sectors
+//	//  one per 10 additional packs beyond 5
+//	mix := 18
+//	limit := len(packIds)
+//	if limit > 5 {
+//		limit = 5
+//	}
+//	for dpx := 0; dpx < limit; dpx++ {
+//		mainItem1[mix].FromStringToFieldata(packIds[dpx])
+//		// TODO for isRemovable, we need the main item address for this file on that pack
+//		mix += 2
+//	}
+//}
+
+//func populateTapeMainItem0(
+//	mainItem0 []pkg.Word36,
+//	qualifier string,
+//	filename string,
+//	projectId string,
+//	accountId string,
+//	reelTable0Address kexec.MFDRelativeAddress,
+//	leadItem0Address kexec.MFDRelativeAddress,
+//	mainItem1Address kexec.MFDRelativeAddress,
+//	toBeCataloged bool, // for @ASG,C or @ASG,U
+//	isGuarded bool,
+//	isPrivate bool,
+//	isWriteOnly bool,
+//	isReadOnly bool,
+//	absoluteCycle uint64,
+//	density uint,
+//	format uint,
+//	features uint,
+//	featuresExtension uint,
+//	mtapop uint,
+//	ctlPool string,
+//) {
+//	for wx := 0; wx < 28; wx++ {
+//		mainItem0[wx].SetW(0)
+//	}
+//
+//	mainItem0[0].SetW(uint64(reelTable0Address))
+//	mainItem0[0].Or(0_200000_000000)
+//	pkg.FromStringToFieldata(qualifier, mainItem0[1:3])
+//	pkg.FromStringToFieldata(filename, mainItem0[3:5])
+//	pkg.FromStringToFieldata(projectId, mainItem0[5:7])
+//	pkg.FromStringToFieldata(accountId, mainItem0[7:9])
+//
+//	// TODO
+//}
+
+//func populateTapeMainItem1(
+//	mainItem1 []pkg.Word36,
+//	qualifier string,
+//	filename string,
+//	mainItem0Address kexec.MFDRelativeAddress,
+//	absoluteCycle uint64,
+//) {
+//	for wx := 0; wx < 28; wx++ {
+//		mainItem1[wx].SetW(0)
+//	}
+//
+//	mainItem1[0].SetW(uint64(kexec.InvalidLink)) // no sector 2 (yet, anyway)
+//	pkg.FromStringToFieldata(qualifier, mainItem1[1:3])
+//	pkg.FromStringToFieldata(filename, mainItem1[3:5])
+//	pkg.FromStringToFieldata("*No.1*", mainItem1[5:6])
+//	mainItem1[6].SetW(uint64(mainItem0Address))
+//	mainItem1[7].SetT3(absoluteCycle)
+//}

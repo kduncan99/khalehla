@@ -130,11 +130,13 @@ func (fst *PackFreeSpaceTable) MarkTrackRegionAllocated(
 // MarkTrackRegionUnallocated is a general-purpose function which manipulates the entries in a free space table
 func (fst *PackFreeSpaceTable) MarkTrackRegionUnallocated(
 	trackId kexec.TrackId,
-	trackCount kexec.TrackCount) bool {
+	trackCount kexec.TrackCount,
+) bool {
 
 	if trackCount == 0 {
 		log.Printf("MarkTrackRegionUnallocated id:%v count:%v requested trackCount is zero",
 			trackId, trackCount)
+		return true
 	}
 
 	// We are hoping that we do not find an entry which contains all or part of the requested region
