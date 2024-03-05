@@ -189,6 +189,7 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 		kexec.ROption | kexec.VOption | kexec.WOption | kexec.ZOption)
 	if !checkIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
 		resultCode |= 0_600000_000000
+		return
 	}
 
 	if !mgr.checkSubFields(operandFields, catFixedFSIs) {
@@ -197,6 +198,7 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 		}
 		facResult.PostMessage(FacStatusUndefinedFieldOrSubfield, nil)
 		resultCode |= 0_600000_000000
+		return
 	}
 
 	saveOnCheckpoint := optionWord&kexec.BOption != 0
@@ -220,17 +222,20 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 	} else {
 		facResult.PostMessage(FacStatusIllegalValueForGranularity, nil)
 		resultCode |= 0_600000_000000
+		return
 	}
 
 	var initReserve uint64
 	if len(initStr) > 12 {
 		facResult.PostMessage(FacStatusIllegalInitialReserve, nil)
 		resultCode |= 0_600000_000000
+		return
 	} else if len(initStr) > 0 {
 		initReserve, err := strconv.Atoi(initStr)
 		if err != nil || initReserve < 0 {
 			facResult.PostMessage(FacStatusIllegalInitialReserve, nil)
 			resultCode |= 0_600000_000000
+			return
 		}
 	}
 
@@ -238,20 +243,19 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 	if len(maxStr) > 12 {
 		facResult.PostMessage(FacStatusIllegalMaxGranules, nil)
 		resultCode |= 0_600000_000000
+		return
 	} else if len(maxStr) > 0 {
 		iMaxGran, err := strconv.Atoi(maxStr)
 		maxGranules = uint64(iMaxGran)
 		if err != nil || maxGranules < 0 || maxGranules > 262143 {
 			facResult.PostMessage(FacStatusIllegalMaxGranules, nil)
 			resultCode |= 0_600000_000000
+			return
 		} else if maxGranules < initReserve {
 			facResult.PostMessage(FacStatusMaximumIsLessThanInitialReserve, nil)
 			resultCode |= 0_600000_000000
+			return
 		}
-	}
-
-	if resultCode&0_400000_000000 != 0 {
-		return
 	}
 
 	// If there isn't an existing fileset, create one.
@@ -273,6 +277,12 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 		}
 	} else {
 		// Otherwise, do sanity checking on the file cycle and privacy settings on the existing file set.
+		if fileSetInfo.PlusOneExists {
+			facResult.PostMessage(FacStatusRelativeFCycleConflict, nil)
+			resultCode |= 0_600000_000040
+			return
+		}
+
 		gaveReadKey := len(fileSpecification.ReadKey) > 0
 		gaveWriteKey := len(fileSpecification.WriteKey) > 0
 		hasReadKey := len(fileSetInfo.ReadKey) > 0
@@ -283,12 +293,14 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 				facResult.PostMessage(FacStatusReadWriteKeysNeeded, nil)
 				needsMsg = true
 				resultCode |= 0_600000_000000
+				return
 			} else if fileSetInfo.ReadKey != fileSpecification.ReadKey {
 				facResult.PostMessage(FacStatusIncorrectReadKey, nil)
 				resultCode |= 0_401000_000000
 				if sourceIsExecRequest {
 					rce.PostContingencyWithAuxiliary(017, 0, 0, 015)
 				}
+				return
 			}
 		} else {
 			if gaveReadKey {
@@ -297,6 +309,7 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 				if sourceIsExecRequest {
 					rce.PostContingencyWithAuxiliary(017, 0, 0, 015)
 				}
+				return
 			}
 		}
 
@@ -304,12 +317,14 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 			if !gaveWriteKey && !needsMsg {
 				facResult.PostMessage(FacStatusReadWriteKeysNeeded, nil)
 				resultCode |= 0_600000_000000
+				return
 			} else if fileSetInfo.WriteKey != fileSpecification.WriteKey {
 				facResult.PostMessage(FacStatusIncorrectWriteKey, nil)
 				resultCode |= 0_400400_000000
 				if sourceIsExecRequest {
 					rce.PostContingencyWithAuxiliary(017, 0, 0, 015)
 				}
+				return
 			}
 		} else {
 			if gaveWriteKey {
@@ -318,11 +333,8 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 				if sourceIsExecRequest {
 					rce.PostContingencyWithAuxiliary(017, 0, 0, 015)
 				}
+				return
 			}
-		}
-
-		if resultCode&0_400000_000000 != 0 {
-			return
 		}
 
 		/*
@@ -341,6 +353,7 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 			// that it would violate the max cycle range. It *can* be sufficiently above the lowest cycle that
 			// the lowest cycle needs to be dropped... and if that is the case, we need to ensure
 			// that we can actually drop that cycle.
+			// Also we need to ensure the actual absolute cycle doesn't already exist.
 			// TODO
 		} else if fileSpecification.RelativeCycle != nil {
 			// If we get here, we've already limited relative cycle to only +1.
@@ -348,6 +361,7 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 			if fileSetInfo.PlusOneExists {
 				facResult.PostMessage(FacStatusRelativeFCycleConflict, nil)
 				resultCode |= 0_600000_000040
+				return
 			}
 
 			// If the highest absolute cycle file is deleted, then that file is (re)cataloged.
@@ -363,6 +377,7 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 			// We're here with a file set but no cycle spec on a @CAT request. That won't fly.
 			facResult.PostMessage(FacStatusFileAlreadyCataloged, nil)
 			resultCode |= 0_500000_000000
+			return
 		}
 
 		if dropOldest {
@@ -375,7 +390,9 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 			}
 
 			if fcInfo.AssignedIndicator {
-				// TODO can't drop it
+				facResult.PostMessage(FacStatusRelativeFCycleConflict, nil)
+				resultCode |= 0_600000_000040
+				return
 			}
 
 			// TODO check the following
@@ -385,11 +402,11 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 			//fcInfo.InhibitFlags.IsReadOnly
 			//fcInfo.InhibitFlags.IsWriteOnly
 
-			if resultCode&0_400000_000000 != 0 {
+			// TODO invoke MFD services to do so
+			mfdResult = mm.DropFileCycle(oldestFCIdent)
+			if mfdResult != mfdMgr.MFDSuccessful {
 				return
 			}
-
-			// TODO invoke MFD services to do so
 		}
 	}
 
@@ -620,7 +637,7 @@ func (mgr *FacilitiesManager) selectEquipmentModel(
 
 	// If we still do not have an effective mnemonic use the default sector-formatted mass storage mnemonic.
 	if len(effectiveMnemonic) == 0 {
-		effectiveMnemonic = "F" // TODO why not word-addressable? Also, get this from config
+		effectiveMnemonic = mgr.exec.GetConfiguration().MassStorageDefaultMnemonic
 	}
 
 	// Now go look for the mnemonic in the configured equipment entry table.
