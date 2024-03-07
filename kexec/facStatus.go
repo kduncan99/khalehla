@@ -2,7 +2,7 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package facilitiesMgr
+package kexec
 
 type FacStatusCategory uint
 
@@ -47,10 +47,12 @@ const (
 	FacStatusFilenameIsRequired                      = 0244333
 	FacStatusFileAlreadyCataloged                    = 244433
 	FacStatusIllegalValueForGranularity              = 245233
+	FacStatusInternalNameRequired                    = 245533
 	FacStatusIllegalInitialReserve                   = 246333
 	FacStatusReadWriteKeysNeeded                     = 246433
 	FacStatusIllegalMaxGranules                      = 247333
 	FacStatusMaximumIsLessThanInitialReserve         = 247433
+	FacStatusIOptionOnlyAllowed                      = 250733
 	FacStatusPlacementFieldNotAllowed                = 252133
 	FacStatusIncorrectReadKey                        = 253333
 	FacStatusFileNotCatalogedWithReadKey             = 253433

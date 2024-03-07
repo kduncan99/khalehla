@@ -74,6 +74,10 @@ var catRemovableFSIs = newFieldSubfieldIndices().
 	add(1, 3).
 	addAll(2)
 
+var useFSIs = newFieldSubfieldIndices().
+	add(0, 0).
+	add(1, 0)
+
 // -----------------------------------------------------------------------------
 
 // checkSubFields
@@ -118,7 +122,7 @@ func (mgr *FacilitiesManager) getSubField(operandFields [][]string, fieldIndex i
 func (mgr *FacilitiesManager) assignFixedFile(
 	exec kexec.IExec,
 	rce *kexec.RunControlEntry,
-	fileSpecification *FileSpecification,
+	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
@@ -132,7 +136,7 @@ func (mgr *FacilitiesManager) assignFixedFile(
 func (mgr *FacilitiesManager) assignRemovableFile(
 	exec kexec.IExec,
 	rce *kexec.RunControlEntry,
-	fileSpecification *FileSpecification,
+	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
@@ -146,7 +150,7 @@ func (mgr *FacilitiesManager) assignRemovableFile(
 func (mgr *FacilitiesManager) assignTapeFile(
 	exec kexec.IExec,
 	rce *kexec.RunControlEntry,
-	fileSpecification *FileSpecification,
+	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
@@ -160,7 +164,7 @@ func (mgr *FacilitiesManager) assignTapeFile(
 func (mgr *FacilitiesManager) catalogCommon(
 	exec kexec.IExec,
 	rce kexec.RunControlEntry,
-	fileSpecification *FileSpecification,
+	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
@@ -189,20 +193,20 @@ func (mgr *FacilitiesManager) catalogCommon(
 	} else if granStr == "POS" {
 		granularity = kexec.PositionGranularity
 	} else {
-		facResult.PostMessage(FacStatusIllegalValueForGranularity, nil)
+		facResult.PostMessage(kexec.FacStatusIllegalValueForGranularity, nil)
 		resultCode |= 0_600000_000000
 		return
 	}
 
 	var initReserve uint64
 	if len(initStr) > 12 {
-		facResult.PostMessage(FacStatusIllegalInitialReserve, nil)
+		facResult.PostMessage(kexec.FacStatusIllegalInitialReserve, nil)
 		resultCode |= 0_600000_000000
 		return
 	} else if len(initStr) > 0 {
 		initReserve, err := strconv.Atoi(initStr)
 		if err != nil || initReserve < 0 {
-			facResult.PostMessage(FacStatusIllegalInitialReserve, nil)
+			facResult.PostMessage(kexec.FacStatusIllegalInitialReserve, nil)
 			resultCode |= 0_600000_000000
 			return
 		}
@@ -210,18 +214,18 @@ func (mgr *FacilitiesManager) catalogCommon(
 
 	maxGranules := exec.GetConfiguration().MaxGranules
 	if len(maxStr) > 12 {
-		facResult.PostMessage(FacStatusIllegalMaxGranules, nil)
+		facResult.PostMessage(kexec.FacStatusIllegalMaxGranules, nil)
 		resultCode |= 0_600000_000000
 		return
 	} else if len(maxStr) > 0 {
 		iMaxGran, err := strconv.Atoi(maxStr)
 		maxGranules = uint64(iMaxGran)
 		if err != nil || maxGranules < 0 || maxGranules > 262143 {
-			facResult.PostMessage(FacStatusIllegalMaxGranules, nil)
+			facResult.PostMessage(kexec.FacStatusIllegalMaxGranules, nil)
 			resultCode |= 0_600000_000000
 			return
 		} else if maxGranules < initReserve {
-			facResult.PostMessage(FacStatusMaximumIsLessThanInitialReserve, nil)
+			facResult.PostMessage(kexec.FacStatusMaximumIsLessThanInitialReserve, nil)
 			resultCode |= 0_600000_000000
 			return
 		}
@@ -234,7 +238,7 @@ func (mgr *FacilitiesManager) catalogCommon(
 			mfdMgr.FileTypeFixed,
 			fileSpecification.Qualifier,
 			fileSpecification.Filename,
-			rce.GetProjectId(),
+			rce.ProjectId,
 			fileSpecification.ReadKey,
 			fileSpecification.WriteKey)
 		if result == mfdMgr.MFDInternalError {
@@ -256,12 +260,12 @@ func (mgr *FacilitiesManager) catalogCommon(
 		needsMsg := false
 		if hasReadKey {
 			if !gaveReadKey {
-				facResult.PostMessage(FacStatusReadWriteKeysNeeded, nil)
+				facResult.PostMessage(kexec.FacStatusReadWriteKeysNeeded, nil)
 				needsMsg = true
 				resultCode |= 0_600000_000000
 				return
 			} else if fileSetInfo.ReadKey != fileSpecification.ReadKey {
-				facResult.PostMessage(FacStatusIncorrectReadKey, nil)
+				facResult.PostMessage(kexec.FacStatusIncorrectReadKey, nil)
 				resultCode |= 0_401000_000000
 				if sourceIsExecRequest {
 					rce.PostContingencyWithAuxiliary(017, 0, 0, 015)
@@ -270,7 +274,7 @@ func (mgr *FacilitiesManager) catalogCommon(
 			}
 		} else {
 			if gaveReadKey {
-				facResult.PostMessage(FacStatusFileNotCatalogedWithReadKey, nil)
+				facResult.PostMessage(kexec.FacStatusFileNotCatalogedWithReadKey, nil)
 				resultCode |= 0_400040_000000
 				if sourceIsExecRequest {
 					rce.PostContingencyWithAuxiliary(017, 0, 0, 015)
@@ -281,11 +285,11 @@ func (mgr *FacilitiesManager) catalogCommon(
 
 		if hasWriteKey {
 			if !gaveWriteKey && !needsMsg {
-				facResult.PostMessage(FacStatusReadWriteKeysNeeded, nil)
+				facResult.PostMessage(kexec.FacStatusReadWriteKeysNeeded, nil)
 				resultCode |= 0_600000_000000
 				return
 			} else if fileSetInfo.WriteKey != fileSpecification.WriteKey {
-				facResult.PostMessage(FacStatusIncorrectWriteKey, nil)
+				facResult.PostMessage(kexec.FacStatusIncorrectWriteKey, nil)
 				resultCode |= 0_400400_000000
 				if sourceIsExecRequest {
 					rce.PostContingencyWithAuxiliary(017, 0, 0, 015)
@@ -294,7 +298,7 @@ func (mgr *FacilitiesManager) catalogCommon(
 			}
 		} else {
 			if gaveWriteKey {
-				facResult.PostMessage(FacStatusFileNotCatalogedWithWriteKey, nil)
+				facResult.PostMessage(kexec.FacStatusFileNotCatalogedWithWriteKey, nil)
 				resultCode |= 0_400020_000000
 				if sourceIsExecRequest {
 					rce.PostContingencyWithAuxiliary(017, 0, 0, 015)
@@ -329,7 +333,7 @@ func (mgr *FacilitiesManager) catalogCommon(
 			_, mfdResult = mm.CreateFixedFileCycle(
 				fileSetInfo.FileSetIdentifier,
 				fileSpecification.FileCycleSpec,
-				rce.GetAccountId(),
+				rce.AccountId,
 				mnemonic,
 				descriptorFlags,
 				pcharFlags,
@@ -347,16 +351,16 @@ func (mgr *FacilitiesManager) catalogCommon(
 		case mfdMgr.MFDSuccessful: // nothing to do
 		case mfdMgr.MFDInternalError: // nothing to do, we're already dead in the water
 		case mfdMgr.MFDAlreadyExists:
-			facResult.PostMessage(FacStatusFileAlreadyCataloged, nil)
+			facResult.PostMessage(kexec.FacStatusFileAlreadyCataloged, nil)
 			resultCode |= 0_500000_000000
 		case mfdMgr.MFDInvalidAbsoluteFileCycle:
-			facResult.PostMessage(FacStatusFileCycleOutOfRange, nil)
+			facResult.PostMessage(kexec.FacStatusFileCycleOutOfRange, nil)
 			resultCode |= 0_600000_000040
 		case mfdMgr.MFDInvalidRelativeFileCycle:
-			facResult.PostMessage(FacStatusRelativeFCycleConflict, nil)
+			facResult.PostMessage(kexec.FacStatusRelativeFCycleConflict, nil)
 			resultCode |= 0_600000_000040
 		case mfdMgr.MFDPlusOneCycleExists:
-			facResult.PostMessage(FacStatusRelativeFCycleConflict, nil)
+			facResult.PostMessage(kexec.FacStatusRelativeFCycleConflict, nil)
 			resultCode |= 0_600000_000040
 		case mfdMgr.MFDDropOldestCycleRequired:
 			// TODO can we drop the oldest cycle? If so, do it and try again
@@ -374,7 +378,7 @@ func (mgr *FacilitiesManager) catalogCommon(
 func (mgr *FacilitiesManager) catalogFixedFile(
 	exec kexec.IExec,
 	rce kexec.RunControlEntry,
-	fileSpecification *FileSpecification,
+	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
@@ -405,9 +409,9 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 
 	if !mgr.checkSubFields(operandFields, catFixedFSIs) {
 		if len(mgr.getSubField(operandFields, 1, 4)) > 0 {
-			facResult.PostMessage(FacStatusPlacementFieldNotAllowed, nil)
+			facResult.PostMessage(kexec.FacStatusPlacementFieldNotAllowed, nil)
 		}
-		facResult.PostMessage(FacStatusUndefinedFieldOrSubfield, nil)
+		facResult.PostMessage(kexec.FacStatusUndefinedFieldOrSubfield, nil)
 		resultCode |= 0_600000_000000
 		return
 	}
@@ -428,7 +432,7 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 func (mgr *FacilitiesManager) catalogRemovableFile(
 	exec kexec.IExec,
 	rce kexec.RunControlEntry,
-	fileSpecification *FileSpecification,
+	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
@@ -458,9 +462,9 @@ func (mgr *FacilitiesManager) catalogRemovableFile(
 
 	if !mgr.checkSubFields(operandFields, catRemovableFSIs) {
 		if len(mgr.getSubField(operandFields, 1, 4)) > 0 {
-			facResult.PostMessage(FacStatusPlacementFieldNotAllowed, nil)
+			facResult.PostMessage(kexec.FacStatusPlacementFieldNotAllowed, nil)
 		}
-		facResult.PostMessage(FacStatusUndefinedFieldOrSubfield, nil)
+		facResult.PostMessage(kexec.FacStatusUndefinedFieldOrSubfield, nil)
 		resultCode |= 0_600000_000000
 		return
 	}
@@ -481,7 +485,7 @@ func (mgr *FacilitiesManager) catalogRemovableFile(
 func (mgr *FacilitiesManager) catalogTapeFile(
 	exec kexec.IExec,
 	rce kexec.RunControlEntry,
-	fileSpecification *FileSpecification,
+	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
 	fileSetInfo *mfdMgr.FileSetInfo,
@@ -536,7 +540,7 @@ func checkIllegalOptions(
 	for {
 		if bit&givenOptions != 0 && bit&allowedOptions == 0 {
 			param := string(letter)
-			facResult.PostMessage(FacStatusIllegalOption, []string{param})
+			facResult.PostMessage(kexec.FacStatusIllegalOption, []string{param})
 			ok = false
 		}
 
@@ -557,15 +561,15 @@ func checkIllegalOptions(
 	return ok
 }
 
-func getEffectiveQualifier(rce kexec.RunControlEntry, fileSpec *FileSpecification) string {
+func getEffectiveQualifier(rce kexec.RunControlEntry, fileSpec *kexec.FileSpecification) string {
 	if fileSpec.HasAsterisk {
 		if len(fileSpec.Qualifier) == 0 {
 			return fileSpec.Qualifier
 		} else {
-			return rce.GetImpliedQualifier()
+			return rce.ImpliedQualifier
 		}
 	} else {
-		return rce.GetDefaultQualifier()
+		return rce.DefaultQualifier
 	}
 }
 

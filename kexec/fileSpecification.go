@@ -2,24 +2,22 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package facilitiesMgr
+package kexec
 
 import (
 	"fmt"
-	"khalehla/kexec"
-	"khalehla/kexec/mfdMgr"
 )
 
 type FileSpecification struct {
 	Qualifier     string
 	HasAsterisk   bool // if true but qualifier is empty, use the implied qualifier
 	Filename      string
-	FileCycleSpec *mfdMgr.FileCycleSpecification
+	FileCycleSpec *FileCycleSpecification
 	ReadKey       string
 	WriteKey      string
 }
 
-func (fs *FileSpecification) parseQualifierAndFilename(p *kexec.Parser) (fsCode FacStatusCode, ok bool) {
+func (fs *FileSpecification) parseQualifierAndFilename(p *Parser) (fsCode FacStatusCode, ok bool) {
 	fsCode = 0
 	ok = true
 
@@ -30,7 +28,7 @@ func (fs *FileSpecification) parseQualifierAndFilename(p *kexec.Parser) (fsCode 
 
 	for !p.IsAtEnd() {
 		ch, _ := p.ParseNextCharacter()
-		if !fs.HasAsterisk && kexec.IsValidQualifierChar(ch) {
+		if !fs.HasAsterisk && IsValidQualifierChar(ch) {
 			if len(fs.Qualifier) == 12 {
 				return FacStatusSyntaxErrorInImage, false
 			} else {
@@ -39,7 +37,7 @@ func (fs *FileSpecification) parseQualifierAndFilename(p *kexec.Parser) (fsCode 
 			}
 		}
 
-		if fs.HasAsterisk && kexec.IsValidFilenameChar(ch) {
+		if fs.HasAsterisk && IsValidFilenameChar(ch) {
 			if len(fs.Filename) == 12 {
 				return FacStatusSyntaxErrorInImage, false
 			} else {
@@ -64,7 +62,7 @@ func (fs *FileSpecification) parseQualifierAndFilename(p *kexec.Parser) (fsCode 
 	return
 }
 
-func (fs *FileSpecification) parseAbsoluteCycle(p *kexec.Parser) (found bool, fsCode FacStatusCode, ok bool) {
+func (fs *FileSpecification) parseAbsoluteCycle(p *Parser) (found bool, fsCode FacStatusCode, ok bool) {
 	found = false
 	fsCode = 0
 	ok = true
@@ -96,11 +94,11 @@ func (fs *FileSpecification) parseAbsoluteCycle(p *kexec.Parser) (found bool, fs
 		return
 	}
 
-	fs.FileCycleSpec = mfdMgr.NewAbsoluteFileCycleSpecification(uint(value))
+	fs.FileCycleSpec = NewAbsoluteFileCycleSpecification(uint(value))
 	return
 }
 
-func (fs *FileSpecification) parseRelativeCycle(p *kexec.Parser) (found bool, fsCode FacStatusCode, ok bool) {
+func (fs *FileSpecification) parseRelativeCycle(p *Parser) (found bool, fsCode FacStatusCode, ok bool) {
 	found = false
 	fsCode = FacStatusComplete
 
@@ -141,7 +139,7 @@ func (fs *FileSpecification) parseRelativeCycle(p *kexec.Parser) (found bool, fs
 
 	if pos {
 		if value == 1 {
-			fs.FileCycleSpec = mfdMgr.NewRelativeFileCycleSpecification(int(value))
+			fs.FileCycleSpec = NewRelativeFileCycleSpecification(int(value))
 			found = true
 			return
 		} else {
@@ -155,14 +153,14 @@ func (fs *FileSpecification) parseRelativeCycle(p *kexec.Parser) (found bool, fs
 			ok = false
 			return
 		} else {
-			fs.FileCycleSpec = mfdMgr.NewRelativeFileCycleSpecification(int(value) * -1)
+			fs.FileCycleSpec = NewRelativeFileCycleSpecification(int(value) * -1)
 			found = true
 			return
 		}
 	}
 }
 
-func (fs *FileSpecification) parseCycle(p *kexec.Parser) (fsCode FacStatusCode, ok bool) {
+func (fs *FileSpecification) parseCycle(p *Parser) (fsCode FacStatusCode, ok bool) {
 	found, fsCode, ok := fs.parseRelativeCycle(p)
 	if !ok {
 		return
@@ -173,15 +171,15 @@ func (fs *FileSpecification) parseCycle(p *kexec.Parser) (fsCode FacStatusCode, 
 	return
 }
 
-func (fs *FileSpecification) parseKey(p *kexec.Parser) (key string, err error) {
+func (fs *FileSpecification) parseKey(p *Parser) (key string, err error) {
 	key, _ = p.ParseUntil(",./; ")
-	if !kexec.IsValidReadWriteKey(key) {
+	if !IsValidReadWriteKey(key) {
 		err = fmt.Errorf("invalid key")
 	}
 	return
 }
 
-func (fs *FileSpecification) parseKeys(p *kexec.Parser) (fsCode FacStatusCode, ok bool) {
+func (fs *FileSpecification) parseKeys(p *Parser) (fsCode FacStatusCode, ok bool) {
 	fsCode = 0
 	ok = true
 
@@ -218,7 +216,7 @@ func (fs *FileSpecification) parseKeys(p *kexec.Parser) (fsCode FacStatusCode, o
 // If the input is empty, we return nil in FileSpecification and ok == true.
 // If successful, we return a pointer to the FileSpecification in fs, with ok == true.
 // If we find something, but encounter an error during parsing, we return ok == false and something descriptive in code.
-func ParseFileSpecification(p *kexec.Parser) (fs *FileSpecification, fsCode FacStatusCode, ok bool) {
+func ParseFileSpecification(p *Parser) (fs *FileSpecification, fsCode FacStatusCode, ok bool) {
 	fs = nil
 	fsCode = 0
 	ok = true

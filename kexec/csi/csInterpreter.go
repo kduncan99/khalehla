@@ -65,7 +65,7 @@ func HandleControlStatement(
 			rce.PostContingency(012, 04, 042)
 
 			facResult = facilitiesMgr.NewFacResult()
-			facResult.PostMessage(facilitiesMgr.FacStatusIllegalControlStatement, []string{})
+			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
 			return
 		}
@@ -80,7 +80,7 @@ func HandleControlStatement(
 			rce.PostContingency(012, 04, 042)
 
 			facResult = facilitiesMgr.NewFacResult()
-			facResult.PostMessage(facilitiesMgr.FacStatusIllegalControlStatement, []string{})
+			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
 			return
 		}
@@ -95,7 +95,7 @@ func HandleControlStatement(
 			rce.PostContingency(012, 04, 042)
 
 			facResult = facilitiesMgr.NewFacResult()
-			facResult.PostMessage(facilitiesMgr.FacStatusIllegalControlStatement, []string{})
+			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
 			return
 		}
@@ -110,7 +110,7 @@ func HandleControlStatement(
 			rce.PostContingency(012, 04, 042)
 
 			facResult = facilitiesMgr.NewFacResult()
-			facResult.PostMessage(facilitiesMgr.FacStatusIllegalControlStatement, []string{})
+			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
 			return
 		}
@@ -131,7 +131,7 @@ func HandleControlStatement(
 
 			rce.PostContingency(012, 04, 042)
 			facResult = facilitiesMgr.NewFacResult()
-			facResult.PostMessage(facilitiesMgr.FacStatusIllegalControlStatement, []string{})
+			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
 			return
 		}
@@ -143,7 +143,7 @@ func HandleControlStatement(
 
 			rce.PostContingency(012, 04, 042)
 			facResult = facilitiesMgr.NewFacResult()
-			facResult.PostMessage(facilitiesMgr.FacStatusIllegalControlStatement, []string{})
+			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
 			return
 		}
@@ -155,7 +155,7 @@ func HandleControlStatement(
 
 			rce.PostContingency(012, 04, 042)
 			facResult = facilitiesMgr.NewFacResult()
-			facResult.PostMessage(facilitiesMgr.FacStatusIllegalControlStatement, []string{})
+			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
 			return
 		}
@@ -170,7 +170,7 @@ func HandleControlStatement(
 	rce.PostContingency(012, 04, 040)
 
 	facResult = facilitiesMgr.NewFacResult()
-	facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, []string{})
+	facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
 	resultCode = 0_400000_000000
 	return
 }
@@ -226,7 +226,7 @@ func ParseControlStatement(
 		log.Printf("%v:CS Syntax Error '%v' does not start with @", rce.GetRunId(), statement)
 		rce.PostContingency(012, 04, 040)
 
-		facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, []string{})
+		facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
 		resultCode = 0_400000_000000
 		return
 	}
@@ -235,7 +235,7 @@ func ParseControlStatement(
 	p.SkipSpaces()
 	ident, found, ok := p.ParseIdentifier()
 	if !ok {
-		facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, []string{})
+		facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
 		resultCode = 0_400000_000000
 		return
 	} else if !found {
@@ -243,7 +243,7 @@ func ParseControlStatement(
 		// anything else constitutes a syntax error.
 		p.SkipSpaces()
 		if !p.IsAtEnd() {
-			facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, []string{})
+			facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
 			resultCode = 0_400000_000000
 			return
 		} else {
@@ -261,14 +261,14 @@ func ParseControlStatement(
 		ident, found, ok = p.ParseIdentifier()
 		if !ok {
 			// error in mnemonic
-			facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, []string{})
+			facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
 			resultCode = 0_400000_000000
 			return
 		} else if !found {
 			// either an empty labeled statement, or a syntax error
 			p.SkipSpaces()
 			if !p.IsAtEnd() {
-				facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, []string{})
+				facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
 				resultCode = 0_400000_000000
 				return
 			} else {
@@ -287,7 +287,7 @@ func ParseControlStatement(
 			if term == 0 || term == ' ' {
 				break
 			} else if term == ',' {
-				facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, []string{})
+				facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
 				resultCode = 0_400000_000000
 				return
 			} else {

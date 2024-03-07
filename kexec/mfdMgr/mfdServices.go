@@ -90,7 +90,7 @@ func (mgr *MFDManager) CreateFileSet(
 //	     MFDDropOldestCycleRequired is returned if everything else would be fine if the oldest file cycle did not exist
 func (mgr *MFDManager) CreateFixedFileCycle(
 	fsIdentifier FileSetIdentifier,
-	fcSpecification *FileCycleSpecification,
+	fcSpecification *kexec.FileCycleSpecification,
 	accountId string,
 	assignMnemonic string,
 	descriptorFlags DescriptorFlags,

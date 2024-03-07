@@ -7,14 +7,57 @@ package facilitiesMgr
 import (
 	"khalehla/kexec"
 	"khalehla/kexec/mfdMgr"
-	"khalehla/pkg"
 	"log"
+	"strings"
 )
 
-func (mgr *FacilitiesManager) AssignFile() (FacStatusResult, bool) {
-	var facResult FacStatusResult
-	// TODO
-	return facResult, false
+// AssignFile is the front end which all code should invoke when asking for a file to be assigned
+// (and possibly cataloged).
+// The operand fields are:
+//
+//	[0][0][0] all:file specification string including qual, file, cycle, read key, and write key.
+//	[1][0][1] disk:assignMnemonic / tape:assignMnemonic / absolute:'*'{deviceName}
+//	[1][1] disk:reserve / tape:units
+//	[1][2] disk:[ TRK | POS ] / tape:log
+//	[1][3] disk:maxGranules / tape:noiseConstant
+//	[1][4] disk:placement / tape:processor [ASCII | EBCDIC | FLDATA ]
+//	[1][5] tape:tape [ EBCDIC | FLATA | ASCII | BCD ](tape)
+//	[1][6] tape:format [ Q | 8 ]
+//	[1][7] tape:data-converter (n/a)
+//	[1][8] tape:block-numbering
+//	[1][9] tape:data-compression
+//	[1][10] tape:buffered-write
+//	[1][11] tape:expanded-buffer
+//	[2][x] disk:packIds / tape:reelNumbers / absolute:packName (only one entry)
+//	[3][0] tape:expirationPeriod
+//	[3][1] tape:mmSpec
+//	[4]    tape:ringIndicator
+//	[5][0] all:ACR-name (we don't do ACRs yet)
+//	[6][0] tape:ctlPool
+func (mgr *FacilitiesManager) AssignFile(
+	rce kexec.RunControlEntry,
+	sourceIsExecRequest bool,
+	fileSpecification *kexec.FileSpecification,
+	optionWord uint64,
+	operandFields [][]string,
+) (facResult *FacStatusResult, resultCode uint64) {
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
+	facResult = NewFacResult()
+	resultCode = 0
+
+	// TODO See ECL 7.69 @USE
+	// TODO search internal names
+
+	// TODO if not found, search external names
+
+	// TODO for already assigned files, see ECL 4.3 for security access validation
+	// TODO see ECL 7.2.4 for changing certain fields
+	if resultCode&0_400000_000000 == 0 {
+		facResult.PostMessage(kexec.FacStatusComplete, []string{"ASG"})
+	}
+	return
 }
 
 // CatalogFile is the front end which all code should invoke when asking for a file to be cataloged.
@@ -34,7 +77,7 @@ func (mgr *FacilitiesManager) AssignFile() (FacStatusResult, bool) {
 //	[1][9] blank or data-compression
 //	[1][10] blank or buffered-write
 //	[1][11] blank or expanded-buffer
-//	[2][0..] pack-ids or reel-numbers
+//	[2][x] pack-ids or reel-numbers
 //	[3][0] blank or expiration-period
 //	[3][1] blank or mmspec
 //	[4]    blank
@@ -43,7 +86,7 @@ func (mgr *FacilitiesManager) AssignFile() (FacStatusResult, bool) {
 func (mgr *FacilitiesManager) CatalogFile(
 	rce kexec.RunControlEntry,
 	sourceIsExecRequest bool,
-	fileSpecification *FileSpecification,
+	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
 ) (facResult *FacStatusResult, resultCode uint64) {
@@ -53,11 +96,7 @@ func (mgr *FacilitiesManager) CatalogFile(
 	facResult = NewFacResult()
 	resultCode = 0
 
-	if fileSpecification.RelativeCycle != nil && *fileSpecification.RelativeCycle < 0 {
-		facResult.PostMessage(FacStatusRelativeFCycleConflict, nil)
-		resultCode |= 0_400000_000040
-		return
-	}
+	// TODO what if I @CAT an internal file name (i.e. a @USE name)?
 
 	// See if there is already a fileset
 	mm := mgr.exec.GetMFDManager().(*mfdMgr.MFDManager)
@@ -78,8 +117,8 @@ func (mgr *FacilitiesManager) CatalogFile(
 	}
 
 	if len(mnemonic) > 6 {
-		log.Printf("%v:Mnemonic %v too long", rce.GetRunId(), mnemonic)
-		facResult.PostMessage(FacStatusAssignMnemonicTooLong, []string{mnemonic})
+		log.Printf("%v:Mnemonic %v too long", rce.RunId, mnemonic)
+		facResult.PostMessage(kexec.FacStatusAssignMnemonicTooLong, []string{mnemonic})
 		resultCode |= 0_600000_000000
 		return
 	}
@@ -87,8 +126,8 @@ func (mgr *FacilitiesManager) CatalogFile(
 	models, usage, ok := mgr.selectEquipmentModel(mnemonic, fsInfo)
 	if !ok {
 		// This isn't going to work for us.
-		log.Printf("%v:Mnemonic %v not configured", rce.GetRunId(), mnemonic)
-		facResult.PostMessage(FacStatusMnemonicIsNotConfigured, []string{mnemonic})
+		log.Printf("%v:Mnemonic %v not configured", rce.RunId, mnemonic)
+		facResult.PostMessage(kexec.FacStatusMnemonicIsNotConfigured, []string{mnemonic})
 		resultCode |= 0_600000_000000
 		return
 	}
@@ -113,20 +152,75 @@ func (mgr *FacilitiesManager) CatalogFile(
 	}
 
 	if fileType == mfdMgr.FileTypeFixed {
-		return mgr.catalogFixedFile(mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, mnemonic, usage, sourceIsExecRequest)
+		facResult, resultCode = mgr.catalogFixedFile(
+			mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, mnemonic, usage, sourceIsExecRequest)
 	} else if fileType == mfdMgr.FileTypeRemovable {
-		return mgr.catalogRemovableFile(mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, mnemonic, usage, sourceIsExecRequest)
+		facResult, resultCode = mgr.catalogRemovableFile(
+			mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, mnemonic, usage, sourceIsExecRequest)
 	} else { // fileType == kexec.FileTypeTape
-		return mgr.catalogTapeFile(mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, mnemonic, usage, sourceIsExecRequest)
+		facResult, resultCode = mgr.catalogTapeFile(
+			mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, mnemonic, usage, sourceIsExecRequest)
 	}
+
+	if resultCode&0_400000_000000 == 0 {
+		facResult.PostMessage(kexec.FacStatusComplete, []string{"CAT"})
+	}
+	return
 }
 
 func (mgr *FacilitiesManager) FreeFile(
 	rce kexec.RunControlEntry,
-	fileSpecification FileSpecification,
-	options pkg.Word36,
-) (FacStatusResult, bool) {
-	var facResult FacStatusResult
+	fileSpecification kexec.FileSpecification,
+	optionWord uint64,
+	operandFields [][]string,
+) (facResult *FacStatusResult, resultCode uint64) {
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
+	facResult = NewFacResult()
+	resultCode = 0
+
 	// TODO
-	return facResult, false
+
+	if resultCode&0_400000_000000 == 0 {
+		facResult.PostMessage(kexec.FacStatusComplete, []string{"FREE"})
+	}
+	return
+}
+
+func (mgr *FacilitiesManager) Use(
+	rce kexec.RunControlEntry,
+	internalName string,
+	fileSpecification *kexec.FileSpecification,
+	optionWord uint64,
+	operandFields [][]string,
+) (facResult *FacStatusResult, resultCode uint64) {
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
+	facResult = NewFacResult()
+	resultCode = 0
+
+	if optionWord != 0 && optionWord != kexec.IOption {
+		facResult.PostMessage(kexec.FacStatusIOptionOnlyAllowed, nil)
+		resultCode |= 0_400000_400000
+		return
+	}
+
+	if !mgr.checkSubFields(operandFields, useFSIs) {
+		facResult.PostMessage(kexec.FacStatusUndefinedFieldOrSubfield, nil)
+		resultCode |= 0_600000_000000
+		return
+	}
+
+	// TODO what happens if we re-use an internal name?
+
+	rce.UseItems[strings.ToUpper(internalName)] = &kexec.UseItem{
+		InternalFilename:  internalName,
+		FileSpecification: fileSpecification,
+		ReleaseFlag:       optionWord&kexec.IOption != 0,
+	}
+
+	facResult.PostMessage(kexec.FacStatusComplete, []string{"USE"})
+	return
 }

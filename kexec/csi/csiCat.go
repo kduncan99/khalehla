@@ -19,7 +19,7 @@ func handleCat(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, re
 	// basic options validation - we'll do more specific checks later
 	optWord, ok := cleanOptions(pkt)
 	if !ok {
-		facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, nil)
+		facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, nil)
 		resultCode = 0_600000_000000
 		return
 	}
@@ -31,7 +31,7 @@ func handleCat(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, re
 	}
 
 	p := kexec.NewParser(fsString)
-	fileSpec, fsCode, ok := facilitiesMgr.ParseFileSpecification(p)
+	fileSpec, fsCode, ok := kexec.ParseFileSpecification(p)
 	if !ok {
 		if pkt.sourceIsExecRequest {
 			pkt.rce.PostContingency(012, 04, 040)

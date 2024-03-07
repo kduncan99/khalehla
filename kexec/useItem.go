@@ -5,9 +5,7 @@
 package kexec
 
 type UseItem struct {
-	internalFilename    string
-	referencedQualifier string
-	impliedQualifier    bool // asterisk was used without a qualifier - use implied qualifier
-	referencedFilename  string
-	releaseFlag         bool
+	InternalFilename  string
+	FileSpecification *FileSpecification
+	ReleaseFlag       bool
 }

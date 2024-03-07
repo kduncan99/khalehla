@@ -23,7 +23,7 @@ func handleLog(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, re
 
 	optWord, ok := cleanOptions(pkt)
 	if !ok {
-		facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, nil)
+		facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, nil)
 		resultCode = 0_400000_000000
 		return
 	}

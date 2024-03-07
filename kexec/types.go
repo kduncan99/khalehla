@@ -65,7 +65,7 @@ type DiskPackGeometry struct {
 // TODO move them to ConsoleManager maybe?
 
 type ConsoleReadOnlyMessage struct {
-	Source         RunControlEntry
+	Source         *RunControlEntry
 	Routing        *ConsoleIdentifier // may be nil
 	RunId          *string            // for logging purposes, may not match RCE - may be nil
 	Text           string             // message to be displayed
@@ -73,7 +73,7 @@ type ConsoleReadOnlyMessage struct {
 }
 
 type ConsoleReadReplyMessage struct {
-	Source         RunControlEntry
+	Source         *RunControlEntry
 	Routing        *ConsoleIdentifier // may be nil
 	RunId          *string            // for logging purposes, may not match RCE - may be nil
 	Text           string             // message to be displayed

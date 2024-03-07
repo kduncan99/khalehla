@@ -4,8 +4,10 @@
 
 package facilitiesMgr
 
+import "khalehla/kexec"
+
 type FacStatusMessageInstance struct {
-	code   FacStatusCode
+	code   kexec.FacStatusCode
 	values []string
 }
 
@@ -35,18 +37,18 @@ func (fr *FacStatusResult) HasErrorMessages() bool {
 	return len(fr.Errors) > 0
 }
 
-func (fr *FacStatusResult) PostMessage(code FacStatusCode, values []string) {
+func (fr *FacStatusResult) PostMessage(code kexec.FacStatusCode, values []string) {
 	msg := &FacStatusMessageInstance{
 		code:   code,
 		values: values,
 	}
 	temp := FacStatusMessageTemplates[code]
 	switch temp.Category {
-	case FacMsgInfo:
+	case kexec.FacMsgInfo:
 		fr.Infos = append(fr.Infos, msg)
-	case FacMsgWarning:
+	case kexec.FacMsgWarning:
 		fr.Warnings = append(fr.Warnings, msg)
-	case FacMsgError:
+	case kexec.FacMsgError:
 		fr.Errors = append(fr.Errors, msg)
 	}
 }

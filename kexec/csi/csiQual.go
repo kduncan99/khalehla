@@ -25,7 +25,7 @@ func handleQual(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, r
 
 	optWord, ok := cleanOptions(pkt)
 	if !ok {
-		facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, nil)
+		facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, nil)
 		resultCode = 0_600000_000000
 		return
 	}
@@ -60,13 +60,13 @@ func handleQual(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, r
 			if pkt.sourceIsExecRequest {
 				pkt.rce.PostContingency(kexec.ContingencyTypeErrorMode, 04, 040)
 			}
-			facResult.PostMessage(facilitiesMgr.FacStatusDirectoryOrQualifierMustAppear, nil)
+			facResult.PostMessage(kexec.FacStatusDirectoryOrQualifierMustAppear, nil)
 			resultCode = 0_600000_000000
 			return
 		}
 
 		pkt.rce.ImpliedQualifier = qualifier
-		facResult.PostMessage(facilitiesMgr.FacStatusComplete, []string{"QUAL"})
+		facResult.PostMessage(kexec.FacStatusComplete, []string{"QUAL"})
 		return
 	} else if optWord == kexec.DOption {
 		// set default qualifier
@@ -75,13 +75,13 @@ func handleQual(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, r
 			if pkt.sourceIsExecRequest {
 				pkt.rce.PostContingency(kexec.ContingencyTypeErrorMode, 04, 040)
 			}
-			facResult.PostMessage(facilitiesMgr.FacStatusDirectoryOrQualifierMustAppear, nil)
+			facResult.PostMessage(kexec.FacStatusDirectoryOrQualifierMustAppear, nil)
 			resultCode = 0_600000_000000
 			return
 		}
 
 		pkt.rce.DefaultQualifier = qualifier
-		facResult.PostMessage(facilitiesMgr.FacStatusComplete, []string{"QUAL"})
+		facResult.PostMessage(kexec.FacStatusComplete, []string{"QUAL"})
 		return
 	} else if optWord == kexec.ROption {
 		// revert default and implied qualifiers
@@ -91,14 +91,14 @@ func handleQual(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, r
 			if pkt.sourceIsExecRequest {
 				pkt.rce.PostContingency(kexec.ContingencyTypeErrorMode, 04, 040)
 			}
-			facResult.PostMessage(facilitiesMgr.FacStatusDirectoryAndQualifierMayNotAppear, nil)
+			facResult.PostMessage(kexec.FacStatusDirectoryAndQualifierMayNotAppear, nil)
 			resultCode = 0_600000_000000
 			return
 		}
 
 		pkt.rce.DefaultQualifier = pkt.rce.ProjectId
 		pkt.rce.ImpliedQualifier = pkt.rce.ProjectId
-		facResult.PostMessage(facilitiesMgr.FacStatusComplete, []string{"QUAL"})
+		facResult.PostMessage(kexec.FacStatusComplete, []string{"QUAL"})
 		return
 	} else {
 		log.Printf("%v: Conflicting options '%v'", pkt.rce.RunId, pkt.pcs.originalStatement)
@@ -106,7 +106,7 @@ func handleQual(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, r
 			pkt.rce.PostContingency(kexec.ContingencyTypeErrorMode, 04, 040)
 		}
 
-		facResult.PostMessage(facilitiesMgr.FacStatusIllegalOptionCombination, []string{"D", "R"})
+		facResult.PostMessage(kexec.FacStatusIllegalOptionCombination, []string{"D", "R"})
 		return nil, 0_600000_000000
 	}
 
@@ -114,7 +114,7 @@ syntaxError:
 	if pkt.sourceIsExecRequest {
 		pkt.rce.PostContingency(kexec.ContingencyTypeErrorMode, 04, 040)
 	}
-	facResult.PostMessage(facilitiesMgr.FacStatusSyntaxErrorInImage, nil)
+	facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, nil)
 	resultCode = 0_600000_000000
 	return
 }

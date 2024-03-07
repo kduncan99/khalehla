@@ -397,7 +397,7 @@ func (mgr *MFDManager) bootstrapMFD() error {
 //		     MFDPlusOneCycleExists if caller specifies +1 and a +1 already exists for the file set
 //		     MFDDropOldestCycleRequired is returned if everything else would be fine if the oldest file cycle did not exist
 func (mgr *MFDManager) checkCycle(
-	fcSpecification *FileCycleSpecification,
+	fcSpecification *kexec.FileCycleSpecification,
 	fsInfo *FileSetInfo,
 ) (absoluteCycle uint, cycleIndex uint, shiftAmount uint, newCycleRange uint, plusOne bool, result MFDResult) {
 	absoluteCycle = 1

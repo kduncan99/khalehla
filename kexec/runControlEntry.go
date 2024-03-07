@@ -4,9 +4,7 @@
 
 package kexec
 
-import (
-	"khalehla/pkg"
-)
+import "khalehla/pkg"
 
 /*
 TIP:
@@ -26,25 +24,104 @@ scw,T3 transaction program state
 		05001 Online batch connected to TIP
 */
 
+type RunType uint
+
+const (
+	RunTypeExec RunType = iota
+	RunTypeBatch
+	RunTypeDemand
+	RunTypeTIP
+)
+
 // RunControlEntry is the portion of the canonical PCT which contains information specific to a thread,
 // but not to a program or any activities of the program.
-type RunControlEntry interface {
-	GetAccountId() string
-	GetDefaultQualifier() string
-	GetImpliedQualifier() string
-	GetOriginalRunId() string
-	GetProjectId() string
-	GetRunConditionWord() uint64
-	GetRunId() string
-	GetUserId() string
-	IsBatch() bool
-	IsDemand() bool
-	IsExec() bool
-	IsTIP() bool
-	PostContingency(contingencyType ContingencyType, errorType uint, errorCode uint)
-	PostContingencyWithAuxiliary(contingencyType ContingencyType, errorType uint, errorCode uint, aux pkg.Word36)
-	PostToTailSheet(message string)
-	SetDefaultQualifier(string)
-	SetImpliedQualifier(string)
-	SetRunConditionWord(uint64)
+type RunControlEntry struct {
+	AccountId        string
+	DefaultQualifier string
+	ImpliedQualifier string
+	OriginalRunId    string
+	ProjectId        string
+	RunConditionWord uint64
+	RunId            string
+	UserId           string
+	RunType          RunType
+	UseItems         map[string]*UseItem
+}
+
+func newRunControlEntry(
+	runType RunType,
+	runId string,
+	originalRunId string,
+	projectId string,
+	accountId string,
+	userId string,
+	runConditionWord uint64,
+) *RunControlEntry {
+	return &RunControlEntry{
+		AccountId:        accountId,
+		DefaultQualifier: projectId,
+		ImpliedQualifier: projectId,
+		OriginalRunId:    originalRunId,
+		ProjectId:        projectId,
+		RunConditionWord: runConditionWord,
+		RunId:            runId,
+		UserId:           userId,
+		RunType:          runType,
+		UseItems:         make(map[string]*UseItem),
+	}
+}
+
+// TODO need NewBatchRunControlEntry()
+// TODO need NewDemandRunControlEntry()
+// TODO need NewTIPRunControlEntry()
+
+func NewExecRunControlEntry(
+	masterAccount string,
+) *RunControlEntry {
+	return newRunControlEntry(
+		RunTypeExec,
+		"EXEC-8",
+		"EXEC-8",
+		"SYS$",
+		masterAccount,
+		"EXEC-8",
+		0)
+}
+
+func (rce *RunControlEntry) IsBatch() bool {
+	return rce.RunType == RunTypeBatch
+}
+
+func (rce *RunControlEntry) IsDemand() bool {
+	return rce.RunType == RunTypeDemand
+}
+
+func (rce *RunControlEntry) IsExec() bool {
+	return rce.RunType == RunTypeExec
+}
+
+func (rce *RunControlEntry) IsTIP() bool {
+	return rce.RunType == RunTypeTIP
+}
+
+func (rce *RunControlEntry) PostContingency(
+	contingencyType ContingencyType,
+	errorType uint,
+	errorCode uint,
+) {
+	// TODO
+	//  can this be disposed of in preference to the following version?
+}
+
+func (rce *RunControlEntry) PostContingencyWithAuxiliary(
+	contingencyType ContingencyType,
+	errorType uint,
+	errorCode uint,
+	aux pkg.Word36,
+) {
+	// TODO
+}
+
+func (rce *RunControlEntry) PostToTailSheet(message string) {
+	// TODO
 }

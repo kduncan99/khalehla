@@ -86,7 +86,7 @@ func (mgr *FacilitiesManager) AssignDiskDeviceToExec(deviceId kexec.NodeIdentifi
 	}
 
 	if diskAttr.AssignedTo != nil {
-		msg := fmt.Sprintf("Device %v is already assigned to %v", deviceId, diskAttr.AssignedTo.GetRunId())
+		msg := fmt.Sprintf("Device %v is already assigned to %v", deviceId, diskAttr.AssignedTo.RunId)
 		log.Println(msg)
 		mgr.exec.Stop(kexec.StopFacilitiesComplex)
 		return fmt.Errorf(msg)

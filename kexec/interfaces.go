@@ -48,7 +48,7 @@ type IExec interface {
 	GetMFDManager() IMFDManager
 	GetNodeManager() INodeManager
 	GetPhase() ExecPhase
-	GetRunControlEntry() RunControlEntry
+	GetRunControlEntry() *RunControlEntry
 	GetStopCode() StopCode
 	GetStopFlag() bool
 	Initialize() error

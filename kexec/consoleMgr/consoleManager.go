@@ -102,7 +102,7 @@ func (mgr *ConsoleManager) Stop() {
 func (mgr *ConsoleManager) SendReadOnlyMessage(message *kexec.ConsoleReadOnlyMessage) {
 	// Log it and put it in the RCE tail sheet (unless it is the Exec)
 	if mgr.exec.GetConfiguration().LogTrace {
-		log.Printf("ConsMgr:Queueing %v*%v", message.Source.GetRunId(), message.Text)
+		log.Printf("ConsMgr:Queueing %v*%v", message.Source.RunId, message.Text)
 	}
 	if !message.Source.IsExec() {
 		message.Source.PostToTailSheet(message.Text)
@@ -119,7 +119,7 @@ func (mgr *ConsoleManager) SendReadOnlyMessage(message *kexec.ConsoleReadOnlyMes
 func (mgr *ConsoleManager) SendReadReplyMessage(message *kexec.ConsoleReadReplyMessage) error {
 	// Log it and put it in the RCE tail sheet (unless it is the Exec)
 	if mgr.exec.GetConfiguration().LogTrace {
-		log.Printf("ConsMgr:Queueing n-%v:%v", message.Source.GetRunId(), message.Text)
+		log.Printf("ConsMgr:Queueing n-%v:%v", message.Source.RunId, message.Text)
 	}
 	if !message.Source.IsExec() {
 		message.Source.PostToTailSheet(message.Text)
@@ -168,7 +168,7 @@ func (mgr *ConsoleManager) checkForReadOnlyMessages() bool {
 		// Construct output text
 		text := ""
 		if !msg.DoNotEmitRunId {
-			text = msg.Source.GetRunId() + "*"
+			text = msg.Source.RunId + "*"
 		}
 		text += msg.Text
 
@@ -227,7 +227,7 @@ func (mgr *ConsoleManager) checkForReadReplyMessages() bool {
 			// Construct output text
 			text := ""
 			if !tracker.message.DoNotEmitRunId {
-				text = tracker.message.Source.GetRunId() + "*"
+				text = tracker.message.Source.RunId + "*"
 			}
 			text += tracker.message.Text
 
@@ -452,7 +452,7 @@ func (mgr *ConsoleManager) Dump(dest io.Writer, indent string) {
 
 	_, _ = fmt.Fprintf(dest, "%v  QueuedReadOnly:\n", indent)
 	for _, msg := range mgr.queuedReadOnly {
-		str := "[" + msg.Source.GetRunId() + "] " + msg.Text
+		str := "[" + msg.Source.RunId + "] " + msg.Text
 
 		if msg.DoNotEmitRunId {
 			str += " !emitRunId "
@@ -480,7 +480,7 @@ func (mgr *ConsoleManager) Dump(dest io.Writer, indent string) {
 		_, _ = fmt.Fprintf(dest, "%v    %v\n", indent, str)
 
 		msg := tracker.message
-		str = "[ " + msg.Source.GetRunId() + "] " + msg.Text
+		str = "[ " + msg.Source.RunId + "] " + msg.Text
 
 		if msg.DoNotEmitRunId {
 			str += " !emitRunId "
