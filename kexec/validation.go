@@ -4,6 +4,8 @@
 
 package kexec
 
+import "khalehla/pkg"
+
 func IsValidFilenameChar(ch byte) bool {
 	return (ch >= 'A' && ch <= 'Z') || ch == '-' || ch == '$'
 }
@@ -85,6 +87,27 @@ func IsValidPackName(name string) bool {
 func IsValidPrepFactor(prepFactor PrepFactor) bool {
 	return prepFactor == 28 || prepFactor == 56 || prepFactor == 112 || prepFactor == 224 ||
 		prepFactor == 448 || prepFactor == 896 || prepFactor == 1792
+}
+
+// IsValidReadWriteKey examines a string to see if it is a valid read or write key
+// empty strings are vacuously valid.
+func IsValidReadWriteKey(str string) bool {
+	for sx := 0; sx < len(str); sx++ {
+		if !IsValidReadWriteKeyChar(str[sx]) {
+			return false
+		}
+	}
+	return true
+}
+
+// IsValidReadWriteKeyChar examines a character to see whether it is a valid character
+// for a read or write key.
+// Any fieldata character is allowed exception period, comma, semicolon, slash, and blank.
+func IsValidReadWriteKeyChar(ch uint8) bool {
+	if ch > 127 || pkg.FieldataFromAscii[ch] == 005 {
+		return false
+	}
+	return ch != '.' && ch != ',' && ch != ';' && ch != '/'
 }
 
 func IsValidReelNumber(name string) bool {

@@ -4,7 +4,10 @@
 
 package facilitiesMgr
 
-import "khalehla/kexec"
+import (
+	"fmt"
+	"khalehla/kexec"
+)
 
 // ensure filespec is valid - parse it into a FileSpecification struct
 // format:
@@ -14,12 +17,40 @@ import "khalehla/kexec"
 // n1: integer from 1 to 31
 // n2: integer from 1 to 999
 
+type FileCycleSpecification struct {
+	AbsoluteCycle *uint
+	RelativeCycle *int
+}
+
+func NewAbsoluteFileCycleSpecification(cycle uint) *FileCycleSpecification {
+	ac := cycle
+	return &FileCycleSpecification{
+		AbsoluteCycle: &ac,
+		RelativeCycle: nil,
+	}
+}
+
+func NewRelativeFileCycleSpecification(cycle int) *FileCycleSpecification {
+	rc := cycle
+	return &FileCycleSpecification{
+		AbsoluteCycle: nil,
+		RelativeCycle: &rc,
+	}
+}
+
+func (fcs *FileCycleSpecification) IsRelative() bool {
+	return fcs.RelativeCycle != nil
+}
+
+func (fcs *FileCycleSpecification) IsAbsolute() bool {
+	return fcs.AbsoluteCycle != nil
+}
+
 type FileSpecification struct {
 	Qualifier     string
 	HasAsterisk   bool // if true but qualifier is empty, use the implied qualifier
 	Filename      string
-	AbsoluteCycle *uint
-	RelativeCycle *int
+	FileCycleSpec *FileCycleSpecification
 	ReadKey       string
 	WriteKey      string
 }
@@ -101,8 +132,7 @@ func (fs *FileSpecification) parseAbsoluteCycle(p *kexec.Parser) (found bool, fs
 		return
 	}
 
-	abs := uint(value)
-	fs.AbsoluteCycle = &abs
+	fs.FileCycleSpec = NewAbsoluteFileCycleSpecification(uint(value))
 	return
 }
 
@@ -147,8 +177,7 @@ func (fs *FileSpecification) parseRelativeCycle(p *kexec.Parser) (found bool, fs
 
 	if pos {
 		if value == 1 {
-			iVal := int(value)
-			fs.RelativeCycle = &iVal
+			fs.FileCycleSpec = NewRelativeFileCycleSpecification(int(value))
 			found = true
 			return
 		} else {
@@ -162,8 +191,7 @@ func (fs *FileSpecification) parseRelativeCycle(p *kexec.Parser) (found bool, fs
 			ok = false
 			return
 		} else {
-			iVal := int(value) * -1
-			fs.RelativeCycle = &iVal
+			fs.FileCycleSpec = NewRelativeFileCycleSpecification(int(value) * -1)
 			found = true
 			return
 		}
@@ -181,11 +209,33 @@ func (fs *FileSpecification) parseCycle(p *kexec.Parser) (fsCode FacStatusCode, 
 	return
 }
 
+func (fs *FileSpecification) parseKey(p *kexec.Parser) (key string, err error) {
+	key, _ = p.ParseUntil(",./; ")
+	if !kexec.IsValidReadWriteKey(key) {
+		err = fmt.Errorf("invalid key")
+	}
+	return
+}
+
 func (fs *FileSpecification) parseKeys(p *kexec.Parser) (fsCode FacStatusCode, ok bool) {
 	fsCode = 0
 	ok = true
 
-	// TODO
+	var err error
+	fs.ReadKey, err = fs.parseKey(p)
+	if err != nil {
+		fsCode = FacStatusSyntaxErrorInImage
+		ok = false
+		return
+	}
+
+	fs.WriteKey, err = fs.parseKey(p)
+	if err != nil {
+		fsCode = FacStatusSyntaxErrorInImage
+		ok = false
+		return
+	}
+
 	return
 }
 

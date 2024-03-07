@@ -354,6 +354,21 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 			// the lowest cycle needs to be dropped... and if that is the case, we need to ensure
 			// that we can actually drop that cycle.
 			// Also we need to ensure the actual absolute cycle doesn't already exist.
+			highest := fileSetInfo.HighestAbsolute
+			lowest := highest - fileSetInfo.CurrentRange + 1
+			var highestAllowed uint
+			var lowestAllowed uint
+			if highest == lowest {
+				// only one cycle exists
+				lowestAllowed =
+			}
+			if lowest <= highest {
+				// things are nicely normal
+				lowestAllowed := highest - fileSetInfo.MaxCycleRange + 1
+				highestAllowed := lowest + fileSetInfo.MaxCycleRange
+			} else {
+				// wraparound exists
+			}
 			// TODO
 		} else if fileSpecification.RelativeCycle != nil {
 			// If we get here, we've already limited relative cycle to only +1.

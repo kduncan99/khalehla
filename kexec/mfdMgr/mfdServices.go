@@ -119,7 +119,8 @@ func (mgr *MFDManager) CreateFixedDiskFileCycle(
 }
 
 // DropFileCycle effectively deletes a file cycle.
-// It does *not* delete the fileset, even if the fileset is now empty.
+// It also updates the main item as necessary. It will *not* delete the main items if it is the
+// last file cycle - the caller *must* do that.
 // This is the service wrapper which locks the manager before going to the core function.
 // Caller should NOT invoke this on any file which is still assigned.
 func (mgr *MFDManager) DropFileCycle(
@@ -127,6 +128,8 @@ func (mgr *MFDManager) DropFileCycle(
 ) MFDResult {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
+
+	// TODO
 
 	return mgr.dropFileCycle(kexec.MFDRelativeAddress(fcIdentifier))
 }

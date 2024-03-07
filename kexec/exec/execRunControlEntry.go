@@ -10,7 +10,7 @@ import (
 )
 
 const execAccountId = ""
-const execUserId = "EXEC-8"
+const execUserId = "EXEC8"
 const execRunId = "EXEC-8"
 const execProjectId = "SYS$"
 const execQualifier = "SYS$"
