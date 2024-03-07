@@ -15,19 +15,20 @@ import (
 // to a file cycle which does not exist, possibly having been deleted.
 // The size of the array will always correspond to the CurrentRange value.
 type FileSetInfo struct {
-	FileSetIdentifier FileSetIdentifier
-	Qualifier         string
-	Filename          string
-	ProjectId         string
-	ReadKey           string
-	WriteKey          string
-	FileType          FileType
-	PlusOneExists     bool
-	Count             uint
-	MaxCycleRange     uint
-	CurrentRange      uint
-	HighestAbsolute   uint
-	CycleInfo         []*FileSetCycleInfo
+	FileSetIdentifier     FileSetIdentifier
+	Qualifier             string
+	Filename              string
+	ProjectId             string
+	ReadKey               string
+	WriteKey              string
+	FileType              FileType
+	PlusOneExists         bool
+	Count                 uint
+	MaxCycleRange         uint
+	CurrentRange          uint
+	HighestAbsolute       uint
+	CycleInfo             []*FileSetCycleInfo
+	NumberOfSecurityWords uint
 }
 
 // FileSetIdentifier is a unique opaque identifier allowing clients to refer to a fileset
@@ -94,17 +95,18 @@ func (fsi *FileSetInfo) populateFromLeadItems(leadItem0 []pkg.Word36, leadItem1 
 	fsi.ReadKey = strings.TrimRight(leadItem0[7].ToStringAsFieldata(), " ")
 	fsi.WriteKey = strings.TrimRight(leadItem0[010].ToStringAsFieldata(), " ")
 	fsi.FileType = NewFileTypeFromField(leadItem0[011].GetS1())
-	fsi.PlusOneExists = false
 	fsi.Count = uint(leadItem0[011].GetS2())
 	fsi.MaxCycleRange = uint(leadItem0[011].GetS3())
 	fsi.CurrentRange = uint(leadItem0[011].GetS4())
 	fsi.HighestAbsolute = uint(leadItem0[011].GetT3())
+	fsi.PlusOneExists = leadItem0[012]&0_200000_000000 != 0
+	fsi.NumberOfSecurityWords = uint(leadItem0[012].GetS4())
 	fsi.CycleInfo = make([]*FileSetCycleInfo, fsi.CurrentRange)
 
 	leadItems := [][]pkg.Word36{leadItem0, leadItem1}
 	absCycle := fsi.HighestAbsolute
 	lx := 0
-	wx := 11 + leadItem0[0].GetS4()
+	wx := 11 + fsi.NumberOfSecurityWords
 	for ax := 0; ax < int(fsi.MaxCycleRange); ax++ {
 		if wx == 28 {
 			if leadItem1 == nil {

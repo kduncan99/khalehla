@@ -9,11 +9,48 @@ package mfdMgr
 import (
 	"fmt"
 	"khalehla/kexec"
+	"time"
+
 	//	"khalehla/kexec/facilitiesMgr"
 	"khalehla/kexec/nodeMgr"
 	"khalehla/pkg"
 	"log"
 )
+
+// adjustLeadItemLinks shifts the links in the given lead item(s) downward by the indicated
+// shift value (presumably to accommodate a new higher-cycled link).
+// Adjusts the current file cycle count in leadItem0 accordingly.
+// Make darn sure there is a leadItem1 if it is necessary to contain the expanded set of links.
+// Otherwise, it can be nil.
+// Caller must ensure both leadItem0 and leadItem1 (if it exists) are marked dirty - we don't do it.
+func adjustLeadItemLinks(leadItem0 []pkg.Word36, leadItem1 []pkg.Word36, shift uint) {
+	currentRange := uint(leadItem0[011].GetS4())
+	newRange := currentRange + shift
+	sourceIndex := currentRange - 1
+	destIndex := newRange - 1
+
+	for {
+		sourceWord := getLeadItemLinkWord(leadItem0, leadItem1, sourceIndex)
+		destWord := getLeadItemLinkWord(leadItem0, leadItem1, destIndex)
+		destWord.SetW(sourceWord.GetW())
+		if sourceIndex == 0 {
+			break
+		}
+		sourceIndex--
+		destIndex--
+	}
+
+	for {
+		destWord := getLeadItemLinkWord(leadItem0, leadItem1, destIndex)
+		destWord.SetW(0)
+		if destIndex == 0 {
+			break
+		}
+		destIndex--
+	}
+
+	leadItem0[011].SetS4(uint64(newRange))
+}
 
 // allocateDirectorySector allocates an MFD directory sector for the caller.
 // If preferredLDAT is not InvalidLDAT we will try to allocate a sector from this pack first.
@@ -145,6 +182,25 @@ func (mgr *MFDManager) allocateDirectoryTrack(
 	return chosenLDAT, trackId, nil
 }
 
+// allocateLeadItem1 allocates a lead item directory sector which extends a
+// currently-not-extended lead item 0 such that it can refer to a larger file cycle range.
+// If we return an error, we've already stopped the exec
+// CALL UNDER LOCK
+func (mgr *MFDManager) allocateLeadItem1(
+	leadItem0Address kexec.MFDRelativeAddress,
+	leadItem0 []pkg.Word36,
+) (leadItem1Address kexec.MFDRelativeAddress, leadItem1 []pkg.Word36, err error) {
+	preferredLDAT := getLDATIndexFromMFDAddress(leadItem0Address)
+	leadItem1Address, leadItem1, err = mgr.allocateDirectorySector(preferredLDAT)
+	if err == nil {
+		leadItem0[0].SetW(0_100000_000000 | uint64(leadItem1Address))
+		leadItem1[0].SetW(0_400000_000000)
+		mgr.markDirectorySectorDirty(leadItem0Address)
+		mgr.markDirectorySectorDirty(leadItem1Address)
+	}
+	return
+}
+
 // allocateSpecificTrack allocates particular contiguous specified physical tracks
 // to be associated with the indicated file-relative tracks.
 // If we return an error, we've already stopped the exec
@@ -213,15 +269,51 @@ func (mgr *MFDManager) bootstrapMFD() error {
 	mgr.mfdFileMainItem0Address = mainAddr0 // we'll need this later
 
 	// TODO can these items use a services or core routine other than populate*** as below?
+	mfdFileQualifier := "SYS$"
 	mfdFileName := "MFD$$"
-	populateNewLeadItem0(leadItem0, "SYS$", mfdFileName, "EXEC-8",
-		"", "", 0, 1, true, uint64(mainAddr0))
-	populateMassStorageMainItem0(mainItem0, "SYS$", mfdFileName, "EXEC-8",
-		"", "", cfg.MasterAccountId, leadAddr0, mainAddr1,
-		false, false, false, false, false,
-		cfg.MassStorageDefaultMnemonic, true, true, true, false, false,
-		1, 0, 262153, []string{})
-	populateFixedMainItem1(mainItem1, "SYS$", mfdFileName, mainAddr0, 1, []string{})
+	mfdProjectId := "EXEC-8"
+	populateNewLeadItem0(
+		leadItem0,
+		mfdFileQualifier,
+		mfdFileName,
+		1,
+		"",
+		"",
+		mfdProjectId,
+		0,
+		true,
+		uint64(mainAddr0))
+
+	populateMassStorageMainItem0(mainItem0,
+		leadAddr0,
+		mainAddr1,
+		mfdFileQualifier,
+		mfdFileName,
+		1,
+		"",
+		"",
+		mfdProjectId,
+		cfg.MasterAccountId,
+		cfg.MassStorageDefaultMnemonic,
+		DescriptorFlags{},
+		PCHARFlags{
+			Granularity:       kexec.TrackGranularity,
+			IsWordAddressable: false,
+		},
+		InhibitFlags{
+			IsGuarded:           true,
+			IsUnloadInhibited:   true,
+			IsPrivate:           true,
+			isAssignedExclusive: false,
+			IsWriteOnly:         false,
+			IsReadOnly:          false,
+		},
+		false,
+		0,
+		262153,
+		nil)
+
+	populateFixedMainItem1(mainItem1, mfdFileQualifier, mfdFileName, mainAddr0, 1, nil)
 
 	// Before we can play DAD table games, we have to get the MFD$$ in-core structures in place,
 	// including *particularly* the file allocation table.
@@ -278,6 +370,238 @@ func (mgr *MFDManager) bootstrapMFD() error {
 
 	log.Printf("MFDMgr:bootstrapMFD done")
 	return nil
+}
+
+// checkCycle checks the given file cycle specification (if any) against the provided file set info
+// to determine if a file cycle of the given spec can be cataloged.
+// If fcSpecification is nil, the caller did not specify a cycle (which has its own meaning).
+// Returned values include
+//
+//		  absoluteCycle the effective absolute cycle, which is either the given absolute cycle, or the
+//			    absolute cycle deduced from the given relative cycle, or from the FileSetInfo if no cycle was given.
+//		  cycleIndex the index into the lead item links where the new file cycle is to be placed
+//			    zero corresponds to the highest absolute cycle position
+//		  shiftAmount indicates whether, and by how many entries, the existing links in the lead item should be
+//			    shifted (downward) to accommodate the new link
+//		  newCycleRange indicates the resulting current cycle range presuming the file cycle is created.
+//			    this may be greater than the current cycle range, but never less than, nor greater than the max.
+//		  plusOne indicates that the newly-created file cycle is to be a plus-one cycle
+//		  result indicates whether the check is successful, or if not, why not:
+//		     MFDSuccessful if the checks succeed
+//		     MFDInternalError if something is badly wrong, and we've stopped the exec
+//		     MFDAlreadyExists if user does not specify a cycle, and a file cycle already exists
+//		     MFDInvalidRelativeFileCycle if the caller specified a negative relative file cycle
+//	      MFDInvalidAbsoluteFileCycle
+//		        any file cycle out of range
+//		        an absolute file cycle which conflicts with an existing cycle
+//		     MFDPlusOneCycleExists if caller specifies +1 and a +1 already exists for the file set
+//		     MFDDropOldestCycleRequired is returned if everything else would be fine if the oldest file cycle did not exist
+func (mgr *MFDManager) checkCycle(
+	fcSpecification *FileCycleSpecification,
+	fsInfo *FileSetInfo,
+) (absoluteCycle uint, cycleIndex uint, shiftAmount uint, newCycleRange uint, plusOne bool, result MFDResult) {
+	absoluteCycle = 1
+	cycleIndex = 0
+	shiftAmount = 0
+	newCycleRange = fsInfo.CurrentRange
+	plusOne = false
+	result = MFDSuccessful
+
+	if fcSpecification == nil {
+		// caller did not specify any file cycle.
+		// either the file set is empty (caller just created it) and we're okay,
+		// or it is not empty which requires us to reject the attempt.
+		if fsInfo.CurrentRange != 0 {
+			result = MFDAlreadyExists
+		} else {
+			newCycleRange = 1
+		}
+		return
+	}
+
+	if fcSpecification.IsRelative() {
+		// We reject all negative cycles - if a negative cycle actually refers to a file cycle,
+		// then we can't catalog it. If it doesn't, then we don't know which absolute cycle
+		// it should refer to.
+		// If the request is for +1, and it already exits, we reject that as well.
+		if *fcSpecification.RelativeCycle < 0 {
+			result = MFDInvalidRelativeFileCycle
+			return
+		}
+
+		if fsInfo.PlusOneExists {
+			result = MFDPlusOneCycleExists
+			return
+		}
+
+		// If the file set is empty, the default values mostly suffice.
+		if fsInfo.CurrentRange == 0 {
+			newCycleRange = 1
+			return
+		}
+
+		// If the highest file cycle is not actually there, the plus-one takes its place.
+		// If it *is* there, we need to check whether the oldest cycle is in the way
+		// (evidenced by current range == max range).
+		// If all is well, set the absolute cycle to one more than the current highest value
+		// then we're done (although calling code needs to be aware of the need to shift
+		// the cycle links downward by one).
+		if fsInfo.CycleInfo[0] == nil {
+			absoluteCycle = fsInfo.HighestAbsolute
+		} else if fsInfo.CurrentRange == fsInfo.MaxCycleRange {
+			result = MFDDropOldestCycleRequired
+		} else {
+			absoluteCycle = fsInfo.HighestAbsolute + 1
+			if absoluteCycle == 1000 {
+				absoluteCycle = 1
+			}
+			shiftAmount = 1
+			newCycleRange++
+		}
+		return
+	}
+
+	// The request is for an absolute file cycle.
+	// If the default set is empty, use the requested absolute, and the other defaults are good.
+	absoluteCycle = *fcSpecification.AbsoluteCycle
+	if fsInfo.CurrentRange == 0 {
+		newCycleRange = 1
+		return
+	}
+
+	// Check whether the requested cycle is within the current range,
+	// and if so, whether there is already a file cycle with that absolute cycle.
+	chkCycle := fsInfo.HighestAbsolute
+	for cx, cycleInfo := range fsInfo.CycleInfo {
+		if chkCycle == absoluteCycle {
+			if cycleInfo != nil {
+				// there's already a cycle there - fail.
+				result = MFDAlreadyExists
+				return
+			}
+
+			// There is a hole here which we fit into nicely.
+			cycleIndex = uint(cx)
+			return
+		}
+	}
+
+	// Is the request for a cycle above the highest file cycle?
+	// If so, ensure that it is not so far above as to be out of range.
+	// This test actually depends upon the lowest file cycle's position.
+	if absoluteCycle > fsInfo.HighestAbsolute {
+		var lowestAbsoluteCycle uint
+		if fsInfo.HighestAbsolute < fsInfo.CurrentRange {
+			lowestAbsoluteCycle = fsInfo.HighestAbsolute + 1000 - fsInfo.CurrentRange
+		} else {
+			lowestAbsoluteCycle = fsInfo.HighestAbsolute + 1 - fsInfo.CurrentRange
+		}
+
+		var requestedRange uint
+		if absoluteCycle > lowestAbsoluteCycle {
+			requestedRange = absoluteCycle - lowestAbsoluteCycle + 1
+		} else {
+			requestedRange = absoluteCycle + 1000 - lowestAbsoluteCycle
+		}
+
+		if requestedRange == fsInfo.MaxCycleRange+1 {
+			result = MFDDropOldestCycleRequired
+			return
+		} else if requestedRange > fsInfo.MaxCycleRange {
+			result = MFDInvalidAbsoluteFileCycle
+			return
+		}
+
+		// The requested absolute is acceptable, however a shift is required
+		shiftAmount = absoluteCycle - fsInfo.HighestAbsolute
+		newCycleRange += shiftAmount
+
+		// Temporary code - newRange should never be > maxRange...
+		// but we'll check it just to make sure.
+		if newCycleRange > fsInfo.MaxCycleRange {
+			goto oops
+		}
+
+		return
+	}
+
+	// Note that cycles 1 through 31 are considered to be above cycles 968 through 999.
+	// Check that as well.
+	if absoluteCycle <= 31 && fsInfo.HighestAbsolute >= 968 {
+		chkCycle := absoluteCycle + 999
+		lowestAbsoluteCycle := fsInfo.HighestAbsolute + 1 - fsInfo.CurrentRange
+		requestedRange := chkCycle - lowestAbsoluteCycle + 1
+
+		if requestedRange == fsInfo.MaxCycleRange+1 {
+			result = MFDDropOldestCycleRequired
+			return
+		} else if requestedRange > fsInfo.MaxCycleRange {
+			result = MFDInvalidAbsoluteFileCycle
+			return
+		}
+
+		// The requested absolute is acceptable, however a shift is required
+		shiftAmount = chkCycle - fsInfo.HighestAbsolute
+		newCycleRange += shiftAmount
+
+		// Temporary code - newRange should never be > maxRange...
+		// but we'll check it just to make sure.
+		if newCycleRange > fsInfo.MaxCycleRange {
+			goto oops
+		}
+
+		return
+	}
+
+	// Is the request for a cycle below the highest file cycle?
+	// If so, ensure it is not so far below as to be out of range.
+	if absoluteCycle < fsInfo.HighestAbsolute {
+		cycleIndex = fsInfo.HighestAbsolute - absoluteCycle
+		if cycleIndex >= fsInfo.MaxCycleRange {
+			result = MFDInvalidAbsoluteFileCycle
+			return
+		}
+
+		newCycleRange = cycleIndex + 1
+
+		// Temporary code - newRange should never be > maxRange...
+		// but we'll check it just to make sure.
+		if newCycleRange > fsInfo.MaxCycleRange {
+			goto oops
+		}
+
+		return
+	}
+
+	// Note that cycles 968 through 999 are below cycles 1 through 31.
+	// Check that as well.
+	if absoluteCycle >= 968 && fsInfo.HighestAbsolute <= 31 {
+		cycleIndex = fsInfo.HighestAbsolute + 999 - absoluteCycle
+		if cycleIndex >= fsInfo.MaxCycleRange {
+			result = MFDInvalidAbsoluteFileCycle
+			return
+		}
+
+		newCycleRange = cycleIndex + 1
+
+		// Temporary code - newRange should never be > maxRange...
+		// but we'll check it just to make sure.
+		if newCycleRange > fsInfo.MaxCycleRange {
+			goto oops
+		}
+
+		return
+	}
+
+	// The requested absolute is out of range
+	result = MFDInvalidAbsoluteFileCycle
+	return
+
+oops:
+	log.Printf("MFDMgr:(a)newRange is %v which is more than max range %v", newCycleRange, fsInfo.MaxCycleRange)
+	mgr.exec.Stop(kexec.StopDirectoryErrors)
+	result = MFDInternalError
+	return
 }
 
 func composeMFDAddress(
@@ -479,6 +803,20 @@ func (mgr *MFDManager) findDASEntryForSector(
 
 func getLDATIndexFromMFDAddress(address kexec.MFDRelativeAddress) kexec.LDATIndex {
 	return kexec.LDATIndex(address>>18) & 07777
+}
+
+// getLeadItemLinkWord retrieves a pointer to a file cycle link from among the given lead item(s)
+// corresponding to the file cycle's position indicated by the linkIndex value.
+// linkIndex == 0 corresponds to the highest absolute cycle link.
+// If there is no lead item 1, pass nil for that value, and make dang sure you don't specify
+// an invalid link index.
+func getLeadItemLinkWord(leadItem0 []pkg.Word36, leadItem1 []pkg.Word36, linkIndex uint) *pkg.Word36 {
+	headerCount := uint(11 + leadItem0[012].GetS4())
+	if linkIndex+headerCount < 28 {
+		return &leadItem0[linkIndex+headerCount]
+	} else {
+		return &leadItem1[(linkIndex+headerCount)-28]
+	}
 }
 
 func getMFDTrackIdFromMFDAddress(address kexec.MFDRelativeAddress) kexec.MFDTrackId {
@@ -684,6 +1022,7 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*kexec.
 
 // initializeRemovable registers the isRemovable packs (if any) as part of a JK13 boot.
 func (mgr *MFDManager) initializeRemovable(disks map[*nodeMgr.DiskDeviceInfo]*kexec.DiskAttributes) error {
+	// TODO
 	return nil
 }
 
@@ -793,6 +1132,248 @@ func (mgr *MFDManager) markDirectorySectorUnallocated(sectorAddr kexec.MFDRelati
 	mgr.markDirectorySectorDirty(dasAddr)
 	return nil
 }
+
+func populateFixedMainItem1(
+	mainItem1 []pkg.Word36,
+	qualifier string,
+	filename string,
+	mainItem0Address kexec.MFDRelativeAddress,
+	absoluteCycle uint64,
+	packIds []string,
+) {
+	for wx := 0; wx < 28; wx++ {
+		mainItem1[wx].SetW(0)
+	}
+
+	mainItem1[0].SetW(uint64(kexec.InvalidLink)) // no sector 2 (yet, anyway)
+	pkg.FromStringToFieldata(qualifier, mainItem1[1:3])
+	pkg.FromStringToFieldata(filename, mainItem1[3:5])
+	pkg.FromStringToFieldata("*No.1*", mainItem1[5:6])
+	mainItem1[6].SetW(uint64(mainItem0Address))
+	mainItem1[7].SetT3(absoluteCycle)
+
+	// TODO note that for >5 pack entries, we need additional main item sectors
+	//  one per 10 additional packs beyond 5
+	mix := 18
+	limit := len(packIds)
+	if limit > 5 {
+		limit = 5
+	}
+	for dpx := 0; dpx < limit; dpx++ {
+		mainItem1[mix].FromStringToFieldata(packIds[dpx])
+		mix += 2
+	}
+}
+
+func populateMassStorageMainItem0(
+	mainItem0 []pkg.Word36,
+	leadItem0Address kexec.MFDRelativeAddress,
+	mainItem1Address kexec.MFDRelativeAddress,
+	qualifier string,
+	filename string,
+	absoluteCycle uint64,
+	readKey string,
+	writeKey string,
+	projectId string,
+	accountId string,
+	mnemonic string,
+	descriptorFlags DescriptorFlags,
+	pcharFlags PCHARFlags,
+	inhibitFlags InhibitFlags,
+	isRemovable bool,
+	reserve uint64,
+	maximum uint64,
+	packIds []string,
+) {
+	for wx := 0; wx < 28; wx++ {
+		mainItem0[wx].SetW(0)
+	}
+
+	mainItem0[0].SetW(uint64(kexec.InvalidLink)) // no DAD table (yet, anyway)
+	mainItem0[0].Or(0_200000_000000)
+
+	pkg.FromStringToFieldata(qualifier, mainItem0[1:3])
+	pkg.FromStringToFieldata(filename, mainItem0[3:5])
+	pkg.FromStringToFieldata(projectId, mainItem0[5:7])
+	pkg.FromStringToFieldata(accountId, mainItem0[7:9])
+	mainItem0[11].SetW(uint64(leadItem0Address))
+	mainItem0[11].SetS1(0) // disable flags
+
+	mainItem0[12].SetT1(descriptorFlags.Compose())
+
+	mainItem0[13].SetW(uint64(mainItem1Address))
+	mainItem0[13].SetS1(pcharFlags.Compose())
+
+	mainItem0[14].FromStringToFieldata(mnemonic)
+
+	mainItem0[17].SetH1(inhibitFlags.Compose())
+	mainItem0[17].SetT3(absoluteCycle)
+
+	swTimeNow := kexec.GetSWTimeFromSystemTime(time.Now())
+	mainItem0[19].SetW(swTimeNow)
+	mainItem0[20].SetH1(reserve)
+	mainItem0[21].SetH1(maximum)
+
+	if isRemovable {
+		var rKey pkg.Word36
+		if len(readKey) > 0 {
+			rKey.FromStringToFieldata(readKey)
+		}
+		var wKey pkg.Word36
+		if len(writeKey) > 0 {
+			wKey.FromStringToAscii(writeKey)
+		}
+
+		mainItem0[24].SetH1(rKey.GetH1())
+		mainItem0[25].SetH1(rKey.GetH2())
+		mainItem0[26].SetH1(wKey.GetH1())
+		mainItem0[27].SetH1(wKey.GetH2())
+	} else {
+		// initially selected LDAT and optional device placement flag
+		// TODO if there is at least one pack-id, then go find its LDAT and use that,
+		//  and mask in 0_400000_000000 to indicate device placement.
+		var ldat uint64
+		if len(packIds) > 0 {
+
+		} else {
+			ldat = uint64(getLDATIndexFromMFDAddress(leadItem0Address))
+		}
+		mainItem0[27].SetH1(ldat)
+	}
+}
+
+// populateNewLeadItem0 sets up a lead item sector 0 in the given buffer,
+// assuming we are cataloging a new file, will have one cycle, and the absolute cycle is given to us.
+// Implied is that there will be no sector 1 (since there aren't enough cycles to warrant it).
+func populateNewLeadItem0(
+	leadItem0 []pkg.Word36,
+	qualifier string,
+	filename string,
+	absoluteCycle uint64,
+	readKey string,
+	writeKey string,
+	projectId string,
+	fileType uint64, // 000=Fixed, 001=Tape, 040=Removable
+	guardedFlag bool,
+	mainItem0Address uint64,
+) {
+	for wx := 0; wx < 28; wx++ {
+		leadItem0[wx].SetW(0)
+	}
+
+	leadItem0[0].SetW(uint64(kexec.InvalidLink))
+	leadItem0[0].Or(0_500000_000000)
+
+	pkg.FromStringToFieldata(qualifier, leadItem0[1:3])
+	pkg.FromStringToFieldata(filename, leadItem0[3:5])
+	pkg.FromStringToFieldata(projectId, leadItem0[5:7])
+	if len(readKey) > 0 {
+		leadItem0[7].FromStringToFieldata(readKey)
+	}
+	if len(writeKey) > 0 {
+		leadItem0[8].FromStringToAscii(writeKey)
+	}
+
+	leadItem0[9].SetS1(fileType)
+	leadItem0[9].SetS2(1)  // number of cycles
+	leadItem0[9].SetS3(31) // max range of cycles (default is 31)
+	leadItem0[9].SetS4(1)  // current range
+	leadItem0[9].SetT3(absoluteCycle)
+
+	var statusBits uint64
+	if guardedFlag {
+		statusBits |= 01000
+	}
+	leadItem0[10].SetT1(statusBits)
+	leadItem0[11].SetW(mainItem0Address)
+}
+
+// TODO
+//func populateRemovableMainItem1(
+//	mainItem1 []pkg.Word36,
+//	mainItem0Address kexec.MFDRelativeAddress,
+//	absoluteCycle uint64,
+//	packIds []string,
+//) {
+//	for wx := 0; wx < 28; wx++ {
+//		mainItem1[wx].SetW(0)
+//	}
+//
+//	mainItem1[0].SetW(uint64(kexec.InvalidLink)) // no sector 2 (yet, anyway)
+//	mainItem1[6].SetW(uint64(mainItem0Address))
+//	mainItem1[7].SetT3(absoluteCycle)
+//	mainItem1[17].SetT3(uint64(len(packIds)))
+//
+//	// TODO note that for >5 pack entries, we need additional main item sectors
+//	//  one per 10 additional packs beyond 5
+//	mix := 18
+//	limit := len(packIds)
+//	if limit > 5 {
+//		limit = 5
+//	}
+//	for dpx := 0; dpx < limit; dpx++ {
+//		mainItem1[mix].FromStringToFieldata(packIds[dpx])
+//		// TODO for isRemovable, we need the main item address for this file on that pack
+//		mix += 2
+//	}
+//}
+
+// TODO
+//func populateTapeMainItem0(
+//	mainItem0 []pkg.Word36,
+//	qualifier string,
+//	filename string,
+//	projectId string,
+//	accountId string,
+//	reelTable0Address kexec.MFDRelativeAddress,
+//	leadItem0Address kexec.MFDRelativeAddress,
+//	mainItem1Address kexec.MFDRelativeAddress,
+//	toBeCataloged bool, // for @ASG,C or @ASG,U
+//	isGuarded bool,
+//	isPrivate bool,
+//	isWriteOnly bool,
+//	isReadOnly bool,
+//	absoluteCycle uint64,
+//	density uint,
+//	format uint,
+//	features uint,
+//	featuresExtension uint,
+//	mtapop uint,
+//	ctlPool string,
+//) {
+//	for wx := 0; wx < 28; wx++ {
+//		mainItem0[wx].SetW(0)
+//	}
+//
+//	mainItem0[0].SetW(uint64(reelTable0Address))
+//	mainItem0[0].Or(0_200000_000000)
+//	pkg.FromStringToFieldata(qualifier, mainItem0[1:3])
+//	pkg.FromStringToFieldata(filename, mainItem0[3:5])
+//	pkg.FromStringToFieldata(projectId, mainItem0[5:7])
+//	pkg.FromStringToFieldata(accountId, mainItem0[7:9])
+//
+//	// TODO
+//}
+
+// TODO
+//func populateTapeMainItem1(
+//	mainItem1 []pkg.Word36,
+//	qualifier string,
+//	filename string,
+//	mainItem0Address kexec.MFDRelativeAddress,
+//	absoluteCycle uint64,
+//) {
+//	for wx := 0; wx < 28; wx++ {
+//		mainItem1[wx].SetW(0)
+//	}
+//
+//	mainItem1[0].SetW(uint64(kexec.InvalidLink)) // no sector 2 (yet, anyway)
+//	pkg.FromStringToFieldata(qualifier, mainItem1[1:3])
+//	pkg.FromStringToFieldata(filename, mainItem1[3:5])
+//	pkg.FromStringToFieldata("*No.1*", mainItem1[5:6])
+//	mainItem1[6].SetW(uint64(mainItem0Address))
+//	mainItem1[7].SetT3(absoluteCycle)
+//}
 
 // releaseTrackRegion releases the indicated tracks from the file cycle's DAD entries,
 // and adds the corresponding device tracks to the free space table.

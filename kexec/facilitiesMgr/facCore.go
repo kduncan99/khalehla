@@ -157,10 +157,7 @@ func (mgr *FacilitiesManager) assignTapeFile(
 	return nil, 0 // TODO
 }
 
-// catalogFixedFile takes the various inputs, validates them, and then invokes
-// mfd services to create the appropriate file cycle (and file set, if necessary).
-// Caller should immediately check whether the exec has stopped upon return.
-func (mgr *FacilitiesManager) catalogFixedFile(
+func (mgr *FacilitiesManager) catalogCommon(
 	exec kexec.IExec,
 	rce kexec.RunControlEntry,
 	fileSpecification *FileSpecification,
@@ -169,37 +166,9 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 	fileSetInfo *mfdMgr.FileSetInfo,
 	mnemonic string,
 	usage config.EquipmentUsage,
+	isRemovable bool,
 	sourceIsExecRequest bool,
 ) (facResult *FacStatusResult, resultCode uint64) {
-	//	For Mass Storage Files
-	//		@CAT[,options] filename[,type/reserve/granule/maximum,pack-id-1/.../pack-id-n,,,ACR-name]
-	//	options include
-	//		B: save on checkpoint
-	//		G: guarded file
-	//		P: make the file public (not private)
-	//		R: make the file read-only
-	//		V: file will not be unloaded
-	//		W: make the file write-only
-	//		Z: run should not be held (probably only happens on removable when the pack is not mounted)
-	//			I'm unaware of any situation where cataloging a fixed file would result in a hold.
-	facResult = NewFacResult()
-	resultCode = 0
-
-	allowedOpts := uint64(kexec.BOption | kexec.GOption | kexec.POption |
-		kexec.ROption | kexec.VOption | kexec.WOption | kexec.ZOption)
-	if !checkIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
-		resultCode |= 0_600000_000000
-		return
-	}
-
-	if !mgr.checkSubFields(operandFields, catFixedFSIs) {
-		if len(mgr.getSubField(operandFields, 1, 4)) > 0 {
-			facResult.PostMessage(FacStatusPlacementFieldNotAllowed, nil)
-		}
-		facResult.PostMessage(FacStatusUndefinedFieldOrSubfield, nil)
-		resultCode |= 0_600000_000000
-		return
-	}
 
 	saveOnCheckpoint := optionWord&kexec.BOption != 0
 	guardedFile := optionWord&kexec.GOption != 0
@@ -276,13 +245,10 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 			return
 		}
 	} else {
-		// Otherwise, do sanity checking on the file cycle and privacy settings on the existing file set.
-		if fileSetInfo.PlusOneExists {
-			facResult.PostMessage(FacStatusRelativeFCycleConflict, nil)
-			resultCode |= 0_600000_000040
-			return
-		}
-
+		// Otherwise, do sanity checking on the privacy settings on the existing file set.
+		// TODO
+		// E:?????? Project-id or account number incorrect for cataloged private file.
+		// E:242633 Cannot catalog file because read or write access not allowed.
 		gaveReadKey := len(fileSpecification.ReadKey) > 0
 		gaveWriteKey := len(fileSpecification.WriteKey) > 0
 		hasReadKey := len(fileSetInfo.ReadKey) > 0
@@ -336,105 +302,12 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 				return
 			}
 		}
-
-		/*
-			E:242533 File cycle out of range.
-			E:242633 Cannot catalog file because read or write access not allowed.
-			E:243233 Creation of file would require illegal dropping of private file.
-			E:244433 File is already catalogued.
-			E:253733 Relative F-cycle conflict.
-		*/
-
-		dropOldest := false
-		if fileSpecification.AbsoluteCycle != nil {
-			// Caller has given us a specific absolute cycle.
-			// We need to ensure that it is not so far below the highest existing cycle,
-			// and that it is not so far above the second-lowest existing cycle,
-			// that it would violate the max cycle range. It *can* be sufficiently above the lowest cycle that
-			// the lowest cycle needs to be dropped... and if that is the case, we need to ensure
-			// that we can actually drop that cycle.
-			// Also we need to ensure the actual absolute cycle doesn't already exist.
-			highest := fileSetInfo.HighestAbsolute
-			lowest := highest - fileSetInfo.CurrentRange + 1
-			var highestAllowed uint
-			var lowestAllowed uint
-			if highest == lowest {
-				// only one cycle exists
-				lowestAllowed =
-			}
-			if lowest <= highest {
-				// things are nicely normal
-				lowestAllowed := highest - fileSetInfo.MaxCycleRange + 1
-				highestAllowed := lowest + fileSetInfo.MaxCycleRange
-			} else {
-				// wraparound exists
-			}
-			// TODO
-		} else if fileSpecification.RelativeCycle != nil {
-			// If we get here, we've already limited relative cycle to only +1.
-			// Is there already a +1?
-			if fileSetInfo.PlusOneExists {
-				facResult.PostMessage(FacStatusRelativeFCycleConflict, nil)
-				resultCode |= 0_600000_000040
-				return
-			}
-
-			// If the highest absolute cycle file is deleted, then that file is (re)cataloged.
-			// Otherwise, a new highest absolute cycle is created and all the other files are shifted
-			// downward by one cycle, which might cause the lowest cycle to be deleted
-			// (depending upon the current and max cycle ranges).
-			// At this point, we only care about the latter case, in that we are checking whether
-			// it is necessary and possible to delete an oldest cycle.
-			if fileSetInfo.CycleInfo[0] != nil && fileSetInfo.CycleInfo[fileSetInfo.CurrentRange-1] != nil {
-				dropOldest = true
-			}
-		} else {
-			// We're here with a file set but no cycle spec on a @CAT request. That won't fly.
-			facResult.PostMessage(FacStatusFileAlreadyCataloged, nil)
-			resultCode |= 0_500000_000000
-			return
-		}
-
-		if dropOldest {
-			oldestFCIdent := fileSetInfo.CycleInfo[fileSetInfo.CurrentRange-1].FileCycleIdentifier
-			fcInfo, mfdResult := mm.GetFileCycleInfo(oldestFCIdent)
-			if mfdResult != mfdMgr.MFDSuccessful {
-				log.Printf("FacMgr:MFD can't find a filecycle which should exist")
-				mgr.exec.Stop(kexec.StopDirectoryErrors)
-				return
-			}
-
-			if fcInfo.AssignedIndicator {
-				facResult.PostMessage(FacStatusRelativeFCycleConflict, nil)
-				resultCode |= 0_600000_000040
-				return
-			}
-
-			// TODO check the following
-			//  should we deal with Guarded and private earlier? Can we?
-			//fcInfo.InhibitFlags.IsGuarded
-			//fcInfo.InhibitFlags.IsPrivate
-			//fcInfo.InhibitFlags.IsReadOnly
-			//fcInfo.InhibitFlags.IsWriteOnly
-
-			// TODO invoke MFD services to do so
-			mfdResult = mm.DropFileCycle(oldestFCIdent)
-			if mfdResult != mfdMgr.MFDSuccessful {
-				return
-			}
-		}
 	}
 
-	// Create the file cycle for the file set.
-	var absCycle *uint // TODO
-	var relCycle *int  // TODO
 	descriptorFlags := mfdMgr.DescriptorFlags{
 		SaveOnCheckpoint:    saveOnCheckpoint,
 		IsTapeFile:          false,
 		IsRemovableDiskFile: false,
-	}
-	fileFlags := mfdMgr.FileFlags{
-		IsLargeFile: false, // TODO should we set this here, and how do we know?
 	}
 	pcharFlags := mfdMgr.PCHARFlags{
 		Granularity:       granularity,
@@ -448,29 +321,108 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 		IsReadOnly:        readOnly,
 	}
 	unitSelection := mfdMgr.UnitSelectionIndicators{}
-	// TODO change the service below slightly... ?
-	//   we don't need variance b/w abs and rel cycles, because in the end, we're not creating
-	//   rel cycle (we're @CAT, so... yeah). BUT... maybe @ASG still needs that ability?
-	_, mfdResult := mm.CreateFixedDiskFileCycle(
-		fileSetInfo.FileSetIdentifier,
-		absCycle,
-		relCycle,
-		rce.GetAccountId(),
-		mnemonic,
-		descriptorFlags,
-		fileFlags,
-		pcharFlags,
-		inhibitFlags,
-		initReserve,
-		maxGranules,
-		unitSelection,
-		make([]mfdMgr.DiskPackEntry, 0))
 
-	if mfdResult != mfdMgr.MFDSuccessful {
-		// TODO what various things should we look for here?
+	retry := true
+	for retry {
+		var mfdResult mfdMgr.MFDResult
+		if !isRemovable {
+			_, mfdResult = mm.CreateFixedFileCycle(
+				fileSetInfo.FileSetIdentifier,
+				fileSpecification.FileCycleSpec,
+				rce.GetAccountId(),
+				mnemonic,
+				descriptorFlags,
+				pcharFlags,
+				inhibitFlags,
+				initReserve,
+				maxGranules,
+				unitSelection,
+				make([]mfdMgr.DiskPackEntry, 0))
+		} else {
+			// TODO
+		}
+
+		retry = false
+		switch mfdResult {
+		case mfdMgr.MFDSuccessful: // nothing to do
+		case mfdMgr.MFDInternalError: // nothing to do, we're already dead in the water
+		case mfdMgr.MFDAlreadyExists:
+			facResult.PostMessage(FacStatusFileAlreadyCataloged, nil)
+			resultCode |= 0_500000_000000
+		case mfdMgr.MFDInvalidAbsoluteFileCycle:
+			facResult.PostMessage(FacStatusFileCycleOutOfRange, nil)
+			resultCode |= 0_600000_000040
+		case mfdMgr.MFDInvalidRelativeFileCycle:
+			facResult.PostMessage(FacStatusRelativeFCycleConflict, nil)
+			resultCode |= 0_600000_000040
+		case mfdMgr.MFDPlusOneCycleExists:
+			facResult.PostMessage(FacStatusRelativeFCycleConflict, nil)
+			resultCode |= 0_600000_000040
+		case mfdMgr.MFDDropOldestCycleRequired:
+			// TODO can we drop the oldest cycle? If so, do it and try again
+			// E:243233 Creation of file would require illegal dropping of private file.
+			retry = true
+		}
 	}
 
 	return
+}
+
+// catalogFixedFile takes the various inputs, validates them, and then invokes
+// mfd services to create the appropriate file cycle (and file set, if necessary).
+// Caller should immediately check whether the exec has stopped upon return.
+func (mgr *FacilitiesManager) catalogFixedFile(
+	exec kexec.IExec,
+	rce kexec.RunControlEntry,
+	fileSpecification *FileSpecification,
+	optionWord uint64,
+	operandFields [][]string,
+	fileSetInfo *mfdMgr.FileSetInfo,
+	mnemonic string,
+	usage config.EquipmentUsage,
+	sourceIsExecRequest bool,
+) (facResult *FacStatusResult, resultCode uint64) {
+	//	For Mass Storage Files
+	//		@CAT[,options] filename[,type/reserve/granule/maximum,pack-id-1/.../pack-id-n,,,ACR-name]
+	//	options include
+	//		B: save on checkpoint
+	//		G: guarded file
+	//		P: make the file public (not private)
+	//		R: make the file read-only
+	//		V: file will not be unloaded
+	//		W: make the file write-only
+	//		Z: run should not be held (probably only happens on removable when the pack is not mounted)
+	//			I'm unaware of any situation where cataloging a fixed file would result in a hold.
+	facResult = NewFacResult()
+	resultCode = 0
+
+	allowedOpts := uint64(kexec.BOption | kexec.GOption | kexec.POption |
+		kexec.ROption | kexec.VOption | kexec.WOption | kexec.ZOption)
+	if !checkIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
+		resultCode |= 0_600000_000000
+		return
+	}
+
+	if !mgr.checkSubFields(operandFields, catFixedFSIs) {
+		if len(mgr.getSubField(operandFields, 1, 4)) > 0 {
+			facResult.PostMessage(FacStatusPlacementFieldNotAllowed, nil)
+		}
+		facResult.PostMessage(FacStatusUndefinedFieldOrSubfield, nil)
+		resultCode |= 0_600000_000000
+		return
+	}
+
+	return mgr.catalogCommon(
+		exec,
+		rce,
+		fileSpecification,
+		optionWord,
+		operandFields,
+		fileSetInfo,
+		mnemonic,
+		usage,
+		false,
+		sourceIsExecRequest)
 }
 
 func (mgr *FacilitiesManager) catalogRemovableFile(
@@ -494,36 +446,36 @@ func (mgr *FacilitiesManager) catalogRemovableFile(
 	//		V: file will not be unloaded
 	//		W: make the file write-only
 	//		Z: run should not be held (probably only happens on removable when the pack is not mounted)
+	facResult = NewFacResult()
+	resultCode = 0
+
 	allowedOpts := uint64(kexec.BOption | kexec.GOption | kexec.POption |
 		kexec.ROption | kexec.VOption | kexec.WOption | kexec.ZOption)
 	if !checkIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
-		// TODO
+		resultCode |= 0_600000_000000
+		return
 	}
 
 	if !mgr.checkSubFields(operandFields, catRemovableFSIs) {
-		// TODO
+		if len(mgr.getSubField(operandFields, 1, 4)) > 0 {
+			facResult.PostMessage(FacStatusPlacementFieldNotAllowed, nil)
+		}
+		facResult.PostMessage(FacStatusUndefinedFieldOrSubfield, nil)
+		resultCode |= 0_600000_000000
+		return
 	}
 
-	// saveOnCheckpoint := optionWord&kexec.BOption != 0
-	// guardedFile := optionWord&kexec.GOption != 0
-	// publicFile := optionWord&kexec.POption != 0
-	// readOnly := optionWord&kexec.ROption != 0
-	// inhibitUnload := optionWord&kexec.VOption != 0
-	// writeOnly := optionWord&kexec.WOption != 0
-	// doNotHold := optionWord&kexec.ZOption != 0
-	// wordAddressable := usage == config.EquipmentUsageWordAddressableMassStorage
-
-	// TODO granularity, initial-reserve, max-granules
-
-	// Ensure the pack list is compatible with the files in the fileset (if there is a fileset)
-	// Is it okay to just use the highest cycle?
-	// TODO
-
-	// If we are removable ensure each pack name is known and mounted.
-	// Do not wait for mount if Z option is set
-	// TODO
-
-	return nil, 0 // TODO
+	return mgr.catalogCommon(
+		exec,
+		rce,
+		fileSpecification,
+		optionWord,
+		operandFields,
+		fileSetInfo,
+		mnemonic,
+		usage,
+		true,
+		sourceIsExecRequest)
 }
 
 func (mgr *FacilitiesManager) catalogTapeFile(

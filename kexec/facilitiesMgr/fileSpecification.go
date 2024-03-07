@@ -7,50 +7,14 @@ package facilitiesMgr
 import (
 	"fmt"
 	"khalehla/kexec"
+	"khalehla/kexec/mfdMgr"
 )
-
-// ensure filespec is valid - parse it into a FileSpecification struct
-// format:
-//   [ [qualifier] '*' ] filename [cycle] [ '/' [read_key] [ '/' [write_key] ] ] ['.']
-// cycle:
-//   '(' [ '-' n1 ] | '0' | [ '+1' ] | n2 ')'
-// n1: integer from 1 to 31
-// n2: integer from 1 to 999
-
-type FileCycleSpecification struct {
-	AbsoluteCycle *uint
-	RelativeCycle *int
-}
-
-func NewAbsoluteFileCycleSpecification(cycle uint) *FileCycleSpecification {
-	ac := cycle
-	return &FileCycleSpecification{
-		AbsoluteCycle: &ac,
-		RelativeCycle: nil,
-	}
-}
-
-func NewRelativeFileCycleSpecification(cycle int) *FileCycleSpecification {
-	rc := cycle
-	return &FileCycleSpecification{
-		AbsoluteCycle: nil,
-		RelativeCycle: &rc,
-	}
-}
-
-func (fcs *FileCycleSpecification) IsRelative() bool {
-	return fcs.RelativeCycle != nil
-}
-
-func (fcs *FileCycleSpecification) IsAbsolute() bool {
-	return fcs.AbsoluteCycle != nil
-}
 
 type FileSpecification struct {
 	Qualifier     string
 	HasAsterisk   bool // if true but qualifier is empty, use the implied qualifier
 	Filename      string
-	FileCycleSpec *FileCycleSpecification
+	FileCycleSpec *mfdMgr.FileCycleSpecification
 	ReadKey       string
 	WriteKey      string
 }
@@ -132,7 +96,7 @@ func (fs *FileSpecification) parseAbsoluteCycle(p *kexec.Parser) (found bool, fs
 		return
 	}
 
-	fs.FileCycleSpec = NewAbsoluteFileCycleSpecification(uint(value))
+	fs.FileCycleSpec = mfdMgr.NewAbsoluteFileCycleSpecification(uint(value))
 	return
 }
 
@@ -177,7 +141,7 @@ func (fs *FileSpecification) parseRelativeCycle(p *kexec.Parser) (found bool, fs
 
 	if pos {
 		if value == 1 {
-			fs.FileCycleSpec = NewRelativeFileCycleSpecification(int(value))
+			fs.FileCycleSpec = mfdMgr.NewRelativeFileCycleSpecification(int(value))
 			found = true
 			return
 		} else {
@@ -191,7 +155,7 @@ func (fs *FileSpecification) parseRelativeCycle(p *kexec.Parser) (found bool, fs
 			ok = false
 			return
 		} else {
-			fs.FileCycleSpec = NewRelativeFileCycleSpecification(int(value) * -1)
+			fs.FileCycleSpec = mfdMgr.NewRelativeFileCycleSpecification(int(value) * -1)
 			found = true
 			return
 		}
@@ -241,6 +205,16 @@ func (fs *FileSpecification) parseKeys(p *kexec.Parser) (fsCode FacStatusCode, o
 
 // ParseFileSpecification parses the given input string in an attempt to decode the
 // qualifier, file, cycle, read key, and write key subfields.
+// format:
+//
+//	[ [qualifier] '*' ] filename [cycle] [ '/' [read_key] [ '/' [write_key] ] ] ['.']
+//
+// cycle:
+//
+//	'(' [ '-' n1 ] | '0' | [ '+1' ] | n2 ')'
+//
+// n1: integer from 1 to 31
+// n2: integer from 1 to 999
 // If the input is empty, we return nil in FileSpecification and ok == true.
 // If successful, we return a pointer to the FileSpecification in fs, with ok == true.
 // If we find something, but encounter an error during parsing, we return ok == false and something descriptive in code.

@@ -68,6 +68,7 @@ func importTemplates() map[FacStatusCode]*FacStatusMessageTemplate {
 	importErrorTemplate(result, FacStatusDirectoryAndQualifierMayNotAppear, "Directory id and qualifier may not appear on image when R option is used.")
 	importErrorTemplate(result, FacStatusDirectoryOrQualifierMustAppear, "Directory id or qualifier must appear on image.")
 	importErrorTemplate(result, FacStatusFileAlreadyCataloged, "File is already catalogued.")
+	importErrorTemplate(result, FacStatusFileCycleOutOfRange, "File cycle out of range.")
 	importErrorTemplate(result, FacStatusFilenameIsRequired, "A filename is required on the image.")
 	importErrorTemplate(result, FacStatusFileNotCatalogedWithReadKey, "File is not cataloged with a read key.")
 	importErrorTemplate(result, FacStatusFileNotCatalogedWithWriteKey, "File is not cataloged with a write key.")

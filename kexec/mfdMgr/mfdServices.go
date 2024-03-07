@@ -11,7 +11,6 @@ import (
 	"khalehla/pkg"
 	"log"
 	"strings"
-	"time"
 )
 
 // mfdServices contains code which provides directory-level services to all other exec code
@@ -74,47 +73,144 @@ func (mgr *MFDManager) CreateFileSet(
 	return
 }
 
-// CreateFixedDiskFileCycle creates a new file cycle within the file set specified by fsIdentifier.
-// Either absoluteCycle or relativeCycle must be specified (but not both).
-func (mgr *MFDManager) CreateFixedDiskFileCycle(
+// CreateFixedFileCycle creates a new file cycle within the file set specified by fsIdentifier.
+// fcSpecification is nil if no file cycle was specified.
+// Returns
+//
+//		FileCycleIdentifier of the newly-created file cycle if successful, and
+//		MFDResult values which may include
+//	     MFDSuccessful if things went well
+//	     MFDInternalError if something is badly wrong, and we've stopped the exec
+//	     MFDAlreadyExists if user does not specify a cycle, and a file cycle already exists
+//		     MFDInvalidRelativeFileCycle if the caller specified a negative relative file cycle
+//	      MFDInvalidAbsoluteFileCycle
+//	         any file cycle out of range
+//	         an absolute file cycle which conflicts with an existing cycle
+//	     MFDPlusOneCycleExists if caller specifies +1 and a +1 already exists for the file set
+//	     MFDDropOldestCycleRequired is returned if everything else would be fine if the oldest file cycle did not exist
+func (mgr *MFDManager) CreateFixedFileCycle(
 	fsIdentifier FileSetIdentifier,
-	absoluteCycle *uint,
-	relativeCycle *int,
+	fcSpecification *FileCycleSpecification,
 	accountId string,
 	assignMnemonic string,
 	descriptorFlags DescriptorFlags,
-	fileFlags FileFlags,
 	pcharFlags PCHARFlags,
 	inhibitFlags InhibitFlags,
 	initialReserve uint64,
 	maxGranules uint64,
-	unitSelection UnitSelectionIndicators,
+	unitSelection UnitSelectionIndicators, // TODO should we/can we do anything with this?
 	diskPacks []DiskPackEntry,
 ) (fcIdentifier FileCycleIdentifier, result MFDResult) {
-	mainItem0Address := kexec.InvalidLink
 	result = MFDSuccessful
 
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
-	/*
-		DescriptorFlags          DescriptorFlags
-		FileFlags                FileFlags ?
-		PCHARFlags               PCHARFlags
-		AssignMnemonic           string
-		InhibitFlags             InhibitFlags
-		AbsoluteFCycle           uint64
-		TimeCataloged            uint64
-		InitialGranulesReserved  uint64
-		MaxGranules              uint64
-		HighestGranuleAssigned   uint64
-		UnitSelectionIndicators  UnitSelectionIndicators
-		DiskPackEntries          []DiskPackEntry
-		FileAllocations          []FileAllocation
-	*/
-	// TODO
+	leadItem0Addr := kexec.MFDRelativeAddress(fsIdentifier)
+	leadItem0, err := mgr.getMFDSector(leadItem0Addr)
+	if err != nil {
+		result = MFDInternalError
+		return
+	}
 
-	fsIdentifier = FileSetIdentifier(mainItem0Address)
+	leadItem1Addr := kexec.MFDRelativeAddress(leadItem0[0].GetW())
+	var leadItem1 []pkg.Word36
+	if leadItem1Addr&0_400000_000000 == 0 {
+		leadItem1, err = mgr.getMFDSector(leadItem1Addr)
+		if err != nil {
+			result = MFDInternalError
+			return
+		}
+	}
+
+	// get a FileSetInfo for convenience
+	fsInfo := &FileSetInfo{}
+	fsInfo.FileSetIdentifier = fsIdentifier
+	fsInfo.populateFromLeadItems(leadItem0, leadItem1)
+
+	absCycle, cycIndex, shift, newRange, plusOne, result := mgr.checkCycle(fcSpecification, fsInfo)
+	if result != MFDSuccessful {
+		return
+	}
+
+	// Do we need to allocate a lead item sector 1?
+	if leadItem1 == nil && newRange > 28-(11+fsInfo.NumberOfSecurityWords) {
+		leadItem1Addr, leadItem1, err = mgr.allocateLeadItem1(leadItem0Addr, leadItem0)
+		if err != nil {
+			result = MFDInternalError
+			return
+		}
+	}
+
+	// Do we need to shift links?
+	if shift > 0 {
+		adjustLeadItemLinks(leadItem0, leadItem1, shift)
+		mgr.markDirectorySectorDirty(leadItem0Addr)
+		mgr.markDirectorySectorDirty(leadItem1Addr)
+	}
+
+	if plusOne {
+		leadItem0[012].Or(0_200000_000000)
+	}
+
+	// Create necessary main items for the new file cycle
+	preferredLDAT := getLDATIndexFromMFDAddress(leadItem0Addr)
+	mainItem0Addr, mainItem0, err := mgr.allocateDirectorySector(preferredLDAT)
+	if err != nil {
+		result = MFDInternalError
+		return
+	}
+	mainItem1Addr, mainItem1, err := mgr.allocateDirectorySector(preferredLDAT)
+	if err != nil {
+		result = MFDInternalError
+		return
+	}
+
+	packNames := make([]string, 0)
+	if diskPacks != nil {
+		for _, dp := range diskPacks {
+			packNames = append(packNames, dp.PackName)
+		}
+	}
+
+	populateMassStorageMainItem0(
+		mainItem0,
+		leadItem0Addr,
+		mainItem1Addr,
+		fsInfo.Qualifier,
+		fsInfo.Filename,
+		uint64(absCycle),
+		fsInfo.ReadKey,
+		fsInfo.WriteKey,
+		fsInfo.ProjectId,
+		accountId,
+		assignMnemonic,
+		descriptorFlags,
+		pcharFlags,
+		inhibitFlags,
+		false,
+		initialReserve,
+		maxGranules,
+		packNames)
+
+	populateFixedMainItem1(
+		mainItem1,
+		fsInfo.Qualifier,
+		fsInfo.Filename,
+		mainItem0Addr,
+		uint64(absCycle),
+		packNames)
+
+	// Link the new file cycle into the lead item
+	lw := getLeadItemLinkWord(leadItem0, leadItem1, cycIndex)
+	lw.SetW(uint64(mainItem0Addr))
+
+	mgr.markDirectorySectorDirty(leadItem0Addr)
+	if leadItem1 != nil {
+		mgr.markDirectorySectorDirty(leadItem1Addr)
+	}
+
+	fsIdentifier = FileSetIdentifier(mainItem0Addr)
 	return
 }
 
@@ -394,283 +490,3 @@ func (mgr *MFDManager) SetFileToBeDeleted(
 	// TODO
 	return nil
 }
-
-// ----- mostly obsolete below here -----
-
-// populateNewLeadItem0 sets up a lead item sector 0 in the given buffer,
-// assuming we are cataloging a new file, will have one cycle, and the absolute cycle is given to us.
-// Implied is that there will be no sector 1 (since there aren't enough cycles to warrant it).
-func populateNewLeadItem0(
-	leadItem0 []pkg.Word36,
-	qualifier string,
-	filename string,
-	projectId string,
-	readKey string,
-	writeKey string,
-	fileType uint64, // 000=Fixed, 001=Tape, 040=Removable
-	absoluteCycle uint64,
-	guardedFlag bool,
-	mainItem0Address uint64,
-) {
-	for wx := 0; wx < 28; wx++ {
-		leadItem0[wx].SetW(0)
-	}
-
-	leadItem0[0].SetW(uint64(kexec.InvalidLink))
-	leadItem0[0].Or(0_500000_000000)
-
-	pkg.FromStringToFieldata(qualifier, leadItem0[1:3])
-	pkg.FromStringToFieldata(filename, leadItem0[3:5])
-	pkg.FromStringToFieldata(projectId, leadItem0[5:7])
-	if len(readKey) > 0 {
-		leadItem0[7].FromStringToFieldata(readKey)
-	}
-	if len(writeKey) > 0 {
-		leadItem0[8].FromStringToAscii(writeKey)
-	}
-
-	leadItem0[9].SetS1(fileType)
-	leadItem0[9].SetS2(1)  // number of cycles
-	leadItem0[9].SetS3(31) // max range of cycles (default is 31)
-	leadItem0[9].SetS4(1)  // current range
-	leadItem0[9].SetT3(absoluteCycle)
-
-	var statusBits uint64
-	if guardedFlag {
-		statusBits |= 01000
-	}
-	leadItem0[10].SetT1(statusBits)
-	leadItem0[11].SetW(mainItem0Address)
-}
-
-func populateMassStorageMainItem0(
-	mainItem0 []pkg.Word36,
-	qualifier string,
-	filename string,
-	projectId string,
-	readKey string,
-	writeKey string,
-	accountId string,
-	leadItem0Address kexec.MFDRelativeAddress,
-	mainItem1Address kexec.MFDRelativeAddress,
-	saveOnCheckpoint bool,
-	toBeCataloged bool, // for @ASG,C or @ASG,U
-	isRemovable bool,
-	isPosition bool,
-	isWordAddressable bool,
-	mnemonic string,
-	isGuarded bool,
-	inhibitUnload bool,
-	isPrivate bool,
-	isWriteOnly bool,
-	isReadOnly bool,
-	absoluteCycle uint64,
-	reserve uint64,
-	maximum uint64,
-	packIds []string,
-) {
-	for wx := 0; wx < 28; wx++ {
-		mainItem0[wx].SetW(0)
-	}
-
-	mainItem0[0].SetW(uint64(kexec.InvalidLink)) // no DAD table (yet, anyway)
-	mainItem0[0].Or(0_200000_000000)
-
-	pkg.FromStringToFieldata(qualifier, mainItem0[1:3])
-	pkg.FromStringToFieldata(filename, mainItem0[3:5])
-	pkg.FromStringToFieldata(projectId, mainItem0[5:7])
-	pkg.FromStringToFieldata(accountId, mainItem0[7:9])
-	mainItem0[11].SetW(uint64(leadItem0Address))
-	mainItem0[11].SetS1(0) // disable flags
-
-	var descriptorFlags uint64
-	if saveOnCheckpoint {
-		descriptorFlags |= 01000
-	}
-	if toBeCataloged {
-		descriptorFlags |= 00100
-	}
-	if isRemovable {
-		descriptorFlags |= 00010
-	}
-	mainItem0[12].SetT1(descriptorFlags)
-
-	var pcharFlags uint64
-	if isPosition {
-		pcharFlags |= 040
-	}
-	if isWordAddressable {
-		pcharFlags |= 010
-	}
-	mainItem0[13].SetW(uint64(mainItem1Address))
-	mainItem0[13].SetS1(pcharFlags)
-
-	mainItem0[14].FromStringToFieldata(mnemonic)
-
-	var inhibitFlags uint64
-	if isGuarded {
-		inhibitFlags |= 040
-	}
-	if inhibitUnload {
-		inhibitFlags |= 020
-	}
-	if isPrivate {
-		inhibitFlags |= 010
-	}
-	if isWriteOnly {
-		inhibitFlags |= 002
-	}
-	if isReadOnly {
-		inhibitFlags |= 001
-	}
-	mainItem0[17].SetH1(inhibitFlags)
-	mainItem0[17].SetT3(absoluteCycle)
-
-	swTimeNow := kexec.GetSWTimeFromSystemTime(time.Now())
-	mainItem0[19].SetW(swTimeNow)
-	mainItem0[20].SetH1(reserve)
-	mainItem0[21].SetH1(maximum)
-
-	if isRemovable {
-		var rKey pkg.Word36
-		if len(readKey) > 0 {
-			rKey.FromStringToFieldata(readKey)
-		}
-		var wKey pkg.Word36
-		if len(writeKey) > 0 {
-			wKey.FromStringToAscii(writeKey)
-		}
-
-		mainItem0[24].SetH1(rKey.GetH1())
-		mainItem0[25].SetH1(rKey.GetH2())
-		mainItem0[26].SetH1(wKey.GetH1())
-		mainItem0[27].SetH1(wKey.GetH2())
-	} else {
-		// initially selected LDAT and optional device placement flag
-		// TODO if there is at least one pack-id, then go find its LDAT and use that,
-		//  and mask in 0_400000_000000 to indicate device placement.
-		var ldat uint64
-		if len(packIds) > 0 {
-
-		} else {
-			ldat = uint64(getLDATIndexFromMFDAddress(leadItem0Address))
-		}
-		mainItem0[27].SetH1(ldat)
-	}
-}
-
-func populateFixedMainItem1(
-	mainItem1 []pkg.Word36,
-	qualifier string,
-	filename string,
-	mainItem0Address kexec.MFDRelativeAddress,
-	absoluteCycle uint64,
-	packIds []string,
-) {
-	for wx := 0; wx < 28; wx++ {
-		mainItem1[wx].SetW(0)
-	}
-
-	mainItem1[0].SetW(uint64(kexec.InvalidLink)) // no sector 2 (yet, anyway)
-	pkg.FromStringToFieldata(qualifier, mainItem1[1:3])
-	pkg.FromStringToFieldata(filename, mainItem1[3:5])
-	pkg.FromStringToFieldata("*No.1*", mainItem1[5:6])
-	mainItem1[6].SetW(uint64(mainItem0Address))
-	mainItem1[7].SetT3(absoluteCycle)
-
-	// TODO note that for >5 pack entries, we need additional main item sectors
-	//  one per 10 additional packs beyond 5
-	mix := 18
-	limit := len(packIds)
-	if limit > 5 {
-		limit = 5
-	}
-	for dpx := 0; dpx < limit; dpx++ {
-		mainItem1[mix].FromStringToFieldata(packIds[dpx])
-		mix += 2
-	}
-}
-
-//func populateRemovableMainItem1(
-//	mainItem1 []pkg.Word36,
-//	mainItem0Address kexec.MFDRelativeAddress,
-//	absoluteCycle uint64,
-//	packIds []string,
-//) {
-//	for wx := 0; wx < 28; wx++ {
-//		mainItem1[wx].SetW(0)
-//	}
-//
-//	mainItem1[0].SetW(uint64(kexec.InvalidLink)) // no sector 2 (yet, anyway)
-//	mainItem1[6].SetW(uint64(mainItem0Address))
-//	mainItem1[7].SetT3(absoluteCycle)
-//	mainItem1[17].SetT3(uint64(len(packIds)))
-//
-//	// TODO note that for >5 pack entries, we need additional main item sectors
-//	//  one per 10 additional packs beyond 5
-//	mix := 18
-//	limit := len(packIds)
-//	if limit > 5 {
-//		limit = 5
-//	}
-//	for dpx := 0; dpx < limit; dpx++ {
-//		mainItem1[mix].FromStringToFieldata(packIds[dpx])
-//		// TODO for isRemovable, we need the main item address for this file on that pack
-//		mix += 2
-//	}
-//}
-
-//func populateTapeMainItem0(
-//	mainItem0 []pkg.Word36,
-//	qualifier string,
-//	filename string,
-//	projectId string,
-//	accountId string,
-//	reelTable0Address kexec.MFDRelativeAddress,
-//	leadItem0Address kexec.MFDRelativeAddress,
-//	mainItem1Address kexec.MFDRelativeAddress,
-//	toBeCataloged bool, // for @ASG,C or @ASG,U
-//	isGuarded bool,
-//	isPrivate bool,
-//	isWriteOnly bool,
-//	isReadOnly bool,
-//	absoluteCycle uint64,
-//	density uint,
-//	format uint,
-//	features uint,
-//	featuresExtension uint,
-//	mtapop uint,
-//	ctlPool string,
-//) {
-//	for wx := 0; wx < 28; wx++ {
-//		mainItem0[wx].SetW(0)
-//	}
-//
-//	mainItem0[0].SetW(uint64(reelTable0Address))
-//	mainItem0[0].Or(0_200000_000000)
-//	pkg.FromStringToFieldata(qualifier, mainItem0[1:3])
-//	pkg.FromStringToFieldata(filename, mainItem0[3:5])
-//	pkg.FromStringToFieldata(projectId, mainItem0[5:7])
-//	pkg.FromStringToFieldata(accountId, mainItem0[7:9])
-//
-//	// TODO
-//}
-
-//func populateTapeMainItem1(
-//	mainItem1 []pkg.Word36,
-//	qualifier string,
-//	filename string,
-//	mainItem0Address kexec.MFDRelativeAddress,
-//	absoluteCycle uint64,
-//) {
-//	for wx := 0; wx < 28; wx++ {
-//		mainItem1[wx].SetW(0)
-//	}
-//
-//	mainItem1[0].SetW(uint64(kexec.InvalidLink)) // no sector 2 (yet, anyway)
-//	pkg.FromStringToFieldata(qualifier, mainItem1[1:3])
-//	pkg.FromStringToFieldata(filename, mainItem1[3:5])
-//	pkg.FromStringToFieldata("*No.1*", mainItem1[5:6])
-//	mainItem1[6].SetW(uint64(mainItem0Address))
-//	mainItem1[7].SetT3(absoluteCycle)
-//}

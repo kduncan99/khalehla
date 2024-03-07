@@ -11,4 +11,9 @@ const (
 	MFDInternalError
 	MFDFileNameConflict
 	MFDNotFound
+	MFDAlreadyExists
+	MFDInvalidAbsoluteFileCycle
+	MFDInvalidRelativeFileCycle
+	MFDPlusOneCycleExists
+	MFDDropOldestCycleRequired
 )

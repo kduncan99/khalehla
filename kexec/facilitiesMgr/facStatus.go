@@ -41,6 +41,7 @@ const (
 	FacStatusAssignMnemonicMustBeSpecifiedWithPackId = 241033
 	FacStatusAssignMnemonicMustBeWordAddressable     = 241133
 	FacStatusIllegalValueForFCycle                   = 242433
+	FacStatusFileCycleOutOfRange                     = 242533
 	FacStatusSyntaxErrorInImage                      = 0243533
 	FacStatusIllegalControlStatement                 = 0243733
 	FacStatusFilenameIsRequired                      = 0244333
