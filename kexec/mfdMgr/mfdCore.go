@@ -242,6 +242,8 @@ func (mgr *MFDManager) allocateFileSpace(
 		}
 	}
 
+	// TODO NEXT Need to update granules assigned in main item
+	// TODO  Also need to update the fae-dirty flag so DAD tables get rewritten
 	return
 }
 
