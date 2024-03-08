@@ -59,29 +59,3 @@ const (
 	ExecPhaseRunning
 	ExecPhaseStopped
 )
-
-const (
-	StopFacilitiesComplex                                 = 001
-	StopUseStatementToExecPCTFailed                       = 031
-	StopFileAssignErrorOccurredDuringSystemInitialization = 034
-	StopInternalExecIOFailed                              = 040
-	StopFullCycleReachedForRunids                         = 044
-	StopExecRequestForMassStorageFailed                   = 052
-	StopErrorAccessingFacilitiesDataStructure             = 055
-	StopConsoleResponseRequiresReboot                     = 055
-	StopTrackToBeReleasedWasNotAllocated                  = 057
-	StopNoMainItemLink                                    = 057
-	StopInitializationSystemConfigurationError            = 064
-	StopInitializationSystemLibrariesCorruptOrMissing     = 044
-	StopClearTestSetAttemptedWhenNotSet                   = 066
-	StopResourceReleaseFailure                            = 067
-	StopActivityIdNoLongerExists                          = 073
-	StopExecContingencyHandler                            = 0103
-	StopExecActivityTakenToEMode                          = 0105
-	StopOperatorInitiatedRecovery                         = 0150 // i.e., $!
-	StopDirectoryErrors                                   = 0151
-	StopSectorToBeReleasedWasNotAllocated                 = 0157
-	StopIOPacketErrorForSystemIO                          = 0202
-	StopErrorInSystemIOTable                              = 0205
-	StopInvalidLDAT                                       = 0253
-)
