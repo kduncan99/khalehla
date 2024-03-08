@@ -798,7 +798,7 @@ func (mgr *MFDManager) convertFileRelativeTrackId(
 func (mgr *MFDManager) dropFileCycle(
 	mainItem0Address kexec.MFDRelativeAddress,
 ) MFDResult {
-	_, ok := mgr.acceleratedFileAllocations[mainItem0Address]
+	fas, ok := mgr.acceleratedFileAllocations[mainItem0Address]
 	if !ok {
 		log.Printf("MFDMgr:Attempt to drop non-accelerated file cycle mainItem0: %012o", mainItem0Address)
 		mgr.exec.Stop(kexec.StopDirectoryErrors)
@@ -811,25 +811,18 @@ func (mgr *MFDManager) dropFileCycle(
 	}
 
 	// We'll need the lead item(s) sooner, and later.
-	leadItem0Addr := kexec.MFDRelativeAddress(mainItem0[013].GetW())
-	leadItem0, err := mgr.getMFDBlock(leadItem0Addr)
+	leadItem0Addr, leadItem1Addr, leadItem0, leadItem1, err := mgr.getLeadItemsForMainItem(mainItem0)
 	if err != nil {
 		return MFDInternalError
-	}
-
-	leadItem1Addr := kexec.MFDRelativeAddress(leadItem0[0].GetW())
-	var leadItem1 []pkg.Word36
-	if !leadItem0[0].IsNegative() {
-		leadItem1, err = mgr.getMFDBlock(leadItem1Addr)
-		if err != nil {
-			return MFDInternalError
-		}
 	}
 
 	fileType := NewFileTypeFromField(leadItem0[011].GetS1())
 	if fileType == FileTypeFixed || fileType == FileTypeRemovable {
 		// For mass storage, we need to release the space occupied by the file...
-		// TODO
+		for _, fa := range fas.FileAllocations {
+			tr := kexec.NewTrackRegion(fa.DeviceTrackId, fa.FileRegion.TrackCount)
+			mgr.releaseTrackRegion(fa.LDATIndex, tr)
+		}
 
 		// ... and then the DAD table entries themselves.
 		err = mgr.releaseDADChain(mainItem0Address)
@@ -868,7 +861,7 @@ func (mgr *MFDManager) dropFileCycle(
 		leadItems := [][]pkg.Word36{leadItem0, leadItem1}
 		highestCycle := uint(leadItem0[011].GetT3())
 		mainItemCycle := uint(mainItem0[021].GetT3())
-		cycleCount := 0
+		newCycleCount := 0
 		cycleRange := uint(leadItem0[011].GetS4())
 		linkIndex := highestCycle - mainItemCycle
 		ix, wx := getLeadItemLinkIndices(leadItem0, linkIndex)
@@ -876,13 +869,13 @@ func (mgr *MFDManager) dropFileCycle(
 		for chkLinkIndex := uint(0); chkLinkIndex < cycleRange; chkLinkIndex++ {
 			link := getLeadItemLinkWord(leadItem0, leadItem1, chkLinkIndex)
 			if !link.IsNegative() {
-				cycleCount++
+				newCycleCount++
 			}
 			if link.GetW()&0_007777_777777 != 0 {
 				cycleRange = chkLinkIndex + 1
 			}
 		}
-		leadItem0[011].SetS2(uint64(cycleCount))
+		leadItem0[011].SetS2(uint64(newCycleCount))
 		leadItem0[011].SetS4(uint64(cycleRange))
 
 		mgr.markDirectorySectorDirty(leadItem0Addr)
@@ -891,7 +884,7 @@ func (mgr *MFDManager) dropFileCycle(
 		}
 	}
 
-	// un-accelerate the file cycle
+	// decelerate the file cycle
 	delete(mgr.acceleratedFileAllocations, mainItem0Address)
 	return MFDSuccessful
 }
@@ -955,6 +948,31 @@ func (mgr *MFDManager) findDASEntryForSector(
 // getLDATIndexFromMFDAddress extracts the LDAT value of an MFD relative address
 func getLDATIndexFromMFDAddress(address kexec.MFDRelativeAddress) kexec.LDATIndex {
 	return kexec.LDATIndex(address>>18) & 07777
+}
+
+// getLeadItems retrieves and returns the lead item(s) for which the address for
+// lead item 0 has been provided.
+// If there is no lead item 1, then its returned address will be InvalidLink and the sector will be nil.
+// If we return an error, the exec is already stopped
+func (mgr *MFDManager) getLeadItems(leadItem0Addr kexec.MFDRelativeAddress) (
+	leadItem1Address kexec.MFDRelativeAddress,
+	leadItem0 []pkg.Word36,
+	leadItem1 []pkg.Word36,
+	err error,
+) {
+	leadItem1Address = kexec.InvalidLink
+
+	leadItem0, err = mgr.getMFDSector(leadItem0Addr)
+	if err != nil {
+		return
+	}
+
+	if !leadItem0[0].IsNegative() {
+		leadItem1Address = kexec.MFDRelativeAddress(leadItem0[0].GetW() & 0_007777_777777)
+		leadItem1, err = mgr.getMFDSector(leadItem1Address)
+	}
+
+	return
 }
 
 // getLeadItemsForMainItem retrieves and returns the lead item(s) associated with a given main item,

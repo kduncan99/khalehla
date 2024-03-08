@@ -135,20 +135,10 @@ func (mgr *MFDManager) CreateFixedFileCycle(
 	defer mgr.mutex.Unlock()
 
 	leadItem0Addr := kexec.MFDRelativeAddress(fsIdentifier)
-	leadItem0, err := mgr.getMFDSector(leadItem0Addr)
+	leadItem1Addr, leadItem0, leadItem1, err := mgr.getLeadItems(leadItem0Addr)
 	if err != nil {
 		result = MFDInternalError
 		return
-	}
-
-	leadItem1Addr := kexec.MFDRelativeAddress(leadItem0[0].GetW())
-	var leadItem1 []pkg.Word36
-	if leadItem1Addr&0_400000_000000 == 0 {
-		leadItem1, err = mgr.getMFDSector(leadItem1Addr)
-		if err != nil {
-			result = MFDInternalError
-			return
-		}
 	}
 
 	// get a FileSetInfo for convenience
@@ -412,20 +402,11 @@ func (mgr *MFDManager) GetFileSetInfo(
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
-	leadItem0, err := mgr.getMFDSector(kexec.MFDRelativeAddress(fsIdentifier))
+	leadItem0Addr := kexec.MFDRelativeAddress(fsIdentifier)
+	_, leadItem0, leadItem1, err := mgr.getLeadItems(leadItem0Addr)
 	if err != nil {
 		mfdResult = MFDNotFound
 		return
-	}
-
-	leadItem1Address := kexec.MFDRelativeAddress(leadItem0[0].GetW())
-	var leadItem1 []pkg.Word36
-	if leadItem1Address != kexec.InvalidLink {
-		leadItem1, err = mgr.getMFDSector(leadItem1Address)
-		if err != nil {
-			mfdResult = MFDInternalError
-			return
-		}
 	}
 
 	fsInfo = &FileSetInfo{}
