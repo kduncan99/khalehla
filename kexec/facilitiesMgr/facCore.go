@@ -324,7 +324,6 @@ func (mgr *FacilitiesManager) catalogCommon(
 		IsWriteOnly:       writeOnly,
 		IsReadOnly:        readOnly,
 	}
-	unitSelection := mfdMgr.UnitSelectionIndicators{}
 
 	retry := true
 	for retry {
@@ -340,7 +339,6 @@ func (mgr *FacilitiesManager) catalogCommon(
 				inhibitFlags,
 				initReserve,
 				maxGranules,
-				unitSelection,
 				make([]mfdMgr.DiskPackEntry, 0))
 		} else {
 			// TODO invoke mm.CreateRemovableFileCycle() after implementing it

@@ -9,13 +9,11 @@ package mfdMgr
 import (
 	"fmt"
 	"khalehla/kexec"
-	"math/rand"
-	"time"
-
-	//	"khalehla/kexec/facilitiesMgr"
 	"khalehla/kexec/nodeMgr"
 	"khalehla/pkg"
 	"log"
+	"math/rand"
+	"time"
 )
 
 // adjustLeadItemLinks shifts the links in the given lead item(s) downward by the indicated
@@ -449,10 +447,9 @@ func (mgr *MFDManager) bootstrapMFD() error {
 		},
 		false,
 		0,
-		262153,
-		nil)
+		262153)
 
-	populateFixedMainItem1(mainItem1, mfdFileQualifier, mfdFileName, mainItem0Addr, 1, nil)
+	populateFixedMainItem1(mainItem1, mfdFileQualifier, mfdFileName, mainItem0Addr, 1)
 
 	// Before we can play DAD table games, we have to get the MFD$$ in-core structures in place,
 	// including *particularly* the file allocation table.
@@ -986,7 +983,6 @@ func (mgr *MFDManager) getLeadItemsForMainItem(mainItem []pkg.Word36) (
 	leadItem1 []pkg.Word36,
 	err error,
 ) {
-	// TODO go through other MFD code and find places where we can use this or its neighbor below
 	leadItem1Address = kexec.InvalidLink
 
 	leadItem0Address = kexec.MFDRelativeAddress(mainItem[013].GetW() & 0_007777_777777)
@@ -1414,7 +1410,6 @@ func populateFixedMainItem1(
 	filename string,
 	mainItem0Address kexec.MFDRelativeAddress,
 	absoluteCycle uint64,
-	packIds []string,
 ) {
 	for wx := 0; wx < 28; wx++ {
 		mainItem1[wx].SetW(0)
@@ -1426,19 +1421,6 @@ func populateFixedMainItem1(
 	pkg.FromStringToFieldata("*No.1*", mainItem1[5:6])
 	mainItem1[6].SetW(uint64(mainItem0Address))
 	mainItem1[7].SetT3(absoluteCycle)
-
-	// TODO note that for >5 pack entries, we need additional main item sectors
-	//  one per 10 additional packs beyond 5
-	//  This means we have more work to do here.
-	mix := 18
-	limit := len(packIds)
-	if limit > 5 {
-		limit = 5
-	}
-	for dpx := 0; dpx < limit; dpx++ {
-		mainItem1[mix].FromStringToFieldata(packIds[dpx])
-		mix += 2
-	}
 }
 
 func populateMassStorageMainItem0(
@@ -1459,7 +1441,6 @@ func populateMassStorageMainItem0(
 	isRemovable bool,
 	reserve uint64,
 	maximum uint64,
-	packIds []string,
 ) {
 	for wx := 0; wx < 28; wx++ {
 		mainItem0[wx].SetW(0)
@@ -1504,17 +1485,6 @@ func populateMassStorageMainItem0(
 		mainItem0[25].SetH1(rKey.GetH2())
 		mainItem0[26].SetH1(wKey.GetH1())
 		mainItem0[27].SetH1(wKey.GetH2())
-	} else {
-		// initially selected LDAT and optional device placement flag
-		// TODO if there is at least one pack-id, then go find its LDAT and use that,
-		//  and mask in 0_400000_000000 to indicate device placement.
-		var ldat uint64
-		if len(packIds) > 0 {
-
-		} else {
-			ldat = uint64(getLDATIndexFromMFDAddress(leadItem0Address))
-		}
-		mainItem0[27].SetH1(ldat)
 	}
 }
 
@@ -1563,92 +1533,6 @@ func populateNewLeadItem0(
 	leadItem0[10].SetT1(statusBits)
 	leadItem0[11].SetW(mainItem0Address)
 }
-
-// TODO uncomment and finish populateRemovableMainItem1()
-// func populateRemovableMainItem1(
-//	mainItem1 []pkg.Word36,
-//	mainItem0Address kexec.MFDRelativeAddress,
-//	absoluteCycle uint64,
-//	packIds []string,
-// ) {
-//	for wx := 0; wx < 28; wx++ {
-//		mainItem1[wx].SetW(0)
-//	}
-//
-//	mainItem1[0].SetW(uint64(kexec.InvalidLink)) // no sector 2 (yet, anyway)
-//	mainItem1[6].SetW(uint64(mainItem0Address))
-//	mainItem1[7].SetT3(absoluteCycle)
-//	mainItem1[17].SetT3(uint64(len(packIds)))
-//
-//	// TODO note that for >5 pack entries, we need additional main item sectors
-//	//  one per 10 additional packs beyond 5
-//	mix := 18
-//	limit := len(packIds)
-//	if limit > 5 {
-//		limit = 5
-//	}
-//	for dpx := 0; dpx < limit; dpx++ {
-//		mainItem1[mix].FromStringToFieldata(packIds[dpx])
-//		// TODO for isRemovable, we need the main item address for this file on that pack
-//		mix += 2
-//	}
-// }
-
-// TODO uncomment and finish populateTapeMainItem0()
-// func populateTapeMainItem0(
-//	mainItem0 []pkg.Word36,
-//	qualifier string,
-//	filename string,
-//	projectId string,
-//	accountId string,
-//	reelTable0Address kexec.MFDRelativeAddress,
-//	leadItem0Address kexec.MFDRelativeAddress,
-//	mainItem1Address kexec.MFDRelativeAddress,
-//	toBeCataloged bool, // for @ASG,C or @ASG,U
-//	isGuarded bool,
-//	isPrivate bool,
-//	isWriteOnly bool,
-//	isReadOnly bool,
-//	absoluteCycle uint64,
-//	density uint,
-//	format uint,
-//	features uint,
-//	featuresExtension uint,
-//	mtapop uint,
-//	ctlPool string,
-// ) {
-//	for wx := 0; wx < 28; wx++ {
-//		mainItem0[wx].SetW(0)
-//	}
-//
-//	mainItem0[0].SetW(uint64(reelTable0Address))
-//	mainItem0[0].Or(0_200000_000000)
-//	pkg.FromStringToFieldata(qualifier, mainItem0[1:3])
-//	pkg.FromStringToFieldata(filename, mainItem0[3:5])
-//	pkg.FromStringToFieldata(projectId, mainItem0[5:7])
-//	pkg.FromStringToFieldata(accountId, mainItem0[7:9])
-//
-// }
-
-// TODO uncomment and finish populateTapeMainItem1()
-// func populateTapeMainItem1(
-//	mainItem1 []pkg.Word36,
-//	qualifier string,
-//	filename string,
-//	mainItem0Address kexec.MFDRelativeAddress,
-//	absoluteCycle uint64,
-// ) {
-//	for wx := 0; wx < 28; wx++ {
-//		mainItem1[wx].SetW(0)
-//	}
-//
-//	mainItem1[0].SetW(uint64(kexec.InvalidLink)) // no sector 2 (yet, anyway)
-//	pkg.FromStringToFieldata(qualifier, mainItem1[1:3])
-//	pkg.FromStringToFieldata(filename, mainItem1[3:5])
-//	pkg.FromStringToFieldata("*No.1*", mainItem1[5:6])
-//	mainItem1[6].SetW(uint64(mainItem0Address))
-//	mainItem1[7].SetT3(absoluteCycle)
-// }
 
 // releaseDADChain releases all the DAD entry sectors attached to a particular main item
 func (mgr *MFDManager) releaseDADChain(
@@ -1892,11 +1776,8 @@ func (mgr *MFDManager) writeLookupTableEntry(
 	filename string,
 	leadItem0Addr kexec.MFDRelativeAddress) {
 
-	_, ok := mgr.fileLeadItemLookupTable[qualifier]
-	if !ok {
-		mgr.fileLeadItemLookupTable[qualifier] = make(map[string]kexec.MFDRelativeAddress)
-	}
-	mgr.fileLeadItemLookupTable[qualifier][filename] = leadItem0Addr
+	key := qualifier + "*" + filename
+	mgr.fileLeadItemLookupTable[key] = leadItem0Addr
 }
 
 // writeMFDCache writes all the dirty cache blocks to storage.

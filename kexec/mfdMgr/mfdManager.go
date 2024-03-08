@@ -41,16 +41,15 @@ import (
 //	U000 lead item 1 (U==0), main item sector {n}, DAD table
 
 type MFDManager struct {
-	exec                    kexec.IExec
-	mutex                   sync.Mutex
-	threadDone              bool
-	mfdFileMainItem0Address kexec.MFDRelativeAddress                  // MFD address of MFD$$ main file item 0
-	cachedTracks            map[kexec.MFDRelativeAddress][]pkg.Word36 // key is MFD addr of first sector in track
-	dirtyBlocks             map[kexec.MFDRelativeAddress]bool         // MFD addresses of blocks containing dirty sectors
-	freeMFDSectors          []kexec.MFDRelativeAddress                // MFD addresses of existing but unused MFD sectors
-	fixedPackDescriptors    map[kexec.LDATIndex]*packDescriptor       // packDescriptors of all known fixed packs
-	// TODO lookup table should not be two-level
-	fileLeadItemLookupTable    map[string]map[string]kexec.MFDRelativeAddress  // MFD address of lead item 0 of all cataloged files
+	exec                       kexec.IExec
+	mutex                      sync.Mutex
+	threadDone                 bool
+	mfdFileMainItem0Address    kexec.MFDRelativeAddress                        // MFD address of MFD$$ main file item 0
+	cachedTracks               map[kexec.MFDRelativeAddress][]pkg.Word36       // key is MFD addr of first sector in track
+	dirtyBlocks                map[kexec.MFDRelativeAddress]bool               // MFD addresses of blocks containing dirty sectors
+	freeMFDSectors             []kexec.MFDRelativeAddress                      // MFD addresses of existing but unused MFD sectors
+	fixedPackDescriptors       map[kexec.LDATIndex]*packDescriptor             // packDescriptors of all known fixed packs
+	fileLeadItemLookupTable    map[string]kexec.MFDRelativeAddress             // MFD address of lead item 0 of all cataloged files
 	acceleratedFileAllocations map[kexec.MFDRelativeAddress]*FileAllocationSet // key is main item sector 0 address of file
 }
 
@@ -61,7 +60,7 @@ func NewMFDManager(exec kexec.IExec) *MFDManager {
 		dirtyBlocks:                make(map[kexec.MFDRelativeAddress]bool),
 		freeMFDSectors:             make([]kexec.MFDRelativeAddress, 0),
 		fixedPackDescriptors:       make(map[kexec.LDATIndex]*packDescriptor),
-		fileLeadItemLookupTable:    make(map[string]map[string]kexec.MFDRelativeAddress),
+		fileLeadItemLookupTable:    make(map[string]kexec.MFDRelativeAddress),
 		acceleratedFileAllocations: make(map[kexec.MFDRelativeAddress]*FileAllocationSet),
 	}
 }
@@ -75,7 +74,7 @@ func (mgr *MFDManager) Boot() error {
 	mgr.dirtyBlocks = make(map[kexec.MFDRelativeAddress]bool)
 	mgr.freeMFDSectors = make([]kexec.MFDRelativeAddress, 0)
 	mgr.fixedPackDescriptors = make(map[kexec.LDATIndex]*packDescriptor)
-	mgr.fileLeadItemLookupTable = make(map[string]map[string]kexec.MFDRelativeAddress)
+	mgr.fileLeadItemLookupTable = make(map[string]kexec.MFDRelativeAddress)
 	mgr.acceleratedFileAllocations = make(map[kexec.MFDRelativeAddress]*FileAllocationSet)
 
 	return nil
@@ -147,11 +146,8 @@ func (mgr *MFDManager) Dump(dest io.Writer, indent string) {
 	}
 
 	_, _ = fmt.Fprintf(dest, "%v  Fixed Lookup Table:\n", indent)
-	for qual, sub := range mgr.fileLeadItemLookupTable {
-		for file, addr := range sub {
-			qualFile := qual + "*" + file
-			_, _ = fmt.Fprintf(dest, "%v    %-25s  %012o\n", indent, qualFile, addr)
-		}
+	for key, addr := range mgr.fileLeadItemLookupTable {
+		_, _ = fmt.Fprintf(dest, "%v    %-25s  %012o\n", indent, key, addr)
 	}
 
 	_, _ = fmt.Fprintf(dest, "%v  Assigned file allocations:\n", indent)

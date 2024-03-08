@@ -73,7 +73,8 @@ func (mgr *MFDManager) CreateFileSet(
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
-	_, ok := mgr.fileLeadItemLookupTable[qualifier][filename]
+	key := qualifier + "*" + filename
+	_, ok := mgr.fileLeadItemLookupTable[key]
 	if ok {
 		result = MFDFileNameConflict
 		return
@@ -126,7 +127,6 @@ func (mgr *MFDManager) CreateFixedFileCycle(
 	inhibitFlags InhibitFlags,
 	initialReserve uint64,
 	maxGranules uint64,
-	unitSelection UnitSelectionIndicators, // TODO should we/can we do anything with this?
 	diskPacks []DiskPackEntry,
 ) (fcIdentifier FileCycleIdentifier, result MFDResult) {
 	result = MFDSuccessful
@@ -208,16 +208,14 @@ func (mgr *MFDManager) CreateFixedFileCycle(
 		inhibitFlags,
 		false,
 		initialReserve,
-		maxGranules,
-		packNames)
+		maxGranules)
 
 	populateFixedMainItem1(
 		mainItem1,
 		fsInfo.Qualifier,
 		fsInfo.Filename,
 		mainItem0Addr,
-		uint64(absCycle),
-		packNames)
+		uint64(absCycle))
 
 	// Link the new file cycle into the lead item
 	lw := getLeadItemLinkWord(leadItem0, leadItem1, cycIndex)
@@ -381,7 +379,8 @@ func (mgr *MFDManager) GetFileSetIdentifier(
 	qualifier string,
 	filename string,
 ) (fsi FileSetIdentifier, mfdResult MFDResult) {
-	leadItem0Address, ok := mgr.fileLeadItemLookupTable[qualifier][filename]
+	key := qualifier + "*" + filename
+	leadItem0Address, ok := mgr.fileLeadItemLookupTable[key]
 	if !ok {
 		return 0, MFDNotFound
 	} else {
