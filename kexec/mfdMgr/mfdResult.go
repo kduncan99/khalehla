@@ -17,4 +17,5 @@ const (
 	MFDPlusOneCycleExists
 	MFDDropOldestCycleRequired
 	MFDOutOfSpace
+	MFDInvalidCycleLimit
 )

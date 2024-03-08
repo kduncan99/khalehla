@@ -18,6 +18,9 @@ import (
 // It is *PRIMARILY* a service for facilities - it should be rare that any other component uses it
 // except via fac manager.
 
+// TODO Need to clean up all dirty MFD sectors at the end of each of the service routines
+// TODO Need to implement Accelerate() and Decelerate() services
+
 func (mgr *MFDManager) ChangeFileSetName(
 	leadItem0Address kexec.MFDRelativeAddress,
 	newQualifier string,
@@ -204,6 +207,14 @@ func (mgr *MFDManager) CreateFixedFileCycle(
 	// Link the new file cycle into the lead item
 	lw := getLeadItemLinkWord(leadItem0, leadItem1, cycIndex)
 	lw.SetW(uint64(mainItem0Addr))
+	// update count only if this new cycle is *not* to-be-cataloged
+	if !descriptorFlags.ToBeCataloged {
+		leadItem0[011].SetS2(leadItem0[011].GetS2() + 1)
+	}
+	leadItem0[011].SetS4(uint64(newRange))
+	if absCycle > uint(leadItem0[011].GetT3()) {
+		leadItem0[011].SetT3(uint64(absCycle))
+	}
 
 	mgr.markDirectorySectorDirty(leadItem0Addr)
 	if leadItem1 != nil {
@@ -218,14 +229,13 @@ func (mgr *MFDManager) CreateFixedFileCycle(
 // It also updates the main item as necessary. It will *not* delete the main items if it is the
 // last file cycle - the caller *must* do that.
 // This is the service wrapper which locks the manager before going to the core function.
-// Caller should NOT invoke this on any file which is still assigned.
+// Caller should NOT invoke this on any file which is not accelerated into the MFD (i.e., not assigned).
+// TODO I don't think we actually want a DropFileCycle() service... ?
 func (mgr *MFDManager) DropFileCycle(
 	fcIdentifier FileCycleIdentifier,
 ) MFDResult {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
-
-	// TODO implement DropFileCycle()
 
 	return mgr.dropFileCycle(kexec.MFDRelativeAddress(fcIdentifier))
 }
@@ -234,6 +244,7 @@ func (mgr *MFDManager) DropFileCycle(
 // Even though we would rather the caller drop the various cycles individually,
 // we'll honor the request on a non-empty file set as well.
 // Caller should NOT invoke this on any fileset which still has a file cycle assigned.
+// TODO I don't think we actually want a DropFileSet() service... ?
 func (mgr *MFDManager) DropFileSet(
 	fsIdentifier FileSetIdentifier,
 ) MFDResult {
@@ -267,7 +278,7 @@ func (mgr *MFDManager) DropFileSet(
 
 	for lx := 0; lx < len(links); lx++ {
 		if links[lx] != 0 {
-			mgr.DropFileCycle(FileCycleIdentifier(links[lx] & 0_007777_777777))
+			mgr.dropFileCycle(kexec.MFDRelativeAddress(links[lx] & 0_007777_777777))
 		}
 	}
 
@@ -475,16 +486,40 @@ func (mgr *MFDManager) RecoverMassStorage() {
 	return
 }
 
+// SetFileCycleRange updates the max file cycle range for the indicated fileset.
+// Returns
+//
+//	MFDSuccessful if all is well
+//	MFDInternalError if things went badly, and the exec has been stopped
+//	MFDInvalidCycleLimit if the cycleRange parameter is unacceptable
 func (mgr *MFDManager) SetFileCycleRange(
-	leadItem0Address kexec.MFDRelativeAddress,
+	fsIdentifier FileSetIdentifier,
 	cycleRange uint,
-) error {
-	// TODO implement SetFileCycleRange()
-	return nil
+) (mfdResult MFDResult) {
+	mfdResult = MFDSuccessful
+
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
+	leadItem0Addr := kexec.MFDRelativeAddress(fsIdentifier)
+	leadItem0, err := mgr.getMFDSector(leadItem0Addr)
+	if err != nil {
+		return MFDInternalError
+	}
+
+	currentMax := uint(leadItem0[011].GetS3())
+	if cycleRange < currentMax || cycleRange > 32 {
+		return MFDInvalidCycleLimit
+	}
+
+	leadItem0[011].SetS3(uint64(cycleRange))
+	mgr.markDirectorySectorDirty(leadItem0Addr)
+
+	return
 }
 
 func (mgr *MFDManager) SetFileToBeDeleted(
-	leadItem0Address kexec.MFDRelativeAddress,
+	fcIdentifier FileCycleIdentifier,
 	absoluteCycle uint,
 ) error {
 	// TODO implement SetFileToBeDeleted()
