@@ -10,7 +10,6 @@ import (
 	"khalehla/kexec/nodeMgr"
 	"khalehla/pkg"
 	"log"
-	"strings"
 )
 
 // mfdServices contains code which provides directory-level services to all other exec code
@@ -18,8 +17,33 @@ import (
 // It is *PRIMARILY* a service for facilities - it should be rare that any other component uses it
 // except via fac manager.
 
-// TODO Need to clean up all dirty MFD sectors at the end of each of the service routines
-// TODO Need to implement Accelerate() and Decelerate() services
+// AccelerateFileCycle loads information about a particular file cycle -- primarily DAD tables --
+// into memory. This is for facilities to invoke when a file gets assigned.
+// This should correspond one-for-one with assigning a file to a run.
+// In doing this, we update the assign count in the main item for the file cycle.
+func (mgr *MFDManager) AccelerateFileCycle(
+	fcIdentifier FileCycleIdentifier,
+) MFDResult {
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
+	mainItem0Addr := kexec.MFDRelativeAddress(fcIdentifier)
+	mainItem0, err := mgr.getMFDSector(mainItem0Addr)
+	if err != nil {
+		return MFDInternalError
+	}
+
+	// increment total times assigned *and* assigned indicator
+	mainItem0[017].SetH1(mainItem0[017].GetH1() + 1)
+	mainItem0[021].SetT2(mainItem0[021].GetT2() + 1)
+
+	_, err = mgr.loadFileAllocationSet(mainItem0Addr)
+	if err != nil {
+		return MFDInternalError
+	}
+
+	return MFDSuccessful
+}
 
 func (mgr *MFDManager) ChangeFileSetName(
 	leadItem0Address kexec.MFDRelativeAddress,
@@ -73,6 +97,7 @@ func (mgr *MFDManager) CreateFileSet(
 
 	mgr.markDirectorySectorDirty(leadItem0Address)
 	fsIdentifier = FileSetIdentifier(leadItem0Address)
+
 	return
 }
 
@@ -225,66 +250,92 @@ func (mgr *MFDManager) CreateFixedFileCycle(
 	return
 }
 
-// DropFileCycle effectively deletes a file cycle.
-// It also updates the main item as necessary. It will *not* delete the main items if it is the
-// last file cycle - the caller *must* do that.
-// This is the service wrapper which locks the manager before going to the core function.
-// Caller should NOT invoke this on any file which is not accelerated into the MFD (i.e., not assigned).
-// TODO I don't think we actually want a DropFileCycle() service... ?
-func (mgr *MFDManager) DropFileCycle(
+// DecelerateFileCycle decrements the assign count of a particular file cycle.
+// If that count reaches zero we decelerate the file cycle's allocation information from memory,
+// and (maybe) take to-be action.
+// For to-be-deleted, the action is to drop the cycle if and only if preventToBeAction is false.
+// For to-be-cataloged, the action is to drop the cycle if and only if preventToBeAction is true.
+// For to-be-*-only, the action is to set the appropriate file cycle flags regardless of preventToBeAction.
+func (mgr *MFDManager) DecelerateFileCycle(
 	fcIdentifier FileCycleIdentifier,
+	preventToBeAction bool,
 ) MFDResult {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
-	return mgr.dropFileCycle(kexec.MFDRelativeAddress(fcIdentifier))
-}
-
-// DropFileSet deletes an entire (possibly -- actually, hopefully -- empty) file set.
-// Even though we would rather the caller drop the various cycles individually,
-// we'll honor the request on a non-empty file set as well.
-// Caller should NOT invoke this on any fileset which still has a file cycle assigned.
-// TODO I don't think we actually want a DropFileSet() service... ?
-func (mgr *MFDManager) DropFileSet(
-	fsIdentifier FileSetIdentifier,
-) MFDResult {
-	mgr.mutex.Lock()
-	defer mgr.mutex.Unlock()
-
-	leadItem0Addr := kexec.MFDRelativeAddress(fsIdentifier)
-	leadItem0, err := mgr.getMFDSector(leadItem0Addr)
+	mainItem0Addr := kexec.MFDRelativeAddress(fcIdentifier)
+	mainItem0, err := mgr.getMFDSector(mainItem0Addr)
 	if err != nil {
-		return MFDNotFound
+		return MFDInternalError
 	}
 
-	_ = mgr.markDirectorySectorUnallocated(leadItem0Addr)
-	leadItem1Addr := kexec.MFDRelativeAddress(leadItem0[0].GetW())
-	var leadItem1 []pkg.Word36
-	if leadItem1Addr&0_400000_000000 == 0 {
-		leadItem1Addr &= 0_007777_777777
-		leadItem1, err = mgr.getMFDSector(leadItem1Addr)
-		if err != nil {
-			return MFDNotFound
+	asgCount := mainItem0[021].GetT2()
+	if asgCount == 0 {
+		log.Printf("MFDMgr:Decelerate called but asg count is zero for %012o", mainItem0Addr)
+		mgr.exec.Stop(kexec.StopDirectoryErrors)
+		return MFDInternalError
+	}
+
+	asgCount--
+	mainItem0[021].SetT2(asgCount)
+
+	if asgCount == 0 {
+		delete(mgr.acceleratedFileAllocations, mainItem0Addr)
+		dFlags := ExtractNewDescriptorFlags(mainItem0[014].GetT1())
+		fileDropped := false
+		if preventToBeAction {
+			if dFlags.ToBeCataloged {
+				result := mgr.dropFileCycle(mainItem0Addr)
+				if result != MFDSuccessful {
+					return result
+				}
+				fileDropped = true
+			}
+		} else {
+			if dFlags.ToBeDropped {
+				result := mgr.dropFileCycle(mainItem0Addr)
+				if result != MFDSuccessful {
+					return result
+				}
+				fileDropped = true
+			}
 		}
-		_ = mgr.markDirectorySectorUnallocated(leadItem1Addr)
-	}
 
-	links := leadItem0[013:]
-	if leadItem1 != nil {
-		links = append(links, leadItem1[1:]...)
-	}
-	currentRange := leadItem0[011].GetS4()
-	links = links[:currentRange]
+		if !fileDropped {
+			// update lead item (one or the other of them)
+			leadItem0Addr, leadItem1Addr, leadItem0, leadItem1, err := mgr.getLeadItemsForMainItem(mainItem0)
+			if err != nil {
+				return MFDInternalError
+			}
 
-	for lx := 0; lx < len(links); lx++ {
-		if links[lx] != 0 {
-			mgr.dropFileCycle(kexec.MFDRelativeAddress(links[lx] & 0_007777_777777))
+			absCycle := uint(mainItem0[021].GetT3())
+			linkWord, _ := getLeadItemLinkWordForCycle(leadItem0, leadItem1, absCycle)
+			linkWord.Or(0_077777_777777)
+			mgr.markDirectorySectorDirty(leadItem0Addr)
+			if leadItem1 != nil {
+				mgr.markDirectorySectorDirty(leadItem1Addr)
+			}
+
+			// update inhibit flags in the main item
+			inhibitFlags := ExtractNewInhibitFlags(mainItem0[021].GetS2())
+			if dFlags.ToBeReadOnly {
+				inhibitFlags.IsReadOnly = true
+			}
+			if dFlags.ToBeWriteOnly {
+				inhibitFlags.IsWriteOnly = true
+			}
+			inhibitFlags.isAssignedExclusive = false
+			mainItem0[021].SetS2(inhibitFlags.Compose())
+
+			// clear to-be settings in main item
+			dFlags.ToBeCataloged = false
+			dFlags.ToBeDropped = false
+			dFlags.ToBeReadOnly = false
+			dFlags.ToBeWriteOnly = false
+			mainItem0[014].SetT1(dFlags.Compose())
+			mgr.markDirectorySectorDirty(mainItem0Addr)
 		}
 	}
-
-	qualifier := strings.Trim(leadItem0[0].ToStringAsFieldata()+leadItem0[1].ToStringAsFieldata(), " ")
-	filename := strings.Trim(leadItem0[2].ToStringAsFieldata()+leadItem0[3].ToStringAsFieldata(), " ")
-	delete(mgr.fileLeadItemLookupTable[qualifier], filename)
 
 	return MFDSuccessful
 }
@@ -484,6 +535,16 @@ func (mgr *MFDManager) RecoverMassStorage() {
 	mgr.exec.SendExecReadOnlyMessage("MFD Recovery is not implemented", nil)
 	mgr.exec.Stop(kexec.StopDirectoryErrors)
 	return
+}
+
+// PurgeDirectory causes the MFD to write all dirty MFD sectors to disk
+// Callers of other services should be sure to invoke this at the end of the process.
+func (mgr *MFDManager) PurgeDirectory() MFDResult {
+	err := mgr.writeMFDCache()
+	if err != nil {
+		return MFDInternalError
+	}
+	return MFDSuccessful
 }
 
 // SetFileCycleRange updates the max file cycle range for the indicated fileset.

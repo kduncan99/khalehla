@@ -165,6 +165,8 @@ func (mgr *FacilitiesManager) CatalogFile(
 	if resultCode&0_400000_000000 == 0 {
 		facResult.PostMessage(kexec.FacStatusComplete, []string{"CAT"})
 	}
+
+	mm.PurgeDirectory()
 	return
 }
 

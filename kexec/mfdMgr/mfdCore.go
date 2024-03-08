@@ -793,7 +793,6 @@ func (mgr *MFDManager) convertFileRelativeTrackId(
 }
 
 // dropFileCycle this is where the hard work gets done for dropping a file cycle.
-// We put it here because it is invoked by both DropFileCycle() and DropFileSet().
 // Caller must be very sure that this file is accelerated into our table.
 // If we return anything other than MFDSuccessful, the exec will already be stopped.
 func (mgr *MFDManager) dropFileCycle(
@@ -958,6 +957,51 @@ func getLDATIndexFromMFDAddress(address kexec.MFDRelativeAddress) kexec.LDATInde
 	return kexec.LDATIndex(address>>18) & 07777
 }
 
+// getLeadItemsForMainItem retrieves and returns the lead item(s) associated with a given main item,
+// along with their MFD-relative addresses.
+// If there is no lead item 1, then the address will be InvalidLink and the sector will be nil.
+// If we return an error, the exec is already stopped
+func (mgr *MFDManager) getLeadItemsForMainItem(mainItem []pkg.Word36) (
+	leadItem0Address kexec.MFDRelativeAddress,
+	leadItem1Address kexec.MFDRelativeAddress,
+	leadItem0 []pkg.Word36,
+	leadItem1 []pkg.Word36,
+	err error,
+) {
+	// TODO go through other MFD code and find places where we can use this or its neighbor below
+	leadItem1Address = kexec.InvalidLink
+
+	leadItem0Address = kexec.MFDRelativeAddress(mainItem[013].GetW() & 0_007777_777777)
+	leadItem0, err = mgr.getMFDSector(leadItem0Address)
+	if err != nil {
+		return
+	}
+
+	if !leadItem0[0].IsNegative() {
+		leadItem1Address = kexec.MFDRelativeAddress(leadItem0[0].GetW() & 0_007777_777777)
+		leadItem1, err = mgr.getMFDSector(leadItem1Address)
+	}
+
+	return
+}
+
+// getLeadItemsForMainItemAddress - as above, but accepts the MFD-relative address of the
+// main item instead of the item itself.
+func (mgr *MFDManager) getLeadItemsForMainItemAddress(mainItem0Address kexec.MFDRelativeAddress) (
+	leadItem0Address kexec.MFDRelativeAddress,
+	leadItem1Address kexec.MFDRelativeAddress,
+	leadItem0 []pkg.Word36,
+	leadItem1 []pkg.Word36,
+	err error,
+) {
+	mainItem0, err := mgr.getMFDSector(mainItem0Address)
+	if err != nil {
+		return
+	} else {
+		return mgr.getLeadItemsForMainItem(mainItem0)
+	}
+}
+
 // getLeadItemLinkIndices takes an index into the file cycle table (where 0 corresponds to the highest absolute cycle)
 // and returns an index to the lead item which contains the corresponding file cycle link (0 for lead item 0,
 // 1 for lead item 1), and a word index indicating the word offset from the start of the lead item which contains
@@ -972,6 +1016,33 @@ func getLeadItemLinkIndices(leadItem0 []pkg.Word36, cycleIndex uint) (itemIndex 
 		itemIndex = 1
 		wordIndex = cycleIndex - entriesInItem0
 	}
+	return
+}
+
+// getLeadItemLinkIndicesForCycle -- as above, but given an absolute cycle instead of a cycle index
+func getLeadItemLinkIndicesForCycle(
+	leadItem0 []pkg.Word36,
+	absoluteCycle uint,
+) (itemIndex uint, wordIndex uint, ok bool) {
+	itemIndex = 0
+	wordIndex = 0
+	ok = true
+
+	highest := uint(leadItem0[011].GetT3())
+	var cycIndex uint
+	if absoluteCycle < highest {
+		cycIndex = highest - (absoluteCycle + 999)
+	} else {
+		cycIndex = highest - absoluteCycle
+	}
+
+	cycRange := uint(leadItem0[011].GetS4())
+	if cycIndex >= cycRange {
+		ok = false
+	} else {
+		itemIndex, wordIndex = getLeadItemLinkIndices(leadItem0, cycIndex)
+	}
+
 	return
 }
 
@@ -991,6 +1062,23 @@ func getLeadItemLinkWord(
 	} else {
 		return &leadItem1[wx]
 	}
+}
+
+// getLeadItemLinkWordForCycle -- as above, but given an absolute file cycle instead of a link index
+func getLeadItemLinkWordForCycle(
+	leadItem0 []pkg.Word36,
+	leadItem1 []pkg.Word36,
+	absoluteCycle uint,
+) (word *pkg.Word36, ok bool) {
+	ix, wx, ok := getLeadItemLinkIndicesForCycle(leadItem0, absoluteCycle)
+	if ok {
+		if ix == 0 {
+			word = &leadItem0[wx]
+		} else {
+			word = &leadItem1[wx]
+		}
+	}
+	return
 }
 
 // getMFDTrackIdFromMFDAddress extracts the MFD-relative track-id portion of an MFD relative address
@@ -1202,19 +1290,12 @@ func (mgr *MFDManager) initializeRemovable(disks map[*nodeMgr.DiskDeviceInfo]*ke
 	return nil
 }
 
-// loadFileAllocationEntry initializes the fae for a particular file instance.
+// loadFileAllocationSet initializes the fae for a particular file instance.
 // If we return an error, we've already stopped the exec
 // CALL UNDER LOCK
-func (mgr *MFDManager) loadFileAllocationEntry(
+func (mgr *MFDManager) loadFileAllocationSet(
 	mainItem0Address kexec.MFDRelativeAddress,
 ) (*FileAllocationSet, error) {
-	_, ok := mgr.acceleratedFileAllocations[mainItem0Address]
-	if ok {
-		log.Printf("MFDMgr:loadFileAllocationEntry fae already loaded for address %012o", mainItem0Address)
-		mgr.exec.Stop(kexec.StopDirectoryErrors)
-		return nil, fmt.Errorf("fae already loaded")
-	}
-
 	mainItem0, err := mgr.getMFDSector(mainItem0Address)
 	if err != nil {
 		return nil, err
@@ -1801,7 +1882,8 @@ func (mgr *MFDManager) writeLookupTableEntry(
 }
 
 // writeMFDCache writes all the dirty cache blocks to storage.
-// If we return error, we've already stopped the exec
+// If we return error, we've already stopped the exec.
+// Currently, we do our own resolution of file-relative address to disk-relative.
 // CALL UNDER LOCK
 func (mgr *MFDManager) writeMFDCache() error {
 	for blockAddr := range mgr.dirtyBlocks {
