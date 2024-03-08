@@ -14,6 +14,6 @@ func handleSymcn(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
 		@SYMCN,L
 		@SYMCN,N [{n}]
 	*/
-	// TODO
+	// TODO implement
 	return nil, 0
 }

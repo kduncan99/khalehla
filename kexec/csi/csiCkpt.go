@@ -15,6 +15,6 @@ func handleCkpt(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
 		options include
 			A, B, C, J, M, N, P, Q, R, S, T, Z
 	*/
-	// TODO
+	// TODO implement
 	return nil, 0
 }

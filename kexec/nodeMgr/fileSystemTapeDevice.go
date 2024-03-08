@@ -302,5 +302,5 @@ func (tape *FileSystemTapeDevice) doWriteTapeMark(pkt *TapeIoPacket) {
 }
 
 func (tape *FileSystemTapeDevice) Dump(destination io.Writer, indent string) {
-	// TODO
+	// TODO Dump()
 }

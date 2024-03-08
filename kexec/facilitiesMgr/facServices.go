@@ -47,13 +47,13 @@ func (mgr *FacilitiesManager) AssignFile(
 	facResult = NewFacResult()
 	resultCode = 0
 
-	// TODO See ECL 7.69 @USE
-	// TODO search internal names
+	// TODO AssignFile() See ECL 7.69 @USE
+	// TODO AssignFile() search internal names
 
-	// TODO if not found, search external names
+	// TODO AssignFile() if not found, search external names
 
-	// TODO for already assigned files, see ECL 4.3 for security access validation
-	// TODO see ECL 7.2.4 for changing certain fields
+	// TODO AssignFile() for already assigned files, see ECL 4.3 for security access validation
+	//   see ECL 7.2.4 for changing certain fields
 	if resultCode&0_400000_000000 == 0 {
 		facResult.PostMessage(kexec.FacStatusComplete, []string{"ASG"})
 	}
@@ -96,7 +96,7 @@ func (mgr *FacilitiesManager) CatalogFile(
 	facResult = NewFacResult()
 	resultCode = 0
 
-	// TODO what if I @CAT an internal file name (i.e. a @USE name)?
+	// TODO Need to account for @USE name
 
 	// See if there is already a fileset
 	mm := mgr.exec.GetMFDManager().(*mfdMgr.MFDManager)
@@ -180,7 +180,7 @@ func (mgr *FacilitiesManager) FreeFile(
 	facResult = NewFacResult()
 	resultCode = 0
 
-	// TODO
+	// TODO implement FreeFile()
 
 	if resultCode&0_400000_000000 == 0 {
 		facResult.PostMessage(kexec.FacStatusComplete, []string{"FREE"})

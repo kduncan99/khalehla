@@ -16,6 +16,6 @@ func handleMode(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
 		options include
 			E, H, L, M, O, S, V
 	*/
-	// TODO
+	// TODO implement
 	return nil, 0
 }

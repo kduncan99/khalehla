@@ -130,7 +130,7 @@ func (mgr *FacilitiesManager) assignFixedFile(
 	usage config.EquipmentUsage,
 	sourceIsExecRequest bool,
 ) (facResult *FacStatusResult, resultCode uint64) {
-	return nil, 0 // TODO
+	return nil, 0 // TODO implement assignFixedFile()
 }
 
 func (mgr *FacilitiesManager) assignRemovableFile(
@@ -144,7 +144,7 @@ func (mgr *FacilitiesManager) assignRemovableFile(
 	usage config.EquipmentUsage,
 	sourceIsExecRequest bool,
 ) (facResult *FacStatusResult, resultCode uint64) {
-	return nil, 0 // TODO
+	return nil, 0 // TODO implement assignRemovableFile()
 }
 
 func (mgr *FacilitiesManager) assignTapeFile(
@@ -158,7 +158,7 @@ func (mgr *FacilitiesManager) assignTapeFile(
 	usage config.EquipmentUsage,
 	sourceIsExecRequest bool,
 ) (facResult *FacStatusResult, resultCode uint64) {
-	return nil, 0 // TODO
+	return nil, 0 // TODO implement assign tape file
 }
 
 func (mgr *FacilitiesManager) catalogCommon(
@@ -250,7 +250,7 @@ func (mgr *FacilitiesManager) catalogCommon(
 		}
 	} else {
 		// Otherwise, do sanity checking on the privacy settings on the existing file set.
-		// TODO
+		// TODO check permissions for cataloging a file
 		// E:?????? Project-id or account number incorrect for cataloged private file.
 		// E:242633 Cannot catalog file because read or write access not allowed.
 		gaveReadKey := len(fileSpecification.ReadKey) > 0
@@ -343,7 +343,7 @@ func (mgr *FacilitiesManager) catalogCommon(
 				unitSelection,
 				make([]mfdMgr.DiskPackEntry, 0))
 		} else {
-			// TODO
+			// TODO invoke mm.CreateRemovableFileCycle() after implementing it
 		}
 
 		retry = false
@@ -516,10 +516,10 @@ func (mgr *FacilitiesManager) catalogTapeFile(
 		kexec.LOption|kexec.MOption|kexec.OOption) | kexec.POption | kexec.ROption |
 		kexec.SOption | kexec.VOption | kexec.WOption | kexec.ZOption
 	if !checkIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
-		// TODO
+		// TODO implement CatalogTapeFile()
 	}
 
-	return nil, 0 // TODO
+	return nil, 0
 }
 
 // checkIllegalOptions compares the given options word to the allowed options word,

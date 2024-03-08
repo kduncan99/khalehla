@@ -167,8 +167,8 @@ func (mgr *FacilitiesManager) GetNodeStatusString(nodeId kexec.NodeIdentifier) s
 	//	if ta.AssignedTo != nil {
 	//		//	[* RUNID run-id REEL reel [RING|NORING] [POS [*]ffff[+|-][*]bbbbbb | POS LOST]]
 	//		str += "* RUNID " + ta.AssignedTo.RunId + " REEL " + ta.reelNumber
-	//		// TODO RING | NORING
-	//		// TODO POS
+	//		// TODO RING | NORING in FS display for tape unit
+	//		// TODO POS in FS display for tape unit
 	//	}
 	// }
 
@@ -330,7 +330,7 @@ func (mgr *FacilitiesManager) diskBecameReady(nodeId kexec.NodeIdentifier) {
 func (mgr *FacilitiesManager) tapeBecameReady(nodeId kexec.NodeIdentifier) {
 	// Device became ready
 	// what we do here depends upon the current state of the device...
-	// TODO
+	// TODO implmement tapeBecameReady()
 }
 
 func (mgr *FacilitiesManager) thread() {

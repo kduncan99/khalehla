@@ -42,7 +42,7 @@ func handleStart(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, 
 		025 The user-id does not exist.
 	*/
 
-	// TODO
+	// TODO implement
 
 	return nil, 0
 }

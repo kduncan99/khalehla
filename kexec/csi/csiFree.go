@@ -15,6 +15,6 @@ func handleFree(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
 		options include
 			A, B, D, I, R, S, X
 	*/
-	// TODO
+	// TODO implement
 	return nil, 0
 }

@@ -69,7 +69,7 @@ type Configuration struct {
 	WordAddressableDefaultMnemonic string
 	EquipmentTable                 map[string]*EquipmentEntry // key is mnemonic
 
-	// TODO -- and this is not exhaustive...
+	// TODO -- more configuration items to be implemented... maybe
 	// SMDTFASGMNE SYS$*SMDTF$ (?) assign mnemonic
 	// SMDTFINTRES (ditto) initial reserve [1]
 	// TLAUTO automatic tape labeling [false]
@@ -184,7 +184,7 @@ func NewConfiguration() *Configuration {
 }
 
 func (cfg *Configuration) UpdateFromFile(fileName string) error {
-	// TODO
+	// TODO implement UpdateFromFile()
 	return fmt.Errorf("configuration UpdateFromFile() not yet implemented")
 }
 

@@ -188,6 +188,7 @@ func (mgr *MFDManager) allocateDirectoryTrack(
 // Caller must ensure that the requested space does not overlap already-allocated
 // file-relative space.
 // Caller must ensure that the file allocations are accelerated into memory.
+// Caller must allocate space according to granularity -- we do not impose this requirement here.
 func (mgr *MFDManager) allocateFileSpace(
 	mainItem0Address kexec.MFDRelativeAddress,
 	fileRelativeTrackId kexec.TrackId,
@@ -201,6 +202,8 @@ func (mgr *MFDManager) allocateFileSpace(
 		mgr.exec.Stop(kexec.StopDirectoryErrors)
 		return MFDInternalError
 	}
+
+	highestTrack := faSet.getHighestTrackAssigned()
 
 	// Find the existing allocation immediately preceding this one.
 	// If there is no such allocation (we are a sparse file or an empty one)
@@ -242,8 +245,24 @@ func (mgr *MFDManager) allocateFileSpace(
 		}
 	}
 
-	// TODO NEXT Need to update granules assigned in main item
-	// TODO  Also need to update the fae-dirty flag so DAD tables get rewritten
+	// Update highest granule assigned in main item
+	allocHighestTrack := fileRelativeTrackId + kexec.TrackId(trackCount) - 1
+	if allocHighestTrack > highestTrack {
+		mainItem0, err := mgr.getMFDSector(mainItem0Address)
+		if err != nil {
+			return MFDInternalError
+		}
+		posGran := mainItem0[015].GetS1()&040 != 0
+		if posGran {
+			highestGranule := allocHighestTrack >> 6
+			mainItem0[026].SetH1(uint64(highestGranule))
+		} else {
+			mainItem0[026].SetH1(uint64(allocHighestTrack))
+		}
+		mgr.markDirectorySectorDirty(mainItem0Address)
+	}
+
+	faSet.IsUpdated = true
 	return
 }
 
@@ -1141,7 +1160,7 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*kexec.
 
 // initializeRemovable registers the isRemovable packs (if any) as part of a JK13 boot.
 func (mgr *MFDManager) initializeRemovable(disks map[*nodeMgr.DiskDeviceInfo]*kexec.DiskAttributes) error {
-	// TODO
+	// TODO implement initializeRemovable()
 	return nil
 }
 
@@ -1408,7 +1427,7 @@ func populateNewLeadItem0(
 	leadItem0[11].SetW(mainItem0Address)
 }
 
-// TODO
+// TODO uncomment and finish populateRemovableMainItem1()
 // func populateRemovableMainItem1(
 //	mainItem1 []pkg.Word36,
 //	mainItem0Address kexec.MFDRelativeAddress,
@@ -1438,7 +1457,7 @@ func populateNewLeadItem0(
 //	}
 // }
 
-// TODO
+// TODO uncomment and finish populateTapeMainItem0()
 // func populateTapeMainItem0(
 //	mainItem0 []pkg.Word36,
 //	qualifier string,
@@ -1472,10 +1491,9 @@ func populateNewLeadItem0(
 //	pkg.FromStringToFieldata(projectId, mainItem0[5:7])
 //	pkg.FromStringToFieldata(accountId, mainItem0[7:9])
 //
-//	// TODO
 // }
 
-// TODO
+// TODO uncomment and finish populateTapeMainItem1()
 // func populateTapeMainItem1(
 //	mainItem1 []pkg.Word36,
 //	qualifier string,
@@ -1558,7 +1576,7 @@ func (mgr *MFDManager) writeFileAllocationEntryUpdatesForFileCycle(mainItem0Addr
 	}
 
 	if fas.IsUpdated {
-		// TODO DO THIS NEXT, I THINK
+		// TODO DO THIS NEXT, I THINK writeFileAllocationEntryUpdatesForFileCycle()
 		//	rewrite the entire set of DAD entries, allocate a new one if we need to do so,
 		//  and release any left over when we're done.
 		//  Don't forget to write hole DADs (see pg 2-63 for Device index field)

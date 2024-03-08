@@ -40,7 +40,6 @@ func handleUse(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, re
 		fsString = pkt.pcs.operandFields[1][0]
 	}
 
-	// TODO Are we expecting optional read/write keys?
 	p := kexec.NewParser(fsString)
 	fileSpec, fsCode, ok := kexec.ParseFileSpecification(p)
 	if !ok {

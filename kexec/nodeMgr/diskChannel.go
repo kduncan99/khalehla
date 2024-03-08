@@ -60,5 +60,5 @@ func (ch *DiskChannel) StartIo(ioPacket IoPacket) {
 }
 
 func (ch *DiskChannel) Dump(destination io.Writer, indent string) {
-	// TODO
+	// TODO Dump()
 }

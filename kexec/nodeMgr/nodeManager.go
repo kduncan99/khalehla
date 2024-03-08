@@ -109,7 +109,7 @@ func (mgr *NodeManager) Initialize() error {
 	for nodeId, devInfo := range mgr.deviceInfos {
 		mgr.nodeInfos[nodeId] = devInfo
 	}
-	// TODO End TODOs
+	// End TODOs
 
 	// Create channels
 	for _, cInfo := range mgr.channelInfos {

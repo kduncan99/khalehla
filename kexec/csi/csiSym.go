@@ -57,6 +57,6 @@ func handleSym(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
 			046 Exec was unable to complete @SYM of file with changed name.
 			047 @SYM of PRINT$ or PUNCH$ is not allowed from an impersonated activity.
 	*/
-	// TODO
+	// TODO implement
 	return nil, 0
 }

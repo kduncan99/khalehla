@@ -17,6 +17,6 @@ func handleRstrt(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
 		options include
 			A, B, J, M, N, P, Q, R, S, U, V, Y, Z
 	*/
-	// TODO
+	// TODO implement
 	return nil, 0
 }

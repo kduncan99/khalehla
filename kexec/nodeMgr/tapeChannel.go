@@ -60,5 +60,5 @@ func (ch *TapeChannel) StartIo(ioPacket IoPacket) {
 }
 
 func (ch *TapeChannel) Dump(destination io.Writer, indent string) {
-	// TODO
+	// TODO Dump()
 }

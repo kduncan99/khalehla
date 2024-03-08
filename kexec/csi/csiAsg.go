@@ -40,6 +40,6 @@ func handleAsg(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
 			H, I, T, Z
 	*/
 
-	// TODO
+	// TODO implement
 	return nil, 0
 }

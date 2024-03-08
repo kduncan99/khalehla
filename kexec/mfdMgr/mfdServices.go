@@ -23,7 +23,7 @@ func (mgr *MFDManager) ChangeFileSetName(
 	newQualifier string,
 	newFilename string,
 ) error {
-	// TODO
+	// TODO implement ChangeFileSetName()
 	return nil
 }
 
@@ -225,7 +225,7 @@ func (mgr *MFDManager) DropFileCycle(
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
-	// TODO
+	// TODO implement DropFileCycle()
 
 	return mgr.dropFileCycle(kexec.MFDRelativeAddress(fcIdentifier))
 }
@@ -469,7 +469,7 @@ func (mgr *MFDManager) InitializeMassStorage() {
 // RecoverMassStorage handles MFD recovery for what is NOT a JK13 boot.
 // If we return an error, we must previously stop the exec.
 func (mgr *MFDManager) RecoverMassStorage() {
-	// TODO
+	// TODO implement RecoverMassStorage()
 	mgr.exec.SendExecReadOnlyMessage("MFD Recovery is not implemented", nil)
 	mgr.exec.Stop(kexec.StopDirectoryErrors)
 	return
@@ -479,7 +479,7 @@ func (mgr *MFDManager) SetFileCycleRange(
 	leadItem0Address kexec.MFDRelativeAddress,
 	cycleRange uint,
 ) error {
-	// TODO
+	// TODO implement SetFileCycleRange()
 	return nil
 }
 
@@ -487,6 +487,6 @@ func (mgr *MFDManager) SetFileToBeDeleted(
 	leadItem0Address kexec.MFDRelativeAddress,
 	absoluteCycle uint,
 ) error {
-	// TODO
+	// TODO implement SetFileToBeDeleted()
 	return nil
 }

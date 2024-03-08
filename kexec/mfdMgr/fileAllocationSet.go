@@ -118,6 +118,7 @@ func (fas *FileAllocationSet) mergeIntoFileAllocationSet(newEntry *FileAllocatio
 			next := kexec.TrackId(uint64(fileAlloc.FileRegion.TrackId) + uint64(fileAlloc.FileRegion.TrackCount))
 			if next == newEntry.FileRegion.TrackId {
 				fileAlloc.FileRegion.TrackCount += newEntry.FileRegion.TrackCount
+				fas.IsUpdated = true
 				return
 			}
 		}
@@ -128,6 +129,7 @@ func (fas *FileAllocationSet) mergeIntoFileAllocationSet(newEntry *FileAllocatio
 
 	// If we get here, the new entry is definitely not contiguous with any existing entry.
 	fas.FileAllocations = append(fas.FileAllocations, newEntry)
+	fas.IsUpdated = true
 }
 
 // findPrecedingAllocation retrieves the FileAllocation which immediately precedes or contains the
@@ -144,6 +146,18 @@ func (fas *FileAllocationSet) findPrecedingAllocation(
 		}
 	}
 	return
+}
+
+// getHighestTrackAssigned finds that value from the FileAllocationSet
+func (fas *FileAllocationSet) getHighestTrackAssigned() kexec.TrackId {
+	entryCount := len(fas.FileAllocations)
+	if entryCount == 0 {
+		return 0
+	} else {
+		last := entryCount - 1
+		fAlloc := fas.FileAllocations[last]
+		return fAlloc.FileRegion.TrackId + kexec.TrackId(fAlloc.FileRegion.TrackCount) - 1
+	}
 }
 
 // resolveFileRelativeTrackId converts a file-relative track id (file-relative sector address * 28,
