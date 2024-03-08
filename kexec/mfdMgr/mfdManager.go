@@ -40,46 +40,16 @@ import (
 //  U100 main item 0
 //	U000 lead item 1 (U==0), main item sector {n}, DAD table
 
-// Keeps track of things which pertain to a specific disk pack (an internal MFD struct)
-type packDescriptor struct {
-	nodeId                     kexec.NodeIdentifier
-	prepFactor                 kexec.PrepFactor
-	firstDirectoryTrackAddress kexec.DeviceRelativeWordAddress
-	canAllocate                bool                // true if pack is UP, false if it is SU - must be set by fac mgr
-	packMask                   uint                // used for calculating blocks from sectors
-	freeSpaceTable             *PackFreeSpaceTable // represents all unallocated tracks on the pack
-	mfdTrackCount              kexec.TrackCount    // number of MFD tracks allocated on the pack
-	mfdSectorsUsed             uint64              // number of MFD sectors in use among the MFD tracks
-}
-
-func newPackDescriptor(
-	nodeId kexec.NodeIdentifier,
-	diskAttributes *kexec.DiskAttributes,
-) *packDescriptor {
-
-	recordLength := diskAttributes.PackLabelInfo.WordsPerRecord
-	trackCount := diskAttributes.PackLabelInfo.TrackCount
-	facStatus := diskAttributes.GetFacNodeStatus()
-
-	return &packDescriptor{
-		nodeId:                     nodeId,
-		prepFactor:                 diskAttributes.PackLabelInfo.PrepFactor,
-		firstDirectoryTrackAddress: diskAttributes.PackLabelInfo.FirstDirectoryTrackAddress,
-		canAllocate:                facStatus == kexec.FacNodeStatusUp || facStatus == kexec.FacNodeStatusReserved,
-		packMask:                   (recordLength / 28) - 1,
-		freeSpaceTable:             NewPackFreeSpaceTable(trackCount),
-	}
-}
-
 type MFDManager struct {
 	exec                    kexec.IExec
 	mutex                   sync.Mutex
 	threadDone              bool
-	mfdFileMainItem0Address kexec.MFDRelativeAddress                        // MFD address of MFD$$ main file item 0
-	cachedTracks            map[kexec.MFDRelativeAddress][]pkg.Word36       // key is MFD addr of first sector in track
-	dirtyBlocks             map[kexec.MFDRelativeAddress]bool               // MFD addresses of blocks containing dirty sectors
-	freeMFDSectors          []kexec.MFDRelativeAddress                      // MFD addresses of existing but unused MFD sectors
-	fixedPackDescriptors    map[kexec.LDATIndex]*packDescriptor             // packDescriptors of all known fixed packs
+	mfdFileMainItem0Address kexec.MFDRelativeAddress                  // MFD address of MFD$$ main file item 0
+	cachedTracks            map[kexec.MFDRelativeAddress][]pkg.Word36 // key is MFD addr of first sector in track
+	dirtyBlocks             map[kexec.MFDRelativeAddress]bool         // MFD addresses of blocks containing dirty sectors
+	freeMFDSectors          []kexec.MFDRelativeAddress                // MFD addresses of existing but unused MFD sectors
+	fixedPackDescriptors    map[kexec.LDATIndex]*packDescriptor       // packDescriptors of all known fixed packs
+	// TODO lead item lookup table should not be a two-level map
 	fileLeadItemLookupTable map[string]map[string]kexec.MFDRelativeAddress  // MFD address of lead item 0 of all cataloged files
 	assignedFileAllocations map[kexec.MFDRelativeAddress]*FileAllocationSet // key is main item sector 0 address of file
 }
