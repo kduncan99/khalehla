@@ -1513,6 +1513,49 @@ func populateNewLeadItem0(
 //	mainItem1[7].SetT3(absoluteCycle)
 // }
 
+// releaseDADChain releases all the DAD entry sectors attached to a particular main item
+func (mgr *MFDManager) releaseDADChain(
+	mainItem0Address kexec.MFDRelativeAddress,
+) error {
+	mainItem0, err := mgr.getMFDSector(mainItem0Address)
+	if err != nil {
+		return err
+	}
+
+	// only do the work if there actually is a DAD chain
+	if !mainItem0[0].IsNegative() {
+		// walk the chain, collecting the sector addresses of all the entries in the chain
+		addresses := make([]kexec.MFDRelativeAddress, 0)
+		dadAddr := kexec.MFDRelativeAddress(mainItem0[0].GetW() & 0_007777_777777)
+		for dadAddr != 0 {
+			addresses = append(addresses, dadAddr)
+			dad, err := mgr.getMFDSector(dadAddr)
+			if err != nil {
+				return err
+			}
+
+			dadAddr = 0
+			if !dad[0].IsNegative() {
+				dadAddr = kexec.MFDRelativeAddress(dad[0].GetW() & 0_007777_777777)
+			}
+		}
+
+		// clear the DAD link in the main item sector, and mark it dirty
+		mainItem0[0].SetW((mainItem0[0].GetW() & 0_340000_000000) | 0_400000_000000)
+		mgr.markDirectorySectorDirty(mainItem0Address)
+
+		// release the DAD sectors
+		for _, address := range addresses {
+			err = mgr.markDirectorySectorUnallocated(address)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 // releaseTrackRegion releases the indicated tracks from the file cycle's DAD entries,
 // and adds the corresponding device tracks to the free space table.
 // Only intended to be invoked on files which are currently assigned.
@@ -1576,10 +1619,87 @@ func (mgr *MFDManager) writeFileAllocationEntryUpdatesForFileCycle(mainItem0Addr
 	}
 
 	if fas.IsUpdated {
-		// TODO DO THIS NEXT, I THINK writeFileAllocationEntryUpdatesForFileCycle()
 		//	rewrite the entire set of DAD entries, allocate a new one if we need to do so,
 		//  and release any left over when we're done.
 		//  Don't forget to write hole DADs (see pg 2-63 for Device index field)
+		mainItem0, err := mgr.getMFDSector(mainItem0Address)
+		if err != nil {
+			return err
+		}
+
+		// release all the current DAD entries
+		err = mgr.releaseDADChain(mainItem0Address)
+		if err != nil {
+			return err
+		}
+
+		current := mainItem0
+		prevAddr := mainItem0Address
+		for fax := 0; fax < len(fas.FileAllocations); {
+			preferred := getLDATIndexFromMFDAddress(prevAddr)
+			newAddr, newEntry, err := mgr.allocateDirectorySector(preferred)
+			if err != nil {
+				return err
+			}
+
+			// link to next entry
+			newEntry[0].SetW(0_400000_000000)
+			// link to previous entry (or to main item if this is the first)
+			newEntry[1].SetW(uint64(prevAddr))
+			// file-relative word address of first entry
+			newEntry[2].SetW(uint64(fas.FileAllocations[fax].FileRegion.TrackId) * 1792)
+
+			// Link the new entry to the current entry, then make the new entry current.
+			// This works even if the current entry is a main item.
+			current[0].SetW((current[0].GetW() & 0_340000_000000) | uint64(newAddr))
+			mgr.markDirectorySectorDirty(prevAddr)
+			current = newEntry
+
+			var ex int                    // index of next-to-be-used DAD table entry
+			var nextTrackId kexec.TrackId // expected next track ID - only valid for ex > 0
+			for fax < len(fas.FileAllocations) && ex <= 7 {
+				this := fas.FileAllocations[fax]
+
+				// Is this entry file-contiguous with the previous entry?
+				if ex > 0 && this.FileRegion.TrackId != nextTrackId {
+					// no - if this is the last DAD entry in the current table, the table is done.
+					// otherwise, we need to write a hole entry.
+					if ex < 7 {
+						holeTracks := this.FileRegion.TrackId - nextTrackId
+						ey := ex*3 + 4
+
+						current[ey].SetW(uint64(nextTrackId) * 1792)
+						current[ey+1].SetW(uint64(holeTracks) * 1792)
+						// TODO if removable, set bit 16 in +02,H1
+						current[ey+2].SetH2(uint64(kexec.InvalidLDAT))
+
+						nextTrackId += holeTracks
+						current[03].SetW(uint64(nextTrackId * 1792))
+						ex++
+					} else {
+						// stop here with ex still set to 7 (so we can mark ex-1 as the last entry in the table)
+						break
+					}
+				} else {
+					ey := ex*3 + 4
+					current[ey].SetW(uint64(nextTrackId) * 1792)
+					current[ey+1].SetW(uint64(this.FileRegion.TrackCount * 1792))
+					// TODO if removable, set bit 16 in +02,H1
+					current[ey+2].SetH2(uint64(this.LDATIndex))
+
+					nextTrackId += kexec.TrackId(this.FileRegion.TrackCount)
+					current[03].SetW(uint64(nextTrackId * 1792))
+					ex++
+				}
+			}
+
+			// mark the last entry as ... well, the last entry. Word +02,H1 bit 15
+			ey := (ex-1)*3 + 4
+			current[ey+2].SetH1(current[ey+2].GetW() & 0_000004)
+			mgr.markDirectorySectorDirty(newAddr)
+
+			prevAddr = newAddr
+		}
 
 		fas.IsUpdated = false
 	}
