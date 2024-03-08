@@ -35,7 +35,7 @@ import (
 //	[5][0] all:ACR-name (we don't do ACRs yet)
 //	[6][0] tape:ctlPool
 func (mgr *FacilitiesManager) AssignFile(
-	rce kexec.RunControlEntry,
+	rce *kexec.RunControlEntry,
 	sourceIsExecRequest bool,
 	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
@@ -84,7 +84,7 @@ func (mgr *FacilitiesManager) AssignFile(
 //	[5][0] ACR-name (we don't do ACRs yet)
 //	[6][0] blank or CTL-pool
 func (mgr *FacilitiesManager) CatalogFile(
-	rce kexec.RunControlEntry,
+	rce *kexec.RunControlEntry,
 	sourceIsExecRequest bool,
 	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
@@ -96,12 +96,12 @@ func (mgr *FacilitiesManager) CatalogFile(
 	facResult = NewFacResult()
 	resultCode = 0
 
-	// TODO Need to account for @USE name
+	effectiveFSpec := mgr.resolveUseName(rce, fileSpecification)
 
 	// See if there is already a fileset
 	mm := mgr.exec.GetMFDManager().(*mfdMgr.MFDManager)
-	effectiveQualifier := getEffectiveQualifier(rce, fileSpecification)
-	fsIdent, mfdResult := mm.GetFileSetIdentifier(effectiveQualifier, fileSpecification.Filename)
+	effectiveQualifier := getEffectiveQualifier(rce, effectiveFSpec)
+	fsIdent, mfdResult := mm.GetFileSetIdentifier(effectiveQualifier, effectiveFSpec.Filename)
 	if mfdResult == mfdMgr.MFDInternalError {
 		return
 	}
@@ -153,13 +153,13 @@ func (mgr *FacilitiesManager) CatalogFile(
 
 	if fileType == mfdMgr.FileTypeFixed {
 		facResult, resultCode = mgr.catalogFixedFile(
-			mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, mnemonic, usage, sourceIsExecRequest)
+			mgr.exec, rce, effectiveFSpec, optionWord, operandFields, fsInfo, mnemonic, usage, sourceIsExecRequest)
 	} else if fileType == mfdMgr.FileTypeRemovable {
 		facResult, resultCode = mgr.catalogRemovableFile(
-			mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, mnemonic, usage, sourceIsExecRequest)
+			mgr.exec, rce, effectiveFSpec, optionWord, operandFields, fsInfo, mnemonic, usage, sourceIsExecRequest)
 	} else { // fileType == kexec.FileTypeTape
 		facResult, resultCode = mgr.catalogTapeFile(
-			mgr.exec, rce, fileSpecification, optionWord, operandFields, fsInfo, mnemonic, usage, sourceIsExecRequest)
+			mgr.exec, rce, effectiveFSpec, optionWord, operandFields, fsInfo, mnemonic, usage, sourceIsExecRequest)
 	}
 
 	if resultCode&0_400000_000000 == 0 {
@@ -169,7 +169,7 @@ func (mgr *FacilitiesManager) CatalogFile(
 }
 
 func (mgr *FacilitiesManager) FreeFile(
-	rce kexec.RunControlEntry,
+	rce *kexec.RunControlEntry,
 	fileSpecification kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
@@ -189,7 +189,7 @@ func (mgr *FacilitiesManager) FreeFile(
 }
 
 func (mgr *FacilitiesManager) Use(
-	rce kexec.RunControlEntry,
+	rce *kexec.RunControlEntry,
 	internalName string,
 	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,

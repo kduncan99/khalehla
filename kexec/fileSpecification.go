@@ -201,6 +201,16 @@ func (fs *FileSpecification) parseKeys(p *Parser) (fsCode FacStatusCode, ok bool
 	return
 }
 
+// CouldBeInternalName looks to see if this file spec could be an internal name.
+// i.e., it has *only* a file name component.
+func (fs *FileSpecification) CouldBeInternalName() bool {
+	return len(fs.Qualifier) == 0 &&
+		!fs.HasAsterisk &&
+		fs.FileCycleSpec == nil &&
+		len(fs.ReadKey) == 0 &&
+		len(fs.WriteKey) == 0
+}
+
 // ParseFileSpecification parses the given input string in an attempt to decode the
 // qualifier, file, cycle, read key, and write key subfields.
 // format:

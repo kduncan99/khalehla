@@ -163,7 +163,7 @@ func (mgr *FacilitiesManager) assignTapeFile(
 
 func (mgr *FacilitiesManager) catalogCommon(
 	exec kexec.IExec,
-	rce kexec.RunControlEntry,
+	rce *kexec.RunControlEntry,
 	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
@@ -377,7 +377,7 @@ func (mgr *FacilitiesManager) catalogCommon(
 // Caller should immediately check whether the exec has stopped upon return.
 func (mgr *FacilitiesManager) catalogFixedFile(
 	exec kexec.IExec,
-	rce kexec.RunControlEntry,
+	rce *kexec.RunControlEntry,
 	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
@@ -431,7 +431,7 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 
 func (mgr *FacilitiesManager) catalogRemovableFile(
 	exec kexec.IExec,
-	rce kexec.RunControlEntry,
+	rce *kexec.RunControlEntry,
 	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
@@ -484,7 +484,7 @@ func (mgr *FacilitiesManager) catalogRemovableFile(
 
 func (mgr *FacilitiesManager) catalogTapeFile(
 	exec kexec.IExec,
-	rce kexec.RunControlEntry,
+	rce *kexec.RunControlEntry,
 	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
@@ -527,7 +527,7 @@ func (mgr *FacilitiesManager) catalogTapeFile(
 // Returns true if no such instances were found, else false
 // If not ok and the source is an ER CSF$/ACSF$/CSI$, we post a contingency
 func checkIllegalOptions(
-	rce kexec.RunControlEntry,
+	rce *kexec.RunControlEntry,
 	givenOptions uint64,
 	allowedOptions uint64,
 	facResult *FacStatusResult,
@@ -561,7 +561,7 @@ func checkIllegalOptions(
 	return ok
 }
 
-func getEffectiveQualifier(rce kexec.RunControlEntry, fileSpec *kexec.FileSpecification) string {
+func getEffectiveQualifier(rce *kexec.RunControlEntry, fileSpec *kexec.FileSpecification) string {
 	if fileSpec.HasAsterisk {
 		if len(fileSpec.Qualifier) == 0 {
 			return fileSpec.Qualifier
@@ -571,6 +571,26 @@ func getEffectiveQualifier(rce kexec.RunControlEntry, fileSpec *kexec.FileSpecif
 	} else {
 		return rce.DefaultQualifier
 	}
+}
+
+// resolveUseName takes a file specification which could be an internal name,
+// and resolves it via the rce's use item table to a file specification which is
+// *not* an internal name.
+func (mgr *FacilitiesManager) resolveUseName(
+	rce *kexec.RunControlEntry,
+	fileSpecification *kexec.FileSpecification,
+) *kexec.FileSpecification {
+	fs := fileSpecification
+	for fs.CouldBeInternalName() {
+		useItem, ok := rce.UseItems[fs.Filename]
+		if !ok {
+			break
+		}
+
+		fs = useItem.FileSpecification
+	}
+
+	return fs
 }
 
 // selectEquipmentModel accepts an equipment mnemonic (likely from a control statement)
