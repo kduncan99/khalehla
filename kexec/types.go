@@ -60,8 +60,8 @@ type DiskPackGeometry struct {
 	FirstDirTrackBlockId uint       // block ID of the block containing the first sector of the first directory track
 }
 
-// Things related to ConsoleManager
-// TODO move them to ConsoleManager maybe?
+// Things related to ConsoleManager which are reference by kexec.interface
+// and therefore cannot go into consoleMgr package
 
 type ConsoleReadOnlyMessage struct {
 	Source         *RunControlEntry
