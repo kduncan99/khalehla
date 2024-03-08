@@ -213,8 +213,6 @@ func (mgr *FacilitiesManager) Use(
 		return
 	}
 
-	// TODO what happens if we re-use an internal name?
-
 	rce.UseItems[strings.ToUpper(internalName)] = &kexec.UseItem{
 		InternalFilename:  internalName,
 		FileSpecification: fileSpecification,

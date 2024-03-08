@@ -13,7 +13,7 @@ type FileAllocationSet struct {
 	MainItem0Address      kexec.MFDRelativeAddress
 	IsUpdated             bool
 	HighestTrackAllocated kexec.TrackId
-	FileAllocations       []*FileAllocation
+	FileAllocations       []*FileAllocation // these are kept in order by TrackRegion.TrackId
 }
 
 func NewFileAllocationSet(
@@ -28,12 +28,12 @@ func NewFileAllocationSet(
 	}
 }
 
-// ExtractRegionFromFileAllocationSet extracts the allocation described by the given region
+// extractRegionFromFileAllocationSet extracts the allocation described by the given region
 // from this file allocation set.
 // Caller MUST ensure that the requested region is a subset (or a match) of exactly one existing entry.
 // Returns LDAT index and first device-relative track ID
 // corresponding to the pack which contained the indicated region.
-func (fas *FileAllocationSet) ExtractRegionFromFileAllocationSet(
+func (fas *FileAllocationSet) extractRegionFromFileAllocationSet(
 	region *kexec.TrackRegion,
 ) (ldatIndex kexec.LDATIndex, deviceTrackId kexec.TrackId) {
 	for rex, fileAlloc := range fas.FileAllocations {
@@ -83,11 +83,11 @@ func (fas *FileAllocationSet) ExtractRegionFromFileAllocationSet(
 	return
 }
 
-// MergeIntoFileAllocationSet puts a new fileAlloc into the fas at the appropriate location.
+// mergeIntoFileAllocationSet puts a new fileAlloc into the fas at the appropriate location.
 // if it appends to an existing fileAlloc, then just update that fileAlloc.
 // we are only called by other code in this file, and those callers *MUST* ensure no overlaps occur.
 // In practical terms, this means do NOT allocate a track which is already allocated.
-func (fas *FileAllocationSet) MergeIntoFileAllocationSet(newEntry *FileAllocation) {
+func (fas *FileAllocationSet) mergeIntoFileAllocationSet(newEntry *FileAllocation) {
 	for rex, fileAlloc := range fas.FileAllocations {
 		if newEntry.FileRegion.TrackId < fileAlloc.FileRegion.TrackId {
 			// the new entry appears before the indexed entry and after the previous entry
@@ -128,4 +128,40 @@ func (fas *FileAllocationSet) MergeIntoFileAllocationSet(newEntry *FileAllocatio
 
 	// If we get here, the new entry is definitely not contiguous with any existing entry.
 	fas.FileAllocations = append(fas.FileAllocations, newEntry)
+}
+
+// findPrecedingAllocation retrieves the FileAllocation which immediately precedes or contains the
+// indicated file-relative track id. If we return nil, there is no such FileAllocation.
+func (fas *FileAllocationSet) findPrecedingAllocation(
+	fileTrackId kexec.TrackId,
+) (alloc *FileAllocation) {
+	alloc = nil
+	for _, fa := range fas.FileAllocations {
+		if fileTrackId >= fa.FileRegion.TrackId {
+			alloc = fa
+		} else {
+			break
+		}
+	}
+	return
+}
+
+// resolveFileRelativeTrackId converts a file-relative track id (file-relative sector address * 28,
+// or file-relative word address * 1792) to the LDAT index of the pack which contains that track,
+// and to the corresponding device/pack-relative track ID.
+// If we return false, no allocation exists (the space has not (yet) been allocated).
+func (fas *FileAllocationSet) resolveFileRelativeTrackId(
+	fileTrackId kexec.TrackId,
+) (kexec.LDATIndex, kexec.TrackId, bool) {
+	for _, fa := range fas.FileAllocations {
+		highestAllocTrack := kexec.TrackId(uint64(fa.FileRegion.TrackId) + uint64(fa.FileRegion.TrackCount) - 1)
+		if fileTrackId >= fa.FileRegion.TrackId && fileTrackId <= highestAllocTrack {
+			offset := fileTrackId - fa.FileRegion.TrackId
+			return fa.LDATIndex, fa.DeviceTrackId + offset, true
+		} else if highestAllocTrack < fileTrackId {
+			break
+		}
+	}
+
+	return 0, 0, false
 }

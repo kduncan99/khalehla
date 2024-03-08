@@ -16,4 +16,5 @@ const (
 	MFDInvalidRelativeFileCycle
 	MFDPlusOneCycleExists
 	MFDDropOldestCycleRequired
+	MFDOutOfSpace
 )

@@ -54,12 +54,76 @@ func (fst *PackFreeSpaceTable) AllocateSpecificTrackRegion(
 	trackId kexec.TrackId,
 	trackCount kexec.TrackCount,
 ) error {
-
 	ok := fst.MarkTrackRegionAllocated(ldatIndex, trackId, trackCount)
 	if !ok {
 		return fmt.Errorf("track not allocated")
 	}
 	return nil
+}
+
+// AllocateTrackRegion will allocate one region of up to the indicated size.
+// If there is no free space at all, we return nil.
+func (fst *PackFreeSpaceTable) AllocateTrackRegion(trackCount kexec.TrackCount) *kexec.TrackRegion {
+	if len(fst.Content) == 0 {
+		return nil
+	}
+
+	// Try to satisfy the request with a single region of the exact requested size
+	for cx, region := range fst.Content {
+		if region.TrackCount == trackCount {
+			fst.Content = append(fst.Content[:cx], fst.Content[cx+1:]...)
+			return region
+		}
+	}
+
+	var largest *kexec.TrackRegion
+	var largestIndex int
+	for rx, region := range fst.Content {
+		if region.TrackCount > trackCount {
+			result := kexec.NewTrackRegion(region.TrackId, trackCount)
+			region.TrackId += kexec.TrackId(trackCount)
+			region.TrackCount -= trackCount
+			return result
+		}
+
+		if largest == nil || region.TrackCount > largest.TrackCount {
+			largest = region
+			largestIndex = rx
+		}
+	}
+
+	fst.Content = append(fst.Content[:largestIndex], fst.Content[largestIndex+1:]...)
+	return largest
+}
+
+// AllocateTracksFromTrackId will attempt to allocate as much contiguous space as possible up to
+// trackCount, beginning at the indicated firstTrackId. It may allocate less than trackCount,
+// and may not allocate anything at all. The result is the number of tracks allocated.
+func (fst *PackFreeSpaceTable) AllocateTracksFromTrackId(
+	firstTrackId kexec.TrackId,
+	trackCount kexec.TrackCount,
+) (result kexec.TrackCount) {
+	result = 0
+
+	for _, fsRegion := range fst.Content {
+		highest := fsRegion.TrackId + kexec.TrackId(fsRegion.TrackCount) - 1
+		if firstTrackId >= fsRegion.TrackId && firstTrackId <= highest {
+			available := kexec.TrackCount(highest-firstTrackId) + 1
+			if available < trackCount {
+				result = available
+			} else {
+				result = trackCount
+			}
+			fst.MarkTrackRegionUnallocated(firstTrackId, result)
+			return
+		}
+
+		if highest < fsRegion.TrackId {
+			break
+		}
+	}
+
+	return
 }
 
 // MarkTrackRegionAllocated is a general-purpose function which manipulates the entries in a free space table
@@ -68,7 +132,6 @@ func (fst *PackFreeSpaceTable) MarkTrackRegionAllocated(
 	trackId kexec.TrackId,
 	trackCount kexec.TrackCount,
 ) bool {
-
 	if trackCount == 0 {
 		log.Printf("MarkTrackRegionAllocated ldat:%v id:%v count:%v requested trackCount is zero",
 			ldatIndex, trackId, trackCount)
