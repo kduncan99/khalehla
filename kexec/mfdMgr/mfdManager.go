@@ -145,7 +145,34 @@ func (mgr *MFDManager) Dump(dest io.Writer, indent string) {
 		_, _ = fmt.Fprintf(dest, "%v    %012o\n", indent, addr)
 	}
 
-	_, _ = fmt.Fprintf(dest, "%v  Fixed Lookup Table:\n", indent)
+	_, _ = fmt.Fprintf(dest, "%v  Free MFD sectors:\n", indent)
+	for addr := range mgr.freeMFDSectors {
+		_, _ = fmt.Fprintf(dest, "%v    %010o\n", indent, addr)
+	}
+
+	_, _ = fmt.Fprintf(dest, "%v  Pack Descriptors:\n", indent)
+	for ldat, pDesc := range mgr.fixedPackDescriptors {
+		_, _ = fmt.Fprintf(dest, "%v    %06o nodeId:%v blkSiz:%v alloc:%v mask:%06o mfdTrks:%v mfdSecUsed:%v\n",
+			indent,
+			ldat,
+			pDesc.nodeId,
+			pDesc.prepFactor,
+			pDesc.canAllocate,
+			pDesc.packMask,
+			pDesc.mfdTrackCount,
+			pDesc.mfdSectorsUsed)
+		_, _ = fmt.Fprintf(dest, "%v      FreeSpace (capacity:%v)\n",
+			indent,
+			pDesc.freeSpaceTable.Capacity)
+		for _, trackRegion := range pDesc.freeSpaceTable.Content {
+			_, _ = fmt.Fprintf(dest, "%v      trkId:%v trkCount:%v\n",
+				indent,
+				trackRegion.TrackId,
+				trackRegion.TrackCount)
+		}
+	}
+
+	_, _ = fmt.Fprintf(dest, "%v  Lookup Table:\n", indent)
 	for key, addr := range mgr.fileLeadItemLookupTable {
 		_, _ = fmt.Fprintf(dest, "%v    %-25s  %012o\n", indent, key, addr)
 	}

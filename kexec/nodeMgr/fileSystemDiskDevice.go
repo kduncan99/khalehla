@@ -172,7 +172,7 @@ func (disk *FileSystemDiskDevice) doMount(pkt *DiskIoPacket) {
 		return
 	}
 
-	f, err := os.OpenFile(pkt.fileName, os.O_RDWR|os.O_CREATE|os.O_SYNC, 0755)
+	f, err := os.OpenFile(pkt.fileName, os.O_RDWR|os.O_CREATE|os.O_SYNC, 0666)
 	if err != nil {
 		log.Printf("%v\n", err)
 		pkt.SetIoStatus(IosSystemError)
@@ -577,9 +577,12 @@ func (disk *FileSystemDiskDevice) probeGeometry() error {
 }
 
 func (disk *FileSystemDiskDevice) Dump(dest io.Writer, indent string) {
-	str := fmt.Sprintf("Rdy:%v WProt:%v pack:%v file:%v\n",
-		disk.isReady, disk.isWriteProtected, disk.packName, *disk.fileName)
-	_, _ = fmt.Fprintf(dest, "%v%v", indent, str)
+	_, _ = fmt.Fprintf(dest, "%vRdy:%v WProt:%v pack:%v file:%v\n",
+		indent,
+		disk.isReady,
+		disk.isWriteProtected,
+		disk.packName,
+		*disk.fileName)
 
 	if disk.geometry != nil {
 		str := fmt.Sprintf("  prep:%v trks:%v blks:%v sec/blk:%v blk/trk:%v bytes/blk:%v padded:%v\n",

@@ -59,6 +59,9 @@ func (ch *DiskChannel) StartIo(ioPacket IoPacket) {
 	dev.StartIo(ioPacket)
 }
 
-func (ch *DiskChannel) Dump(destination io.Writer, indent string) {
-	// TODO Dump()
+func (ch *DiskChannel) Dump(dest io.Writer, indent string) {
+	_, _ = fmt.Fprintf(dest, "%vDiskChannel connections\n", indent)
+	for id := range ch.devices {
+		_, _ = fmt.Fprintf(dest, "%v  %v\n", indent, id)
+	}
 }

@@ -369,7 +369,16 @@ func (mgr *FacilitiesManager) Dump(dest io.Writer, indent string) {
 
 	_, _ = fmt.Fprintf(dest, "%v  threadDone: %v\n", indent, mgr.threadDone)
 
-	// TODO dump inventory
+	_, _ = fmt.Fprintf(dest, "%v  inventory:\n", indent)
+	for _, nodeInfo := range mgr.inventory.nodes {
+		_, _ = fmt.Fprintf(dest, "%v    %s id:%v stat:%v cat:%v type:%v\n",
+			indent,
+			nodeInfo.GetNodeName(),
+			nodeInfo.GetNodeIdentifier(),
+			nodeInfo.GetFacNodeStatus(),
+			nodeInfo.GetNodeCategoryType(),
+			nodeInfo.GetNodeDeviceType())
+	}
 
 	_, _ = fmt.Fprintf(dest, "%v  Queued device-ready notifications:\n", indent)
 	for devId, ready := range mgr.deviceReadyNotificationQueue {

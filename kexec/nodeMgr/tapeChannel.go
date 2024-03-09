@@ -59,6 +59,9 @@ func (ch *TapeChannel) StartIo(ioPacket IoPacket) {
 	dev.StartIo(ioPacket)
 }
 
-func (ch *TapeChannel) Dump(destination io.Writer, indent string) {
-	// TODO Dump()
+func (ch *TapeChannel) Dump(dest io.Writer, indent string) {
+	_, _ = fmt.Fprintf(dest, "%vTapeChannel connections\n", indent)
+	for id := range ch.devices {
+		_, _ = fmt.Fprintf(dest, "%v  %v\n", indent, id)
+	}
 }

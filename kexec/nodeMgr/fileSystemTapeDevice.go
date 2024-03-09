@@ -5,6 +5,7 @@
 package nodeMgr
 
 import (
+	"fmt"
 	"io"
 	"khalehla/kexec"
 	"khalehla/pkg"
@@ -135,7 +136,7 @@ func (tape *FileSystemTapeDevice) doMount(pkt *TapeIoPacket) {
 		return
 	}
 
-	f, err := os.OpenFile(pkt.fileName, os.O_RDWR|os.O_CREATE|os.O_SYNC, 0755)
+	f, err := os.OpenFile(pkt.fileName, os.O_RDWR|os.O_CREATE|os.O_SYNC, 0666)
 	if err != nil {
 		pkt.SetIoStatus(IosSystemError)
 		return
@@ -301,6 +302,16 @@ func (tape *FileSystemTapeDevice) doWriteTapeMark(pkt *TapeIoPacket) {
 	pkt.SetIoStatus(IosComplete)
 }
 
-func (tape *FileSystemTapeDevice) Dump(destination io.Writer, indent string) {
-	// TODO Dump()
+func (tape *FileSystemTapeDevice) Dump(dest io.Writer, indent string) {
+	fnstr := "<none>"
+	if tape.fileName != nil {
+		fnstr = *tape.fileName
+	}
+
+	_, _ = fmt.Fprintf(dest, "%vRdy:%v WProt:%v file:%v, pos:%v\n",
+		indent,
+		tape.isReady,
+		tape.isWriteProtected,
+		fnstr,
+		tape.currentOffset)
 }
