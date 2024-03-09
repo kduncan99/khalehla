@@ -27,10 +27,12 @@ func (e *Exec) performInitialBoot() {
 		return
 	}
 
+	// TODO ASG,A SYS$*MFD$$
+
 	// TODO security officer setup
 
 	if e.jumpKeys[kexec.JumpKey4Index] {
-		// TODO
+		// TODO for JK4, load libraries from library tape
 		// libray tape (in lieu of boot tape) contains the following files in copy,g format...
 		//   SYS$*LIB$
 		//   SYS$*RUN$
@@ -38,11 +40,12 @@ func (e *Exec) performInitialBoot() {
 	}
 
 	if e.jumpKeys[kexec.JumpKey7Index] {
-		// TODO
+		// TODO ask whether to innitialize TIP, etc
 	}
 
 	if e.jumpKeys[kexec.JumpKey9Index] {
-		// TODO
+		// TODO ask whether to initialiize or recover GENF$
+		// (I think this is implied with JK13)
 	}
 }
 
@@ -62,5 +65,5 @@ func (e *Exec) performRecoveryBoot() {
 		return
 	}
 
-	// TODO
+	// TODO recovery boot
 }

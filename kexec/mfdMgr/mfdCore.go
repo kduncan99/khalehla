@@ -417,7 +417,7 @@ func (mgr *MFDManager) bootstrapMFD() error {
 
 	mgr.mfdFileMainItem0Address = mainItem0Addr // we'll need this later
 
-	// TODO can these items use a services or core routine other than populate*** as below?
+	// Manually catalog the MFD file
 	mfdFileQualifier := "SYS$"
 	mfdFileName := "MFD$$"
 	mfdProjectId := "EXEC-8"
@@ -507,9 +507,6 @@ func (mgr *MFDManager) bootstrapMFD() error {
 
 	// Update lookup table
 	mgr.writeLookupTableEntry("SYS$", "MFD$$", leadItem0Addr)
-
-	// Set file assigned in facmgr, RCE, or wherever it makes sense
-	// TODO - we should do this probably in the exec startup code, where we catalog or assign other system files.
 
 	err = mgr.writeMFDCache()
 	if err != nil {
@@ -1693,13 +1690,6 @@ func (mgr *MFDManager) releaseTrackRegion(
 // If we return an error, we've already stopped the exec
 // CALL UNDER LOCK
 func (mgr *MFDManager) writeFileAllocationEntryUpdatesForFileCycle(mainItem0Address kexec.MFDRelativeAddress) error {
-	/*
-		Wrote this after initialization - this does not look right at first glance...
-		   400000000000 000002000041 000034000000 000124003400 000000000000 000000003400 000000000001   )@@@@@ @@]@@- @@W@@@ @[O@W@ @@@@@@ @@@@W@ @@@@@[
-		   000000003400 000067774400 000000400000 000070000000 000000003400 000000000002 000070003400   @@@@W@ @@7_=@ @@@)@@ @@8@@@ @@@@W@ @@@@@] @@8@W@
-		   000033774400 000000400000 000124000000 000000003400 000000000003 000000000000 000000000000   @@V_=@ @@@)@@ @[O@@@ @@@@W@ @@@@@# @@@@@@ @@@@@@
-		   000000000000 000000000000 000000000000 000000000000 000000000000 000000000000 000000000000
-	*/
 	fas, ok := mgr.acceleratedFileAllocations[mainItem0Address]
 	if !ok {
 		log.Printf("MFDMgr:convertFileRelativeTrackId Cannot find alloc for address %012o", mainItem0Address)
@@ -1811,6 +1801,10 @@ func (mgr *MFDManager) writeLookupTableEntry(
 // Currently, we do our own resolution of file-relative address to disk-relative.
 // CALL UNDER LOCK
 func (mgr *MFDManager) writeMFDCache() error {
+	if mgr.exec.GetConfiguration().LogTrace {
+		log.Printf("MFDMgr:writeMFDCache (%v dirty blocks)", len(mgr.dirtyBlocks))
+	}
+
 	for blockAddr := range mgr.dirtyBlocks {
 		block, err := mgr.getMFDBlock(blockAddr)
 		if err != nil {
