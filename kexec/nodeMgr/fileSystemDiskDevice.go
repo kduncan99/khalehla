@@ -132,8 +132,6 @@ func (disk *FileSystemDiskDevice) StartIo(pkt IoPacket) {
 
 	if pkt.GetNodeDeviceType() != disk.GetNodeDeviceType() {
 		pkt.SetIoStatus(IosInvalidNodeType)
-	} else if !disk.IsReady() {
-		pkt.SetIoStatus(IosDeviceIsNotReady)
 	} else {
 
 		switch pkt.GetIoFunction() {
@@ -196,8 +194,8 @@ func (disk *FileSystemDiskDevice) doPrep(pkt *DiskIoPacket) {
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
-	if !disk.IsMounted() {
-		pkt.SetIoStatus(IosMediaNotMounted)
+	if !disk.IsReady() {
+		pkt.SetIoStatus(IosDeviceIsNotReady)
 		return
 	}
 
@@ -313,8 +311,8 @@ func (disk *FileSystemDiskDevice) doRead(pkt *DiskIoPacket) {
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
-	if !disk.IsMounted() {
-		pkt.SetIoStatus(IosMediaNotMounted)
+	if !disk.IsReady() {
+		pkt.SetIoStatus(IosDeviceIsNotReady)
 		return
 	}
 
@@ -361,8 +359,8 @@ func (disk *FileSystemDiskDevice) doReadLabel(pkt *DiskIoPacket) {
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
-	if !disk.IsMounted() {
-		pkt.SetIoStatus(IosMediaNotMounted)
+	if !disk.IsReady() {
+		pkt.SetIoStatus(IosDeviceIsNotReady)
 		return
 	}
 
@@ -401,6 +399,11 @@ func (disk *FileSystemDiskDevice) doReset(pkt *DiskIoPacket) {
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
+	if !disk.IsReady() {
+		pkt.SetIoStatus(IosDeviceIsNotReady)
+		return
+	}
+
 	// nothing to do for now
 	pkt.SetIoStatus(IosComplete)
 }
@@ -429,8 +432,8 @@ func (disk *FileSystemDiskDevice) doWrite(pkt *DiskIoPacket) {
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
-	if !disk.IsMounted() {
-		pkt.SetIoStatus(IosMediaNotMounted)
+	if !disk.IsReady() {
+		pkt.SetIoStatus(IosDeviceIsNotReady)
 		return
 	}
 
@@ -475,8 +478,8 @@ func (disk *FileSystemDiskDevice) doWriteLabel(pkt *DiskIoPacket) {
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
 
-	if !disk.IsMounted() {
-		pkt.SetIoStatus(IosMediaNotMounted)
+	if !disk.IsReady() {
+		pkt.SetIoStatus(IosDeviceIsNotReady)
 		return
 	}
 

@@ -64,6 +64,7 @@ func DoPrep(args []string) error {
 	pkt := nodeMgr.NewDiskIoPacketMount(devId, fileName, false)
 	dc.StartIo(pkt)
 	if pkt.GetIoStatus() != nodeMgr.IosComplete {
+		fmt.Printf("%v\n", pkt.GetString())
 		return fmt.Errorf("status %v returned while mounting pack file %v", pkt.GetIoStatus(), fileName)
 	}
 
