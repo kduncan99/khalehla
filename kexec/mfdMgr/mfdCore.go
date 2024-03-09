@@ -57,13 +57,17 @@ func adjustLeadItemLinks(leadItem0 []pkg.Word36, leadItem1 []pkg.Word36, shift u
 // Apart from this, we prefer packs with the least number of allocated sectors, to balance the allocations.
 // If there is no free sector, we allocate a new track (again using the preferredLDAT), then
 // allocate the first free sector from that track.
+// Note that, apart from observing the LDAT portion, we do not select the sectors in any particular order.
 // If we return an error, we've already stopped the exec
 // CALL UNDER LOCK
 func (mgr *MFDManager) allocateDirectorySector(
 	preferredLDAT kexec.LDATIndex,
 ) (kexec.MFDRelativeAddress, []pkg.Word36, error) {
+	if mgr.exec.GetConfiguration().LogTrace {
+		log.Printf("MFDMgr:allocateDirectorySector(ldat=%06o)", preferredLDAT)
+	}
+
 	// Are there any free sectors? If not, allocate a directory track
-	fmt.Printf("FOO!\n") //TODO remove
 	if len(mgr.freeMFDSectors) == 0 {
 		_, _, err := mgr.allocateDirectoryTrack(preferredLDAT)
 		if err != nil {
@@ -114,6 +118,9 @@ func (mgr *MFDManager) allocateDirectorySector(
 		data[wx] = 0
 	}
 
+	if mgr.exec.GetConfiguration().LogTrace {
+		log.Printf("MFDMgr:allocateDirectorySector returns %012o", chosenAddress)
+	}
 	return chosenAddress, data, nil
 }
 
@@ -127,6 +134,10 @@ func (mgr *MFDManager) allocateDirectorySector(
 func (mgr *MFDManager) allocateDirectoryTrack(
 	preferredLDAT kexec.LDATIndex,
 ) (kexec.LDATIndex, kexec.MFDTrackId, error) {
+	if mgr.exec.GetConfiguration().LogTrace {
+		log.Printf("MFDMgr:allocateDirectoryTrack(ldat=%v)", preferredLDAT)
+	}
+
 	chosenLDAT := kexec.InvalidLDAT
 	var chosenDesc *packDescriptor
 	chosenAvailableTracks := kexec.TrackCount(0)
@@ -177,6 +188,10 @@ func (mgr *MFDManager) allocateDirectoryTrack(
 	// Make sure we update the MFD track count.
 	trackId, _ = chosenDesc.freeSpaceTable.AllocateTrack()
 	chosenDesc.mfdTrackCount++
+
+	if mgr.exec.GetConfiguration().LogTrace {
+		log.Printf("MFDMgr:allocateDirectorySector returns ldat=%06o track=%012o", chosenLDAT, trackId)
+	}
 	return chosenLDAT, trackId, nil
 }
 
@@ -377,7 +392,8 @@ func (mgr *MFDManager) bootstrapMFD() error {
 
 	cfg := mgr.exec.GetConfiguration()
 
-	// Find the highest and lowest LDAT indices
+	// Find the highest and lowest LDAT indices.
+	// While we're here, pre-populate the free MFD sectors map for the first directory track on each pack
 	var lowestLDAT = kexec.InvalidLDAT
 	var highestLDAT = kexec.LDATIndex(0)
 	for ldat := range mgr.fixedPackDescriptors {
@@ -387,13 +403,11 @@ func (mgr *MFDManager) bootstrapMFD() error {
 		if ldat > highestLDAT {
 			highestLDAT = ldat
 		}
-	}
 
-	// We've already initialized the DAS sector - put the expected free sectors (2 through 63)
-	// into the free sector list.
-	for sx := 2; sx < 64; sx++ {
-		sectorAddr := composeMFDAddress(lowestLDAT, 0, kexec.MFDSectorId(sx))
-		mgr.freeMFDSectors[sectorAddr] = true
+		for sx := 2; sx < 64; sx++ {
+			sectorAddr := composeMFDAddress(ldat, 0, kexec.MFDSectorId(sx))
+			mgr.freeMFDSectors[sectorAddr] = true
+		}
 	}
 
 	// Allocate MFD sectors for MFD$$ file items not including DAD tables (we do those separately)
@@ -1679,6 +1693,13 @@ func (mgr *MFDManager) releaseTrackRegion(
 // If we return an error, we've already stopped the exec
 // CALL UNDER LOCK
 func (mgr *MFDManager) writeFileAllocationEntryUpdatesForFileCycle(mainItem0Address kexec.MFDRelativeAddress) error {
+	/*
+		Wrote this after initialization - this does not look right at first glance...
+		   400000000000 000002000041 000034000000 000124003400 000000000000 000000003400 000000000001   )@@@@@ @@]@@- @@W@@@ @[O@W@ @@@@@@ @@@@W@ @@@@@[
+		   000000003400 000067774400 000000400000 000070000000 000000003400 000000000002 000070003400   @@@@W@ @@7_=@ @@@)@@ @@8@@@ @@@@W@ @@@@@] @@8@W@
+		   000033774400 000000400000 000124000000 000000003400 000000000003 000000000000 000000000000   @@V_=@ @@@)@@ @[O@@@ @@@@W@ @@@@@# @@@@@@ @@@@@@
+		   000000000000 000000000000 000000000000 000000000000 000000000000 000000000000 000000000000
+	*/
 	fas, ok := mgr.acceleratedFileAllocations[mainItem0Address]
 	if !ok {
 		log.Printf("MFDMgr:convertFileRelativeTrackId Cannot find alloc for address %012o", mainItem0Address)
@@ -1724,7 +1745,7 @@ func (mgr *MFDManager) writeFileAllocationEntryUpdatesForFileCycle(mainItem0Addr
 			current = newEntry
 
 			var ex int                    // index of next-to-be-used DAD table entry
-			var nextTrackId kexec.TrackId // expected next track ID - only valid for ex > 0
+			var nextTrackId kexec.TrackId // expected next file-relative track ID - only valid for ex > 0
 			for fax < len(fas.FileAllocations) && ex <= 7 {
 				this := fas.FileAllocations[fax]
 
@@ -1750,12 +1771,12 @@ func (mgr *MFDManager) writeFileAllocationEntryUpdatesForFileCycle(mainItem0Addr
 					}
 				} else {
 					ey := ex*3 + 4
-					current[ey].SetW(uint64(nextTrackId) * 1792)
+					current[ey].SetW(uint64(this.FileRegion.TrackId) * 1792)
 					current[ey+1].SetW(uint64(this.FileRegion.TrackCount * 1792))
 					// TODO if removable, set bit 16 in +02,H1
 					current[ey+2].SetH2(uint64(this.LDATIndex))
 
-					nextTrackId += kexec.TrackId(this.FileRegion.TrackCount)
+					nextTrackId = this.FileRegion.TrackId + kexec.TrackId(this.FileRegion.TrackCount)
 					current[03].SetW(uint64(nextTrackId * 1792))
 					ex++
 					fax++
@@ -1803,11 +1824,12 @@ func (mgr *MFDManager) writeMFDCache() error {
 
 		ldat, devTrackId, err := mgr.convertFileRelativeTrackId(mgr.mfdFileMainItem0Address, kexec.TrackId(mfdTrackId))
 		if err != nil {
-			log.Printf("MFDMgr:writeMFDCache error converting mfdaddr:%012o TrackId:%06v", mgr.mfdFileMainItem0Address, mfdTrackId)
+			log.Printf("MFDMgr:writeMFDCache error converting mfdaddr:%012o TrackId:%06o",
+				mgr.mfdFileMainItem0Address, mfdTrackId)
 			mgr.exec.Stop(kexec.StopDirectoryErrors)
 			return fmt.Errorf("error draining MFD cache")
 		} else if ldat == 0_400000 {
-			log.Printf("MFDMgr:writeMFDCache error converting mfdaddr:%012o TrackId:%06v track not allocated",
+			log.Printf("MFDMgr:writeMFDCache error converting mfdaddr:%012o TrackId:%06o track not allocated",
 				mgr.mfdFileMainItem0Address, mfdTrackId)
 			mgr.exec.Stop(kexec.StopDirectoryErrors)
 			return fmt.Errorf("error draining MFD cache")

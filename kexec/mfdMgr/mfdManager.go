@@ -145,7 +145,7 @@ func (mgr *MFDManager) Dump(dest io.Writer, indent string) {
 		_, _ = fmt.Fprintf(dest, "%v    %012o\n", indent, addr)
 	}
 
-	_, _ = fmt.Fprintf(dest, "%v  Free MFD sectors:\n", indent)
+	_, _ = fmt.Fprintf(dest, "%v  Free MFD sectors (%v entries):\n", indent, len(mgr.freeMFDSectors))
 	for addr := range mgr.freeMFDSectors {
 		_, _ = fmt.Fprintf(dest, "%v    %010o\n", indent, addr)
 	}
@@ -179,10 +179,10 @@ func (mgr *MFDManager) Dump(dest io.Writer, indent string) {
 
 	_, _ = fmt.Fprintf(dest, "%v  Assigned file allocations:\n", indent)
 	for _, fae := range mgr.acceleratedFileAllocations {
-		_, _ = fmt.Fprintf(dest, "%v    mainItem:%012o 1stDAD:%012o upd:%v highest:%v\n",
+		_, _ = fmt.Fprintf(dest, "%v    mainItem:%012o 1stDAD:%012o upd:%v highestTrkAlloc:%012o\n",
 			indent, fae.MainItem0Address, fae.DadItem0Address, fae.IsUpdated, fae.HighestTrackAllocated)
 		for _, fileAlloc := range fae.FileAllocations {
-			_, _ = fmt.Fprintf(dest, "%v      fileTrkId:%v trkCount:%v ldat:%v devTrkId:%v\n",
+			_, _ = fmt.Fprintf(dest, "%v      fileTrkId:%012o trkCount:%06o ldat:%06o devTrkId:%012o\n",
 				indent, fileAlloc.FileRegion.TrackId, fileAlloc.FileRegion.TrackCount, fileAlloc.LDATIndex, fileAlloc.DeviceTrackId)
 		}
 	}
