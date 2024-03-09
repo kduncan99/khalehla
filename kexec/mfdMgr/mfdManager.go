@@ -47,7 +47,7 @@ type MFDManager struct {
 	mfdFileMainItem0Address    kexec.MFDRelativeAddress                        // MFD address of MFD$$ main file item 0
 	cachedTracks               map[kexec.MFDRelativeAddress][]pkg.Word36       // key is MFD addr of first sector in track
 	dirtyBlocks                map[kexec.MFDRelativeAddress]bool               // MFD addresses of blocks containing dirty sectors
-	freeMFDSectors             []kexec.MFDRelativeAddress                      // MFD addresses of existing but unused MFD sectors
+	freeMFDSectors             map[kexec.MFDRelativeAddress]bool               // MFD addresses of existing but unused MFD sectors
 	fixedPackDescriptors       map[kexec.LDATIndex]*packDescriptor             // packDescriptors of all known fixed packs
 	fileLeadItemLookupTable    map[string]kexec.MFDRelativeAddress             // MFD address of lead item 0 of all cataloged files
 	acceleratedFileAllocations map[kexec.MFDRelativeAddress]*FileAllocationSet // key is main item sector 0 address of file
@@ -58,7 +58,7 @@ func NewMFDManager(exec kexec.IExec) *MFDManager {
 		exec:                       exec,
 		cachedTracks:               make(map[kexec.MFDRelativeAddress][]pkg.Word36),
 		dirtyBlocks:                make(map[kexec.MFDRelativeAddress]bool),
-		freeMFDSectors:             make([]kexec.MFDRelativeAddress, 0),
+		freeMFDSectors:             make(map[kexec.MFDRelativeAddress]bool),
 		fixedPackDescriptors:       make(map[kexec.LDATIndex]*packDescriptor),
 		fileLeadItemLookupTable:    make(map[string]kexec.MFDRelativeAddress),
 		acceleratedFileAllocations: make(map[kexec.MFDRelativeAddress]*FileAllocationSet),
@@ -72,7 +72,7 @@ func (mgr *MFDManager) Boot() error {
 	// reset tables
 	mgr.cachedTracks = make(map[kexec.MFDRelativeAddress][]pkg.Word36)
 	mgr.dirtyBlocks = make(map[kexec.MFDRelativeAddress]bool)
-	mgr.freeMFDSectors = make([]kexec.MFDRelativeAddress, 0)
+	mgr.freeMFDSectors = make(map[kexec.MFDRelativeAddress]bool)
 	mgr.fixedPackDescriptors = make(map[kexec.LDATIndex]*packDescriptor)
 	mgr.fileLeadItemLookupTable = make(map[string]kexec.MFDRelativeAddress)
 	mgr.acceleratedFileAllocations = make(map[kexec.MFDRelativeAddress]*FileAllocationSet)

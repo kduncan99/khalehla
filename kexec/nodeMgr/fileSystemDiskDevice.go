@@ -126,7 +126,7 @@ func (disk *FileSystemDiskDevice) SetVerbose(flag bool) {
 
 func (disk *FileSystemDiskDevice) StartIo(pkt IoPacket) {
 	if disk.verbose {
-		log.Printf("FSTAPE:%v", pkt.GetString())
+		log.Printf("FSDISK:%v", pkt.GetString())
 	}
 	pkt.SetIoStatus(IosInProgress)
 

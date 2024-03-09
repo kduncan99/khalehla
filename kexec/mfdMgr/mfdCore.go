@@ -63,6 +63,7 @@ func (mgr *MFDManager) allocateDirectorySector(
 	preferredLDAT kexec.LDATIndex,
 ) (kexec.MFDRelativeAddress, []pkg.Word36, error) {
 	// Are there any free sectors? If not, allocate a directory track
+	fmt.Printf("FOO!\n") //TODO remove
 	if len(mgr.freeMFDSectors) == 0 {
 		_, _, err := mgr.allocateDirectoryTrack(preferredLDAT)
 		if err != nil {
@@ -76,8 +77,7 @@ func (mgr *MFDManager) allocateDirectorySector(
 	//		anything available
 	chosenAddress := kexec.InvalidLink
 	chosenSectorsUsed := uint64(0)
-	chosenIndex := 0
-	for fsx, addr := range mgr.freeMFDSectors {
+	for addr := range mgr.freeMFDSectors {
 		ldat := getLDATIndexFromMFDAddress(addr)
 		desc := mgr.fixedPackDescriptors[ldat]
 		freeCount := (uint64(desc.mfdTrackCount) * 64) - desc.mfdSectorsUsed
@@ -85,14 +85,12 @@ func (mgr *MFDManager) allocateDirectorySector(
 		if freeCount > 0 {
 			if ldat == preferredLDAT {
 				chosenAddress = addr
-				chosenIndex = fsx
 				break
 			}
 
 			if desc.mfdSectorsUsed < chosenSectorsUsed {
 				chosenAddress = addr
 				chosenSectorsUsed = desc.mfdSectorsUsed
-				chosenIndex = fsx
 			}
 		}
 	}
@@ -100,7 +98,7 @@ func (mgr *MFDManager) allocateDirectorySector(
 	// When we get here, we *will* have valid chosen elements.
 	// If we had no free sectors anywhere, we would have allocated a new track
 	// (and if that failed, we would already have crashed and returned)
-	mgr.freeMFDSectors = append(mgr.freeMFDSectors[:chosenIndex], mgr.freeMFDSectors[chosenIndex+1:]...)
+	delete(mgr.freeMFDSectors, chosenAddress)
 	data, err := mgr.getMFDSector(chosenAddress)
 	if err != nil {
 		return 0, nil, err
@@ -395,7 +393,7 @@ func (mgr *MFDManager) bootstrapMFD() error {
 	// into the free sector list.
 	for sx := 2; sx < 64; sx++ {
 		sectorAddr := composeMFDAddress(lowestLDAT, 0, kexec.MFDSectorId(sx))
-		mgr.freeMFDSectors = append(mgr.freeMFDSectors, sectorAddr)
+		mgr.freeMFDSectors[sectorAddr] = true
 	}
 
 	// Allocate MFD sectors for MFD$$ file items not including DAD tables (we do those separately)
@@ -1371,6 +1369,9 @@ func (mgr *MFDManager) markDirectorySectorAllocated(sectorAddr kexec.MFDRelative
 		entry[2].Or(mask)
 	}
 
+	ldat := getLDATIndexFromMFDAddress(sectorAddr)
+	mgr.fixedPackDescriptors[ldat].mfdSectorsUsed++
+
 	mgr.markDirectorySectorDirty(dasAddr)
 	return nil
 }
@@ -1399,6 +1400,9 @@ func (mgr *MFDManager) markDirectorySectorUnallocated(sectorAddr kexec.MFDRelati
 		mask := uint64(0_400000_000000) >> (sectorId - 32)
 		entry[2].And(^mask)
 	}
+
+	ldat := getLDATIndexFromMFDAddress(sectorAddr)
+	mgr.fixedPackDescriptors[ldat].mfdSectorsUsed--
 
 	mgr.markDirectorySectorDirty(dasAddr)
 	return nil
@@ -1754,6 +1758,7 @@ func (mgr *MFDManager) writeFileAllocationEntryUpdatesForFileCycle(mainItem0Addr
 					nextTrackId += kexec.TrackId(this.FileRegion.TrackCount)
 					current[03].SetW(uint64(nextTrackId * 1792))
 					ex++
+					fax++
 				}
 			}
 
