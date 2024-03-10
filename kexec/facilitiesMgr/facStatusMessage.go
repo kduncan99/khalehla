@@ -63,14 +63,20 @@ func importTemplates() map[kexec.FacStatusCode]*FacStatusMessageTemplate {
 	importInfoTemplate(result, kexec.FacStatusRunHeldForRollback, "Run %v held for rollback of unloaded file for %v min.")
 	importInfoTemplate(result, kexec.FacStatusRunHeldForTapeUnitAvailability, "Run %v held for tape unit availability for %v min.")
 
+	// warning
+	importWarningTemplate(result, kexec.FacStatusFileAlreadyAssigned, "File is already assigned.")
+	importWarningTemplate(result, kexec.FacStatusFilenameNotUnique, "Filename not unique.")
+
 	// error
 	importErrorTemplate(result, kexec.FacStatusAssignMnemonicMustBeSpecifiedWithPackId, "Assign mnemonic must be specified with a packid.")
 	importErrorTemplate(result, kexec.FacStatusAssignMnemonicMustBeWordAddressable, "Assign mnemonic must be word addressable.")
 	importErrorTemplate(result, kexec.FacStatusAssignMnemonicTooLong, "Assign mnemonic cannot be longer than 6 characters.")
+	importErrorTemplate(result, kexec.FacStatusAttemptToChangeGenericType, "Attempt to change generic type of the file.")
 	importErrorTemplate(result, kexec.FacStatusDirectoryAndQualifierMayNotAppear, "Directory id and qualifier may not appear on image when R option is used.")
 	importErrorTemplate(result, kexec.FacStatusDirectoryOrQualifierMustAppear, "Directory id or qualifier must appear on image.")
 	importErrorTemplate(result, kexec.FacStatusFileAlreadyCataloged, "File is already catalogued.")
 	importErrorTemplate(result, kexec.FacStatusFileCycleOutOfRange, "File cycle out of range.")
+	importErrorTemplate(result, kexec.FacStatusFileIsNotCataloged, "File is not catalogued.")
 	importErrorTemplate(result, kexec.FacStatusFilenameIsRequired, "A filename is required on the image.")
 	importErrorTemplate(result, kexec.FacStatusFileNotCatalogedWithReadKey, "File is not cataloged with a read key.")
 	importErrorTemplate(result, kexec.FacStatusFileNotCatalogedWithWriteKey, "File is not cataloged with a write key.")
