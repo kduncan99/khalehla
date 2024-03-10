@@ -46,6 +46,7 @@ type RunControlEntry struct {
 	UserId           string
 	RunType          RunType
 	UseItems         map[string]*UseItem
+	FacilityItems    []FacilitiesItem
 }
 
 func newRunControlEntry(
@@ -68,6 +69,7 @@ func newRunControlEntry(
 		UserId:           userId,
 		RunType:          runType,
 		UseItems:         make(map[string]*UseItem),
+		FacilityItems:    make([]FacilitiesItem, 0),
 	}
 }
 
