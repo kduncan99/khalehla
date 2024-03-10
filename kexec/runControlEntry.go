@@ -45,6 +45,7 @@ type RunControlEntry struct {
 	RunId            string
 	UserId           string
 	RunType          RunType
+	Privileges       map[Privilege]bool
 	UseItems         map[string]*UseItem
 	FacilityItems    []FacilitiesItem
 }
@@ -68,6 +69,7 @@ func newRunControlEntry(
 		RunId:            runId,
 		UserId:           userId,
 		RunType:          runType,
+		Privileges:       make(map[Privilege]bool),
 		UseItems:         make(map[string]*UseItem),
 		FacilityItems:    make([]FacilitiesItem, 0),
 	}
@@ -88,6 +90,11 @@ func NewExecRunControlEntry(
 		masterAccount,
 		"EXEC-8",
 		0)
+}
+
+func (rce *RunControlEntry) HasPrivilege(privilege Privilege) bool {
+	_, ok := rce.Privileges[privilege]
+	return ok
 }
 
 func (rce *RunControlEntry) IsBatch() bool {
