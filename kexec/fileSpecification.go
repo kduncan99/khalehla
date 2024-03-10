@@ -256,3 +256,14 @@ func ParseFileSpecification(p *Parser) (fs *FileSpecification, fsCode FacStatusC
 
 	return
 }
+
+func CopyFileSpecification(fs *FileSpecification) *FileSpecification {
+	return &FileSpecification{
+		Qualifier:     fs.Qualifier,
+		HasAsterisk:   fs.HasAsterisk,
+		Filename:      fs.Filename,
+		FileCycleSpec: CopyFileCycleSpecification(fs.FileCycleSpec),
+		ReadKey:       fs.ReadKey,
+		WriteKey:      fs.WriteKey,
+	}
+}

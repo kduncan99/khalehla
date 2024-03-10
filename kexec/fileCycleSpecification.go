@@ -25,6 +25,13 @@ func NewRelativeFileCycleSpecification(cycle int) *FileCycleSpecification {
 	}
 }
 
+func CopyFileCycleSpecification(fcs *FileCycleSpecification) *FileCycleSpecification {
+	return &FileCycleSpecification{
+		AbsoluteCycle: fcs.AbsoluteCycle,
+		RelativeCycle: fcs.RelativeCycle,
+	}
+}
+
 func (fcs *FileCycleSpecification) IsRelative() bool {
 	return fcs.RelativeCycle != nil
 }
