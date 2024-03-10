@@ -363,6 +363,18 @@ func (mgr *FacilitiesManager) catalogCommon(
 		case mfdMgr.MFDDropOldestCycleRequired:
 			// TODO can we drop the oldest cycle? If so, do it and try again
 			// E:243233 Creation of file would require illegal dropping of private file.
+
+			cx := len(fileSetInfo.CycleInfo) - 1
+			fcIdentifier := fileSetInfo.CycleInfo[cx].FileCycleIdentifier
+			result := mm.DropFileCycle(fcIdentifier)
+			if result == mfdMgr.MFDInternalError {
+				return
+			} else if result != mfdMgr.MFDSuccessful {
+				log.Printf("FacMGR:Cannot delete oldest file cycle")
+				mgr.exec.Stop(kexec.StopFacilitiesComplex)
+				resultCode |= 0_400000_000000
+				return
+			}
 			retry = true
 		}
 	}

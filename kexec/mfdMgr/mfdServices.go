@@ -328,6 +328,28 @@ func (mgr *MFDManager) DecelerateFileCycle(
 	return MFDSuccessful
 }
 
+// DropFileCycle causes MFDManager to delete a particular file cycle (and the file set, if that is the only cycle).
+// It is intended to be used by fac mgr for dropping the oldest file cycle when a new file cycle would cause
+// that to be required... but it will work for any caller to delete any particular file cycle.
+func (mgr *MFDManager) DropFileCycle(
+	fcIdentifier FileCycleIdentifier,
+) (mfdResult MFDResult) {
+	mfdResult = MFDSuccessful
+
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
+	mainItem0Addr := kexec.MFDRelativeAddress(fcIdentifier)
+
+	_, err := mgr.loadFileAllocationSet(mainItem0Addr)
+	if err != nil {
+		return MFDInternalError
+	}
+
+	mfdResult = mgr.dropFileCycle(mainItem0Addr)
+	return
+}
+
 // GetFileCycleInfo returns a FileCycleInfo struct representing the file cycle corresponding to the given
 // file cycle identifier.
 // If we return MFDInternalError, the exec has been stopped
