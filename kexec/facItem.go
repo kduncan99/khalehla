@@ -5,12 +5,18 @@
 package kexec
 
 // FacilitiesItem structs are store in the RCE for all assigned facilities
-
 type FacilitiesItem interface {
-	GetInternalFileName() string
-	GetFileName() string
+
+	// TODO does a fac item have an attached internal name?
+
 	GetQualifier() string
+	GetFilename() string
 	GetEquipmentCode() uint
+	GetAttributes() uint
+	GetRelativeCycle() int  // zero if none specified
+	GetAbsoluteCycle() uint // zero if none specified
+	IsDisk() bool
+	IsTape() bool
 }
 
 /*
@@ -33,6 +39,8 @@ All facility items:
 +07,b10:b35 @ASG options
 
 Unit record and non-standard peripherals
+Currently we do not recognize nor support non-standard / unit record peripherals,
+so kexec will not consider them in facilities code.
 +07,S1  attributes
          040 tape labeling is supported
          020 file is temporary
@@ -72,6 +80,8 @@ Magnetic tape peripherals
          002 file is read inhibited
 +06,S3  unit count (I presume, the docs are not helpful)
 		number of units assigned (0?, 1, 2)
++06,S4  relative file-cycle
++06,T3  absolute file-cycle
 +07,S1  attributes
          040 tape labeling is supported
          020 file is temporary
@@ -109,3 +119,89 @@ Word addressable
 +012,S5 equipment code - same as +06,S1
 +012,S6 subcode - zero
 */
+
+// -----------------------------------------------------------------------
+
+type MassStorageFacilityItem struct {
+	Qualifier     string
+	Filename      string
+	EquipmentCode uint
+	Attributes    uint
+	RelativeCycle int
+	AbsoluteCycle uint
+}
+
+func (fi *MassStorageFacilityItem) GetQualifier() string {
+	return fi.Qualifier
+}
+
+func (fi *MassStorageFacilityItem) GetFilename() string {
+	return fi.Filename
+}
+
+func (fi *MassStorageFacilityItem) GetEquipmentCode() uint {
+	return fi.EquipmentCode
+}
+
+func (fi *MassStorageFacilityItem) GetAttributes() uint {
+	return fi.Attributes
+}
+
+func (fi *MassStorageFacilityItem) GetRelativeCycle() int {
+	return fi.RelativeCycle
+}
+
+func (fi *MassStorageFacilityItem) GetAbsoluteCycle() uint {
+	return fi.AbsoluteCycle
+}
+
+func (fi *MassStorageFacilityItem) IsDisk() bool {
+	return true
+}
+
+func (fi *MassStorageFacilityItem) IsTape() bool {
+	return false
+}
+
+// -----------------------------------------------------------------------
+
+type TapeFacilityItem struct {
+	Qualifier     string
+	Filename      string
+	EquipmentCode uint
+	Attributes    uint
+	RelativeCycle int
+	AbsoluteCycle uint
+}
+
+func (fi *TapeFacilityItem) GetQualifier() string {
+	return fi.Qualifier
+}
+
+func (fi *TapeFacilityItem) GetFilename() string {
+	return fi.Filename
+}
+
+func (fi *TapeFacilityItem) GetEquipmentCode() uint {
+	return fi.EquipmentCode
+}
+
+func (fi *TapeFacilityItem) GetAttributes() uint {
+	return fi.Attributes
+}
+
+func (fi *TapeFacilityItem) GetRelativeCycle() int {
+	return fi.RelativeCycle
+}
+
+func (fi *TapeFacilityItem) GetAbsoluteCycle() uint {
+	return fi.AbsoluteCycle
+}
+
+func (fi *TapeFacilityItem) IsDisk() bool {
+	return true
+}
+
+func (fi *TapeFacilityItem) IsTape() bool {
+	return false
+}
