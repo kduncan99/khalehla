@@ -47,13 +47,50 @@ func (mgr *FacilitiesManager) AssignFile(
 	facResult = NewFacResult()
 	resultCode = 0
 
-	// TODO AssignFile() See ECL 7.69 @USE
-	// TODO AssignFile() search internal names
+	mutuallyExclusiveOptions := uint64(kexec.AOption | kexec.COption | kexec.POption | kexec.TOption)
+	if !checkIllegalOptionCombination(rce, optionWord, mutuallyExclusiveOptions, facResult, sourceIsExecRequest) {
+		return
+	}
 
-	// TODO AssignFile() if not found, search external names
+	var mnemonic string
+	if len(operandFields) >= 2 {
+		mnemonic = operandFields[1][0]
+		if len(mnemonic) > 6 {
+			log.Printf("%v:Mnemonic %v too long", rce.RunId, mnemonic)
+			facResult.PostMessage(kexec.FacStatusAssignMnemonicTooLong, []string{mnemonic})
+			resultCode |= 0_600000_000000
+			return
+		}
+	}
 
-	// TODO AssignFile() for already assigned files, see ECL 4.3 for security access validation
-	//   see ECL 7.2.4 for changing certain fields
+	models, usage, ok := mgr.selectEquipmentModel(mnemonic, nil)
+	if !ok {
+		// This isn't going to work for us.
+		log.Printf("%v:Mnemonic %v not configured", rce.RunId, mnemonic)
+		facResult.PostMessage(kexec.FacStatusMnemonicIsNotConfigured, []string{mnemonic})
+		resultCode |= 0_600000_000000
+		return
+	}
+
+	effectiveFSpec := mgr.resolveFileSpecification(rce, fileSpecification)
+
+	// check for option - branch on A, C/P, T, or none of the previous
+	optSubset := optionWord & (kexec.AOption | kexec.COption | kexec.POption | kexec.TOption)
+	if optSubset == kexec.AOption {
+		facResult, resultCode = mgr.assignCatalogedFile(rce, sourceIsExecRequest, effectiveFSpec, optionWord, operandFields)
+	} else if optSubset == kexec.COption || optSubset == kexec.POption {
+		facResult, resultCode = mgr.assignToBeCatalogedFile(rce, sourceIsExecRequest, effectiveFSpec, optionWord, operandFields)
+	} else if optSubset == kexec.TOption {
+		facResult, resultCode =
+			mgr.assignTemporaryFile(rce, sourceIsExecRequest, effectiveFSpec, optionWord, operandFields, models, usage)
+	} else {
+		// TODO No options among A,C,P,T - figure out what to do based on the rce's facility items
+		// "The options field, if left blank, defaults to the A option unless the file is already assigned,
+		// in which case the options on the previous assign are used. If the file specified is not cataloged,
+		// the blank options field defaults to a T option, thus creating a temporary file.
+		// Any option not allowed on a statement causes the statement to be rejected."
+	}
+
 	if resultCode&0_400000_000000 == 0 {
 		facResult.PostMessage(kexec.FacStatusComplete, []string{"ASG"})
 	}
@@ -96,12 +133,11 @@ func (mgr *FacilitiesManager) CatalogFile(
 	facResult = NewFacResult()
 	resultCode = 0
 
-	effectiveFSpec := mgr.resolveUseName(rce, fileSpecification)
+	effectiveFSpec := mgr.resolveFileSpecification(rce, fileSpecification)
 
 	// See if there is already a fileset
 	mm := mgr.exec.GetMFDManager().(*mfdMgr.MFDManager)
-	effectiveQualifier := getEffectiveQualifier(rce, effectiveFSpec)
-	fsIdent, mfdResult := mm.GetFileSetIdentifier(effectiveQualifier, effectiveFSpec.Filename)
+	fsIdent, mfdResult := mm.GetFileSetIdentifier(effectiveFSpec.Qualifier, effectiveFSpec.Filename)
 	if mfdResult == mfdMgr.MFDInternalError {
 		return
 	}

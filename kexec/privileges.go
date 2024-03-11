@@ -3,6 +3,8 @@ package kexec
 type Privilege uint
 
 const (
-	DLOCPrivilege = iota
+	_ Privilege = iota
+	DLOCPrivilege
 	SSConsolePrivilege
+	UnconditionalFileSystemDelete
 )

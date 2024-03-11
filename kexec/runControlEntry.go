@@ -93,8 +93,12 @@ func NewExecRunControlEntry(
 }
 
 func (rce *RunControlEntry) HasPrivilege(privilege Privilege) bool {
-	_, ok := rce.Privileges[privilege]
-	return ok
+	if rce.IsExec() {
+		return true
+	} else {
+		_, ok := rce.Privileges[privilege]
+		return ok
+	}
 }
 
 func (rce *RunControlEntry) IsBatch() bool {
@@ -107,6 +111,10 @@ func (rce *RunControlEntry) IsDemand() bool {
 
 func (rce *RunControlEntry) IsExec() bool {
 	return rce.RunType == RunTypeExec
+}
+
+func (rce *RunControlEntry) IsPrivileged() bool {
+	return rce.HasPrivilege(DLOCPrivilege)
 }
 
 func (rce *RunControlEntry) IsTIP() bool {

@@ -26,7 +26,7 @@ type Configuration struct {
 	AccountInitialReserve          uint64 // initial reserve for SYS$*ACCOUNT$R1 and SYS$SEC@ACCTINFO files
 	AccountAssignMnemonic          string // assign mnemonic for SYS$*ACCOUNT$R1 and SYS$SEC@ACCTINFO files
 	DLOCAssignMnemonic             string // assign mnemonic for SYS$*DLOC$ file
-	FilesPrivateByAccount          bool
+	FilesPrivateByAccount          bool   // if false, files are private by project-id
 	GenFInitialReserve             uint64 // initial reserve for SYS$*GENF$ file
 	GenFAssignMnemonic             string // assign mnemonic for SYS$*GENF$ file
 	LibInitialReserve              uint64 // initial reserve for SYS$*LIB$ file

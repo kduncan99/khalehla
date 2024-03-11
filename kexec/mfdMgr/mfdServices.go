@@ -217,6 +217,12 @@ func (mgr *MFDManager) CreateFixedFileCycle(
 		mainItem0Addr,
 		uint64(absCycle))
 
+	// If this cycle is guarded, make the file set guarded.
+	// Don't worry about marking lead item dirty - that happens anyway (further below).
+	if inhibitFlags.IsGuarded {
+		leadItem0[012] |= 0_400000_000000
+	}
+
 	// Link the new file cycle into the lead item
 	lw := getLeadItemLinkWord(leadItem0, leadItem1, cycIndex)
 	lw.SetW(uint64(mainItem0Addr))
@@ -235,6 +241,22 @@ func (mgr *MFDManager) CreateFixedFileCycle(
 	}
 
 	fsIdentifier = FileSetIdentifier(mainItem0Addr)
+	return
+}
+
+func (mgr *MFDManager) CreateRemovableFileCycle(
+	fsIdentifier FileSetIdentifier,
+	fcSpecification *kexec.FileCycleSpecification,
+	accountId string,
+	assignMnemonic string,
+	descriptorFlags DescriptorFlags,
+	pcharFlags PCHARFlags,
+	inhibitFlags InhibitFlags,
+	initialReserve uint64,
+	maxGranules uint64,
+	diskPacks []DiskPackEntry,
+) (fcIdentifier FileCycleIdentifier, result MFDResult) {
+	// TODO implement CreateRemovableFileCycle()
 	return
 }
 
@@ -390,13 +412,16 @@ func (mgr *MFDManager) GetFileCycleInfo(
 	}
 
 	fcInfo = &FixedFileCycleInfo{}
-	fcInfo.setFileCycleIdentifier(fcIdentifier)
-	fcInfo.setFileSetIdentifier(FileSetIdentifier(mainItem0[013] & 0_007777_777777))
+	fcInfo.SetFileCycleIdentifier(fcIdentifier)
+	fcInfo.SetFileSetIdentifier(FileSetIdentifier(mainItem0[013] & 0_007777_777777))
 	fcInfo.populateFromMainItems(mainItems)
 
 	return fcInfo, MFDSuccessful
 }
 
+// GetFileSetIdentifier retrieves an opaque value which uniquely identifies a file set,
+// given a qualifier and filename.
+// Returns MFDNotFound if no fileset exists, or MFDSuccessful
 func (mgr *MFDManager) GetFileSetIdentifier(
 	qualifier string,
 	filename string,

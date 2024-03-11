@@ -749,6 +749,7 @@ oops:
 	return
 }
 
+// composeMFDAddress creates an MFDRelativeAddress from its component parts
 func composeMFDAddress(
 	ldatIndex kexec.LDATIndex,
 	trackId kexec.MFDTrackId,
