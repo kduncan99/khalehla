@@ -2,10 +2,10 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package nodeMgr
+package ioPackets
 
 import (
-	"khalehla/kexec"
+	"khalehla/hardware"
 	"khalehla/pkg"
 )
 
@@ -13,8 +13,8 @@ import (
 // and for a device to perform that IO operation.
 type IoPacket interface {
 	GetBuffer() []pkg.Word36
-	GetNodeIdentifier() kexec.NodeIdentifier
-	GetNodeDeviceType() kexec.NodeDeviceType
+	GetNodeIdentifier() hardware.NodeIdentifier
+	GetNodeDeviceType() hardware.NodeDeviceType
 	GetIoFunction() IoFunction
 	GetIoStatus() IoStatus
 	GetString() string

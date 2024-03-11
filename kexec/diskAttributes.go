@@ -4,8 +4,12 @@
 
 package kexec
 
+import "khalehla/hardware"
+
+// Because this as FacNodeStatus, it needs to be somewhere in kexec
+
 type DiskAttributes struct {
-	Identifier    NodeIdentifier
+	Identifier    hardware.NodeIdentifier
 	Name          string
 	Status        FacNodeStatus
 	AssignedTo    *RunControlEntry
@@ -18,15 +22,15 @@ func (da *DiskAttributes) GetFacNodeStatus() FacNodeStatus {
 	return da.Status
 }
 
-func (da *DiskAttributes) GetNodeCategoryType() NodeCategoryType {
-	return NodeCategoryDevice
+func (da *DiskAttributes) GetNodeCategoryType() hardware.NodeCategoryType {
+	return hardware.NodeCategoryDevice
 }
 
-func (da *DiskAttributes) GetNodeDeviceType() NodeDeviceType {
-	return NodeDeviceDisk
+func (da *DiskAttributes) GetNodeDeviceType() hardware.NodeDeviceType {
+	return hardware.NodeDeviceDisk
 }
 
-func (da *DiskAttributes) GetNodeIdentifier() NodeIdentifier {
+func (da *DiskAttributes) GetNodeIdentifier() hardware.NodeIdentifier {
 	return da.Identifier
 }
 

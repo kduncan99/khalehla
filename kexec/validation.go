@@ -4,7 +4,9 @@
 
 package kexec
 
-import "khalehla/pkg"
+import (
+	"khalehla/pkg"
+)
 
 func IsValidFilenameChar(ch byte) bool {
 	return (ch >= 'A' && ch <= 'Z') || ch == '-' || ch == '$'
@@ -64,29 +66,6 @@ func IsValidNodeName(name string) bool {
 	}
 
 	return true
-}
-
-func IsValidPackName(name string) bool {
-	if len(name) < 1 || len(name) > 6 {
-		return false
-	}
-
-	if name[0] < 'A' || name[0] > 'Z' {
-		return false
-	}
-
-	for nx := 1; nx < len(name); nx++ {
-		if (name[nx] < 'A' || name[nx] > 'Z') && (name[nx] < '0' || name[nx] > '9') {
-			return false
-		}
-	}
-
-	return true
-}
-
-func IsValidPrepFactor(prepFactor PrepFactor) bool {
-	return prepFactor == 28 || prepFactor == 56 || prepFactor == 112 || prepFactor == 224 ||
-		prepFactor == 448 || prepFactor == 896 || prepFactor == 1792
 }
 
 // IsValidReadWriteKey examines a string to see if it is a valid read or write key

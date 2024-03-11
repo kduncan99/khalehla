@@ -7,30 +7,31 @@ package nodeMgr
 import (
 	"fmt"
 	"io"
-	"khalehla/kexec"
+	"khalehla/hardware"
+	"khalehla/hardware/channels"
 	"khalehla/pkg"
 )
 
 type DiskChannelInfo struct {
 	nodeName       string
-	nodeIdentifier kexec.NodeIdentifier
-	channel        *DiskChannel
+	nodeIdentifier hardware.NodeIdentifier
+	channel        *channels.DiskChannel
 	deviceInfos    []*DiskDeviceInfo
 }
 
 func NewDiskChannelInfo(nodeName string) *DiskChannelInfo {
 	return &DiskChannelInfo{
 		nodeName:       nodeName,
-		nodeIdentifier: kexec.NodeIdentifier(pkg.NewFromStringToFieldata(nodeName, 1)[0]),
+		nodeIdentifier: hardware.NodeIdentifier(pkg.NewFromStringToFieldata(nodeName, 1)[0]),
 		deviceInfos:    make([]*DiskDeviceInfo, 0),
 	}
 }
 
 func (dci *DiskChannelInfo) CreateNode() {
-	dci.channel = NewDiskChannel()
+	dci.channel = channels.NewDiskChannel()
 }
 
-func (dci *DiskChannelInfo) GetChannel() Channel {
+func (dci *DiskChannelInfo) GetChannel() channels.Channel {
 	return dci.channel
 }
 
@@ -42,16 +43,16 @@ func (dci *DiskChannelInfo) GetDeviceInfos() []DeviceInfo {
 	return result
 }
 
-func (dci *DiskChannelInfo) GetNodeCategoryType() kexec.NodeCategoryType {
-	return kexec.NodeCategoryChannel
+func (dci *DiskChannelInfo) GetNodeCategoryType() hardware.NodeCategoryType {
+	return hardware.NodeCategoryChannel
 }
 
-func (dci *DiskChannelInfo) GetNodeDeviceType() kexec.NodeDeviceType {
-	return kexec.NodeDeviceDisk
+func (dci *DiskChannelInfo) GetNodeDeviceType() hardware.NodeDeviceType {
+	return hardware.NodeDeviceDisk
 }
 
-func (dci *DiskChannelInfo) GetNodeIdentifier() kexec.NodeIdentifier {
-	return kexec.NodeIdentifier(dci.nodeIdentifier)
+func (dci *DiskChannelInfo) GetNodeIdentifier() hardware.NodeIdentifier {
+	return hardware.NodeIdentifier(dci.nodeIdentifier)
 }
 
 func (dci *DiskChannelInfo) GetNodeName() string {

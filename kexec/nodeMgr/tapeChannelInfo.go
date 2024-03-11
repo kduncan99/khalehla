@@ -7,30 +7,31 @@ package nodeMgr
 import (
 	"fmt"
 	"io"
-	"khalehla/kexec"
+	"khalehla/hardware"
+	"khalehla/hardware/channels"
 	"khalehla/pkg"
 )
 
 type TapeChannelInfo struct {
 	nodeName       string
-	nodeIdentifier kexec.NodeIdentifier
-	channel        *TapeChannel
+	nodeIdentifier hardware.NodeIdentifier
+	channel        *channels.TapeChannel
 	deviceInfos    []*TapeDeviceInfo
 }
 
 func NewTapeChannelInfo(nodeName string) *TapeChannelInfo {
 	return &TapeChannelInfo{
 		nodeName:       nodeName,
-		nodeIdentifier: kexec.NodeIdentifier(pkg.NewFromStringToFieldata(nodeName, 1)[0]),
+		nodeIdentifier: hardware.NodeIdentifier(pkg.NewFromStringToFieldata(nodeName, 1)[0]),
 		deviceInfos:    make([]*TapeDeviceInfo, 0),
 	}
 }
 
 func (tci *TapeChannelInfo) CreateNode() {
-	tci.channel = NewTapeChannel()
+	tci.channel = channels.NewTapeChannel()
 }
 
-func (tci *TapeChannelInfo) GetChannel() Channel {
+func (tci *TapeChannelInfo) GetChannel() channels.Channel {
 	return tci.channel
 }
 
@@ -42,16 +43,16 @@ func (tci *TapeChannelInfo) GetDeviceInfos() []DeviceInfo {
 	return result
 }
 
-func (tci *TapeChannelInfo) GetNodeCategoryType() kexec.NodeCategoryType {
-	return kexec.NodeCategoryChannel
+func (tci *TapeChannelInfo) GetNodeCategoryType() hardware.NodeCategoryType {
+	return hardware.NodeCategoryChannel
 }
 
-func (tci *TapeChannelInfo) GetNodeDeviceType() kexec.NodeDeviceType {
-	return kexec.NodeDeviceTape
+func (tci *TapeChannelInfo) GetNodeDeviceType() hardware.NodeDeviceType {
+	return hardware.NodeDeviceTape
 }
 
-func (tci *TapeChannelInfo) GetNodeIdentifier() kexec.NodeIdentifier {
-	return kexec.NodeIdentifier(tci.nodeIdentifier)
+func (tci *TapeChannelInfo) GetNodeIdentifier() hardware.NodeIdentifier {
+	return hardware.NodeIdentifier(tci.nodeIdentifier)
 }
 
 func (tci *TapeChannelInfo) GetNodeName() string {

@@ -5,11 +5,14 @@
 package facilitiesMgr
 
 import (
+	"khalehla/hardware"
 	"khalehla/kexec"
 	"khalehla/kexec/mfdMgr"
 	"log"
 	"strings"
 )
+
+// TODO Need a Boot() routine which assigns fixed packs to the exec
 
 // AssignFile is the front end which all code should invoke when asking for a file to be assigned
 // (and possibly cataloged).
@@ -174,7 +177,7 @@ func (mgr *FacilitiesManager) CatalogFile(
 	if fsInfo != nil {
 		fileType = fsInfo.FileType
 	} else {
-		if models[0].DeviceType == kexec.NodeDeviceTape {
+		if models[0].DeviceType == hardware.NodeDeviceTape {
 			fileType = mfdMgr.FileTypeTape
 		} else {
 			// fixed or removable?

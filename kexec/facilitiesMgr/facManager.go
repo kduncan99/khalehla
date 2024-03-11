@@ -8,6 +8,8 @@ package facilitiesMgr
 import (
 	"fmt"
 	"io"
+	"khalehla/hardware"
+	io2 "khalehla/hardware/ioPackets"
 	"khalehla/kexec"
 	"khalehla/kexec/nodeMgr"
 	"khalehla/pkg"
@@ -21,14 +23,14 @@ type FacilitiesManager struct {
 	mutex                        sync.Mutex
 	threadDone                   bool
 	inventory                    *inventory
-	deviceReadyNotificationQueue map[kexec.NodeIdentifier]bool
+	deviceReadyNotificationQueue map[hardware.NodeIdentifier]bool
 }
 
 func NewFacilitiesManager(exec kexec.IExec) *FacilitiesManager {
 	return &FacilitiesManager{
 		exec:                         exec,
 		inventory:                    newInventory(),
-		deviceReadyNotificationQueue: make(map[kexec.NodeIdentifier]bool),
+		deviceReadyNotificationQueue: make(map[hardware.NodeIdentifier]bool),
 	}
 }
 
@@ -37,7 +39,7 @@ func (mgr *FacilitiesManager) Boot() error {
 	log.Printf("FacMgr:Boot")
 
 	// clear device ready notifications
-	mgr.deviceReadyNotificationQueue = make(map[kexec.NodeIdentifier]bool)
+	mgr.deviceReadyNotificationQueue = make(map[hardware.NodeIdentifier]bool)
 
 	// (re)build inventory based on nodeMgr
 	// this implies that nodeMgr.Boot() MUST be invoked before invoking us.
@@ -73,7 +75,7 @@ func (mgr *FacilitiesManager) Stop() {
 	}
 }
 
-func (mgr *FacilitiesManager) AssignDiskDeviceToExec(deviceId kexec.NodeIdentifier) error {
+func (mgr *FacilitiesManager) AssignDiskDeviceToExec(deviceId hardware.NodeIdentifier) error {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
@@ -98,12 +100,12 @@ func (mgr *FacilitiesManager) AssignDiskDeviceToExec(deviceId kexec.NodeIdentifi
 	return nil
 }
 
-func (mgr *FacilitiesManager) GetDiskAttributes(nodeId kexec.NodeIdentifier) (*kexec.DiskAttributes, bool) {
+func (mgr *FacilitiesManager) GetDiskAttributes(nodeId hardware.NodeIdentifier) (*kexec.DiskAttributes, bool) {
 	attr, ok := mgr.inventory.nodes[nodeId]
 	return attr.(*kexec.DiskAttributes), ok
 }
 
-func (mgr *FacilitiesManager) GetNodeAttributes(nodeId kexec.NodeIdentifier) (kexec.NodeAttributes, bool) {
+func (mgr *FacilitiesManager) GetNodeAttributes(nodeId hardware.NodeIdentifier) (kexec.NodeAttributes, bool) {
 	attr, ok := mgr.inventory.nodes[nodeId]
 	return attr, ok
 }
@@ -118,7 +120,7 @@ func (mgr *FacilitiesManager) GetNodeAttributesByName(name string) (kexec.NodeAt
 	return nil, false
 }
 
-func (mgr *FacilitiesManager) GetNodeStatusString(nodeId kexec.NodeIdentifier) string {
+func (mgr *FacilitiesManager) GetNodeStatusString(nodeId hardware.NodeIdentifier) string {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
@@ -175,7 +177,7 @@ func (mgr *FacilitiesManager) GetNodeStatusString(nodeId kexec.NodeIdentifier) s
 	return str
 }
 
-func (mgr *FacilitiesManager) IsDeviceAssigned(deviceId kexec.NodeIdentifier) bool {
+func (mgr *FacilitiesManager) IsDeviceAssigned(deviceId hardware.NodeIdentifier) bool {
 	dAttr, ok := mgr.inventory.disks[deviceId]
 	if ok {
 		return dAttr.AssignedTo != nil
@@ -189,14 +191,14 @@ func (mgr *FacilitiesManager) IsDeviceAssigned(deviceId kexec.NodeIdentifier) bo
 	return false
 }
 
-func (mgr *FacilitiesManager) NotifyDeviceReady(deviceId kexec.NodeIdentifier, isReady bool) {
+func (mgr *FacilitiesManager) NotifyDeviceReady(deviceId hardware.NodeIdentifier, isReady bool) {
 	// queue this for the thread to pick up
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 	mgr.deviceReadyNotificationQueue[deviceId] = isReady
 }
 
-func (mgr *FacilitiesManager) SetNodeStatus(nodeId kexec.NodeIdentifier, status kexec.FacNodeStatus) error {
+func (mgr *FacilitiesManager) SetNodeStatus(nodeId hardware.NodeIdentifier, status kexec.FacNodeStatus) error {
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
@@ -206,7 +208,7 @@ func (mgr *FacilitiesManager) SetNodeStatus(nodeId kexec.NodeIdentifier, status 
 	}
 
 	// for now, we do not allow changing status of anything except devices
-	if nodeAttr.GetNodeCategoryType() != kexec.NodeCategoryDevice {
+	if nodeAttr.GetNodeCategoryType() != hardware.NodeCategoryDevice {
 		return fmt.Errorf("not allowed")
 	}
 
@@ -215,14 +217,14 @@ func (mgr *FacilitiesManager) SetNodeStatus(nodeId kexec.NodeIdentifier, status 
 
 	switch status {
 	case kexec.FacNodeStatusDown:
-		if nodeAttr.GetNodeCategoryType() == kexec.NodeCategoryDevice {
-			if nodeAttr.GetNodeDeviceType() == kexec.NodeDeviceDisk {
+		if nodeAttr.GetNodeCategoryType() == hardware.NodeCategoryDevice {
+			if nodeAttr.GetNodeDeviceType() == hardware.NodeDeviceDisk {
 				nodeAttr.SetFacNodeStatus(status)
 				stopExec = mgr.IsDeviceAssigned(nodeId)
 				break
-			} else if nodeAttr.GetNodeDeviceType() == kexec.NodeDeviceDisk {
+			} else if nodeAttr.GetNodeDeviceType() == hardware.NodeDeviceDisk {
 				// reset the tape device (unmounts it as part of the process)
-				ioPkt := nodeMgr.NewTapeIoPacketReset(nodeId)
+				ioPkt := io2.NewTapeIoPacketReset(nodeId)
 				nodeManager.RouteIo(ioPkt)
 				nodeAttr.SetFacNodeStatus(status)
 				if mgr.IsDeviceAssigned(nodeId) {
@@ -236,7 +238,7 @@ func (mgr *FacilitiesManager) SetNodeStatus(nodeId kexec.NodeIdentifier, status 
 		return fmt.Errorf("not allowed")
 
 	case kexec.FacNodeStatusReserved:
-		if nodeAttr.GetNodeCategoryType() == kexec.NodeCategoryDevice {
+		if nodeAttr.GetNodeCategoryType() == hardware.NodeCategoryDevice {
 			nodeAttr.SetFacNodeStatus(status)
 		} else {
 			// anything other than disk or tape
@@ -244,8 +246,8 @@ func (mgr *FacilitiesManager) SetNodeStatus(nodeId kexec.NodeIdentifier, status 
 		}
 
 	case kexec.FacNodeStatusSuspended:
-		if nodeAttr.GetNodeCategoryType() == kexec.NodeCategoryDevice &&
-			nodeAttr.GetNodeDeviceType() == kexec.NodeDeviceDisk {
+		if nodeAttr.GetNodeCategoryType() == hardware.NodeCategoryDevice &&
+			nodeAttr.GetNodeDeviceType() == hardware.NodeDeviceDisk {
 			nodeAttr.SetFacNodeStatus(status)
 		} else {
 			// anything other than disk
@@ -253,7 +255,7 @@ func (mgr *FacilitiesManager) SetNodeStatus(nodeId kexec.NodeIdentifier, status 
 		}
 
 	case kexec.FacNodeStatusUp:
-		if nodeAttr.GetNodeCategoryType() == kexec.NodeCategoryDevice {
+		if nodeAttr.GetNodeCategoryType() == hardware.NodeCategoryDevice {
 			nodeAttr.SetFacNodeStatus(status)
 		} else {
 			// anything other than disk or tape
@@ -272,7 +274,7 @@ func (mgr *FacilitiesManager) SetNodeStatus(nodeId kexec.NodeIdentifier, status 
 
 	return nil
 }
-func (mgr *FacilitiesManager) diskBecameReady(nodeId kexec.NodeIdentifier) {
+func (mgr *FacilitiesManager) diskBecameReady(nodeId hardware.NodeIdentifier) {
 	// Device became ready - any pack attributes we have, are obsolete, so reload them
 	log.Printf("FacMgr:Disk %v became ready", nodeId)
 
@@ -286,13 +288,13 @@ func (mgr *FacilitiesManager) diskBecameReady(nodeId kexec.NodeIdentifier) {
 	if facStat != kexec.FacNodeStatusDown {
 		label := make([]pkg.Word36, 28)
 		nodeManager := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
-		ioPkt := nodeMgr.NewDiskIoPacketReadLabel(nodeId, label)
+		ioPkt := io2.NewDiskIoPacketReadLabel(nodeId, label)
 		nodeManager.RouteIo(ioPkt)
 		ioStat := ioPkt.GetIoStatus()
-		if ioStat == nodeMgr.IosInternalError {
+		if ioStat == io2.IosInternalError {
 			mgr.mutex.Unlock()
 			return
-		} else if ioStat != nodeMgr.IosComplete {
+		} else if ioStat != io2.IosComplete {
 			mgr.mutex.Unlock()
 
 			log.Printf("FacMgr:IO Error reading label disk:%v %v", nodeId, ioPkt.GetString())
@@ -327,7 +329,7 @@ func (mgr *FacilitiesManager) diskBecameReady(nodeId kexec.NodeIdentifier) {
 	mgr.mutex.Unlock()
 }
 
-func (mgr *FacilitiesManager) tapeBecameReady(nodeId kexec.NodeIdentifier) {
+func (mgr *FacilitiesManager) tapeBecameReady(nodeId hardware.NodeIdentifier) {
 	// Device became ready
 	// what we do here depends upon the current state of the device...
 	// TODO implmement tapeBecameReady()
@@ -342,7 +344,7 @@ func (mgr *FacilitiesManager) thread() {
 		// any device ready notifications?
 		mgr.mutex.Lock()
 		queue := mgr.deviceReadyNotificationQueue
-		mgr.deviceReadyNotificationQueue = make(map[kexec.NodeIdentifier]bool)
+		mgr.deviceReadyNotificationQueue = make(map[hardware.NodeIdentifier]bool)
 		mgr.mutex.Unlock()
 
 		for devId, flag := range queue {

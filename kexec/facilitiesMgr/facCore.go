@@ -5,10 +5,10 @@
 package facilitiesMgr
 
 import (
+	"khalehla/hardware"
 	"khalehla/kexec"
 	"khalehla/kexec/config"
 	"khalehla/kexec/mfdMgr"
-	"khalehla/kexec/nodeMgr"
 	"log"
 	"strconv"
 	"strings"
@@ -394,7 +394,7 @@ func (mgr *FacilitiesManager) resolveFileSpecification(
 func (mgr *FacilitiesManager) selectEquipmentModel(
 	mnemonic string,
 	fileSetInfo *mfdMgr.FileSetInfo,
-) ([]nodeMgr.NodeModel, config.EquipmentUsage, bool) {
+) ([]hardware.NodeModel, config.EquipmentUsage, bool) {
 
 	effectiveMnemonic := mnemonic
 
@@ -429,10 +429,10 @@ func (mgr *FacilitiesManager) selectEquipmentModel(
 		return nil, 0, false
 	}
 
-	models := make([]nodeMgr.NodeModel, 0)
+	models := make([]hardware.NodeModel, 0)
 	usage := entry.Usage
 	for _, modelName := range entry.SelectableEquipment {
-		model, ok := nodeMgr.NodeModelTable[modelName]
+		model, ok := hardware.NodeModelTable[modelName]
 		if ok {
 			models = append(models, model)
 		}
@@ -523,7 +523,7 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
-	models []nodeMgr.NodeModel,
+	models []hardware.NodeModel,
 	usage config.EquipmentUsage,
 ) (facResult *FacStatusResult, resultCode uint64) {
 	// For temporary files, we ignore any provided read/write keys.

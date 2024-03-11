@@ -6,6 +6,8 @@ package mfdMgr
 
 import (
 	"fmt"
+	"khalehla/hardware"
+	"khalehla/hardware/ioPackets"
 	"khalehla/kexec"
 	"khalehla/kexec/nodeMgr"
 	"khalehla/pkg"
@@ -469,7 +471,7 @@ func (mgr *MFDManager) InitializeMassStorage() {
 	fm := mgr.exec.GetFacilitiesManager()
 	nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
 	for _, dInfo := range nm.GetDeviceInfos() {
-		if dInfo.GetNodeDeviceType() == kexec.NodeDeviceDisk {
+		if dInfo.GetNodeDeviceType() == hardware.NodeDeviceDisk {
 			disks = append(disks, dInfo.(*nodeMgr.DiskDeviceInfo))
 		}
 	}
@@ -501,16 +503,16 @@ func (mgr *MFDManager) InitializeMassStorage() {
 			// This is a little messy due to the potential of problematic block sizes.
 			wordsPerBlock := uint64(diskAttr.PackLabelInfo.WordsPerRecord)
 			dirTrackWordAddr := uint64(diskAttr.PackLabelInfo.FirstDirectoryTrackAddress)
-			dirTrackBlockId := kexec.BlockId(dirTrackWordAddr / wordsPerBlock)
+			dirTrackBlockId := hardware.BlockId(dirTrackWordAddr / wordsPerBlock)
 			if wordsPerBlock == 28 {
 				dirTrackBlockId++
 			}
 
 			buf := make([]pkg.Word36, wordsPerBlock)
-			pkt := nodeMgr.NewDiskIoPacketRead(ddInfo.GetNodeIdentifier(), dirTrackBlockId, buf)
+			pkt := ioPackets.NewDiskIoPacketRead(ddInfo.GetNodeIdentifier(), dirTrackBlockId, buf)
 			nm.RouteIo(pkt)
 			ioStat := pkt.GetIoStatus()
-			if ioStat != nodeMgr.IosComplete {
+			if ioStat != ioPackets.IosComplete {
 				msg := fmt.Sprintf("IO error reading directory track on device %v", ddInfo.GetNodeName())
 				log.Printf("MFDMgr:%v", msg)
 				mgr.exec.SendExecReadOnlyMessage(msg, nil)

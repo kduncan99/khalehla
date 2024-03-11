@@ -7,6 +7,8 @@ package nodeMgr
 import (
 	"fmt"
 	"io"
+	"khalehla/hardware"
+	io2 "khalehla/hardware/ioPackets"
 	"khalehla/kexec"
 	"khalehla/pkg"
 	"log"
@@ -27,11 +29,11 @@ type NodeManager struct {
 	mutex        sync.Mutex
 	threadDone   bool
 	threadStop   bool
-	nodeInfos    map[kexec.NodeIdentifier]NodeInfo    // all nodes
-	channelInfos map[kexec.NodeIdentifier]ChannelInfo // this is loaded from the config
-	deviceInfos  map[kexec.NodeIdentifier]DeviceInfo  // this is loaded from the config
-	strategy     selectionStrategy                    // strategy used for selecting a channel fo IO
-	nextChannel  []kexec.NodeIdentifier               // used for selecting channel to be used for IO for round-robin
+	nodeInfos    map[hardware.NodeIdentifier]NodeInfo    // all nodes
+	channelInfos map[hardware.NodeIdentifier]ChannelInfo // this is loaded from the config
+	deviceInfos  map[hardware.NodeIdentifier]DeviceInfo  // this is loaded from the config
+	strategy     selectionStrategy                       // strategy used for selecting a channel fo IO
+	nextChannel  []hardware.NodeIdentifier               // used for selecting channel to be used for IO for round-robin
 }
 
 func NewNodeManager(exec kexec.IExec) *NodeManager {
@@ -62,9 +64,9 @@ func (mgr *NodeManager) Close() {
 // Initialize is invoked when the application is starting
 func (mgr *NodeManager) Initialize() error {
 	log.Printf("NodeMgr:Initialized")
-	mgr.nodeInfos = make(map[kexec.NodeIdentifier]NodeInfo)
-	mgr.channelInfos = make(map[kexec.NodeIdentifier]ChannelInfo)
-	mgr.deviceInfos = make(map[kexec.NodeIdentifier]DeviceInfo)
+	mgr.nodeInfos = make(map[hardware.NodeIdentifier]NodeInfo)
+	mgr.channelInfos = make(map[hardware.NodeIdentifier]ChannelInfo)
+	mgr.deviceInfos = make(map[hardware.NodeIdentifier]DeviceInfo)
 
 	// read configuration
 	// TODO from a data file or database or something
@@ -127,7 +129,7 @@ func (mgr *NodeManager) Initialize() error {
 	errors := false
 	for cid, cInfo := range mgr.channelInfos {
 		switch cInfo.GetNodeDeviceType() {
-		case kexec.NodeDeviceDisk:
+		case hardware.NodeDeviceDisk:
 			dchInfo := cInfo.(*DiskChannelInfo)
 			for _, dInfo := range dchInfo.deviceInfos {
 				did := dInfo.GetNodeIdentifier()
@@ -140,7 +142,7 @@ func (mgr *NodeManager) Initialize() error {
 					dInfo.SetIsAccessible(true)
 				}
 			}
-		case kexec.NodeDeviceTape:
+		case hardware.NodeDeviceTape:
 			tchInfo := cInfo.(*TapeChannelInfo)
 			for _, dInfo := range tchInfo.deviceInfos {
 				did := dInfo.GetNodeIdentifier()
@@ -213,7 +215,7 @@ func (mgr *NodeManager) GetNodeInfoByName(nodeName string) (NodeInfo, error) {
 	return nil, fmt.Errorf("not found")
 }
 
-func (mgr *NodeManager) GetNodeInfoByIdentifier(nodeId kexec.NodeIdentifier) (NodeInfo, error) {
+func (mgr *NodeManager) GetNodeInfoByIdentifier(nodeId hardware.NodeIdentifier) (NodeInfo, error) {
 	for _, chInfo := range mgr.channelInfos {
 		if nodeId == chInfo.GetNodeIdentifier() {
 			return chInfo, nil
@@ -230,22 +232,22 @@ func (mgr *NodeManager) GetNodeInfoByIdentifier(nodeId kexec.NodeIdentifier) (No
 }
 
 // RouteIo handles all disk and tape IO for the exec
-func (mgr *NodeManager) RouteIo(ioPacket IoPacket) {
+func (mgr *NodeManager) RouteIo(ioPacket io2.IoPacket) {
 	if mgr.exec.GetConfiguration().LogIOs {
 		devId := pkg.Word36(ioPacket.GetNodeIdentifier())
 		devName := devId.ToStringAsFieldata()
 		switch ioPacket.GetNodeDeviceType() {
-		case kexec.NodeDeviceDisk:
-			iop := ioPacket.(*DiskIoPacket)
+		case hardware.NodeDeviceDisk:
+			iop := ioPacket.(*io2.DiskIoPacket)
 			log.Printf("NodeMgr:RouteIO %v iof:%v blk:%v", devName, iop.GetIoFunction(), iop.GetBlockId())
-		case kexec.NodeDeviceTape:
-			iop := ioPacket.(*TapeIoPacket)
+		case hardware.NodeDeviceTape:
+			iop := ioPacket.(*io2.TapeIoPacket)
 			log.Printf("NodeMgr:RouteIO %v iof:%v", devName, iop.GetIoFunction())
 		}
 	}
 
 	if ioPacket == nil {
-		ioPacket.SetIoStatus(IosInternalError)
+		ioPacket.SetIoStatus(io2.IosInternalError)
 		mgr.exec.Stop(kexec.StopErrorInSystemIOTable)
 		return
 	}
@@ -255,23 +257,23 @@ func (mgr *NodeManager) RouteIo(ioPacket IoPacket) {
 
 	devInfo, ok := mgr.deviceInfos[ioPacket.GetNodeIdentifier()]
 	if !ok {
-		ioPacket.SetIoStatus(IosDeviceDoesNotExist)
+		ioPacket.SetIoStatus(io2.IosDeviceDoesNotExist)
 		return
 	}
 
 	if !devInfo.IsAccessible() {
-		ioPacket.SetIoStatus(IosDeviceIsNotAccessible)
+		ioPacket.SetIoStatus(io2.IosDeviceIsNotAccessible)
 		return
 	}
 
 	chInfo, err := mgr.selectChannelForDevice(devInfo)
 	if err != nil {
-		ioPacket.SetIoStatus(IosInternalError)
+		ioPacket.SetIoStatus(io2.IosInternalError)
 		mgr.exec.Stop(kexec.StopErrorInSystemIOTable)
 		return
 	}
 
-	ioPacket.SetIoStatus(IosInProgress)
+	ioPacket.SetIoStatus(io2.IosInProgress)
 	chInfo.GetChannel().StartIo(ioPacket)
 }
 
@@ -340,9 +342,9 @@ func (mgr *NodeManager) thread() {
 		}
 		mgr.mutex.Unlock()
 
-		fm := mgr.exec.GetFacilitiesManager().(kexec.IFacilitiesManager)
+		listener := mgr.exec.GetFacilitiesManager().(IDeviceListener)
 		for devInfo, isReady := range updates {
-			fm.NotifyDeviceReady(devInfo.GetNodeIdentifier(), isReady)
+			listener.NotifyDeviceReady(devInfo.GetNodeIdentifier(), isReady)
 		}
 	}
 

@@ -6,6 +6,7 @@ package kexec
 
 import (
 	"io"
+	"khalehla/hardware"
 	"khalehla/kexec/config"
 )
 
@@ -66,12 +67,12 @@ type IFacilitiesManager interface {
 	Dump(destination io.Writer, indent string)
 	Initialize() error // invoked when the application is starting up
 	Stop()             // invoked when the exec is stopping
-	AssignDiskDeviceToExec(nodeId NodeIdentifier) error
-	GetDiskAttributes(identifier NodeIdentifier) (*DiskAttributes, bool)
-	GetNodeAttributes(nodeId NodeIdentifier) (NodeAttributes, bool)
-	IsDeviceAssigned(nodeId NodeIdentifier) bool
-	NotifyDeviceReady(nodeId NodeIdentifier, isReady bool)
-	SetNodeStatus(nodeId NodeIdentifier, status FacNodeStatus) error
+	//AssignDiskDeviceToExec(nodeId NodeIdentifier) error
+	GetDiskAttributes(identifier hardware.NodeIdentifier) (*DiskAttributes, bool)
+	GetNodeAttributes(nodeId hardware.NodeIdentifier) (NodeAttributes, bool)
+	//IsDeviceAssigned(nodeId NodeIdentifier) bool
+	//NotifyDeviceReady(nodeId NodeIdentifier, isReady bool)
+	SetNodeStatus(nodeId hardware.NodeIdentifier, status FacNodeStatus) error
 }
 
 type IKeyinManager interface {

@@ -6,18 +6,19 @@ package nodeMgr
 
 import (
 	"io"
-	"khalehla/kexec"
+	"khalehla/hardware"
+	"khalehla/hardware/channels"
 )
 
 // ChannelInfo is intended primarily as a means of documenting the use of a more generic NodeInfo
 type ChannelInfo interface {
 	CreateNode()
 	Dump(destination io.Writer, indent string)
-	GetChannel() Channel
+	GetChannel() channels.Channel
 	GetDeviceInfos() []DeviceInfo
-	GetNodeCategoryType() kexec.NodeCategoryType
-	GetNodeDeviceType() kexec.NodeDeviceType
-	GetNodeIdentifier() kexec.NodeIdentifier
+	GetNodeCategoryType() hardware.NodeCategoryType
+	GetNodeDeviceType() hardware.NodeDeviceType
+	GetNodeIdentifier() hardware.NodeIdentifier
 	GetNodeName() string
 	IsAccessible() bool
 }

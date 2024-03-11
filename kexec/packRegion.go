@@ -4,14 +4,16 @@
 
 package kexec
 
+import "khalehla/hardware"
+
 // PackRegion represents a particular region (a track id and a track count) for a specific pack.
 type PackRegion struct {
 	LDATIndex  LDATIndex
-	TrackId    TrackId
-	TrackCount TrackCount
+	TrackId    hardware.TrackId
+	TrackCount hardware.TrackCount
 }
 
-func NewPackRegion(ldatIndex LDATIndex, trackId TrackId, trackCount TrackCount) *PackRegion {
+func NewPackRegion(ldatIndex LDATIndex, trackId hardware.TrackId, trackCount hardware.TrackCount) *PackRegion {
 	return &PackRegion{
 		LDATIndex:  ldatIndex,
 		TrackId:    trackId,

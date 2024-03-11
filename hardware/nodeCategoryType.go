@@ -2,12 +2,12 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package kexec
+package hardware
 
-type NodeDeviceType uint
+type NodeCategoryType uint
 
 const (
-	_ NodeDeviceType = iota
-	NodeDeviceDisk
-	NodeDeviceTape
+	_ NodeCategoryType = iota
+	NodeCategoryChannel
+	NodeCategoryDevice
 )

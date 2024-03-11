@@ -4,34 +4,38 @@
 
 package mfdMgr
 
-import "khalehla/kexec"
+import (
+	"khalehla/hardware"
+	"khalehla/kexec"
+)
 
 // Keeps track of things which pertain to a specific disk pack (an internal MFD struct)
 type packDescriptor struct {
-	nodeId                     kexec.NodeIdentifier
-	prepFactor                 kexec.PrepFactor
+	nodeId                     hardware.NodeIdentifier
+	prepFactor                 hardware.PrepFactor
 	firstDirectoryTrackAddress kexec.DeviceRelativeWordAddress
 	canAllocate                bool                // true if pack is UP, false if it is SU - must be set by fac mgr
 	packMask                   uint                // used for calculating blocks from sectors
 	freeSpaceTable             *PackFreeSpaceTable // represents all unallocated tracks on the pack
-	mfdTrackCount              kexec.TrackCount    // number of MFD tracks allocated on the pack
+	mfdTrackCount              hardware.TrackCount // number of MFD tracks allocated on the pack
 	mfdSectorsUsed             uint64              // number of MFD sectors in use among the MFD tracks
 }
 
 func newPackDescriptor(
-	nodeId kexec.NodeIdentifier,
-	diskAttributes *kexec.DiskAttributes,
+	nodeId hardware.NodeIdentifier,
+	prepFactor hardware.PrepFactor,
+	trackCount hardware.TrackCount,
+	firstDirectoryTrackAddress kexec.DeviceRelativeWordAddress,
+	nodeStatus kexec.FacNodeStatus,
 ) *packDescriptor {
 
-	recordLength := diskAttributes.PackLabelInfo.WordsPerRecord
-	trackCount := diskAttributes.PackLabelInfo.TrackCount
-	facStatus := diskAttributes.GetFacNodeStatus()
+	recordLength := uint(prepFactor)
 
 	return &packDescriptor{
 		nodeId:                     nodeId,
-		prepFactor:                 diskAttributes.PackLabelInfo.PrepFactor,
-		firstDirectoryTrackAddress: diskAttributes.PackLabelInfo.FirstDirectoryTrackAddress,
-		canAllocate:                facStatus == kexec.FacNodeStatusUp || facStatus == kexec.FacNodeStatusReserved,
+		prepFactor:                 prepFactor,
+		firstDirectoryTrackAddress: firstDirectoryTrackAddress,
+		canAllocate:                nodeStatus == kexec.FacNodeStatusUp || nodeStatus == kexec.FacNodeStatusReserved,
 		packMask:                   (recordLength / 28) - 1,
 		freeSpaceTable:             NewPackFreeSpaceTable(trackCount),
 	}

@@ -7,14 +7,15 @@ package nodeMgr
 import (
 	"fmt"
 	"io"
-	"khalehla/kexec"
+	"khalehla/hardware"
+	"khalehla/hardware/devices"
 	"khalehla/pkg"
 )
 
 type TapeDeviceInfo struct {
 	nodeName       string
-	nodeIdentifier kexec.NodeIdentifier
-	device         *FileSystemTapeDevice
+	nodeIdentifier hardware.NodeIdentifier
+	device         *devices.FileSystemTapeDevice
 	channelInfos   []*TapeChannelInfo
 	isAccessible   bool // can only be true if status is UP, RV, or SU and the device is assigned to at least one channel
 	isReady        bool // cached version of device.IsReady() - when there is a mismatch, we need to do something
@@ -24,13 +25,13 @@ type TapeDeviceInfo struct {
 func NewTapeDeviceInfo(nodeName string) *TapeDeviceInfo {
 	return &TapeDeviceInfo{
 		nodeName:       nodeName,
-		nodeIdentifier: kexec.NodeIdentifier(pkg.NewFromStringToFieldata(nodeName, 1)[0]),
+		nodeIdentifier: hardware.NodeIdentifier(pkg.NewFromStringToFieldata(nodeName, 1)[0]),
 		channelInfos:   make([]*TapeChannelInfo, 0),
 	}
 }
 
 func (tdi *TapeDeviceInfo) CreateNode() {
-	tdi.device = NewFileSystemTapeDevice()
+	tdi.device = devices.NewFileSystemTapeDevice()
 }
 
 func (tdi *TapeDeviceInfo) GetChannelInfos() []ChannelInfo {
@@ -41,19 +42,19 @@ func (tdi *TapeDeviceInfo) GetChannelInfos() []ChannelInfo {
 	return result
 }
 
-func (tdi *TapeDeviceInfo) GetDevice() Device {
+func (tdi *TapeDeviceInfo) GetDevice() devices.Device {
 	return tdi.device
 }
 
-func (tdi *TapeDeviceInfo) GetNodeCategoryType() kexec.NodeCategoryType {
-	return kexec.NodeCategoryDevice
+func (tdi *TapeDeviceInfo) GetNodeCategoryType() hardware.NodeCategoryType {
+	return hardware.NodeCategoryDevice
 }
 
-func (tdi *TapeDeviceInfo) GetNodeDeviceType() kexec.NodeDeviceType {
-	return kexec.NodeDeviceTape
+func (tdi *TapeDeviceInfo) GetNodeDeviceType() hardware.NodeDeviceType {
+	return hardware.NodeDeviceTape
 }
 
-func (tdi *TapeDeviceInfo) GetNodeIdentifier() kexec.NodeIdentifier {
+func (tdi *TapeDeviceInfo) GetNodeIdentifier() hardware.NodeIdentifier {
 	return tdi.nodeIdentifier
 }
 

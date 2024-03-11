@@ -6,16 +6,17 @@ package mfdMgr
 
 import (
 	"fmt"
+	"khalehla/hardware"
 	"khalehla/kexec"
 	"log"
 )
 
 type PackFreeSpaceTable struct {
-	Capacity kexec.TrackCount
+	Capacity hardware.TrackCount
 	Content  []*kexec.TrackRegion
 }
 
-func NewPackFreeSpaceTable(capacity kexec.TrackCount) *PackFreeSpaceTable {
+func NewPackFreeSpaceTable(capacity hardware.TrackCount) *PackFreeSpaceTable {
 	fst := &PackFreeSpaceTable{}
 	fst.Capacity = capacity
 	fsr := kexec.NewTrackRegion(0, capacity)
@@ -51,8 +52,8 @@ func (fst *PackFreeSpaceTable) AllocateTrack() (kexec.MFDTrackId, error) {
 // track or range of tracks is not to be allocated otherwise (such as for VOL1 or directory tracks).
 func (fst *PackFreeSpaceTable) AllocateSpecificTrackRegion(
 	ldatIndex kexec.LDATIndex,
-	trackId kexec.TrackId,
-	trackCount kexec.TrackCount,
+	trackId hardware.TrackId,
+	trackCount hardware.TrackCount,
 ) error {
 	ok := fst.MarkTrackRegionAllocated(ldatIndex, trackId, trackCount)
 	if !ok {
@@ -63,7 +64,7 @@ func (fst *PackFreeSpaceTable) AllocateSpecificTrackRegion(
 
 // AllocateTrackRegion will allocate one region of up to the indicated size.
 // If there is no free space at all, we return nil.
-func (fst *PackFreeSpaceTable) AllocateTrackRegion(trackCount kexec.TrackCount) *kexec.TrackRegion {
+func (fst *PackFreeSpaceTable) AllocateTrackRegion(trackCount hardware.TrackCount) *kexec.TrackRegion {
 	if len(fst.Content) == 0 {
 		return nil
 	}
@@ -81,7 +82,7 @@ func (fst *PackFreeSpaceTable) AllocateTrackRegion(trackCount kexec.TrackCount) 
 	for rx, region := range fst.Content {
 		if region.TrackCount > trackCount {
 			result := kexec.NewTrackRegion(region.TrackId, trackCount)
-			region.TrackId += kexec.TrackId(trackCount)
+			region.TrackId += hardware.TrackId(trackCount)
 			region.TrackCount -= trackCount
 			return result
 		}
@@ -100,15 +101,15 @@ func (fst *PackFreeSpaceTable) AllocateTrackRegion(trackCount kexec.TrackCount) 
 // trackCount, beginning at the indicated firstTrackId. It may allocate less than trackCount,
 // and may not allocate anything at all. The result is the number of tracks allocated.
 func (fst *PackFreeSpaceTable) AllocateTracksFromTrackId(
-	firstTrackId kexec.TrackId,
-	trackCount kexec.TrackCount,
-) (result kexec.TrackCount) {
+	firstTrackId hardware.TrackId,
+	trackCount hardware.TrackCount,
+) (result hardware.TrackCount) {
 	result = 0
 
 	for _, fsRegion := range fst.Content {
-		highest := fsRegion.TrackId + kexec.TrackId(fsRegion.TrackCount) - 1
+		highest := fsRegion.TrackId + hardware.TrackId(fsRegion.TrackCount) - 1
 		if firstTrackId >= fsRegion.TrackId && firstTrackId <= highest {
-			available := kexec.TrackCount(highest-firstTrackId) + 1
+			available := hardware.TrackCount(highest-firstTrackId) + 1
 			if available < trackCount {
 				result = available
 			} else {
@@ -129,8 +130,8 @@ func (fst *PackFreeSpaceTable) AllocateTracksFromTrackId(
 // MarkTrackRegionAllocated is a general-purpose function which manipulates the entries in a free space table
 func (fst *PackFreeSpaceTable) MarkTrackRegionAllocated(
 	ldatIndex kexec.LDATIndex, // only for logging
-	trackId kexec.TrackId,
-	trackCount kexec.TrackCount,
+	trackId hardware.TrackId,
+	trackCount hardware.TrackCount,
 ) bool {
 	if trackCount == 0 {
 		log.Printf("MarkTrackRegionAllocated ldat:%v id:%v count:%v requested trackCount is zero",
@@ -138,7 +139,7 @@ func (fst *PackFreeSpaceTable) MarkTrackRegionAllocated(
 	}
 
 	// We're looking for a region of free space which contains the requested region
-	reqTrackLimit := trackId + kexec.TrackId(trackCount) // track limit from specified id and count
+	reqTrackLimit := trackId + hardware.TrackId(trackCount) // track limit from specified id and count
 	for fx, fsRegion := range fst.Content {
 		// Is requested region less than the current entry? If so, there's no point in continuing
 		if trackId < fsRegion.TrackId {
@@ -146,7 +147,7 @@ func (fst *PackFreeSpaceTable) MarkTrackRegionAllocated(
 		}
 
 		// Does requested region begin within the current entry?
-		entryLimit := kexec.TrackId(uint64(fsRegion.TrackId) + uint64(fsRegion.TrackCount))
+		entryLimit := hardware.TrackId(uint64(fsRegion.TrackId) + uint64(fsRegion.TrackCount))
 		if trackId >= fsRegion.TrackId && trackId <= entryLimit {
 			// Quick check to ensure requested region does not exceed this entry.
 			// If it does, something is bigly wrong
@@ -165,7 +166,7 @@ func (fst *PackFreeSpaceTable) MarkTrackRegionAllocated(
 
 			// Is the region to be removed aligned with the front of the current entry?
 			if trackId == fsRegion.TrackId {
-				fsRegion.TrackId += kexec.TrackId(trackCount)
+				fsRegion.TrackId += hardware.TrackId(trackCount)
 				fsRegion.TrackCount -= trackCount
 				return true
 			}
@@ -177,8 +178,8 @@ func (fst *PackFreeSpaceTable) MarkTrackRegionAllocated(
 			}
 
 			// Break the region into two sections. Messy. Don't like it.
-			newRegion := kexec.NewTrackRegion(entryLimit, kexec.TrackCount(entryLimit-reqTrackLimit))
-			fsRegion.TrackCount = kexec.TrackCount(trackId - fsRegion.TrackId)
+			newRegion := kexec.NewTrackRegion(entryLimit, hardware.TrackCount(entryLimit-reqTrackLimit))
+			fsRegion.TrackCount = hardware.TrackCount(trackId - fsRegion.TrackId)
 			newTable := append(fst.Content[0:fx+1], newRegion)
 			fst.Content = append(newTable, fst.Content[fx+1])
 			return true
@@ -192,8 +193,8 @@ func (fst *PackFreeSpaceTable) MarkTrackRegionAllocated(
 
 // MarkTrackRegionUnallocated is a general-purpose function which manipulates the entries in a free space table
 func (fst *PackFreeSpaceTable) MarkTrackRegionUnallocated(
-	trackId kexec.TrackId,
-	trackCount kexec.TrackCount,
+	trackId hardware.TrackId,
+	trackCount hardware.TrackCount,
 ) bool {
 
 	if trackCount == 0 {
@@ -203,10 +204,10 @@ func (fst *PackFreeSpaceTable) MarkTrackRegionUnallocated(
 	}
 
 	// We are hoping that we do not find an entry which contains all or part of the requested region
-	reqTrackLimit := trackId + kexec.TrackId(trackCount) // track limit from specified id and count
+	reqTrackLimit := trackId + hardware.TrackId(trackCount) // track limit from specified id and count
 	for fx, fsRegion := range fst.Content {
 		// Does requested region overlap with this entry?
-		entryTrackLimit := kexec.TrackId(uint64(fsRegion.TrackId) + uint64(fsRegion.TrackCount))
+		entryTrackLimit := hardware.TrackId(uint64(fsRegion.TrackId) + uint64(fsRegion.TrackCount))
 		if trackId >= fsRegion.TrackId && trackId < entryTrackLimit {
 			log.Printf("MarkTrackRegionUnallocated id:%v count:%v region overlap", trackId, trackCount)
 			return false
@@ -256,8 +257,8 @@ func (fst *PackFreeSpaceTable) MarkTrackRegionUnallocated(
 }
 
 // GetFreeTrackCount retrieves a sum of all the free tracks
-func (fst *PackFreeSpaceTable) GetFreeTrackCount() kexec.TrackCount {
-	count := kexec.TrackCount(0)
+func (fst *PackFreeSpaceTable) GetFreeTrackCount() hardware.TrackCount {
+	count := hardware.TrackCount(0)
 	for _, entry := range fst.Content {
 		count += entry.TrackCount
 	}

@@ -6,6 +6,7 @@ package keyinMgr
 
 import (
 	"fmt"
+	"khalehla/hardware"
 	"khalehla/kexec"
 	"khalehla/kexec/facilitiesMgr"
 	"khalehla/kexec/nodeMgr"
@@ -129,7 +130,7 @@ func (kh *FSKeyinHandler) emitStatusStrings(statStrings []string) {
 	}
 }
 
-func (kh *FSKeyinHandler) getStatusStringForNode(nodeId kexec.NodeIdentifier) string {
+func (kh *FSKeyinHandler) getStatusStringForNode(nodeId hardware.NodeIdentifier) string {
 	fm := kh.exec.GetFacilitiesManager().(*facilitiesMgr.FacilitiesManager)
 	attr, _ := fm.GetNodeAttributes(nodeId)
 	return attr.GetNodeName() + " " + fm.GetNodeStatusString(nodeId)
@@ -147,7 +148,7 @@ func (kh *FSKeyinHandler) handleAllForChannel() {
 	}
 	statStrings = append(statStrings, kh.getStatusStringForNode(nodeInfo.GetNodeIdentifier()))
 
-	if nodeInfo.GetNodeCategoryType() == kexec.NodeCategoryChannel {
+	if nodeInfo.GetNodeCategoryType() == hardware.NodeCategoryChannel {
 		chInfo := nodeInfo.(nodeMgr.ChannelInfo)
 		devInfos := chInfo.GetDeviceInfos()
 		for _, di := range devInfos {
@@ -158,10 +159,10 @@ func (kh *FSKeyinHandler) handleAllForChannel() {
 	kh.emitStatusStrings(statStrings)
 }
 
-func (kh *FSKeyinHandler) handleAllOf(nodeCategory kexec.NodeCategoryType, nodeType kexec.NodeDeviceType) {
+func (kh *FSKeyinHandler) handleAllOf(nodeCategory hardware.NodeCategoryType, nodeType hardware.NodeDeviceType) {
 	nm := kh.exec.GetNodeManager().(*nodeMgr.NodeManager)
 	statStrings := make([]string, 0)
-	if nodeCategory == kexec.NodeCategoryChannel || nodeCategory == 0 {
+	if nodeCategory == hardware.NodeCategoryChannel || nodeCategory == 0 {
 		for _, chInfo := range nm.GetChannelInfos() {
 			if nodeType == chInfo.GetNodeDeviceType() || nodeType == 0 {
 				statStrings = append(statStrings, kh.getStatusStringForNode(chInfo.GetNodeIdentifier()))
@@ -169,7 +170,7 @@ func (kh *FSKeyinHandler) handleAllOf(nodeCategory kexec.NodeCategoryType, nodeT
 		}
 	}
 
-	if nodeCategory == kexec.NodeCategoryDevice || nodeCategory == 0 {
+	if nodeCategory == hardware.NodeCategoryDevice || nodeCategory == 0 {
 		for _, devInfo := range nm.GetDeviceInfos() {
 			if nodeType == devInfo.GetNodeDeviceType() || nodeType == 0 {
 				statStrings = append(statStrings, kh.getStatusStringForNode(devInfo.GetNodeIdentifier()))
@@ -204,13 +205,13 @@ func (kh *FSKeyinHandler) handleOption() {
 		kh.handleAllForChannel()
 		return
 	case "CM":
-		kh.handleAllOf(kexec.NodeCategoryChannel, 0)
+		kh.handleAllOf(hardware.NodeCategoryChannel, 0)
 		return
 	case "DISK":
-		kh.handleAllOf(kexec.NodeCategoryDevice, kexec.NodeDeviceDisk)
+		kh.handleAllOf(hardware.NodeCategoryDevice, hardware.NodeDeviceDisk)
 		return
 	case "DISKS":
-		kh.handleAllOf(kexec.NodeCategoryDevice, kexec.NodeDeviceDisk)
+		kh.handleAllOf(hardware.NodeCategoryDevice, hardware.NodeDeviceDisk)
 		return
 	case "FDISK":
 		// TODO FS,FDISK
@@ -223,10 +224,10 @@ func (kh *FSKeyinHandler) handleOption() {
 	case "RDISK":
 		// TODO FS,RDISK
 	case "TAPE":
-		kh.handleAllOf(kexec.NodeCategoryDevice, kexec.NodeDeviceTape)
+		kh.handleAllOf(hardware.NodeCategoryDevice, hardware.NodeDeviceTape)
 		return
 	case "TAPES":
-		kh.handleAllOf(kexec.NodeCategoryDevice, kexec.NodeDeviceTape)
+		kh.handleAllOf(hardware.NodeCategoryDevice, hardware.NodeDeviceTape)
 		return
 	}
 

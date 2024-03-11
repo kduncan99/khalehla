@@ -6,18 +6,19 @@ package tapeUtil
 
 import (
 	"fmt"
-	"khalehla/kexec/nodeMgr"
+	"khalehla/hardware/devices"
+	"khalehla/hardware/ioPackets"
 	"khalehla/pkg"
 )
 
 // FSTapeDevice is a wrapper around the standard file-system tape reader/writer
 type FSTapeDevice struct {
-	device *nodeMgr.FileSystemTapeDevice
+	device *devices.FileSystemTapeDevice
 }
 
 func NewFSTapeDevice() *FSTapeDevice {
 	return &FSTapeDevice{
-		device: nodeMgr.NewFileSystemTapeDevice(),
+		device: devices.NewFileSystemTapeDevice(),
 	}
 }
 
@@ -28,10 +29,10 @@ func (dev *FSTapeDevice) Close() error {
 		return fmt.Errorf("device is not ready")
 	}
 
-	ioPkt := nodeMgr.NewTapeIoPacketUnmount(0)
+	ioPkt := ioPackets.NewTapeIoPacketUnmount(0)
 	dev.device.StartIo(ioPkt)
-	if ioPkt.GetIoStatus() != nodeMgr.IosComplete {
-		return fmt.Errorf(nodeMgr.IoStatusTable[ioPkt.GetIoStatus()])
+	if ioPkt.GetIoStatus() != ioPackets.IosComplete {
+		return fmt.Errorf(ioPackets.IoStatusTable[ioPkt.GetIoStatus()])
 	}
 
 	return nil
@@ -42,10 +43,10 @@ func (dev *FSTapeDevice) OpenInputFile(fileName string) error {
 		return fmt.Errorf("device is already mounted")
 	}
 
-	ioPkt := nodeMgr.NewTapeIoPacketMount(0, fileName, false)
+	ioPkt := ioPackets.NewTapeIoPacketMount(0, fileName, false)
 	dev.device.StartIo(ioPkt)
-	if ioPkt.GetIoStatus() != nodeMgr.IosComplete {
-		return fmt.Errorf(nodeMgr.IoStatusTable[ioPkt.GetIoStatus()])
+	if ioPkt.GetIoStatus() != ioPackets.IosComplete {
+		return fmt.Errorf(ioPackets.IoStatusTable[ioPkt.GetIoStatus()])
 	}
 	dev.device.SetIsReady(true)
 
@@ -57,10 +58,10 @@ func (dev *FSTapeDevice) OpenOutputFile(fileName string) error {
 		return fmt.Errorf("device is already mounted")
 	}
 
-	ioPkt := nodeMgr.NewTapeIoPacketMount(0, fileName, false)
+	ioPkt := ioPackets.NewTapeIoPacketMount(0, fileName, false)
 	dev.device.StartIo(ioPkt)
-	if ioPkt.GetIoStatus() != nodeMgr.IosComplete {
-		return fmt.Errorf(nodeMgr.IoStatusTable[ioPkt.GetIoStatus()])
+	if ioPkt.GetIoStatus() != ioPackets.IosComplete {
+		return fmt.Errorf(ioPackets.IoStatusTable[ioPkt.GetIoStatus()])
 	}
 	dev.device.SetIsReady(true)
 
@@ -105,12 +106,12 @@ func (dev *FSTapeDevice) ReadBlock() (data []pkg.Word36, eof bool, err error) {
 		return
 	}
 
-	ioPkt := nodeMgr.NewTapeIoPacketRead(0)
+	ioPkt := ioPackets.NewTapeIoPacketRead(0)
 	dev.device.StartIo(ioPkt)
-	if ioPkt.GetIoStatus() == nodeMgr.IosEndOfFile {
+	if ioPkt.GetIoStatus() == ioPackets.IosEndOfFile {
 		return nil, true, nil
-	} else if ioPkt.GetIoStatus() != nodeMgr.IosComplete {
-		err = fmt.Errorf(nodeMgr.IoStatusTable[ioPkt.GetIoStatus()])
+	} else if ioPkt.GetIoStatus() != ioPackets.IosComplete {
+		err = fmt.Errorf(ioPackets.IoStatusTable[ioPkt.GetIoStatus()])
 		return
 	}
 
@@ -145,10 +146,10 @@ func (dev *FSTapeDevice) WriteBlock(buffer []pkg.Word36) error {
 		return fmt.Errorf("device is not ready")
 	}
 
-	ioPkt := nodeMgr.NewTapeIoPacketWrite(0, buffer)
+	ioPkt := ioPackets.NewTapeIoPacketWrite(0, buffer)
 	dev.device.StartIo(ioPkt)
-	if ioPkt.GetIoStatus() != nodeMgr.IosComplete {
-		return fmt.Errorf(nodeMgr.IoStatusTable[ioPkt.GetIoStatus()])
+	if ioPkt.GetIoStatus() != ioPackets.IosComplete {
+		return fmt.Errorf(ioPackets.IoStatusTable[ioPkt.GetIoStatus()])
 	}
 
 	return nil
@@ -161,10 +162,10 @@ func (dev *FSTapeDevice) WriteEndOfFile() error {
 		return fmt.Errorf("device is not ready")
 	}
 
-	ioPkt := nodeMgr.NewTapeIoPacketWriteTapeMark(0)
+	ioPkt := ioPackets.NewTapeIoPacketWriteTapeMark(0)
 	dev.device.StartIo(ioPkt)
-	if ioPkt.GetIoStatus() != nodeMgr.IosComplete {
-		return fmt.Errorf(nodeMgr.IoStatusTable[ioPkt.GetIoStatus()])
+	if ioPkt.GetIoStatus() != ioPackets.IosComplete {
+		return fmt.Errorf(ioPackets.IoStatusTable[ioPkt.GetIoStatus()])
 	}
 
 	return nil

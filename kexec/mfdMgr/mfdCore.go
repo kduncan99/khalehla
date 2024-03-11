@@ -8,6 +8,8 @@ package mfdMgr
 
 import (
 	"fmt"
+	"khalehla/hardware"
+	"khalehla/hardware/ioPackets"
 	"khalehla/kexec"
 	"khalehla/kexec/nodeMgr"
 	"khalehla/pkg"
@@ -140,7 +142,7 @@ func (mgr *MFDManager) allocateDirectoryTrack(
 
 	chosenLDAT := kexec.InvalidLDAT
 	var chosenDesc *packDescriptor
-	chosenAvailableTracks := kexec.TrackCount(0)
+	chosenAvailableTracks := hardware.TrackCount(0)
 
 	if preferredLDAT != kexec.InvalidLDAT {
 		packDesc, ok := mgr.fixedPackDescriptors[preferredLDAT]
@@ -203,8 +205,8 @@ func (mgr *MFDManager) allocateDirectoryTrack(
 // Caller must allocate space according to granularity -- we do not impose this requirement here.
 func (mgr *MFDManager) allocateFileSpace(
 	mainItem0Address kexec.MFDRelativeAddress,
-	fileRelativeTrackId kexec.TrackId,
-	trackCount kexec.TrackCount,
+	fileRelativeTrackId hardware.TrackId,
+	trackCount hardware.TrackCount,
 ) (result MFDResult) {
 	result = MFDSuccessful
 
@@ -232,12 +234,12 @@ func (mgr *MFDManager) allocateFileSpace(
 			return MFDInternalError
 		}
 
-		baseTrackId := fa.DeviceTrackId + kexec.TrackId(fa.FileRegion.TrackCount)
+		baseTrackId := fa.DeviceTrackId + hardware.TrackId(fa.FileRegion.TrackCount)
 		allocated := pDesc.freeSpaceTable.AllocateTracksFromTrackId(baseTrackId, remaining)
 		if allocated > 0 {
 			alloc := NewFileAllocation(frTrackId, allocated, fa.LDATIndex, baseTrackId)
 			faSet.mergeIntoFileAllocationSet(alloc)
-			frTrackId += kexec.TrackId(allocated)
+			frTrackId += hardware.TrackId(allocated)
 			remaining -= allocated
 		}
 	}
@@ -253,12 +255,12 @@ func (mgr *MFDManager) allocateFileSpace(
 		for _, region := range packRegions {
 			alloc := NewFileAllocation(frTrackId, region.TrackCount, region.LDATIndex, region.TrackId)
 			faSet.mergeIntoFileAllocationSet(alloc)
-			frTrackId += kexec.TrackId(region.TrackCount)
+			frTrackId += hardware.TrackId(region.TrackCount)
 		}
 	}
 
 	// Update highest granule assigned in main item
-	allocHighestTrack := fileRelativeTrackId + kexec.TrackId(trackCount) - 1
+	allocHighestTrack := fileRelativeTrackId + hardware.TrackId(trackCount) - 1
 	if allocHighestTrack > highestTrack {
 		mainItem0, err := mgr.getMFDSector(mainItem0Address)
 		if err != nil {
@@ -304,7 +306,7 @@ func (mgr *MFDManager) allocateLeadItem1(
 // Due to restricted mass storage space, we may not be able to satisfy the entire (or any of the) request.
 func (mgr *MFDManager) allocateSpace(
 	preferred kexec.LDATIndex,
-	trackCount kexec.TrackCount,
+	trackCount hardware.TrackCount,
 ) (regions []*kexec.PackRegion, result MFDResult) {
 	regions = make([]*kexec.PackRegion, 0)
 	result = MFDSuccessful
@@ -361,10 +363,10 @@ func (mgr *MFDManager) allocateSpace(
 // ONLY FOR VERY SPECIFIC USE-CASES - CALL UNDER LOCK, OR DURING MFD INIT
 func (mgr *MFDManager) allocateSpecificTrack(
 	mainItem0Address kexec.MFDRelativeAddress,
-	fileTrackId kexec.TrackId,
-	trackCount kexec.TrackCount,
+	fileTrackId hardware.TrackId,
+	trackCount hardware.TrackCount,
 	ldatIndex kexec.LDATIndex,
-	deviceTrackId kexec.TrackId) error {
+	deviceTrackId hardware.TrackId) error {
 
 	fae, ok := mgr.acceleratedFileAllocations[mainItem0Address]
 	if !ok {
@@ -466,18 +468,18 @@ func (mgr *MFDManager) bootstrapMFD() error {
 	// Before we can play DAD table games, we have to get the MFD$$ in-core structures in place,
 	// including *particularly* the file allocation table.
 	// We need to create one allocation region for each pack's initial directory track.
-	highestMFDTrackId := kexec.TrackId(0)
+	highestMFDTrackId := hardware.TrackId(0)
 	fae := NewFileAllocationSet(mainItem0Addr, 0_400000_000000)
 	mgr.acceleratedFileAllocations[mainItem0Addr] = fae
 
 	for ldat, desc := range mgr.fixedPackDescriptors {
-		mfdTrackId := kexec.TrackId(ldat << 12)
+		mfdTrackId := hardware.TrackId(ldat << 12)
 		if mfdTrackId > highestMFDTrackId {
 			highestMFDTrackId = mfdTrackId
 		}
 
 		packTrackId := desc.firstDirectoryTrackAddress / 1792
-		err := mgr.allocateSpecificTrack(mainItem0Addr, mfdTrackId, 1, ldat, kexec.TrackId(packTrackId))
+		err := mgr.allocateSpecificTrack(mainItem0Addr, mfdTrackId, 1, ldat, hardware.TrackId(packTrackId))
 		if err != nil {
 			return err
 		}
@@ -768,8 +770,8 @@ func composeMFDAddress(
 // CALL UNDER LOCK
 func (mgr *MFDManager) convertFileRelativeTrackId(
 	mainItem0Address kexec.MFDRelativeAddress,
-	fileTrackId kexec.TrackId,
-) (kexec.LDATIndex, kexec.TrackId, error) {
+	fileTrackId hardware.TrackId,
+) (kexec.LDATIndex, hardware.TrackId, error) {
 
 	fae, ok := mgr.acceleratedFileAllocations[mainItem0Address]
 	if !ok {
@@ -779,14 +781,14 @@ func (mgr *MFDManager) convertFileRelativeTrackId(
 	}
 
 	ldat := kexec.LDATIndex(0_400000)
-	devTrackId := kexec.TrackId(0)
+	devTrackId := hardware.TrackId(0)
 	if fileTrackId <= fae.HighestTrackAllocated {
 		for _, fileAlloc := range fae.FileAllocations {
 			if fileTrackId < fileAlloc.FileRegion.TrackId {
 				// list is ascending - if we get here, there's no point in continuing
 				break
 			}
-			upperLimit := kexec.TrackId(uint64(fileAlloc.FileRegion.TrackId) + uint64(fileAlloc.FileRegion.TrackCount))
+			upperLimit := hardware.TrackId(uint64(fileAlloc.FileRegion.TrackId) + uint64(fileAlloc.FileRegion.TrackCount))
 			if fileTrackId < upperLimit {
 				// found a good region - update results and stop looking
 				ldat = fileAlloc.LDATIndex
@@ -1215,11 +1217,14 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*kexec.
 		ldatIndex := nextLdatIndex
 		nextLdatIndex++
 
-		// Assign the unit
-		_ = mgr.exec.GetFacilitiesManager().AssignDiskDeviceToExec(diskInfo.GetNodeIdentifier())
-
 		// Set up fixed pack descriptor
-		fpDesc := newPackDescriptor(diskInfo.GetNodeIdentifier(), diskAttr)
+		nodeId := diskInfo.GetNodeIdentifier()
+		fpDesc := newPackDescriptor(
+			nodeId,
+			diskAttr.PackLabelInfo.PrepFactor,
+			diskAttr.PackLabelInfo.TrackCount,
+			diskAttr.PackLabelInfo.FirstDirectoryTrackAddress,
+			diskAttr.GetFacNodeStatus())
 
 		// Mark VOL1 and first directory track as allocated
 		fpDesc.mfdTrackCount = 1
@@ -1242,14 +1247,14 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*kexec.
 		mgr.cachedTracks[mfdAddr] = data
 
 		// read the directory track into cache
-		blockId := kexec.BlockId(blocksPerTrack)
+		blockId := hardware.BlockId(blocksPerTrack)
 		wx := uint(0)
 		for bx := 0; bx < int(blocksPerTrack); bx++ {
 			sub := data[wx : wx+wordsPerBlock]
-			ioPkt := nodeMgr.NewDiskIoPacketRead(fpDesc.nodeId, blockId, sub)
+			ioPkt := ioPackets.NewDiskIoPacketRead(fpDesc.nodeId, blockId, sub)
 			nm.RouteIo(ioPkt)
 			ioStat := ioPkt.GetIoStatus()
-			if ioStat != nodeMgr.IosComplete {
+			if ioStat != ioPackets.IosComplete {
 				log.Printf("MFDMgr:initializeFixed cannot read directory track dev:%v blockId:%v",
 					fpDesc.nodeId, blockId)
 				mgr.exec.Stop(kexec.StopInternalExecIOFailed)
@@ -1346,10 +1351,10 @@ func (mgr *MFDManager) loadFileAllocationSet(
 			words := dadItem[dx+1].GetW()
 			ldat := kexec.LDATIndex(dadItem[dx+2].GetH2())
 			if ldat != 0_400000 {
-				re := NewFileAllocation(kexec.TrackId(fileWordAddress/1792),
-					kexec.TrackCount(words/1792),
+				re := NewFileAllocation(hardware.TrackId(fileWordAddress/1792),
+					hardware.TrackCount(words/1792),
 					ldat,
-					kexec.TrackId(devAddr/1792))
+					hardware.TrackId(devAddr/1792))
 				fae.mergeIntoFileAllocationSet(re)
 			}
 			ex++
@@ -1735,8 +1740,8 @@ func (mgr *MFDManager) writeFileAllocationEntryUpdatesForFileCycle(mainItem0Addr
 			mgr.markDirectorySectorDirty(prevAddr)
 			current = newEntry
 
-			var ex int                    // index of next-to-be-used DAD table entry
-			var nextTrackId kexec.TrackId // expected next file-relative track ID - only valid for ex > 0
+			var ex int                       // index of next-to-be-used DAD table entry
+			var nextTrackId hardware.TrackId // expected next file-relative track ID - only valid for ex > 0
 			for fax < len(fas.FileAllocations) && ex <= 7 {
 				this := fas.FileAllocations[fax]
 
@@ -1767,7 +1772,7 @@ func (mgr *MFDManager) writeFileAllocationEntryUpdatesForFileCycle(mainItem0Addr
 					// TODO if removable, set bit 16 in +02,H1
 					current[ey+2].SetH2(uint64(this.LDATIndex))
 
-					nextTrackId = this.FileRegion.TrackId + kexec.TrackId(this.FileRegion.TrackCount)
+					nextTrackId = this.FileRegion.TrackId + hardware.TrackId(this.FileRegion.TrackCount)
 					current[03].SetW(uint64(nextTrackId * 1792))
 					ex++
 					fax++
@@ -1817,7 +1822,7 @@ func (mgr *MFDManager) writeMFDCache() error {
 		mfdTrackId := (blockAddr >> 6) & 077777777
 		mfdSectorId := getMFDSectorIdFromMFDAddress(blockAddr)
 
-		ldat, devTrackId, err := mgr.convertFileRelativeTrackId(mgr.mfdFileMainItem0Address, kexec.TrackId(mfdTrackId))
+		ldat, devTrackId, err := mgr.convertFileRelativeTrackId(mgr.mfdFileMainItem0Address, hardware.TrackId(mfdTrackId))
 		if err != nil {
 			log.Printf("MFDMgr:writeMFDCache error converting mfdaddr:%012o TrackId:%06o",
 				mgr.mfdFileMainItem0Address, mfdTrackId)
@@ -1841,11 +1846,11 @@ func (mgr *MFDManager) writeMFDCache() error {
 		sectorsPerBlock := packDesc.prepFactor / 28
 		devBlockId := uint64(devTrackId) * uint64(blocksPerTrack)
 		devBlockId += uint64(mfdSectorId) / uint64(sectorsPerBlock)
-		ioPkt := nodeMgr.NewDiskIoPacketWrite(packDesc.nodeId, kexec.BlockId(devBlockId), block)
+		ioPkt := ioPackets.NewDiskIoPacketWrite(packDesc.nodeId, hardware.BlockId(devBlockId), block)
 		nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
 		nm.RouteIo(ioPkt)
 		ioStat := ioPkt.GetIoStatus()
-		if ioStat != nodeMgr.IosComplete {
+		if ioStat != ioPackets.IosComplete {
 			log.Printf("MFDMgr:writeMFDCache error writing MFD block status=%v", ioStat)
 			mgr.exec.Stop(kexec.StopInternalExecIOFailed)
 			return fmt.Errorf("error draining MFD cache")

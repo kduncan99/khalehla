@@ -4,12 +4,14 @@
 
 package kexec
 
+import "khalehla/hardware"
+
 type TrackRegion struct {
-	TrackId    TrackId
-	TrackCount TrackCount
+	TrackId    hardware.TrackId
+	TrackCount hardware.TrackCount
 }
 
-func NewTrackRegion(trackId TrackId, trackCount TrackCount) *TrackRegion {
+func NewTrackRegion(trackId hardware.TrackId, trackCount hardware.TrackCount) *TrackRegion {
 	return &TrackRegion{
 		TrackId:    trackId,
 		TrackCount: trackCount,

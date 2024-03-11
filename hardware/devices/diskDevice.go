@@ -2,19 +2,20 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package nodeMgr
+package devices
 
 import (
 	"io"
-	"khalehla/kexec"
+	"khalehla/hardware"
+	"khalehla/hardware/ioPackets"
 )
 
 type DiskDevice interface {
 	Dump(dest io.Writer, indent string)
-	GetGeometry() *kexec.DiskPackGeometry
-	GetNodeCategoryType() kexec.NodeCategoryType
-	GetNodeDeviceType() kexec.NodeDeviceType
-	GetNodeModelType() NodeModelType
+	GetGeometry() *ioPackets.DiskPackGeometry
+	GetNodeCategoryType() hardware.NodeCategoryType
+	GetNodeDeviceType() hardware.NodeDeviceType
+	GetNodeModelType() hardware.NodeModelType
 	IsMounted() bool
 	IsPrepped() bool
 	IsReady() bool
@@ -22,5 +23,5 @@ type DiskDevice interface {
 	SetIsReady(flag bool)
 	SetIsWriteProtected(flag bool)
 	SetVerbose(flag bool)
-	StartIo(pkt IoPacket)
+	StartIo(pkt ioPackets.IoPacket)
 }

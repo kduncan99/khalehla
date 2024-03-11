@@ -7,15 +7,16 @@ package nodeMgr
 import (
 	"fmt"
 	"io"
-	"khalehla/kexec"
+	"khalehla/hardware"
+	"khalehla/hardware/devices"
 	"khalehla/pkg"
 )
 
 type DiskDeviceInfo struct {
 	nodeName        string
-	nodeIdentifier  kexec.NodeIdentifier
+	nodeIdentifier  hardware.NodeIdentifier
 	initialFileName *string
-	device          *FileSystemDiskDevice
+	device          *devices.FileSystemDiskDevice
 	channelInfos    []*DiskChannelInfo
 	isAccessible    bool // can only be true if status is UP, RV, or SU and the device is assigned to at least one channel
 	isReady         bool // cached version of device.IsReady() - when there is a mismatch, we need to do something
@@ -26,14 +27,14 @@ type DiskDeviceInfo struct {
 func NewDiskDeviceInfo(nodeName string, initialFileName *string) *DiskDeviceInfo {
 	return &DiskDeviceInfo{
 		nodeName:        nodeName,
-		nodeIdentifier:  kexec.NodeIdentifier(pkg.NewFromStringToFieldata(nodeName, 1)[0]),
+		nodeIdentifier:  hardware.NodeIdentifier(pkg.NewFromStringToFieldata(nodeName, 1)[0]),
 		initialFileName: initialFileName,
 		channelInfos:    make([]*DiskChannelInfo, 0),
 	}
 }
 
 func (ddi *DiskDeviceInfo) CreateNode() {
-	ddi.device = NewFileSystemDiskDevice(ddi.initialFileName)
+	ddi.device = devices.NewFileSystemDiskDevice(ddi.initialFileName)
 }
 
 func (ddi *DiskDeviceInfo) GetChannelInfos() []ChannelInfo {
@@ -44,7 +45,7 @@ func (ddi *DiskDeviceInfo) GetChannelInfos() []ChannelInfo {
 	return result
 }
 
-func (ddi *DiskDeviceInfo) GetDevice() Device {
+func (ddi *DiskDeviceInfo) GetDevice() devices.Device {
 	return ddi.device
 }
 
@@ -52,15 +53,15 @@ func (ddi *DiskDeviceInfo) GetInitialFileName() *string {
 	return ddi.initialFileName
 }
 
-func (ddi *DiskDeviceInfo) GetNodeCategoryType() kexec.NodeCategoryType {
-	return kexec.NodeCategoryDevice
+func (ddi *DiskDeviceInfo) GetNodeCategoryType() hardware.NodeCategoryType {
+	return hardware.NodeCategoryDevice
 }
 
-func (ddi *DiskDeviceInfo) GetNodeDeviceType() kexec.NodeDeviceType {
-	return kexec.NodeDeviceDisk
+func (ddi *DiskDeviceInfo) GetNodeDeviceType() hardware.NodeDeviceType {
+	return hardware.NodeDeviceDisk
 }
 
-func (ddi *DiskDeviceInfo) GetNodeIdentifier() kexec.NodeIdentifier {
+func (ddi *DiskDeviceInfo) GetNodeIdentifier() hardware.NodeIdentifier {
 	return ddi.nodeIdentifier
 }
 

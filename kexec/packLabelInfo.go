@@ -6,6 +6,7 @@ package kexec
 
 import (
 	"fmt"
+	"khalehla/hardware"
 	"khalehla/pkg"
 	"strings"
 )
@@ -15,16 +16,16 @@ type PackLabelInfo struct {
 	PackId                     string
 	FirstDirectoryTrackAddress DeviceRelativeWordAddress
 	RecordsPerTrack            uint
-	WordsPerRecord             uint       // aka PrepFactor
-	SystemReserveSize          uint       // for DRS packs (which we don't do) in words
-	HMBTPaddedSize             uint       // size of s0+s1+HMBT+pad to next physical record boundary (we don't do MBTs)
-	MBTSize                    uint       // size of MBT in words, including control word and checksum (we don't do MBts)
-	PreppedByLevel             string     // level of whoever prepped the thing
-	PreppedBy                  uint       // 040 DPREP, 020 TPREP(?), 010 workstation utility
-	VOL1Version                uint       // we always do version 1
-	HeadsPerCylinder           uint       // mostly used for diagnostics - we might not do this ever, at all
-	TrackCount                 TrackCount // may or may not include initial allocation (depends on things)
-	PrepFactor                 PrepFactor
+	WordsPerRecord             uint                // aka PrepFactor
+	SystemReserveSize          uint                // for DRS packs (which we don't do) in words
+	HMBTPaddedSize             uint                // size of s0+s1+HMBT+pad to next physical record boundary (we don't do MBTs)
+	MBTSize                    uint                // size of MBT in words, including control word and checksum (we don't do MBts)
+	PreppedByLevel             string              // level of whoever prepped the thing
+	PreppedBy                  uint                // 040 DPREP, 020 TPREP(?), 010 workstation utility
+	VOL1Version                uint                // we always do version 1
+	HeadsPerCylinder           uint                // mostly used for diagnostics - we might not do this ever, at all
+	TrackCount                 hardware.TrackCount // may or may not include initial allocation (depends on things)
+	PrepFactor                 hardware.PrepFactor
 	Attributes                 uint64 // we don't use this, but it must be 0_000000_000006
 }
 
@@ -55,8 +56,8 @@ func (pl *PackLabelInfo) PopulateFrom(buffer []pkg.Word36) bool {
 	pl.PreppedBy = uint(buffer[014].GetS1())
 	pl.VOL1Version = uint(buffer[014].GetS2())
 	pl.HeadsPerCylinder = uint(buffer[014].GetH2())
-	pl.TrackCount = TrackCount(buffer[016].GetW())
-	pl.PrepFactor = PrepFactor(buffer[017].GetH1())
+	pl.TrackCount = hardware.TrackCount(buffer[016].GetW())
+	pl.PrepFactor = hardware.PrepFactor(buffer[017].GetH1())
 	pl.Attributes = buffer[020].GetW()
 
 	return true

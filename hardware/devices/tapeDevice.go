@@ -2,23 +2,24 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package nodeMgr
+package devices
 
 import (
 	"io"
-	"khalehla/kexec"
+	"khalehla/hardware"
+	io2 "khalehla/hardware/ioPackets"
 )
 
 type TapeDevice interface {
 	Dump(dest io.Writer, indent string)
-	GetNodeCategoryType() kexec.NodeCategoryType
-	GetNodeDeviceType() kexec.NodeDeviceType
-	GetNodeModelType() NodeModelType
+	GetNodeCategoryType() hardware.NodeCategoryType
+	GetNodeDeviceType() hardware.NodeDeviceType
+	GetNodeModelType() hardware.NodeModelType
 	IsMounted() bool
 	IsReady() bool
 	IsWriteProtected() bool
 	SetIsReady(flag bool)
 	SetIsWriteProtected(flag bool)
 	SetVerbose(flag bool)
-	StartIo(pkt IoPacket)
+	StartIo(pkt io2.IoPacket)
 }

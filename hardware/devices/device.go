@@ -2,22 +2,23 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package nodeMgr
+package devices
 
 import (
 	"io"
-	"khalehla/kexec"
+	"khalehla/hardware"
+	"khalehla/hardware/ioPackets"
 )
 
 // Device manages real or pseudo IO operations for a particular virtual device.
 // It may do so synchronously or asynchronously
 type Device interface {
 	Dump(destination io.Writer, indent string)
-	GetNodeCategoryType() kexec.NodeCategoryType
-	GetNodeDeviceType() kexec.NodeDeviceType
-	GetNodeModelType() NodeModelType
+	GetNodeCategoryType() hardware.NodeCategoryType
+	GetNodeDeviceType() hardware.NodeDeviceType
+	GetNodeModelType() hardware.NodeModelType
 	IsMounted() bool
 	IsReady() bool
 	SetVerbose(flag bool)
-	StartIo(ioPacket IoPacket)
+	StartIo(ioPacket ioPackets.IoPacket)
 }

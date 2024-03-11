@@ -2,21 +2,23 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package nodeMgr
+package channels
 
 import (
 	"io"
-	"khalehla/kexec"
+	"khalehla/hardware"
+	"khalehla/hardware/devices"
+	"khalehla/hardware/ioPackets"
 )
 
 // Channel manages async communication with the various deviceInfos assigned to it.
 // It may also manage caching, automatic mounting, or any other various activities
 // on behalf of the exec.
 type Channel interface {
-	AssignDevice(nodeIdentifier kexec.NodeIdentifier, device Device) error
+	AssignDevice(nodeIdentifier hardware.NodeIdentifier, device devices.Device) error
 	Dump(destination io.Writer, indent string)
-	GetNodeCategoryType() kexec.NodeCategoryType
-	GetNodeDeviceType() kexec.NodeDeviceType
-	GetNodeModelType() NodeModelType
-	StartIo(ioPacket IoPacket)
+	GetNodeCategoryType() hardware.NodeCategoryType
+	GetNodeDeviceType() hardware.NodeDeviceType
+	GetNodeModelType() hardware.NodeModelType
+	StartIo(ioPacket ioPackets.IoPacket)
 }

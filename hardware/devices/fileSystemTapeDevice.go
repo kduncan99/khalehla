@@ -2,12 +2,13 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package nodeMgr
+package devices
 
 import (
 	"fmt"
 	"io"
-	"khalehla/kexec"
+	"khalehla/hardware"
+	"khalehla/hardware/ioPackets"
 	"khalehla/pkg"
 	"log"
 	"os"
@@ -54,16 +55,16 @@ func NewFileSystemTapeDevice() *FileSystemTapeDevice {
 	}
 }
 
-func (tape *FileSystemTapeDevice) GetNodeCategoryType() kexec.NodeCategoryType {
-	return kexec.NodeCategoryDevice
+func (tape *FileSystemTapeDevice) GetNodeCategoryType() hardware.NodeCategoryType {
+	return hardware.NodeCategoryDevice
 }
 
-func (tape *FileSystemTapeDevice) GetNodeDeviceType() kexec.NodeDeviceType {
-	return kexec.NodeDeviceTape
+func (tape *FileSystemTapeDevice) GetNodeDeviceType() hardware.NodeDeviceType {
+	return hardware.NodeDeviceTape
 }
 
-func (tape *FileSystemTapeDevice) GetNodeModelType() NodeModelType {
-	return NodeModelFileSystemTapeDevice
+func (tape *FileSystemTapeDevice) GetNodeModelType() hardware.NodeModelType {
+	return hardware.NodeModelFileSystemTapeDevice
 }
 
 func (tape *FileSystemTapeDevice) IsMounted() bool {
@@ -90,35 +91,35 @@ func (tape *FileSystemTapeDevice) SetVerbose(flag bool) {
 	tape.verbose = flag
 }
 
-func (tape *FileSystemTapeDevice) StartIo(pkt IoPacket) {
+func (tape *FileSystemTapeDevice) StartIo(pkt ioPackets.IoPacket) {
 	if tape.verbose {
 		log.Printf("FSTAPE:%v", pkt.GetString())
 	}
-	pkt.SetIoStatus(IosInProgress)
+	pkt.SetIoStatus(ioPackets.IosInProgress)
 
 	if pkt.GetNodeDeviceType() != tape.GetNodeDeviceType() {
-		pkt.SetIoStatus(IosInvalidNodeType)
+		pkt.SetIoStatus(ioPackets.IosInvalidNodeType)
 	} else {
 		switch pkt.GetIoFunction() {
-		case IofMount:
-			tape.doMount(pkt.(*TapeIoPacket))
-		case IofRead:
-			tape.doRead(pkt.(*TapeIoPacket))
-		case IofReset:
-			tape.doUnmount(pkt.(*TapeIoPacket))
-		case IofRewind:
-			tape.doRewind(pkt.(*TapeIoPacket))
-		case IofRewindAndUnload:
-			tape.doRewind(pkt.(*TapeIoPacket))
-			tape.doUnmount(pkt.(*TapeIoPacket))
-		case IofUnmount:
-			tape.doUnmount(pkt.(*TapeIoPacket))
-		case IofWrite:
-			tape.doWrite(pkt.(*TapeIoPacket))
-		case IofWriteTapeMark:
-			tape.doWriteTapeMark(pkt.(*TapeIoPacket))
+		case ioPackets.IofMount:
+			tape.doMount(pkt.(*ioPackets.TapeIoPacket))
+		case ioPackets.IofRead:
+			tape.doRead(pkt.(*ioPackets.TapeIoPacket))
+		case ioPackets.IofReset:
+			tape.doUnmount(pkt.(*ioPackets.TapeIoPacket))
+		case ioPackets.IofRewind:
+			tape.doRewind(pkt.(*ioPackets.TapeIoPacket))
+		case ioPackets.IofRewindAndUnload:
+			tape.doRewind(pkt.(*ioPackets.TapeIoPacket))
+			tape.doUnmount(pkt.(*ioPackets.TapeIoPacket))
+		case ioPackets.IofUnmount:
+			tape.doUnmount(pkt.(*ioPackets.TapeIoPacket))
+		case ioPackets.IofWrite:
+			tape.doWrite(pkt.(*ioPackets.TapeIoPacket))
+		case ioPackets.IofWriteTapeMark:
+			tape.doWriteTapeMark(pkt.(*ioPackets.TapeIoPacket))
 		default:
-			pkt.SetIoStatus(IosInvalidFunction)
+			pkt.SetIoStatus(ioPackets.IosInvalidFunction)
 		}
 	}
 
@@ -127,18 +128,18 @@ func (tape *FileSystemTapeDevice) StartIo(pkt IoPacket) {
 	}
 }
 
-func (tape *FileSystemTapeDevice) doMount(pkt *TapeIoPacket) {
+func (tape *FileSystemTapeDevice) doMount(pkt *ioPackets.TapeIoPacket) {
 	tape.mutex.Lock()
 	defer tape.mutex.Unlock()
 
 	if tape.IsMounted() {
-		pkt.SetIoStatus(IosMediaAlreadyMounted)
+		pkt.SetIoStatus(ioPackets.IosMediaAlreadyMounted)
 		return
 	}
 
-	f, err := os.OpenFile(pkt.fileName, os.O_RDWR|os.O_CREATE|os.O_SYNC, 0666)
+	f, err := os.OpenFile(pkt.Filename, os.O_RDWR|os.O_CREATE|os.O_SYNC, 0666)
 	if err != nil {
-		pkt.SetIoStatus(IosSystemError)
+		pkt.SetIoStatus(ioPackets.IosSystemError)
 		return
 	}
 
@@ -146,72 +147,72 @@ func (tape *FileSystemTapeDevice) doMount(pkt *TapeIoPacket) {
 
 	// At this point, the tape is mounted. The device may not yet be ready.
 	tape.file = f
-	tape.isWriteProtected = pkt.writeProtected
+	tape.isWriteProtected = pkt.WriteProtected
 	tape.currentOffset = 0
 	tape.canRead = true
-	pkt.SetIoStatus(IosComplete)
+	pkt.SetIoStatus(ioPackets.IosComplete)
 }
 
-func (tape *FileSystemTapeDevice) doRead(pkt *TapeIoPacket) {
+func (tape *FileSystemTapeDevice) doRead(pkt *ioPackets.TapeIoPacket) {
 	tape.mutex.Lock()
 	defer tape.mutex.Unlock()
 
 	if !tape.IsReady() {
-		pkt.SetIoStatus(IosDeviceIsNotReady)
+		pkt.SetIoStatus(ioPackets.IosDeviceIsNotReady)
 	} else if !tape.canRead {
-		pkt.SetIoStatus(IosReadNotAllowed)
+		pkt.SetIoStatus(ioPackets.IosReadNotAllowed)
 		return
 	}
 
 	header := make([]byte, 8)
 	_, err := tape.file.Read(header)
 	if err != nil {
-		pkt.SetIoStatus(IosSystemError)
+		pkt.SetIoStatus(ioPackets.IosSystemError)
 		return
 	}
 
 	payloadLength := (uint32(header[0]))<<24 | (uint32(header[1]))<<16 | (uint32(header[2]))<<8 | (uint32(header[3]))
 	if payloadLength == 0xFFFFFFFF {
-		pkt.SetIoStatus(IosEndOfFile)
+		pkt.SetIoStatus(ioPackets.IosEndOfFile)
 		return
 	} else if payloadLength%9 > 0 {
-		pkt.SetIoStatus(IosInvalidTapeBlock)
+		pkt.SetIoStatus(ioPackets.IosInvalidTapeBlock)
 		return
 	}
 
 	payload := make([]byte, payloadLength)
 	_, err = tape.file.Read(header)
 	if err != nil {
-		pkt.SetIoStatus(IosSystemError)
+		pkt.SetIoStatus(ioPackets.IosSystemError)
 		return
 	}
 
-	pkt.buffer = make([]pkg.Word36, payloadLength*2/9)
-	pkg.UnpackWord36(payload, pkt.buffer)
-	pkt.SetIoStatus(IosComplete)
+	pkt.Buffer = make([]pkg.Word36, payloadLength*2/9)
+	pkg.UnpackWord36(payload, pkt.Buffer)
+	pkt.SetIoStatus(ioPackets.IosComplete)
 }
 
 // doRewind effective rewinds the volume to the tape mark
-func (tape *FileSystemTapeDevice) doRewind(pkt *TapeIoPacket) {
+func (tape *FileSystemTapeDevice) doRewind(pkt *ioPackets.TapeIoPacket) {
 	tape.mutex.Lock()
 	defer tape.mutex.Unlock()
 
 	if !tape.IsReady() {
-		pkt.SetIoStatus(IosDeviceIsNotReady)
+		pkt.SetIoStatus(ioPackets.IosDeviceIsNotReady)
 	}
 
 	tape.currentOffset = 0
 	tape.canRead = true
-	pkt.SetIoStatus(IosComplete)
+	pkt.SetIoStatus(ioPackets.IosComplete)
 }
 
 // doUnmount unmounts the virtual volume from the device
-func (tape *FileSystemTapeDevice) doUnmount(pkt *TapeIoPacket) {
+func (tape *FileSystemTapeDevice) doUnmount(pkt *ioPackets.TapeIoPacket) {
 	tape.mutex.Lock()
 	defer tape.mutex.Unlock()
 
 	if !tape.IsMounted() {
-		pkt.SetIoStatus(IosMediaNotMounted)
+		pkt.SetIoStatus(ioPackets.IosMediaNotMounted)
 		return
 	}
 
@@ -224,26 +225,26 @@ func (tape *FileSystemTapeDevice) doUnmount(pkt *TapeIoPacket) {
 	tape.file = nil
 	tape.currentOffset = 0
 	tape.canRead = false
-	pkt.SetIoStatus(IosComplete)
+	pkt.SetIoStatus(ioPackets.IosComplete)
 }
 
-func (tape *FileSystemTapeDevice) doWrite(pkt *TapeIoPacket) {
+func (tape *FileSystemTapeDevice) doWrite(pkt *ioPackets.TapeIoPacket) {
 	tape.mutex.Lock()
 	defer tape.mutex.Unlock()
 
 	if !tape.IsReady() {
-		pkt.SetIoStatus(IosDeviceIsNotReady)
+		pkt.SetIoStatus(ioPackets.IosDeviceIsNotReady)
 	} else if tape.isWriteProtected {
-		pkt.SetIoStatus(IosWriteProtected)
+		pkt.SetIoStatus(ioPackets.IosWriteProtected)
 		return
-	} else if pkt.buffer == nil {
-		pkt.SetIoStatus(IosNilBuffer)
+	} else if pkt.Buffer == nil {
+		pkt.SetIoStatus(ioPackets.IosNilBuffer)
 		return
 	}
 
-	dataLength := len(pkt.buffer)
+	dataLength := len(pkt.Buffer)
 	if dataLength == 0 || dataLength&0x01 == 0x01 {
-		pkt.SetIoStatus(IosInvalidTapeBlock)
+		pkt.SetIoStatus(ioPackets.IosInvalidTapeBlock)
 		return
 	}
 	payloadLength := uint32(dataLength * 9 / 2)
@@ -258,26 +259,26 @@ func (tape *FileSystemTapeDevice) doWrite(pkt *TapeIoPacket) {
 	bytes[6] = byte(tape.previousPayloadLength >> 8)
 	bytes[7] = byte(tape.previousPayloadLength)
 
-	pkg.PackWord36(pkt.buffer, bytes[8:])
+	pkg.PackWord36(pkt.Buffer, bytes[8:])
 	_, err := tape.file.Write(bytes)
 	if err != nil {
-		pkt.ioStatus = IosSystemError
+		pkt.IoStatus = ioPackets.IosSystemError
 		return
 	}
 
 	tape.previousPayloadLength = payloadLength
 	tape.canRead = false
-	pkt.SetIoStatus(IosComplete)
+	pkt.SetIoStatus(ioPackets.IosComplete)
 }
 
-func (tape *FileSystemTapeDevice) doWriteTapeMark(pkt *TapeIoPacket) {
+func (tape *FileSystemTapeDevice) doWriteTapeMark(pkt *ioPackets.TapeIoPacket) {
 	tape.mutex.Lock()
 	defer tape.mutex.Unlock()
 
 	if !tape.IsReady() {
-		pkt.SetIoStatus(IosDeviceIsNotReady)
+		pkt.SetIoStatus(ioPackets.IosDeviceIsNotReady)
 	} else if tape.isWriteProtected {
-		pkt.SetIoStatus(IosWriteProtected)
+		pkt.SetIoStatus(ioPackets.IosWriteProtected)
 		return
 	}
 
@@ -293,13 +294,13 @@ func (tape *FileSystemTapeDevice) doWriteTapeMark(pkt *TapeIoPacket) {
 
 	_, err := tape.file.Write(bytes)
 	if err != nil {
-		pkt.SetIoStatus(IosSystemError)
+		pkt.SetIoStatus(ioPackets.IosSystemError)
 		return
 	}
 
 	tape.previousPayloadLength = 0
 	tape.canRead = false
-	pkt.SetIoStatus(IosComplete)
+	pkt.SetIoStatus(ioPackets.IosComplete)
 }
 
 func (tape *FileSystemTapeDevice) Dump(dest io.Writer, indent string) {

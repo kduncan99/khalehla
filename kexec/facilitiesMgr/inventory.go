@@ -5,39 +5,41 @@
 package facilitiesMgr
 
 import (
+	"khalehla/hardware"
 	"khalehla/kexec"
+	"khalehla/kexec/mfdMgr"
 	"khalehla/kexec/nodeMgr"
 )
 
 type inventory struct {
-	nodes map[kexec.NodeIdentifier]kexec.NodeAttributes
-	disks map[kexec.NodeIdentifier]*kexec.DiskAttributes
-	tapes map[kexec.NodeIdentifier]*kexec.TapeAttributes
+	nodes map[hardware.NodeIdentifier]kexec.NodeAttributes
+	disks map[hardware.NodeIdentifier]*kexec.DiskAttributes
+	tapes map[hardware.NodeIdentifier]*mfdMgr.TapeAttributes
 }
 
 func newInventory() *inventory {
 	i := &inventory{
-		nodes: make(map[kexec.NodeIdentifier]kexec.NodeAttributes),
-		disks: make(map[kexec.NodeIdentifier]*kexec.DiskAttributes),
-		tapes: make(map[kexec.NodeIdentifier]*kexec.TapeAttributes),
+		nodes: make(map[hardware.NodeIdentifier]kexec.NodeAttributes),
+		disks: make(map[hardware.NodeIdentifier]*kexec.DiskAttributes),
+		tapes: make(map[hardware.NodeIdentifier]*mfdMgr.TapeAttributes),
 	}
 	return i
 }
 
 func (i *inventory) injectNode(nodeInfo nodeMgr.NodeInfo) {
-	if nodeInfo.GetNodeCategoryType() == kexec.NodeCategoryDevice {
+	if nodeInfo.GetNodeCategoryType() == hardware.NodeCategoryDevice {
 		devInfo := nodeInfo.(nodeMgr.DeviceInfo)
 		devId := devInfo.GetNodeIdentifier()
 		switch devInfo.GetNodeDeviceType() {
-		case kexec.NodeDeviceDisk:
+		case hardware.NodeDeviceDisk:
 			attr := &kexec.DiskAttributes{
 				Name:   devInfo.GetNodeName(),
 				Status: kexec.FacNodeStatusUp,
 			}
 			i.nodes[devId] = attr
 			i.disks[devId] = attr
-		case kexec.NodeDeviceTape:
-			attr := &kexec.TapeAttributes{
+		case hardware.NodeDeviceTape:
+			attr := &mfdMgr.TapeAttributes{
 				Name:   devInfo.GetNodeName(),
 				Status: kexec.FacNodeStatusUp,
 			}

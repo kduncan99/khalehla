@@ -4,11 +4,15 @@
 
 package kexec
 
+import "khalehla/hardware"
+
+// Because this as FacNodeStatus, it needs to be somewhere in kexec
+
 type NodeAttributes interface {
 	GetFacNodeStatus() FacNodeStatus
-	GetNodeCategoryType() NodeCategoryType
-	GetNodeDeviceType() NodeDeviceType
-	GetNodeIdentifier() NodeIdentifier
+	GetNodeCategoryType() hardware.NodeCategoryType
+	GetNodeDeviceType() hardware.NodeDeviceType
+	GetNodeIdentifier() hardware.NodeIdentifier
 	GetNodeName() string
 	SetFacNodeStatus(status FacNodeStatus)
 }
