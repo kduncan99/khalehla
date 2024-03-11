@@ -81,6 +81,7 @@ func importTemplates() map[kexec.FacStatusCode]*FacStatusMessageTemplate {
 	importErrorTemplate(result, kexec.FacStatusFileNotCatalogedWithReadKey, "File is not cataloged with a read key.")
 	importErrorTemplate(result, kexec.FacStatusFileNotCatalogedWithWriteKey, "File is not cataloged with a write key.")
 	importErrorTemplate(result, kexec.FacStatusIllegalControlStatement, "Illegal control statement type submitted to ER CSI$.")
+	importErrorTemplate(result, kexec.FacStatusIllegalDroppingPrivateFile, "Creation of file would require illegal dropping of private file.")
 	importErrorTemplate(result, kexec.FacStatusIllegalInitialReserve, "Illegal value specified for initial reserve.")
 	importErrorTemplate(result, kexec.FacStatusIllegalMaxGranules, "Illegal value specified for maximum.")
 	importErrorTemplate(result, kexec.FacStatusIllegalOption, "Illegal option %v.")
