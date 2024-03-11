@@ -140,6 +140,7 @@ func (tape *FileSystemTapeDevice) StartIo(pkt ioPackets.IoPacket) {
 	if tape.verbose {
 		log.Printf("FSTAPE:ioStatus=%v", pkt.GetIoStatus())
 	}
+	pkt.GetListener().IoComplete(pkt)
 }
 
 // readExact reads exactly the requested number of bytes from the device file.

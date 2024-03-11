@@ -19,12 +19,14 @@ type TapeChannel struct {
 	devices   map[hardware.NodeIdentifier]devices.TapeDevice
 	cpChannel chan *ChannelProgram
 	ioChannel chan *ioPackets.DiskIoPacket
+	packetMap map[ioPackets.IoPacket]*ChannelProgram
 }
 
 func NewTapeChannel() *TapeChannel {
 	ch := &TapeChannel{
 		devices:   make(map[hardware.NodeIdentifier]devices.TapeDevice),
 		cpChannel: make(chan *ChannelProgram, 10),
+		packetMap: make(map[ioPackets.IoPacket]*ChannelProgram),
 	}
 
 	go ch.goRoutine()
@@ -62,7 +64,10 @@ func (ch *TapeChannel) Dump(dest io.Writer, indent string) {
 		_, _ = fmt.Fprintf(dest, "%v  %v\n", indent, id)
 	}
 
-	// TODO Dump() details
+	_, _ = fmt.Fprintf(dest, "%v  Inflight IOs:\n", indent)
+	for iop, chp := range ch.packetMap {
+		_, _ = fmt.Fprintf(dest, "%v    %v -> %v\n", indent, iop.GetString(), chp)
+	}
 }
 
 func (ch *TapeChannel) prepareIoPacket(chProg *ChannelProgram) (*ioPackets.TapeIoPacket, bool) {
@@ -186,8 +191,6 @@ func (ch *TapeChannel) resolveIoPacket(chProg *ChannelProgram, ioPacket ioPacket
 }
 
 func (ch *TapeChannel) goRoutine() {
-	packetMap := make(map[ioPackets.IoPacket]*ChannelProgram)
-
 	select {
 	case channelProgram := <-ch.cpChannel:
 		dev, ok := ch.devices[channelProgram.NodeIdentifier]
@@ -209,16 +212,16 @@ func (ch *TapeChannel) goRoutine() {
 		}
 
 		dev.StartIo(ioPkt)
-		packetMap[ioPkt] = channelProgram
+		ch.packetMap[ioPkt] = channelProgram
 
 	case ioPacket := <-ch.ioChannel:
-		channelProgram, ok := packetMap[ioPacket]
+		channelProgram, ok := ch.packetMap[ioPacket]
 		if ok {
 			ch.resolveIoPacket(channelProgram, ioPacket)
 			if channelProgram.Listener != nil {
 				channelProgram.Listener.ChannelProgramComplete(channelProgram)
 			}
-			delete(packetMap, ioPacket)
+			delete(ch.packetMap, ioPacket)
 		}
 
 	case <-time.After(100 * time.Millisecond):

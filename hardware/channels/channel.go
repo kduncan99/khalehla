@@ -209,12 +209,49 @@ func transferFromBytesPacked(
 	destinationOffset uint,
 	direction TransferDirection,
 ) (wordCount uint, nonIntegral bool) {
+	// TODO I don't like this - I want one pair of master routines for packing/unpacking,
+	//   which can handle non-integral conversions, and I want them in pkg.
+	//   This code will simply call that code.
+	//   Further, the existing routines which require alignment, will be reworked to
+	//   verify alignment and then just call the master routines.
+	//   Finally, I want extensive unit testing of all that, before coming back here.
 	nonIntegral = false
 	switch direction {
 	case DirectionForward:
-		//TODO transferFromBytesPacked ->
+		subLen := sourceLength
+		mod := subLen % 9
+		if mod > 0 {
+			subLen -= mod
+		}
+
+		sx := sourceOffset
+		sy := sourceOffset + subLen
+		sub := source[sx:sy]
+		dx := destinationOffset
+		dy := destinationOffset + (subLen * 2 / 9)
+		pkg.UnpackWord36(sub, destination[dx:dy])
+
+		wordCount = subLen * 2 / 9
+
+		if mod > 0 {
+			nonIntegral = true
+			padding := make([]byte, 9 - mod)
+			sz := sourceOffset + sourceLength
+			trailBytes := append(source[sy:sz], padding...)
+
+			trailWordCount := uint(1)
+			if mod >= 5 {
+				trailWordCount = 2
+			}
+
+			dz := dy + trailWordCount
+			wordCount += trailWordCount
+			pkg.UnpackWord36(trailBytes, destination[dy:dz])
+		}
+
 	case DirectionBackward:
 		//TODO transferFromBytesPacked <-
+
 	default:
 	}
 

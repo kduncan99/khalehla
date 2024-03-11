@@ -761,6 +761,50 @@ func UnpackWord36(source []byte, destination []Word36) {
 	}
 }
 
+// UnpackWord36Reversed unpacks 9-byte groups into pairs of Word36 structs, backwords
+func UnpackWord36Reversed(source []byte, destination []Word36) {
+	srcLen := len(source)
+	if srcLen%9 != 0 {
+		log.Panic("source buffer length is not a multiple of 9 bytes")
+	}
+
+	if srcLen*2/9 > len(destination) {
+		log.Panic("destination buffer insufficient size")
+	}
+
+	dx := 0
+	sx := len(source)
+
+	for sx > 0 {
+		w0 := uint64(source[sx - 1])
+		w0 <<= 8
+		w0 |= uint64(source[sx - 2])
+		w0 <<= 8
+		w0 |= uint64(source[sx - 3])
+		w0 <<= 8
+		w0 |= uint64(source[sx - 4])
+		w0 <<= 4
+		w0 |= uint64(source[sx - 5] >> 4)
+
+		w1 := uint64(source[sx - 5] & 0xF)
+		w1 <<= 8
+		w1 |= uint64(source[sx - 6])
+		w1 <<= 8
+		sx += 1
+		w1 |= uint64(source[sx - 7])
+		w1 <<= 8
+		sx += 1
+		w1 |= uint64(source[sx - 8])
+		w1 <<= 8
+		w1 |= uint64(source[sx - 9])
+
+		destination[dx].SetW(w0)
+		destination[dx+1].SetW(w1)
+		dx += 2
+		sx -= 9
+	}
+}
+
 // ExtractPartialWord pulls the partial word indicated by the partialWordIndicator and the quarterWordMode flag
 // from the given 36-bit source value.
 func ExtractPartialWord(source uint64, partialWordIndicator uint, quarterWordMode bool) uint64 {
