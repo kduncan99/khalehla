@@ -45,6 +45,7 @@ const (
 	FacStatusAttemptToChangeGenericType              = 0241633
 	FacStatusIllegalValueForFCycle                   = 0242433
 	FacStatusFileCycleOutOfRange                     = 0242533
+	FacStatusIllegalDroppingPrivateFile              = 0243233
 	FacStatusSyntaxErrorInImage                      = 0243533
 	FacStatusIllegalControlStatement                 = 0243733
 	FacStatusFilenameIsRequired                      = 0244333
@@ -112,7 +113,7 @@ const (
 	19*	File assigned exclusively to another run
 	20	Find was made on a cataloged file request and the file was already assigned to another run.
 	21*	File to be decataloged when no run has file assigned
-	22*	Project-id incorrect for cataloged private file Reserved
+	22*	Project-id incorrect for cataloged private file
 	23	(reserved)
 	24	Read-only file cataloged with an R option
 	25	Write-only file cataloged with a W option

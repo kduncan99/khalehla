@@ -16,6 +16,7 @@ type TapeFileCycleInfo struct {
 	AssignMnemonic         string
 	NumberOfTimesAssigned  uint64
 	InhibitFlags           InhibitFlags
+	AssignedIndicator      uint64
 	CurrentAssignCount     uint64
 	TimeOfLastReference    uint64
 	TimeCataloged          uint64
@@ -68,10 +69,14 @@ func (fci *TapeFileCycleInfo) GetInhibitFlags() InhibitFlags {
 	return fci.InhibitFlags
 }
 
-func (fci *TapeFileCycleInfo) setFileCycleIdentifier(fcIdentifier FileCycleIdentifier) {
+func (fci *TapeFileCycleInfo) IsAssigned() bool {
+	return fci.AssignedIndicator > 0
+}
+
+func (fci *TapeFileCycleInfo) SetFileCycleIdentifier(fcIdentifier FileCycleIdentifier) {
 	fci.FileCycleIdentifier = fcIdentifier
 }
 
-func (fci *TapeFileCycleInfo) setFileSetIdentifier(fsIdentifier FileSetIdentifier) {
+func (fci *TapeFileCycleInfo) SetFileSetIdentifier(fsIdentifier FileSetIdentifier) {
 	fci.FileSetIdentifier = fsIdentifier
 }

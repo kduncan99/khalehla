@@ -26,7 +26,7 @@ type FixedFileCycleInfo struct {
 	InitialSmoqueLink        uint64
 	NumberOfTimesAssigned    uint64
 	InhibitFlags             InhibitFlags
-	AssignedIndicator        bool
+	AssignedIndicator        uint64
 	AbsoluteFCycle           uint64
 	TimeOfLastReference      uint64
 	TimeCataloged            uint64
@@ -77,11 +77,15 @@ func (fci *FixedFileCycleInfo) GetInhibitFlags() InhibitFlags {
 	return fci.InhibitFlags
 }
 
-func (fci *FixedFileCycleInfo) setFileCycleIdentifier(fcIdentifier FileCycleIdentifier) {
+func (fci *FixedFileCycleInfo) IsAssigned() bool {
+	return fci.AssignedIndicator > 0
+}
+
+func (fci *FixedFileCycleInfo) SetFileCycleIdentifier(fcIdentifier FileCycleIdentifier) {
 	fci.FileCycleIdentifier = fcIdentifier
 }
 
-func (fci *FixedFileCycleInfo) setFileSetIdentifier(fsIdentifier FileSetIdentifier) {
+func (fci *FixedFileCycleInfo) SetFileSetIdentifier(fsIdentifier FileSetIdentifier) {
 	fci.FileSetIdentifier = fsIdentifier
 }
 
@@ -104,7 +108,7 @@ func (fci *FixedFileCycleInfo) populateFromMainItems(mainItems [][]pkg.Word36) {
 	fci.InitialSmoqueLink = mainItems[0][017].GetH1()
 	fci.NumberOfTimesAssigned = mainItems[0][017].GetH2()
 	fci.InhibitFlags.ExtractFrom(mainItems[0][021].GetS2())
-	fci.AssignedIndicator = mainItems[0][021].GetT2() != 0
+	fci.AssignedIndicator = mainItems[0][021].GetT2()
 	fci.AbsoluteFCycle = mainItems[0][021].GetT3()
 	fci.TimeOfLastReference = mainItems[0][022].GetW()
 	fci.TimeCataloged = mainItems[0][023].GetW()

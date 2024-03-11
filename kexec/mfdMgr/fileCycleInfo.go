@@ -15,8 +15,9 @@ type FileCycleInfo interface {
 	GetAccountId() string
 	GetAbsoluteFileCycle() uint
 	GetAssignMnemonic() string
-	setFileCycleIdentifier(fcIdentifier FileCycleIdentifier)
-	setFileSetIdentifier(fsIdentifier FileSetIdentifier)
+	IsAssigned() bool
+	SetFileCycleIdentifier(fcIdentifier FileCycleIdentifier)
+	SetFileSetIdentifier(fsIdentifier FileSetIdentifier)
 }
 
 // FileCycleIdentifier is a unique opaque identifier allowing clients to refer to a file cycle

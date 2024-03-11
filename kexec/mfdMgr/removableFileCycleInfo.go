@@ -21,7 +21,7 @@ type RemovableFileCycleInfo struct {
 	InitialSmoqueLink        uint64
 	NumberOfTimesAssigned    uint64
 	InhibitFlags             InhibitFlags
-	AssignedIndicator        bool
+	AssignedIndicator        uint64
 	AbsoluteFCycle           uint64
 	TimeOfLastReference      uint64
 	TimeCataloged            uint64
@@ -73,10 +73,14 @@ func (fci *RemovableFileCycleInfo) GetInhibitFlags() InhibitFlags {
 	return fci.InhibitFlags
 }
 
-func (fci *RemovableFileCycleInfo) setFileCycleIdentifier(fcIdentifier FileCycleIdentifier) {
+func (fci *RemovableFileCycleInfo) IsAssigned() bool {
+	return fci.AssignedIndicator > 0
+}
+
+func (fci *RemovableFileCycleInfo) SetFileCycleIdentifier(fcIdentifier FileCycleIdentifier) {
 	fci.FileCycleIdentifier = fcIdentifier
 }
 
-func (fci *RemovableFileCycleInfo) setFileSetIdentifier(fsIdentifier FileSetIdentifier) {
+func (fci *RemovableFileCycleInfo) SetFileSetIdentifier(fsIdentifier FileSetIdentifier) {
 	fci.FileSetIdentifier = fsIdentifier
 }
