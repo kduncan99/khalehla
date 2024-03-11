@@ -19,6 +19,8 @@ type TapeIoPacket struct {
 	WriteProtected bool   // for mount
 }
 
+// TODO Buffer needs to be []byte
+
 func (pkt *TapeIoPacket) GetBuffer() []pkg.Word36 {
 	return pkt.Buffer
 }
@@ -59,6 +61,8 @@ func (pkt *TapeIoPacket) GetString() string {
 func (pkt *TapeIoPacket) SetIoStatus(ioStatus IoStatus) {
 	pkt.IoStatus = ioStatus
 }
+
+// TODO Need NewTapeIoPacket**** for MoveBack, MoveFwd, ReadBack
 
 func NewTapeIoPacketMount(nodeId hardware.NodeIdentifier, fileName string, writeProtected bool) *TapeIoPacket {
 	return &TapeIoPacket{

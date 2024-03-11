@@ -9,8 +9,11 @@ type IoFunction uint
 const (
 	_ IoFunction = iota
 	IofMount
+	IofMoveBackward
+	IofMoveForward
 	IofPrep
 	IofRead
+	IofReadBackward
 	IofReadLabel
 	IofReset
 	IofRewind
@@ -23,8 +26,11 @@ const (
 
 var IoFunctionTable = map[IoFunction]string{
 	IofMount:           "Mount",
+	IofMoveBackward:    "MoveBack",
+	IofMoveForward:     "MoveFwd",
 	IofPrep:            "Prep",
 	IofRead:            "Read",
+	IofReadBackward:    "ReadBack",
 	IofReadLabel:       "ReadLabel",
 	IofReset:           "Reset",
 	IofRewind:          "Rewind",

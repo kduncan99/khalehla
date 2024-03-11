@@ -15,6 +15,8 @@ import (
 	"sync"
 )
 
+// TODO Need to rewrite this to deal in byte buffers
+
 // FileSystemTapeDevice stores tape blocks in a lightly-formatted manner
 // in a host filesystem file.
 //
