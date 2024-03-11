@@ -15,6 +15,9 @@ import (
 	"sync"
 )
 
+// TODO need to notify listener when IO is complete
+// TODO need to make this async
+
 // This is a very simple pseudo disk device
 // We depart from the conventional disk layout in the following manner:
 //   There is no booting from disk, so there is no bootstrap in physical blocks 0 or 1

@@ -274,7 +274,7 @@ func (mgr *NodeManager) RouteIo(ioPacket ioPackets.IoPacket) {
 	}
 
 	ioPacket.SetIoStatus(ioPackets.IosInProgress)
-	chInfo.GetChannel().StartIo(ioPacket)
+	chInfo.GetChannel().RouteIo(ioPacket)
 }
 
 // -----------------------------------------------------------

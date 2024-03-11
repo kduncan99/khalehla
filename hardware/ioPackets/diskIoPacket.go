@@ -11,6 +11,7 @@ import (
 )
 
 type DiskIoPacket struct {
+	Listener       IoPacketListener
 	NodeId         hardware.NodeIdentifier
 	IoFunction     IoFunction
 	IoStatus       IoStatus
@@ -30,6 +31,10 @@ func (pkt *DiskIoPacket) GetBlockId() hardware.BlockId {
 
 func (pkt *DiskIoPacket) GetBuffer() []pkg.Word36 {
 	return pkt.Buffer
+}
+
+func (pkt *DiskIoPacket) GetListener() IoPacketListener {
+	return pkt.Listener
 }
 
 func (pkt *DiskIoPacket) GetNodeIdentifier() hardware.NodeIdentifier {

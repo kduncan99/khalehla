@@ -10,6 +10,7 @@ import (
 )
 
 type TapeIoPacket struct {
+	Listener       IoPacketListener
 	NodeId         hardware.NodeIdentifier
 	IoFunction     IoFunction
 	IoStatus       IoStatus
@@ -17,6 +18,10 @@ type TapeIoPacket struct {
 	PayloadLength  uint32 // bytes to be written, or bytes read (<= buffer length)
 	Filename       string // for mount
 	WriteProtected bool   // for mount
+}
+
+func (pkt *TapeIoPacket) GetListener() IoPacketListener {
+	return pkt.Listener
 }
 
 func (pkt *TapeIoPacket) GetNodeIdentifier() hardware.NodeIdentifier {
@@ -56,8 +61,14 @@ func (pkt *TapeIoPacket) SetIoStatus(ioStatus IoStatus) {
 	pkt.IoStatus = ioStatus
 }
 
-func NewTapeIoPacketMount(nodeId hardware.NodeIdentifier, fileName string, writeProtected bool) *TapeIoPacket {
+func NewTapeIoPacketMount(
+	listener IoPacketListener,
+	nodeId hardware.NodeIdentifier,
+	fileName string,
+	writeProtected bool,
+) *TapeIoPacket {
 	return &TapeIoPacket{
+		Listener:       listener,
 		NodeId:         nodeId,
 		IoFunction:     IofMount,
 		IoStatus:       IosNotStarted,
@@ -66,72 +77,109 @@ func NewTapeIoPacketMount(nodeId hardware.NodeIdentifier, fileName string, write
 	}
 }
 
-func NewTapeIoPacketMoveBackward(nodeId hardware.NodeIdentifier) *TapeIoPacket {
+func NewTapeIoPacketMoveBackward(
+	listener IoPacketListener,
+	nodeId hardware.NodeIdentifier,
+) *TapeIoPacket {
 	return &TapeIoPacket{
+		Listener:   listener,
 		NodeId:     nodeId,
 		IoFunction: IofMoveBackward,
 		IoStatus:   IosNotStarted,
 	}
 }
 
-func NewTapeIoPacketMoveForward(nodeId hardware.NodeIdentifier) *TapeIoPacket {
+func NewTapeIoPacketMoveForward(
+	listener IoPacketListener,
+	nodeId hardware.NodeIdentifier,
+) *TapeIoPacket {
 	return &TapeIoPacket{
+		Listener:   listener,
 		NodeId:     nodeId,
 		IoFunction: IofMoveForward,
 		IoStatus:   IosNotStarted,
 	}
 }
 
-func NewTapeIoPacketRead(nodeId hardware.NodeIdentifier) *TapeIoPacket {
+func NewTapeIoPacketRead(
+	listener IoPacketListener,
+	nodeId hardware.NodeIdentifier,
+) *TapeIoPacket {
 	return &TapeIoPacket{
+		Listener:   listener,
 		NodeId:     nodeId,
 		IoFunction: IofRead,
 		IoStatus:   IosNotStarted,
 	}
 }
 
-func NewTapeIoPacketReadBackward(nodeId hardware.NodeIdentifier) *TapeIoPacket {
+func NewTapeIoPacketReadBackward(
+	listener IoPacketListener,
+	nodeId hardware.NodeIdentifier,
+) *TapeIoPacket {
 	return &TapeIoPacket{
+		Listener:   listener,
 		NodeId:     nodeId,
 		IoFunction: IofReadBackward,
 		IoStatus:   IosNotStarted,
 	}
 }
 
-func NewTapeIoPacketReset(nodeId hardware.NodeIdentifier) *TapeIoPacket {
+func NewTapeIoPacketReset(
+	listener IoPacketListener,
+	nodeId hardware.NodeIdentifier,
+) *TapeIoPacket {
 	return &TapeIoPacket{
+		Listener:   listener,
 		NodeId:     nodeId,
 		IoFunction: IofReset,
 		IoStatus:   IosNotStarted,
 	}
 }
 
-func NewTapeIoPacketRewind(nodeId hardware.NodeIdentifier) *TapeIoPacket {
+func NewTapeIoPacketRewind(
+	listener IoPacketListener,
+	nodeId hardware.NodeIdentifier,
+) *TapeIoPacket {
 	return &TapeIoPacket{
+		Listener:   listener,
 		NodeId:     nodeId,
 		IoFunction: IofRewind,
 		IoStatus:   IosNotStarted,
 	}
 }
 
-func NewTapeIoPacketRewindAndUnload(nodeId hardware.NodeIdentifier) *TapeIoPacket {
+func NewTapeIoPacketRewindAndUnload(
+	listener IoPacketListener,
+	nodeId hardware.NodeIdentifier,
+) *TapeIoPacket {
 	return &TapeIoPacket{
+		Listener:   listener,
 		NodeId:     nodeId,
 		IoFunction: IofRewindAndUnload,
 		IoStatus:   IosNotStarted,
 	}
 }
 
-func NewTapeIoPacketUnmount(nodeId hardware.NodeIdentifier) *TapeIoPacket {
+func NewTapeIoPacketUnmount(
+	listener IoPacketListener,
+	nodeId hardware.NodeIdentifier,
+) *TapeIoPacket {
 	return &TapeIoPacket{
+		Listener:   listener,
 		NodeId:     nodeId,
 		IoFunction: IofUnmount,
 		IoStatus:   IosNotStarted,
 	}
 }
 
-func NewTapeIoPacketWrite(nodeId hardware.NodeIdentifier, buffer []byte) *TapeIoPacket {
+func NewTapeIoPacketWrite(
+	listener IoPacketListener,
+	nodeId hardware.NodeIdentifier,
+	buffer []byte,
+) *TapeIoPacket {
 	return &TapeIoPacket{
+		Listener:   listener,
 		NodeId:     nodeId,
 		IoFunction: IofWrite,
 		IoStatus:   IosNotStarted,
@@ -139,8 +187,12 @@ func NewTapeIoPacketWrite(nodeId hardware.NodeIdentifier, buffer []byte) *TapeIo
 	}
 }
 
-func NewTapeIoPacketWriteTapeMark(nodeId hardware.NodeIdentifier) *TapeIoPacket {
+func NewTapeIoPacketWriteTapeMark(
+	listener IoPacketListener,
+	nodeId hardware.NodeIdentifier,
+) *TapeIoPacket {
 	return &TapeIoPacket{
+		Listener:   listener,
 		NodeId:     nodeId,
 		IoFunction: IofWriteTapeMark,
 		IoStatus:   IosNotStarted,

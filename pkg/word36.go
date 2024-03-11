@@ -675,6 +675,44 @@ func PackWord36(source []Word36, destination []byte) {
 	}
 }
 
+// PackWord36Reversed packs pairs of word36 structs into 9-byte sequences backwards
+func PackWord36Reversed(source []Word36, destination []byte) {
+	sl := len(source)
+	if sl%1 != 0 {
+		log.Panic("source buffer does not contain an even number of words")
+	}
+
+	if sl*9/2 > len(destination) {
+		log.Panic("destination buffer insufficient size")
+	}
+
+	dx := len(destination) - 1
+	for wx := 0; wx < sl; wx += 2 {
+		val0 := source[wx].GetW()
+		val1 := source[wx+1].GetW()
+
+		destination[dx-8] = byte(val1)
+		val1 >>= 8
+		destination[dx-7] = byte(val1)
+		val1 >>= 8
+		destination[dx-6] = byte(val1)
+		val1 >>= 8
+		destination[dx-5] = byte(val1)
+		val1 >>= 8
+		destination[dx-4] = byte(val0<<4) | byte(val1)
+		val0 >>= 4
+		destination[dx-3] = byte(val0)
+		val0 >>= 8
+		destination[dx-2] = byte(val0)
+		val0 >>= 8
+		destination[dx-1] = byte(val0)
+		val0 >>= 8
+		destination[dx] = byte(val0)
+
+		dx -= 9
+	}
+}
+
 // UnpackWord36 unpacks 9-byte groups into pairs of Word36 structs
 func UnpackWord36(source []byte, destination []Word36) {
 	srcLen := len(source)

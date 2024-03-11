@@ -64,14 +64,14 @@ func DoPrep(args []string) error {
 	_ = dc.AssignDevice(devId, dd)
 
 	pkt := ioPackets.NewDiskIoPacketMount(devId, fileName, false)
-	dc.StartIo(pkt)
+	dc.RouteIo(pkt)
 	if pkt.GetIoStatus() != ioPackets.IosComplete {
 		fmt.Printf("%v\n", pkt.GetString())
 		return fmt.Errorf("status %v returned while mounting pack file %v", pkt.GetIoStatus(), fileName)
 	}
 
 	pkt = ioPackets.NewDiskIoPacketPrep(devId, packName, kexec.PrepFactor(prepFactor), kexec.TrackCount(trackCount), removable)
-	dc.StartIo(pkt)
+	dc.RouteIo(pkt)
 	if pkt.GetIoStatus() != ioPackets.IosComplete {
 		return fmt.Errorf("status %v returned while prepping pack file %v", pkt.GetIoStatus(), fileName)
 	}
@@ -79,7 +79,7 @@ func DoPrep(args []string) error {
 	showLabelRecord(dc, devId, true)
 
 	pkt = ioPackets.NewDiskIoPacketUnmount(devId)
-	dc.StartIo(pkt)
+	dc.RouteIo(pkt)
 
 	return nil
 }
@@ -104,7 +104,7 @@ func DoShow(args []string) error {
 	_ = dc.AssignDevice(devId, dd)
 
 	pkt := ioPackets.NewDiskIoPacketMount(devId, fileName, false)
-	dc.StartIo(pkt)
+	dc.RouteIo(pkt)
 	if !dd.IsPrepped() {
 		return fmt.Errorf("pack is not prepped")
 	}
@@ -112,7 +112,7 @@ func DoShow(args []string) error {
 	showLabelRecord(dc, devId, true)
 
 	pkt = ioPackets.NewDiskIoPacketUnmount(devId)
-	dc.StartIo(pkt)
+	dc.RouteIo(pkt)
 
 	return nil
 }
@@ -120,7 +120,7 @@ func DoShow(args []string) error {
 func showLabelRecord(channel channels.Channel, devId kexec.NodeIdentifier, interpret bool) {
 	label := make([]pkg.Word36, 28)
 	pkt := ioPackets.NewDiskIoPacketReadLabel(devId, label)
-	channel.StartIo(pkt)
+	channel.RouteIo(pkt)
 	if pkt.GetIoStatus() != ioPackets.IosComplete {
 		fmt.Printf("Status %v returned while reading label\n", pkt.GetIoStatus())
 		return

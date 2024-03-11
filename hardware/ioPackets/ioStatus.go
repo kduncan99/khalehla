@@ -13,6 +13,7 @@ const (
 	IosInProgress
 
 	IosAtLoadPoint
+	IosInvalidChannelProgram
 	IosDeviceDoesNotExist
 	IosDeviceIsDown
 	IosDeviceIsNotAccessible
@@ -32,8 +33,10 @@ const (
 	IosMediaAlreadyMounted
 	IosMediaNotMounted
 	IosNilBuffer
+	IosNonIntegralRead
 	IosPackNotPrepped
 	IosReadNotAllowed
+	IosReadOverrun
 	IosSystemError
 	IosWriteProtected
 )
@@ -52,6 +55,7 @@ var IoStatusTable = map[IoStatus]string{
 	IosInternalError:         "InternalError",
 	IosInvalidBlockId:        "InvalidBlockId",
 	IosInvalidBufferSize:     "InvalidBufferSize",
+	IosInvalidChannelProgram: "InvalidChannelProgram",
 	IosInvalidFunction:       "InvalidFunction",
 	IosInvalidNodeType:       "InvalidNodeType",
 	IosInvalidPackName:       "InvalidPackName",
@@ -62,8 +66,10 @@ var IoStatusTable = map[IoStatus]string{
 	IosMediaAlreadyMounted:   "MediaAlreadyMounted",
 	IosMediaNotMounted:       "MediaNotMounted",
 	IosNilBuffer:             "NilBuffer",
+	IosNonIntegralRead:       "NonIntegralRead",
 	IosPackNotPrepped:        "PackNotPrepped",
 	IosReadNotAllowed:        "ReadNotAllowed",
+	IosReadOverrun:           "ReadOverrun",
 	IosSystemError:           "SystemError",
 	IosWriteProtected:        "WriteProtected",
 }

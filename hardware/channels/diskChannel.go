@@ -12,6 +12,8 @@ import (
 	"khalehla/hardware/ioPackets"
 )
 
+// TODO Need to make this compliant with Channel (change RouteIo->StartIo)
+
 // DiskChannel routes IOs to the appropriate deviceInfos which it manages.
 // Some day in the future we may add caching, perhaps in a CacheDiskChannel.
 type DiskChannel struct {
@@ -45,7 +47,7 @@ func (ch *DiskChannel) AssignDevice(nodeIdentifier hardware.NodeIdentifier, devi
 	return nil
 }
 
-func (ch *DiskChannel) StartIo(ioPacket ioPackets.IoPacket) {
+func (ch *DiskChannel) RouteIo(ioPacket ioPackets.IoPacket) {
 	ioPacket.SetIoStatus(ioPackets.IosInProgress)
 	if ioPacket.GetNodeDeviceType() != ch.GetNodeDeviceType() {
 		ioPacket.SetIoStatus(ioPackets.IosInvalidNodeType)
