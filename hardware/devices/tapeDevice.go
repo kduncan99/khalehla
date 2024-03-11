@@ -12,9 +12,12 @@ import (
 
 type TapeDevice interface {
 	Dump(dest io.Writer, indent string)
+	GetBlocksExtended() int
+	GetFilesExtended() uint
 	GetNodeCategoryType() hardware.NodeCategoryType
 	GetNodeDeviceType() hardware.NodeDeviceType
 	GetNodeModelType() hardware.NodeModelType
+	IsAtLoadPoint() bool
 	IsMounted() bool
 	IsReady() bool
 	IsWriteProtected() bool

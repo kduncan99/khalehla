@@ -7,22 +7,16 @@ package ioPackets
 import (
 	"fmt"
 	"khalehla/hardware"
-	"khalehla/pkg"
 )
 
 type TapeIoPacket struct {
 	NodeId         hardware.NodeIdentifier
 	IoFunction     IoFunction
 	IoStatus       IoStatus
-	Buffer         []pkg.Word36
+	Buffer         []byte // provided by caller on write, by tape device on read
+	PayloadLength  uint32 // bytes to be written, or bytes read (<= buffer length)
 	Filename       string // for mount
 	WriteProtected bool   // for mount
-}
-
-// TODO Buffer needs to be []byte
-
-func (pkt *TapeIoPacket) GetBuffer() []pkg.Word36 {
-	return pkt.Buffer
 }
 
 func (pkt *TapeIoPacket) GetNodeIdentifier() hardware.NodeIdentifier {
@@ -62,8 +56,6 @@ func (pkt *TapeIoPacket) SetIoStatus(ioStatus IoStatus) {
 	pkt.IoStatus = ioStatus
 }
 
-// TODO Need NewTapeIoPacket**** for MoveBack, MoveFwd, ReadBack
-
 func NewTapeIoPacketMount(nodeId hardware.NodeIdentifier, fileName string, writeProtected bool) *TapeIoPacket {
 	return &TapeIoPacket{
 		NodeId:         nodeId,
@@ -74,10 +66,34 @@ func NewTapeIoPacketMount(nodeId hardware.NodeIdentifier, fileName string, write
 	}
 }
 
+func NewTapeIoPacketMoveBackward(nodeId hardware.NodeIdentifier) *TapeIoPacket {
+	return &TapeIoPacket{
+		NodeId:     nodeId,
+		IoFunction: IofMoveBackward,
+		IoStatus:   IosNotStarted,
+	}
+}
+
+func NewTapeIoPacketMoveForward(nodeId hardware.NodeIdentifier) *TapeIoPacket {
+	return &TapeIoPacket{
+		NodeId:     nodeId,
+		IoFunction: IofMoveForward,
+		IoStatus:   IosNotStarted,
+	}
+}
+
 func NewTapeIoPacketRead(nodeId hardware.NodeIdentifier) *TapeIoPacket {
 	return &TapeIoPacket{
 		NodeId:     nodeId,
 		IoFunction: IofRead,
+		IoStatus:   IosNotStarted,
+	}
+}
+
+func NewTapeIoPacketReadBackward(nodeId hardware.NodeIdentifier) *TapeIoPacket {
+	return &TapeIoPacket{
+		NodeId:     nodeId,
+		IoFunction: IofReadBackward,
 		IoStatus:   IosNotStarted,
 	}
 }
@@ -114,7 +130,7 @@ func NewTapeIoPacketUnmount(nodeId hardware.NodeIdentifier) *TapeIoPacket {
 	}
 }
 
-func NewTapeIoPacketWrite(nodeId hardware.NodeIdentifier, buffer []pkg.Word36) *TapeIoPacket {
+func NewTapeIoPacketWrite(nodeId hardware.NodeIdentifier, buffer []byte) *TapeIoPacket {
 	return &TapeIoPacket{
 		NodeId:     nodeId,
 		IoFunction: IofWrite,

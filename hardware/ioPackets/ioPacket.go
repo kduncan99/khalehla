@@ -6,13 +6,11 @@ package ioPackets
 
 import (
 	"khalehla/hardware"
-	"khalehla/pkg"
 )
 
 // IoPacket contains all the information necessary for a Channel to route an IO operation,
 // and for a device to perform that IO operation.
 type IoPacket interface {
-	GetBuffer() []pkg.Word36
 	GetNodeIdentifier() hardware.NodeIdentifier
 	GetNodeDeviceType() hardware.NodeDeviceType
 	GetIoFunction() IoFunction

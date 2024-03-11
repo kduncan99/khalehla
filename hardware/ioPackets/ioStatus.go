@@ -12,11 +12,13 @@ const (
 	IosComplete
 	IosInProgress
 
+	IosAtLoadPoint
 	IosDeviceDoesNotExist
 	IosDeviceIsDown
 	IosDeviceIsNotAccessible
 	IosDeviceIsNotReady
 	IosEndOfFile
+	IosEndOfTape
 	IosInternalError // usually means the Exec fell over
 	IosInvalidBlockId
 	IosInvalidBufferSize
@@ -26,6 +28,7 @@ const (
 	IosInvalidPrepFactor
 	IosInvalidTapeBlock
 	IosInvalidTrackCount
+	IosLostPosition
 	IosMediaAlreadyMounted
 	IosMediaNotMounted
 	IosNilBuffer
@@ -39,11 +42,13 @@ var IoStatusTable = map[IoStatus]string{
 	IosNotStarted:            "NotStarted",
 	IosComplete:              "Complete",
 	IosInProgress:            "InProgress",
+	IosAtLoadPoint:           "AtLoadPoint",
 	IosDeviceDoesNotExist:    "DeviceDoesNotExist",
 	IosDeviceIsDown:          "DeviceIsDown",
 	IosDeviceIsNotAccessible: "DeviceNotAccessible",
 	IosDeviceIsNotReady:      "DeviceNotReady",
 	IosEndOfFile:             "EndOfFile",
+	IosEndOfTape:             "EndOfTape",
 	IosInternalError:         "InternalError",
 	IosInvalidBlockId:        "InvalidBlockId",
 	IosInvalidBufferSize:     "InvalidBufferSize",
@@ -53,6 +58,7 @@ var IoStatusTable = map[IoStatus]string{
 	IosInvalidPrepFactor:     "InvalidPrepFactor",
 	IosInvalidTapeBlock:      "InvalidTapeBlock",
 	IosInvalidTrackCount:     "InvalidTrackCount",
+	IosLostPosition:          "IosLostPosition",
 	IosMediaAlreadyMounted:   "MediaAlreadyMounted",
 	IosMediaNotMounted:       "MediaNotMounted",
 	IosNilBuffer:             "NilBuffer",
