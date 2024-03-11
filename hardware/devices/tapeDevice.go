@@ -7,7 +7,7 @@ package devices
 import (
 	"io"
 	"khalehla/hardware"
-	io2 "khalehla/hardware/ioPackets"
+	"khalehla/hardware/ioPackets"
 )
 
 type TapeDevice interface {
@@ -24,5 +24,5 @@ type TapeDevice interface {
 	SetIsReady(flag bool)
 	SetIsWriteProtected(flag bool)
 	SetVerbose(flag bool)
-	StartIo(pkt io2.IoPacket)
+	StartIo(pkt ioPackets.IoPacket)
 }

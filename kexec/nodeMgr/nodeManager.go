@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 	"khalehla/hardware"
-	io2 "khalehla/hardware/ioPackets"
+	"khalehla/hardware/ioPackets"
 	"khalehla/kexec"
 	"khalehla/pkg"
 	"log"
@@ -232,22 +232,22 @@ func (mgr *NodeManager) GetNodeInfoByIdentifier(nodeId hardware.NodeIdentifier) 
 }
 
 // RouteIo handles all disk and tape IO for the exec
-func (mgr *NodeManager) RouteIo(ioPacket io2.IoPacket) {
+func (mgr *NodeManager) RouteIo(ioPacket ioPackets.IoPacket) {
 	if mgr.exec.GetConfiguration().LogIOs {
 		devId := pkg.Word36(ioPacket.GetNodeIdentifier())
 		devName := devId.ToStringAsFieldata()
 		switch ioPacket.GetNodeDeviceType() {
 		case hardware.NodeDeviceDisk:
-			iop := ioPacket.(*io2.DiskIoPacket)
+			iop := ioPacket.(*ioPackets.DiskIoPacket)
 			log.Printf("NodeMgr:RouteIO %v iof:%v blk:%v", devName, iop.GetIoFunction(), iop.GetBlockId())
 		case hardware.NodeDeviceTape:
-			iop := ioPacket.(*io2.TapeIoPacket)
+			iop := ioPacket.(*ioPackets.TapeIoPacket)
 			log.Printf("NodeMgr:RouteIO %v iof:%v", devName, iop.GetIoFunction())
 		}
 	}
 
 	if ioPacket == nil {
-		ioPacket.SetIoStatus(io2.IosInternalError)
+		ioPacket.SetIoStatus(ioPackets.IosInternalError)
 		mgr.exec.Stop(kexec.StopErrorInSystemIOTable)
 		return
 	}
@@ -257,23 +257,23 @@ func (mgr *NodeManager) RouteIo(ioPacket io2.IoPacket) {
 
 	devInfo, ok := mgr.deviceInfos[ioPacket.GetNodeIdentifier()]
 	if !ok {
-		ioPacket.SetIoStatus(io2.IosDeviceDoesNotExist)
+		ioPacket.SetIoStatus(ioPackets.IosDeviceDoesNotExist)
 		return
 	}
 
 	if !devInfo.IsAccessible() {
-		ioPacket.SetIoStatus(io2.IosDeviceIsNotAccessible)
+		ioPacket.SetIoStatus(ioPackets.IosDeviceIsNotAccessible)
 		return
 	}
 
 	chInfo, err := mgr.selectChannelForDevice(devInfo)
 	if err != nil {
-		ioPacket.SetIoStatus(io2.IosInternalError)
+		ioPacket.SetIoStatus(ioPackets.IosInternalError)
 		mgr.exec.Stop(kexec.StopErrorInSystemIOTable)
 		return
 	}
 
-	ioPacket.SetIoStatus(io2.IosInProgress)
+	ioPacket.SetIoStatus(ioPackets.IosInProgress)
 	chInfo.GetChannel().StartIo(ioPacket)
 }
 

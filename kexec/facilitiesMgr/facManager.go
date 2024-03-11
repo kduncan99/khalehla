@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 	"khalehla/hardware"
-	io2 "khalehla/hardware/ioPackets"
+	"khalehla/hardware/ioPackets"
 	"khalehla/kexec"
 	"khalehla/kexec/nodeMgr"
 	"khalehla/pkg"
@@ -224,7 +224,7 @@ func (mgr *FacilitiesManager) SetNodeStatus(nodeId hardware.NodeIdentifier, stat
 				break
 			} else if nodeAttr.GetNodeDeviceType() == hardware.NodeDeviceDisk {
 				// reset the tape device (unmounts it as part of the process)
-				ioPkt := io2.NewTapeIoPacketReset(nodeId)
+				ioPkt := ioPackets.NewTapeIoPacketReset(nodeId)
 				nodeManager.RouteIo(ioPkt)
 				nodeAttr.SetFacNodeStatus(status)
 				if mgr.IsDeviceAssigned(nodeId) {
@@ -288,13 +288,13 @@ func (mgr *FacilitiesManager) diskBecameReady(nodeId hardware.NodeIdentifier) {
 	if facStat != kexec.FacNodeStatusDown {
 		label := make([]pkg.Word36, 28)
 		nodeManager := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
-		ioPkt := io2.NewDiskIoPacketReadLabel(nodeId, label)
+		ioPkt := ioPackets.NewDiskIoPacketReadLabel(nodeId, label)
 		nodeManager.RouteIo(ioPkt)
 		ioStat := ioPkt.GetIoStatus()
-		if ioStat == io2.IosInternalError {
+		if ioStat == ioPackets.IosInternalError {
 			mgr.mutex.Unlock()
 			return
-		} else if ioStat != io2.IosComplete {
+		} else if ioStat != ioPackets.IosComplete {
 			mgr.mutex.Unlock()
 
 			log.Printf("FacMgr:IO Error reading label disk:%v %v", nodeId, ioPkt.GetString())
