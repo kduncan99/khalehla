@@ -10,6 +10,7 @@ type FileCycleInfo interface {
 	GetFileCycleIdentifier() FileCycleIdentifier
 	GetQualifier() string
 	GetFilename() string
+	GetInhibitFlags() InhibitFlags
 	GetProjectId() string
 	GetAccountId() string
 	GetAbsoluteFileCycle() uint

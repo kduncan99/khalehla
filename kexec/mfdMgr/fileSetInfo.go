@@ -22,6 +22,7 @@ type FileSetInfo struct {
 	ReadKey               string
 	WriteKey              string
 	FileType              FileType
+	Guarded               bool // at least one cycle is guarded, so file set is guarded
 	PlusOneExists         bool
 	Count                 uint
 	MaxCycleRange         uint
@@ -99,6 +100,7 @@ func (fsi *FileSetInfo) populateFromLeadItems(leadItem0 []pkg.Word36, leadItem1 
 	fsi.MaxCycleRange = uint(leadItem0[011].GetS3())
 	fsi.CurrentRange = uint(leadItem0[011].GetS4())
 	fsi.HighestAbsolute = uint(leadItem0[011].GetT3())
+	fsi.Guarded = leadItem0[012]&0_400000_000000 != 0
 	fsi.PlusOneExists = leadItem0[012]&0_200000_000000 != 0
 	fsi.NumberOfSecurityWords = uint(leadItem0[012].GetS4())
 	fsi.CycleInfo = make([]*FileSetCycleInfo, fsi.CurrentRange)

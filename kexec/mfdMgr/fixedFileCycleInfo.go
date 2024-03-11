@@ -41,6 +41,14 @@ type FixedFileCycleInfo struct {
 	FileAllocations          []FileAllocation
 }
 
+func (fci *FixedFileCycleInfo) GetFileSetIdentifier() FileSetIdentifier {
+	return fci.FileSetIdentifier
+}
+
+func (fci *FixedFileCycleInfo) GetFileCycleIdentifier() FileCycleIdentifier {
+	return fci.FileCycleIdentifier
+}
+
 func (fci *FixedFileCycleInfo) GetQualifier() string {
 	return fci.Qualifier
 }
@@ -63,6 +71,18 @@ func (fci *FixedFileCycleInfo) GetAbsoluteFileCycle() uint {
 
 func (fci *FixedFileCycleInfo) GetAssignMnemonic() string {
 	return fci.AssignMnemonic
+}
+
+func (fci *FixedFileCycleInfo) GetInhibitFlags() InhibitFlags {
+	return fci.InhibitFlags
+}
+
+func (fci *FixedFileCycleInfo) setFileCycleIdentifier(fcIdentifier FileCycleIdentifier) {
+	fci.FileCycleIdentifier = fcIdentifier
+}
+
+func (fci *FixedFileCycleInfo) setFileSetIdentifier(fsIdentifier FileSetIdentifier) {
+	fci.FileSetIdentifier = fsIdentifier
 }
 
 // populateFromMainItems populates a FixedFileCycleInfo struct with information derived from the
@@ -147,12 +167,4 @@ func (fci *FixedFileCycleInfo) populateFromMainItems(mainItems [][]pkg.Word36) {
 			}
 		}
 	}
-}
-
-func (fci *FixedFileCycleInfo) setFileCycleIdentifier(fcIdentifier FileCycleIdentifier) {
-	fci.FileCycleIdentifier = fcIdentifier
-}
-
-func (fci *FixedFileCycleInfo) setFileSetIdentifier(fsIdentifier FileSetIdentifier) {
-	fci.FileSetIdentifier = fsIdentifier
 }

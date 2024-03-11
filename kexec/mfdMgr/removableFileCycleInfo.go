@@ -5,6 +5,7 @@
 package mfdMgr
 
 type RemovableFileCycleInfo struct {
+	FileSetIdentifier        FileSetIdentifier
 	FileCycleIdentifier      FileCycleIdentifier
 	Qualifier                string
 	Filename                 string
@@ -36,6 +37,14 @@ type RemovableFileCycleInfo struct {
 	FileAllocations          []FileAllocation
 }
 
+func (fci *RemovableFileCycleInfo) GetFileSetIdentifier() FileSetIdentifier {
+	return fci.FileSetIdentifier
+}
+
+func (fci *RemovableFileCycleInfo) GetFileCycleIdentifier() FileCycleIdentifier {
+	return fci.FileCycleIdentifier
+}
+
 func (fci *RemovableFileCycleInfo) GetQualifier() string {
 	return fci.Qualifier
 }
@@ -58,4 +67,16 @@ func (fci *RemovableFileCycleInfo) GetAbsoluteFileCycle() uint {
 
 func (fci *RemovableFileCycleInfo) GetAssignMnemonic() string {
 	return fci.AssignMnemonic
+}
+
+func (fci *RemovableFileCycleInfo) GetInhibitFlags() InhibitFlags {
+	return fci.InhibitFlags
+}
+
+func (fci *RemovableFileCycleInfo) setFileCycleIdentifier(fcIdentifier FileCycleIdentifier) {
+	fci.FileCycleIdentifier = fcIdentifier
+}
+
+func (fci *RemovableFileCycleInfo) setFileSetIdentifier(fsIdentifier FileSetIdentifier) {
+	fci.FileSetIdentifier = fsIdentifier
 }

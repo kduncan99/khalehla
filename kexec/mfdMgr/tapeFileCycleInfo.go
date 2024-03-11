@@ -63,3 +63,15 @@ func (fci *TapeFileCycleInfo) GetAbsoluteFileCycle() uint {
 func (fci *TapeFileCycleInfo) GetAssignMnemonic() string {
 	return fci.AssignMnemonic
 }
+
+func (fci *TapeFileCycleInfo) GetInhibitFlags() InhibitFlags {
+	return fci.InhibitFlags
+}
+
+func (fci *TapeFileCycleInfo) setFileCycleIdentifier(fcIdentifier FileCycleIdentifier) {
+	fci.FileCycleIdentifier = fcIdentifier
+}
+
+func (fci *TapeFileCycleInfo) setFileSetIdentifier(fsIdentifier FileSetIdentifier) {
+	fci.FileSetIdentifier = fsIdentifier
+}
