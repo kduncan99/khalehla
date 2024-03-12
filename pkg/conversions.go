@@ -57,8 +57,33 @@ func SerializeUint32IntoBuffer(value uint32, buffer []byte) {
 	buffer[3] = byte(value)
 }
 
+func SerializeUint64IntoBuffer(value uint64, buffer []byte) {
+	buffer[0] = byte(value >> 56)
+	buffer[1] = byte(value >> 48)
+	buffer[2] = byte(value >> 40)
+	buffer[3] = byte(value >> 32)
+	buffer[4] = byte(value >> 24)
+	buffer[5] = byte(value >> 16)
+	buffer[6] = byte(value >> 8)
+	buffer[7] = byte(value)
+}
+
 func DeserializeUint32FromBuffer(buffer []byte) uint32 {
-	return (uint32(buffer[0]) << 24) | (uint32(buffer[1]) << 16) | (uint32(buffer[2]) << 8) | uint32(buffer[3])
+	return (uint32(buffer[0]) << 24) |
+		(uint32(buffer[1]) << 16) |
+		(uint32(buffer[2]) << 8) |
+		uint32(buffer[3])
+}
+
+func DeserializeUint64FromBuffer(buffer []byte) uint64 {
+	return (uint64(buffer[0]) << 56) |
+		(uint64(buffer[1]) << 48) |
+		(uint64(buffer[2]) << 40) |
+		(uint64(buffer[3]) << 32) |
+		(uint64(buffer[4]) << 24) |
+		(uint64(buffer[5]) << 16) |
+		(uint64(buffer[6]) << 8) |
+		uint64(buffer[7])
 }
 
 func Word36ToByteArrayPacked(

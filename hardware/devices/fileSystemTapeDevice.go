@@ -30,7 +30,7 @@ import (
 type FileSystemTapeDevice struct {
 	fileName         *string
 	file             *os.File
-	readBuffer       []byte
+	buffer           []byte
 	isReady          bool
 	isWriteProtected bool
 	mutex            sync.Mutex
@@ -46,13 +46,17 @@ type FileSystemTapeDevice struct {
 
 func NewFileSystemTapeDevice() *FileSystemTapeDevice {
 	return &FileSystemTapeDevice{
-		readBuffer:       make([]byte, 4), // always have room for the control word
+		buffer:           make([]byte, 8192),
 		isWriteProtected: true,
 	}
 }
 
 func (tape *FileSystemTapeDevice) GetBlocksExtended() int {
 	return tape.blocksExtended
+}
+
+func (tape *FileSystemTapeDevice) GetFile() *os.File {
+	return tape.file
 }
 
 func (tape *FileSystemTapeDevice) GetFilesExtended() uint {
@@ -105,8 +109,8 @@ func (tape *FileSystemTapeDevice) StartIo(pkt ioPackets.IoPacket) {
 	}
 	pkt.SetIoStatus(ioPackets.IosInProgress)
 
-	if pkt.GetNodeDeviceType() != tape.GetNodeDeviceType() {
-		pkt.SetIoStatus(ioPackets.IosInvalidNodeType)
+	if pkt.GetPacketType() != ioPackets.TapePacketType {
+		pkt.SetIoStatus(ioPackets.IosInvalidPacket)
 	} else {
 		switch pkt.GetIoFunction() {
 		case ioPackets.IofMount:
@@ -140,97 +144,33 @@ func (tape *FileSystemTapeDevice) StartIo(pkt ioPackets.IoPacket) {
 	if tape.verbose {
 		log.Printf("FSTAPE:ioStatus=%v", pkt.GetIoStatus())
 	}
-	pkt.GetListener().IoComplete(pkt)
-}
-
-// readExact reads exactly the requested number of bytes from the device file.
-// presumes reading is actually allowed.
-// uses the device current offset for the start of the read, but does not update it.
-func (tape *FileSystemTapeDevice) readExact(length uint32) error {
-	// do we need to expand the read buffer?
-	if len(tape.readBuffer) < int(length) {
-		newLength := uint32(len(tape.readBuffer))
-		for newLength < length {
-			newLength += 8192
-		}
-		tape.readBuffer = make([]byte, newLength)
+	if pkt.GetListener() != nil {
+		pkt.GetListener().IoComplete(pkt)
 	}
-
-	// do the read - loop to make sure we read all we're asked to read
-	offset := tape.currentOffset
-	index := 0
-	remaining := length
-	for remaining > 0 {
-		bytesRead, err := tape.file.ReadAt(tape.readBuffer[index:length], offset)
-		if err != nil {
-			return err
-		}
-
-		index += bytesRead
-		remaining -= uint32(bytesRead)
-		offset += int64(bytesRead)
-	}
-
-	return nil
 }
-
-// readControlWord uses readExact to read a 4-byte control word from the device current offset.
-// does not update current offset.
-func (tape *FileSystemTapeDevice) readControlWord() (uint32, error) {
-	err := tape.readExact(4)
-	if err != nil {
-		return 0, err
-	}
-
-	result :=
-		(uint32(tape.readBuffer[0]))<<24 |
-			(uint32(tape.readBuffer[1]))<<16 |
-			(uint32(tape.readBuffer[2]))<<8 |
-			(uint32(tape.readBuffer[3]))
-	return result, nil
-}
-
-func (tape *FileSystemTapeDevice) writeExact(buffer []byte, length uint32) error {
-	offset := tape.currentOffset
-	index := 0
-	remaining := length
-	for remaining > 0 {
-		bytesWritten, err := tape.file.WriteAt(buffer[index:length], offset)
-		if err != nil {
-			return err
-		}
-
-		index += bytesWritten
-		remaining -= uint32(bytesWritten)
-		offset += int64(bytesWritten)
-	}
-
-	return nil
-}
-
-// writeControlWord uses writeExact to write a 4-byte control word to the device current offset.
-// Does not update current offset.
-func (tape *FileSystemTapeDevice) writeControlWord(value uint32) error {
-	tape.readBuffer[0] = byte(value >> 24)
-	tape.readBuffer[1] = byte(value >> 16)
-	tape.readBuffer[2] = byte(value >> 8)
-	tape.readBuffer[3] = byte(value)
-
-	return tape.writeExact(tape.readBuffer, 4)
-}
-
-// ------------------------------------------------------------
 
 func (tape *FileSystemTapeDevice) doMount(pkt *ioPackets.TapeIoPacket) {
 	tape.mutex.Lock()
 	defer tape.mutex.Unlock()
+
+	if pkt.MountInfo == nil {
+		pkt.SetIoStatus(ioPackets.IosInvalidPacket)
+		return
+	}
 
 	if tape.IsMounted() {
 		pkt.SetIoStatus(ioPackets.IosMediaAlreadyMounted)
 		return
 	}
 
-	f, err := os.OpenFile(pkt.Filename, os.O_RDWR|os.O_CREATE|os.O_SYNC, 0666)
+	flags := os.O_CREATE | os.O_SYNC
+	if !pkt.MountInfo.WriteProtect {
+		flags |= os.O_RDWR
+	} else {
+		flags |= os.O_RDONLY
+	}
+
+	f, err := os.OpenFile(pkt.MountInfo.Filename, flags, 0666)
 	if err != nil {
 		pkt.SetIoStatus(ioPackets.IosSystemError)
 		return
@@ -240,7 +180,7 @@ func (tape *FileSystemTapeDevice) doMount(pkt *ioPackets.TapeIoPacket) {
 
 	// At this point, the tape is mounted. The device may not yet be ready.
 	tape.file = f
-	tape.isWriteProtected = pkt.WriteProtected
+	tape.isWriteProtected = pkt.MountInfo.WriteProtect
 	tape.currentOffset = 0
 	tape.canRead = true
 	tape.atLoadPoint = true
@@ -385,7 +325,8 @@ func (tape *FileSystemTapeDevice) doRead(pkt *ioPackets.TapeIoPacket) {
 	}
 
 	// read the payload
-	err = tape.readExact(cw)
+	tape.expandBuffer(cw)
+	err = readExact(tape, tape.buffer, cw, tape.currentOffset)
 	if err != nil {
 		pkt.SetIoStatus(ioPackets.IosSystemError)
 		tape.positionLost = true
@@ -396,7 +337,7 @@ func (tape *FileSystemTapeDevice) doRead(pkt *ioPackets.TapeIoPacket) {
 	tape.currentOffset += int64(cw + 4)
 	tape.blocksExtended++
 
-	pkt.PayloadLength = cw
+	pkt.DataLength = cw
 	if tape.atEndOfTape {
 		pkt.SetIoStatus(ioPackets.IosEndOfTape)
 	} else {
@@ -458,7 +399,8 @@ func (tape *FileSystemTapeDevice) doReadBackward(pkt *ioPackets.TapeIoPacket) {
 		return
 	}
 
-	err = tape.readExact(cw)
+	tape.expandBuffer(cw)
+	err = readExact(tape, tape.buffer, cw, tape.currentOffset)
 	if err != nil {
 		pkt.SetIoStatus(ioPackets.IosSystemError)
 		tape.positionLost = true
@@ -472,7 +414,7 @@ func (tape *FileSystemTapeDevice) doReadBackward(pkt *ioPackets.TapeIoPacket) {
 	}
 	tape.blocksExtended--
 
-	pkt.PayloadLength = cw
+	pkt.DataLength = cw
 	if tape.atEndOfTape {
 		pkt.SetIoStatus(ioPackets.IosEndOfTape)
 	} else if tape.atLoadPoint {
@@ -489,6 +431,7 @@ func (tape *FileSystemTapeDevice) doRewind(pkt *ioPackets.TapeIoPacket) {
 
 	if !tape.IsReady() {
 		pkt.SetIoStatus(ioPackets.IosDeviceIsNotReady)
+		return
 	}
 
 	tape.currentOffset = 0
@@ -522,8 +465,14 @@ func (tape *FileSystemTapeDevice) doWrite(pkt *ioPackets.TapeIoPacket) {
 	tape.mutex.Lock()
 	defer tape.mutex.Unlock()
 
+	if pkt.Buffer == nil {
+		pkt.SetIoStatus(ioPackets.IosInvalidPacket)
+		return
+	}
+
 	if !tape.IsReady() {
 		pkt.SetIoStatus(ioPackets.IosDeviceIsNotReady)
+		return
 	}
 
 	if tape.positionLost {
@@ -537,7 +486,7 @@ func (tape *FileSystemTapeDevice) doWrite(pkt *ioPackets.TapeIoPacket) {
 	}
 
 	if pkt.Buffer == nil {
-		pkt.SetIoStatus(ioPackets.IosNilBuffer)
+		pkt.SetIoStatus(ioPackets.IosInvalidPacket)
 		return
 	}
 
@@ -551,7 +500,7 @@ func (tape *FileSystemTapeDevice) doWrite(pkt *ioPackets.TapeIoPacket) {
 	}
 	tape.currentOffset += 4
 
-	err = tape.writeExact(pkt.Buffer, payloadLength)
+	err = writeExact(tape, pkt.Buffer, payloadLength, tape.currentOffset)
 	if err != nil {
 		pkt.IoStatus = ioPackets.IosSystemError
 		tape.positionLost = true
@@ -604,15 +553,56 @@ func (tape *FileSystemTapeDevice) doWriteTapeMark(pkt *ioPackets.TapeIoPacket) {
 }
 
 func (tape *FileSystemTapeDevice) Dump(dest io.Writer, indent string) {
-	fnstr := "<none>"
+	fnStr := "<none>"
 	if tape.fileName != nil {
-		fnstr = *tape.fileName
+		fnStr = *tape.fileName
 	}
 
-	_, _ = fmt.Fprintf(dest, "%vRdy:%v WProt:%v file:%v, pos:%v\n",
+	_, _ = fmt.Fprintf(dest, "%vRdy:%v WProt:%v file:%v ldpt:%v eot:%v lost:%v pos:%v fExt:%v blkExt:%v\n",
 		indent,
 		tape.isReady,
 		tape.isWriteProtected,
-		fnstr,
-		tape.currentOffset)
+		fnStr,
+		tape.atLoadPoint,
+		tape.atEndOfTape,
+		tape.positionLost,
+		tape.currentOffset,
+		tape.filesExtended,
+		tape.blocksExtended)
+}
+
+func (tape *FileSystemTapeDevice) expandBuffer(requiredSize uint32) {
+	newSize := uint32(len(tape.buffer))
+	for newSize < requiredSize {
+		newSize += 8192
+	}
+	tape.buffer = nil
+	tape.buffer = make([]byte, newSize)
+}
+
+// readControlWord uses readExact to read a 4-byte control word from the device current offset.
+// does not update current offset.
+func (tape *FileSystemTapeDevice) readControlWord() (uint32, error) {
+	err := readExact(tape, tape.buffer, 4, tape.currentOffset)
+	if err != nil {
+		return 0, err
+	}
+
+	result :=
+		(uint32(tape.buffer[0]))<<24 |
+			(uint32(tape.buffer[1]))<<16 |
+			(uint32(tape.buffer[2]))<<8 |
+			(uint32(tape.buffer[3]))
+	return result, nil
+}
+
+// writeControlWord uses writeExact to write a 4-byte control word to the device current offset.
+// Does not update current offset.
+func (tape *FileSystemTapeDevice) writeControlWord(value uint32) error {
+	tape.buffer[0] = byte(value >> 24)
+	tape.buffer[1] = byte(value >> 16)
+	tape.buffer[2] = byte(value >> 8)
+	tape.buffer[3] = byte(value)
+
+	return writeExact(tape, tape.buffer, 4, tape.currentOffset)
 }

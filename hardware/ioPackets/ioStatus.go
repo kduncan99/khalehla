@@ -25,6 +25,7 @@ const (
 	IosInvalidBufferSize
 	IosInvalidFunction
 	IosInvalidNodeType
+	IosInvalidPacket
 	IosInvalidPackName
 	IosInvalidPrepFactor
 	IosInvalidTapeBlock
@@ -32,7 +33,6 @@ const (
 	IosLostPosition
 	IosMediaAlreadyMounted
 	IosMediaNotMounted
-	IosNilBuffer
 	IosNonIntegralRead
 	IosPackNotPrepped
 	IosReadNotAllowed
@@ -58,6 +58,7 @@ var IoStatusTable = map[IoStatus]string{
 	IosInvalidChannelProgram: "InvalidChannelProgram",
 	IosInvalidFunction:       "InvalidFunction",
 	IosInvalidNodeType:       "InvalidNodeType",
+	IosInvalidPacket:         "InvalidPacket",
 	IosInvalidPackName:       "InvalidPackName",
 	IosInvalidPrepFactor:     "InvalidPrepFactor",
 	IosInvalidTapeBlock:      "InvalidTapeBlock",
@@ -65,7 +66,6 @@ var IoStatusTable = map[IoStatus]string{
 	IosLostPosition:          "IosLostPosition",
 	IosMediaAlreadyMounted:   "MediaAlreadyMounted",
 	IosMediaNotMounted:       "MediaNotMounted",
-	IosNilBuffer:             "NilBuffer",
 	IosNonIntegralRead:       "NonIntegralRead",
 	IosPackNotPrepped:        "PackNotPrepped",
 	IosReadNotAllowed:        "ReadNotAllowed",

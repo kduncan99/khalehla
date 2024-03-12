@@ -236,7 +236,7 @@ func (mgr *NodeManager) RouteIo(ioPacket ioPackets.IoPacket) {
 	if mgr.exec.GetConfiguration().LogIOs {
 		devId := pkg.Word36(ioPacket.GetNodeIdentifier())
 		devName := devId.ToStringAsFieldata()
-		switch ioPacket.GetNodeDeviceType() {
+		switch ioPacket.GetPacketType() {
 		case hardware.NodeDeviceDisk:
 			iop := ioPacket.(*ioPackets.DiskIoPacket)
 			log.Printf("NodeMgr:RouteIO %v iof:%v blk:%v", devName, iop.GetIoFunction(), iop.GetBlockId())

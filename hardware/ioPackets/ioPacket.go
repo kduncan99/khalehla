@@ -4,8 +4,12 @@
 
 package ioPackets
 
-import (
-	"khalehla/hardware"
+type PacketType uint
+
+const (
+	_ PacketType = iota
+	DiskPacketType
+	TapePacketType
 )
 
 // IoPacketListener should be implemented by any IO caller which wants to be
@@ -14,11 +18,16 @@ type IoPacketListener interface {
 	IoComplete(ioPacket IoPacket)
 }
 
+// IoMountInfo contains information necessary for mounting file-system based media
+type IoMountInfo struct {
+	Filename     string
+	WriteProtect bool
+}
+
 // IoPacket contains all the information necessary for a Channel to route an IO operation,
 // and for a device to perform that IO operation.
 type IoPacket interface {
-	GetNodeIdentifier() hardware.NodeIdentifier
-	GetNodeDeviceType() hardware.NodeDeviceType
+	GetPacketType() PacketType
 	GetIoFunction() IoFunction
 	GetIoStatus() IoStatus
 	GetString() string

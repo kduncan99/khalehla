@@ -11,6 +11,7 @@ const (
 	IofMount
 	IofMoveBackward
 	IofMoveForward
+	IofPrep
 	IofRead
 	IofReadBackward
 	IofReset
@@ -25,6 +26,7 @@ var IoFunctionTable = map[IoFunction]string{
 	IofMount:           "Mount",
 	IofMoveBackward:    "MoveBack",
 	IofMoveForward:     "MoveFwd",
+	IofPrep:            "Prep",
 	IofRead:            "Read",
 	IofReadBackward:    "ReadBack",
 	IofReset:           "Reset",

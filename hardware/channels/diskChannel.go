@@ -95,7 +95,7 @@ func (ch *DiskChannel) prepareIoPacket(chProg *ChannelProgram) (*ioPackets.DiskI
 	pkt.IoFunction = chProg.IoFunction
 	pkt.IoStatus = ioPackets.IosNotStarted
 
-	if chProg.IoFunction == ioPackets.IofWrite || chProg.IoFunction == ioPackets.IofWriteLabel {
+	if chProg.IoFunction == ioPackets.IofWrite {
 		// If this is a data transfer to the device,
 		// we have to gather and translate caller's Word36 data into a byte buffer.
 		wordCount := uint(0)
@@ -133,7 +133,7 @@ func (ch *DiskChannel) prepareIoPacket(chProg *ChannelProgram) (*ioPackets.DiskI
 func (ch *DiskChannel) resolveIoPacket(chProg *ChannelProgram, ioPacket ioPackets.IoPacket) {
 	nonIntegral := false
 	overRun := false
-	if chProg.IoFunction == ioPackets.IofRead || chProg.IoFunction == ioPackets.IofReadLabel {
+	if chProg.IoFunction == ioPackets.IofRead {
 		if chProg.IoStatus == ioPackets.IosComplete {
 			chProg.BytesTransferred = uint(len(ioPacket.(*ioPackets.DiskIoPacket).Buffer))
 			chProg.WordsTransferred = 0

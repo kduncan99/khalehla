@@ -113,7 +113,7 @@ func (ch *TapeChannel) prepareIoPacket(chProg *ChannelProgram) (*ioPackets.TapeI
 		}
 
 		pkt.Buffer = make([]byte, byteCount)
-		pkt.PayloadLength = uint32(byteCount)
+		pkt.DataLength = uint32(byteCount)
 
 		bx := uint(0)
 		for _, cw := range chProg.ControlWords {
@@ -146,7 +146,7 @@ func (ch *TapeChannel) resolveIoPacket(chProg *ChannelProgram, ioPacket ioPacket
 			chProg.IoStatus == ioPackets.IosEndOfTape ||
 			chProg.IoStatus == ioPackets.IosAtLoadPoint {
 
-			chProg.BytesTransferred = uint(ioPacket.(*ioPackets.TapeIoPacket).PayloadLength)
+			chProg.BytesTransferred = uint(ioPacket.(*ioPackets.TapeIoPacket).DataLength)
 			chProg.WordsTransferred = 0
 
 			byteBuffer := ioPacket.(*ioPackets.TapeIoPacket).Buffer
