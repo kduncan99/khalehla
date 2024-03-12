@@ -12,6 +12,7 @@ import (
 
 type DiskDevice interface {
 	Dump(dest io.Writer, indent string)
+	GetDiskGeometry() (hardware.BlockSize, hardware.BlockCount, hardware.TrackCount)
 	GetNodeCategoryType() hardware.NodeCategoryType
 	GetNodeDeviceType() hardware.NodeDeviceType
 	GetNodeModelType() hardware.NodeModelType

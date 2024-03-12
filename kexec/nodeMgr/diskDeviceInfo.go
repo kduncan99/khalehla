@@ -16,7 +16,7 @@ type DiskDeviceInfo struct {
 	nodeName        string
 	nodeIdentifier  hardware.NodeIdentifier
 	initialFileName *string
-	device          *devices.FileSystemDiskDevice
+	device          devices.DiskDevice
 	channelInfos    []*DiskChannelInfo
 	isAccessible    bool // can only be true if status is UP, RV, or SU and the device is assigned to at least one channel
 	isReady         bool // cached version of device.IsReady() - when there is a mismatch, we need to do something
@@ -46,6 +46,10 @@ func (ddi *DiskDeviceInfo) GetChannelInfos() []ChannelInfo {
 }
 
 func (ddi *DiskDeviceInfo) GetDevice() devices.Device {
+	return ddi.device
+}
+
+func (ddi *DiskDeviceInfo) GetDiskDevice() devices.DiskDevice {
 	return ddi.device
 }
 

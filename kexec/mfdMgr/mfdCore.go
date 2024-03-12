@@ -9,6 +9,7 @@ package mfdMgr
 import (
 	"fmt"
 	"khalehla/hardware"
+	"khalehla/hardware/channels"
 	"khalehla/hardware/ioPackets"
 	"khalehla/kexec"
 	"khalehla/kexec/nodeMgr"
@@ -1207,8 +1208,6 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*kexec.
 		return fmt.Errorf("packid conflict")
 	}
 
-	nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
-
 	// iterate over the fixed packs - we start at 1, which may not be conventional, but it works
 	nextLdatIndex := kexec.LDATIndex(1)
 	totalTracks := uint64(0)
@@ -1251,9 +1250,7 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*kexec.
 		wx := uint(0)
 		for bx := 0; bx < int(blocksPerTrack); bx++ {
 			sub := data[wx : wx+wordsPerBlock]
-			ioPkt := ioPackets.NewDiskIoPacketRead(fpDesc.nodeId, blockId, sub)
-			nm.RouteIo(ioPkt)
-			ioStat := ioPkt.GetIoStatus()
+			ioStat := mgr.readBlockFromDisk(fpDesc.nodeId, sub, blockId)
 			if ioStat != ioPackets.IosComplete {
 				log.Printf("MFDMgr:initializeFixed cannot read directory track dev:%v blockId:%v",
 					fpDesc.nodeId, blockId)
@@ -1555,6 +1552,35 @@ func populateNewLeadItem0(
 	leadItem0[11].SetW(mainItem0Address)
 }
 
+// readBlockFromDisk reads a single block from a particular disk device
+// and sleeps until the IO is complete.
+func (mgr *MFDManager) readBlockFromDisk(
+	nodeId hardware.NodeIdentifier,
+	buffer []pkg.Word36,
+	blockId hardware.BlockId,
+) ioPackets.IoStatus {
+	cw := channels.ControlWord{
+		Buffer:    buffer,
+		Offset:    0,
+		Length:    uint(len(buffer)),
+		Direction: channels.DirectionForward,
+		Format:    channels.TransferPacked,
+	}
+	cp := &channels.ChannelProgram{
+		NodeIdentifier: nodeId,
+		IoFunction:     ioPackets.IofRead,
+		BlockId:        blockId,
+		ControlWords:   []channels.ControlWord{cw},
+	}
+
+	mgr.exec.GetNodeManager().RouteIo(cp)
+	for cp.IoStatus == ioPackets.IosInProgress || cp.IoStatus == ioPackets.IosNotStarted {
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	return cp.IoStatus
+}
+
 // releaseDADChain releases all the DAD entry sectors attached to a particular main item
 func (mgr *MFDManager) releaseDADChain(
 	mainItem0Address kexec.MFDRelativeAddress,
@@ -1688,6 +1714,35 @@ func (mgr *MFDManager) releaseTrackRegion(
 	}
 
 	return MFDSuccessful
+}
+
+// writeBlockToDisk reads a single block from a particular disk device
+// and sleeps until the IO is complete.
+func (mgr *MFDManager) writeBlockToDisk(
+	nodeId hardware.NodeIdentifier,
+	buffer []pkg.Word36,
+	blockId hardware.BlockId,
+) ioPackets.IoStatus {
+	cw := channels.ControlWord{
+		Buffer:    buffer,
+		Offset:    0,
+		Length:    uint(len(buffer)),
+		Direction: channels.DirectionForward,
+		Format:    channels.TransferPacked,
+	}
+	cp := &channels.ChannelProgram{
+		NodeIdentifier: nodeId,
+		IoFunction:     ioPackets.IofWrite,
+		BlockId:        blockId,
+		ControlWords:   []channels.ControlWord{cw},
+	}
+
+	mgr.exec.GetNodeManager().RouteIo(cp)
+	for cp.IoStatus == ioPackets.IosInProgress || cp.IoStatus == ioPackets.IosNotStarted {
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	return cp.IoStatus
 }
 
 // writeFileAllocationEntryUpdatesForFileCycle writes an updated fae to the on-disk MFD
@@ -1846,10 +1901,8 @@ func (mgr *MFDManager) writeMFDCache() error {
 		sectorsPerBlock := packDesc.prepFactor / 28
 		devBlockId := uint64(devTrackId) * uint64(blocksPerTrack)
 		devBlockId += uint64(mfdSectorId) / uint64(sectorsPerBlock)
-		ioPkt := ioPackets.NewDiskIoPacketWrite(packDesc.nodeId, hardware.BlockId(devBlockId), block)
-		nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
-		nm.RouteIo(ioPkt)
-		ioStat := ioPkt.GetIoStatus()
+
+		ioStat := mgr.writeBlockToDisk(packDesc.nodeId, block, hardware.BlockId(devBlockId))
 		if ioStat != ioPackets.IosComplete {
 			log.Printf("MFDMgr:writeMFDCache error writing MFD block status=%v", ioStat)
 			mgr.exec.Stop(kexec.StopInternalExecIOFailed)

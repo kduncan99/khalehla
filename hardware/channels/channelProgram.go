@@ -5,6 +5,7 @@
 package channels
 
 import (
+	"fmt"
 	"khalehla/hardware"
 	"khalehla/hardware/ioPackets"
 	"khalehla/pkg"
@@ -44,10 +45,17 @@ type ChannelProgram struct {
 	NodeIdentifier   hardware.NodeIdentifier
 	IoFunction       ioPackets.IoFunction
 	IoStatus         ioPackets.IoStatus
-	ControlWords     []ControlWord // for reads and writes
-	Filename         string        // for mount
-	WriteProtected   bool          // for mount
+	BlockId          hardware.BlockId       // for disk
+	ControlWords     []ControlWord          // for reads and writes
+	MountInfo        *ioPackets.IoMountInfo // for mount
 	BytesTransferred uint
 	WordsTransferred uint
 	Listener         ChannelSender
+}
+
+func (cp *ChannelProgram) GetString() string {
+	return fmt.Sprintf("node:%v func:%v blk:%v",
+		cp.NodeIdentifier,
+		ioPackets.IoFunctionTable[cp.IoFunction],
+		cp.BlockId)
 }

@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"io"
 	"khalehla/hardware"
+	"khalehla/hardware/channels"
 	"khalehla/hardware/ioPackets"
 	"khalehla/kexec"
-	"khalehla/pkg"
 	"log"
 	"sync"
 	"time"
@@ -232,49 +232,33 @@ func (mgr *NodeManager) GetNodeInfoByIdentifier(nodeId hardware.NodeIdentifier) 
 }
 
 // RouteIo handles all disk and tape IO for the exec
-func (mgr *NodeManager) RouteIo(ioPacket ioPackets.IoPacket) {
+func (mgr *NodeManager) RouteIo(cp *channels.ChannelProgram) {
 	if mgr.exec.GetConfiguration().LogIOs {
-		devId := pkg.Word36(ioPacket.GetNodeIdentifier())
-		devName := devId.ToStringAsFieldata()
-		switch ioPacket.GetPacketType() {
-		case hardware.NodeDeviceDisk:
-			iop := ioPacket.(*ioPackets.DiskIoPacket)
-			log.Printf("NodeMgr:RouteIO %v iof:%v blk:%v", devName, iop.GetIoFunction(), iop.GetBlockId())
-		case hardware.NodeDeviceTape:
-			iop := ioPacket.(*ioPackets.TapeIoPacket)
-			log.Printf("NodeMgr:RouteIO %v iof:%v", devName, iop.GetIoFunction())
-		}
-	}
-
-	if ioPacket == nil {
-		ioPacket.SetIoStatus(ioPackets.IosInternalError)
-		mgr.exec.Stop(kexec.StopErrorInSystemIOTable)
-		return
+		log.Printf("NodeMgr:RouteIO %v", cp.GetString())
 	}
 
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
-	devInfo, ok := mgr.deviceInfos[ioPacket.GetNodeIdentifier()]
+	devInfo, ok := mgr.deviceInfos[cp.NodeIdentifier]
 	if !ok {
-		ioPacket.SetIoStatus(ioPackets.IosDeviceDoesNotExist)
+		cp.IoStatus = ioPackets.IosDeviceDoesNotExist
 		return
 	}
 
 	if !devInfo.IsAccessible() {
-		ioPacket.SetIoStatus(ioPackets.IosDeviceIsNotAccessible)
+		cp.IoStatus = ioPackets.IosDeviceIsNotAccessible
 		return
 	}
 
 	chInfo, err := mgr.selectChannelForDevice(devInfo)
 	if err != nil {
-		ioPacket.SetIoStatus(ioPackets.IosInternalError)
+		cp.IoStatus = ioPackets.IosInternalError
 		mgr.exec.Stop(kexec.StopErrorInSystemIOTable)
 		return
 	}
 
-	ioPacket.SetIoStatus(ioPackets.IosInProgress)
-	chInfo.GetChannel().RouteIo(ioPacket)
+	chInfo.GetChannel().StartIo(cp)
 }
 
 // -----------------------------------------------------------

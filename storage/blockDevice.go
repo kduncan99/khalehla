@@ -80,6 +80,6 @@ func IsLabelValid(label string) bool {
 }
 
 func IsWordsPerBlockValid(wordsPerBlock pkg.BlockSize) bool {
-	_, ok := pkg.PackedBytesPerBlockFromWords[wordsPerBlock]
+	_, ok := pkg.BlockSizeFromPrepFactor[wordsPerBlock]
 	return ok
 }

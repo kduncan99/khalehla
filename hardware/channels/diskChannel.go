@@ -52,8 +52,9 @@ func (ch *DiskChannel) AssignDevice(nodeIdentifier hardware.NodeIdentifier, devi
 	return nil
 }
 
-func (ch *DiskChannel) StartIo(program *ChannelProgram) {
-	ch.cpChannel <- program
+func (ch *DiskChannel) StartIo(cp *ChannelProgram) {
+	cp.IoStatus = ioPackets.IosInProgress
+	ch.cpChannel <- cp
 }
 
 func (ch *DiskChannel) Dump(dest io.Writer, indent string) {
@@ -95,18 +96,26 @@ func (ch *DiskChannel) prepareIoPacket(chProg *ChannelProgram) (*ioPackets.DiskI
 	pkt.IoFunction = chProg.IoFunction
 	pkt.IoStatus = ioPackets.IosNotStarted
 
+	byteCount := uint(0)
+	wordCount := uint(0)
+	if chProg.IoFunction == ioPackets.IofRead || chProg.IoFunction == ioPackets.IofWrite {
+		pkt.BlockId = chProg.BlockId
+		for _, cw := range chProg.ControlWords {
+			wordCount += cw.Length
+		}
+
+		bytes, ok := hardware.BlockSizeFromPrepFactor[hardware.PrepFactor(wordCount)]
+		if !ok {
+			return nil, false
+		}
+
+		byteCount = uint(bytes)
+	}
+
 	if chProg.IoFunction == ioPackets.IofWrite {
 		// If this is a data transfer to the device,
 		// we have to gather and translate caller's Word36 data into a byte buffer.
-		wordCount := uint(0)
-		byteCount := uint(0)
-		for _, cw := range chProg.ControlWords {
-			wordCount += cw.Length
-			byteCount += cw.Length * 9 / 2
-		}
-
 		pkt.Buffer = make([]byte, byteCount)
-
 		bx := uint(0)
 		for _, cw := range chProg.ControlWords {
 			switch cw.Format {
@@ -122,9 +131,10 @@ func (ch *DiskChannel) prepareIoPacket(chProg *ChannelProgram) (*ioPackets.DiskI
 
 		chProg.BytesTransferred = byteCount
 		chProg.WordsTransferred = wordCount
+	} else if chProg.IoFunction == ioPackets.IofRead {
+		pkt.BlockId = chProg.BlockId
 	} else if chProg.IoFunction == ioPackets.IofMount {
-		pkt.Filename = chProg.Filename
-		pkt.WriteProtected = chProg.WriteProtected
+		pkt.MountInfo = chProg.MountInfo
 	}
 
 	return pkt, true

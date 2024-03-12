@@ -13,7 +13,7 @@ type fileBlockZero struct {
 	blockCount    pkg.Word36
 }
 
-var fileBlockZeroSize = pkg.RawBytesPerBlockFromWords[4]
+var fileBlockZeroSize = pkg.RawBytesPerBlock[4]
 
 const fileIdentifierConstant = "BLKDVF"
 
@@ -144,7 +144,7 @@ func (bd *FileBlockDevice) Open(writeProtected bool, writeThrough bool) DeviceRe
 	bd.geometry.label = bz.label.ToStringAsFieldata()
 	bd.geometry.blockCount = pkg.BlockCount(bz.blockCount.GetW())
 	bd.geometry.wordsPerBlock = pkg.BlockSize(bz.wordsPerBlock.GetW())
-	bd.geometry.bytesPerBlock = pkg.RawBytesPerBlockFromWords[bd.geometry.wordsPerBlock]
+	bd.geometry.bytesPerBlock = pkg.RawBytesPerBlock[bd.geometry.wordsPerBlock]
 	bd.geometry.blocksPerTrack = pkg.BlockCount(1792 / bd.geometry.wordsPerBlock)
 
 	return DeviceResult{DeviceStatusSuccessful, nil}
@@ -268,7 +268,7 @@ func CreateFileBlockDevice(fileName string, label string, wordsPerBlock pkg.Bloc
 	bd.geometry = BlockGeometry{
 		blocksPerTrack: pkg.BlockCount(1792 / wordsPerBlock),
 		blockCount:     blockCount,
-		bytesPerBlock:  pkg.RawBytesPerBlockFromWords[wordsPerBlock],
+		bytesPerBlock:  pkg.RawBytesPerBlock[wordsPerBlock],
 		wordsPerBlock:  wordsPerBlock,
 	}
 
@@ -305,7 +305,7 @@ func CreateFileBlockDevice(fileName string, label string, wordsPerBlock pkg.Bloc
 	//	For a standard system block, it should be sufficient to write the last byte of the last block.
 	//  This *should* cause allocation of all the bytes from the beginning of the file to the end.
 	if preallocate {
-		offset := int64(int64(blockCount)*int64(pkg.RawBytesPerBlockFromWords[wordsPerBlock])) - 1
+		offset := int64(int64(blockCount)*int64(pkg.RawBytesPerBlock[wordsPerBlock])) - 1
 		b := []byte{0}
 		_, err = f.WriteAt(b, offset)
 		if err != nil {

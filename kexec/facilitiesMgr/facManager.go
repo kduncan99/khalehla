@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"khalehla/hardware"
+	"khalehla/hardware/channels"
 	"khalehla/hardware/ioPackets"
 	"khalehla/kexec"
 	"khalehla/kexec/nodeMgr"
@@ -223,12 +224,16 @@ func (mgr *FacilitiesManager) SetNodeStatus(nodeId hardware.NodeIdentifier, stat
 				stopExec = mgr.IsDeviceAssigned(nodeId)
 				break
 			} else if nodeAttr.GetNodeDeviceType() == hardware.NodeDeviceDisk {
-				// reset the tape device (unmounts it as part of the process)
-				ioPkt := ioPackets.NewTapeIoPacketReset(nodeId)
-				nodeManager.RouteIo(ioPkt)
+				// Reset the tape device (unmounts it as part of the process)
+				// We don't need to wait for IO to complete.
+				cp := &channels.ChannelProgram{
+					NodeIdentifier: nodeId,
+					IoFunction:     ioPackets.IofReset,
+				}
+				nodeManager.RouteIo(cp)
 				nodeAttr.SetFacNodeStatus(status)
 				if mgr.IsDeviceAssigned(nodeId) {
-					// TODO - unassign the device from the run
+					// TODO - un-assign the device from the run
 					// TODO - tell Exec to abort the run to which the thing was assigned
 				}
 				break
@@ -274,6 +279,9 @@ func (mgr *FacilitiesManager) SetNodeStatus(nodeId hardware.NodeIdentifier, stat
 
 	return nil
 }
+
+// diskBecameReady handles the notification which arrives after a unit attention.
+// this waits on IO, so do NOT call it under lock.
 func (mgr *FacilitiesManager) diskBecameReady(nodeId hardware.NodeIdentifier) {
 	// Device became ready - any pack attributes we have, are obsolete, so reload them
 	log.Printf("FacMgr:Disk %v became ready", nodeId)
@@ -286,19 +294,42 @@ func (mgr *FacilitiesManager) diskBecameReady(nodeId hardware.NodeIdentifier) {
 	// we only care if the unit is UP, SU, or RV (i.e., not DN)
 	facStat := diskAttr.GetFacNodeStatus()
 	if facStat != kexec.FacNodeStatusDown {
-		label := make([]pkg.Word36, 28)
-		nodeManager := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
-		ioPkt := ioPackets.NewDiskIoPacketReadLabel(nodeId, label)
-		nodeManager.RouteIo(ioPkt)
-		ioStat := ioPkt.GetIoStatus()
-		if ioStat == ioPackets.IosInternalError {
+		nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
+		ni, _ := nm.GetNodeInfoByIdentifier(nodeId)
+		ddi := ni.(*nodeMgr.DiskDeviceInfo)
+		dev := ddi.GetDiskDevice()
+		blockSize, _, _ := dev.GetDiskGeometry()
+		prepFactor := hardware.PrepFactorFromBlockSize[blockSize]
+
+		label := make([]pkg.Word36, prepFactor)
+		cw := channels.ControlWord{
+			Buffer:    label,
+			Offset:    0,
+			Length:    0,
+			Direction: channels.DirectionForward,
+			Format:    channels.TransferPacked,
+		}
+		cp := &channels.ChannelProgram{
+			NodeIdentifier: nodeId,
+			IoFunction:     ioPackets.IofRead,
+			BlockId:        2,
+			ControlWords:   []channels.ControlWord{cw},
+		}
+
+		nm.RouteIo(cp)
+		for cp.IoStatus == ioPackets.IosInProgress || cp.IoStatus == ioPackets.IosNotStarted {
+			time.Sleep(10 * time.Millisecond)
+		}
+
+		if cp.IoStatus == ioPackets.IosInternalError {
 			mgr.mutex.Unlock()
 			return
-		} else if ioStat != ioPackets.IosComplete {
+		} else if cp.IoStatus != ioPackets.IosComplete {
 			mgr.mutex.Unlock()
 
-			log.Printf("FacMgr:IO Error reading label disk:%v %v", nodeId, ioPkt.GetString())
-			consMsg := fmt.Sprintf("%v IO ERROR Reading Pack Label - Status=%v", diskAttr.GetNodeName(), ioStat)
+			log.Printf("FacMgr:IO Error reading label disk:%v", cp.GetString())
+			consMsg := fmt.Sprintf("%v IO ERROR Reading Pack Label - Status=%v",
+				diskAttr.GetNodeName(), ioPackets.IoStatusTable[cp.IoStatus])
 			mgr.exec.SendExecReadOnlyMessage(consMsg, nil)
 
 			// if unit is UP or SU, make it DN

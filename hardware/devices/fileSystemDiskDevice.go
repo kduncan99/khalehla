@@ -19,17 +19,6 @@ import (
 // We store a header in the first {n} bytes which describe the basic geometry of the
 // virtual disk we are modeling. Then we perform I/O in a manner consistent with the model.
 
-// Simple lookup table - the key is words per block, the value is bytes per block padded to power of two
-var bytesPerBlockMap = map[hardware.PrepFactor]uint{
-	28:   128,
-	56:   256,
-	112:  512,
-	224:  1024,
-	448:  2048,
-	896:  4096,
-	1792: 8192,
-}
-
 // fileSystemDiskHeader is the first {n} bytes in the file.
 // It is not visible to the host.
 var fsIdentifierBytes = []byte{'*', 'F', 'S', 'D', 'I', 'S', 'K', '*'}
@@ -99,6 +88,19 @@ func NewFileSystemDiskDevice(initialFileName *string) *FileSystemDiskDevice {
 	}
 
 	return dd
+}
+
+func (disk *FileSystemDiskDevice) GetDiskGeometry() (
+	blockSize hardware.BlockSize,
+	blockCount hardware.BlockCount,
+	trackCount hardware.TrackCount,
+) {
+	if disk.diskHeader != nil {
+		blockSize = hardware.BlockSize(disk.diskHeader.blockSize)
+		blockCount = hardware.BlockCount(disk.diskHeader.blockCount)
+		trackCount = hardware.TrackCount(disk.diskHeader.trackCount)
+	}
+	return
 }
 
 func (disk *FileSystemDiskDevice) GetFile() *os.File {
@@ -258,7 +260,7 @@ func (disk *FileSystemDiskDevice) doPrep(pkt *ioPackets.DiskIoPacket) {
 	blocksPerTrack := 1792 / uint64(pkt.PrepInfo.PrepFactor)
 	disk.diskHeader = &fileSystemDiskHeader{
 		identifier: fsIdentifier,
-		blockSize:  uint32(bytesPerBlockMap[pkt.PrepInfo.PrepFactor]),
+		blockSize:  uint32(hardware.BlockSizeFromPrepFactor[pkt.PrepInfo.PrepFactor]),
 		prepFactor: uint32(pkt.PrepInfo.PrepFactor),
 		blockCount: blocksPerTrack * uint64(pkt.PrepInfo.TrackCount),
 		trackCount: uint64(pkt.PrepInfo.TrackCount),

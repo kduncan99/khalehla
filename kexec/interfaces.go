@@ -7,6 +7,7 @@ package kexec
 import (
 	"io"
 	"khalehla/hardware"
+	"khalehla/hardware/channels"
 	"khalehla/kexec/config"
 )
 
@@ -107,4 +108,5 @@ type INodeManager interface {
 	Dump(destination io.Writer, indent string)
 	Initialize() error // invoked when the application is starting up
 	Stop()             // invoked when the exec is stopping
+	RouteIo(program *channels.ChannelProgram)
 }

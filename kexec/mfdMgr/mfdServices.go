@@ -501,17 +501,15 @@ func (mgr *MFDManager) InitializeMassStorage() {
 
 			// Read sector 1 of the initial directory track.
 			// This is a little messy due to the potential of problematic block sizes.
-			wordsPerBlock := uint64(diskAttr.PackLabelInfo.WordsPerRecord)
+			wordsPerBlock := diskAttr.PackLabelInfo.WordsPerRecord
 			dirTrackWordAddr := uint64(diskAttr.PackLabelInfo.FirstDirectoryTrackAddress)
-			dirTrackBlockId := hardware.BlockId(dirTrackWordAddr / wordsPerBlock)
+			dirTrackBlockId := hardware.BlockId(dirTrackWordAddr / uint64(wordsPerBlock))
 			if wordsPerBlock == 28 {
 				dirTrackBlockId++
 			}
 
 			buf := make([]pkg.Word36, wordsPerBlock)
-			pkt := ioPackets.NewDiskIoPacketRead(ddInfo.GetNodeIdentifier(), dirTrackBlockId, buf)
-			nm.RouteIo(pkt)
-			ioStat := pkt.GetIoStatus()
+			ioStat := mgr.readBlockFromDisk(ddInfo.GetNodeIdentifier(), buf, dirTrackBlockId)
 			if ioStat != ioPackets.IosComplete {
 				msg := fmt.Sprintf("IO error reading directory track on device %v", ddInfo.GetNodeName())
 				log.Printf("MFDMgr:%v", msg)

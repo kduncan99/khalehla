@@ -1,24 +1,10 @@
-// Khalehla Project
-// Copyright © 2023 by Kurt Duncan, BearSnake LLC
-// All Rights Reserved
-
 package pkg
 
 import (
 	"log"
 )
 
-var PackedBytesPerBlockFromWords = map[BlockSize]BlockSize{
-	28:   128,  // slop 2 bytes
-	56:   256,  // slop 4 bytes
-	112:  512,  // slop 8 bytes
-	224:  1024, // slop 16 bytes
-	448:  2048, // slop 32 bytes
-	896:  4096, // slop 64 bytes
-	1792: 8192, // slop 128 bytes
-}
-
-var RawBytesPerBlockFromWords = map[BlockSize]BlockSize{
+var RawBytesPerBlock = map[uint]uint{
 	28:   28 * 8,
 	56:   56 * 8,
 	112:  112 * 8,

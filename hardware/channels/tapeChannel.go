@@ -55,8 +55,9 @@ func (ch *TapeChannel) AssignDevice(nodeIdentifier hardware.NodeIdentifier, devi
 	return nil
 }
 
-func (ch *TapeChannel) StartIo(program *ChannelProgram) {
-	ch.cpChannel <- program
+func (ch *TapeChannel) StartIo(cp *ChannelProgram) {
+	cp.IoStatus = ioPackets.IosInProgress
+	ch.cpChannel <- cp
 }
 
 func (ch *TapeChannel) Dump(dest io.Writer, indent string) {
@@ -131,8 +132,7 @@ func (ch *TapeChannel) prepareIoPacket(chProg *ChannelProgram) (*ioPackets.TapeI
 		chProg.BytesTransferred = byteCount
 		chProg.WordsTransferred = wordCount
 	} else if chProg.IoFunction == ioPackets.IofMount {
-		pkt.Filename = chProg.Filename
-		pkt.WriteProtected = chProg.WriteProtected
+		pkt.MountInfo = chProg.MountInfo
 	}
 
 	return pkt, true
