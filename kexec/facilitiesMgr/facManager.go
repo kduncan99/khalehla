@@ -312,7 +312,7 @@ func (mgr *FacilitiesManager) diskBecameReady(nodeId hardware.NodeIdentifier) {
 		cp := &channels.ChannelProgram{
 			NodeIdentifier: nodeId,
 			IoFunction:     ioPackets.IofRead,
-			BlockId:        2,
+			BlockId:        0,
 			ControlWords:   []channels.ControlWord{cw},
 		}
 
@@ -320,7 +320,6 @@ func (mgr *FacilitiesManager) diskBecameReady(nodeId hardware.NodeIdentifier) {
 		for cp.IoStatus == ioPackets.IosInProgress || cp.IoStatus == ioPackets.IosNotStarted {
 			time.Sleep(10 * time.Millisecond)
 		}
-
 		if cp.IoStatus == ioPackets.IosInternalError {
 			mgr.mutex.Unlock()
 			return

@@ -42,6 +42,7 @@ var handlerTable = map[string]func(kexec.IExec, kexec.ConsoleIdentifier, string,
 	// "MS"
 	// "PM" ?
 	// "PR" ?
+	"PREP": NewPREPKeyinHandler,
 	// "RC"
 	// "RD" ?
 	// "RE"

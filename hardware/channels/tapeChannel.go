@@ -192,6 +192,8 @@ func (ch *TapeChannel) resolveIoPacket(chProg *ChannelProgram, ioPacket ioPacket
 }
 
 func (ch *TapeChannel) goRoutine() {
+	// TODO check the exec to see if it stops - if so, we need to cancel all outstanding IOs.
+	// TODO implement Reset() which also will cancel all outstanding IOs.
 	select {
 	case channelProgram := <-ch.cpChannel:
 		dev, ok := ch.devices[channelProgram.NodeIdentifier]

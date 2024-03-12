@@ -1251,7 +1251,9 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*kexec.
 		for bx := 0; bx < int(blocksPerTrack); bx++ {
 			sub := data[wx : wx+wordsPerBlock]
 			ioStat := mgr.readBlockFromDisk(fpDesc.nodeId, sub, blockId)
-			if ioStat != ioPackets.IosComplete {
+			if ioStat == ioPackets.IosInternalError {
+				return fmt.Errorf("init stopped")
+			} else if ioStat != ioPackets.IosComplete {
 				log.Printf("MFDMgr:initializeFixed cannot read directory track dev:%v blockId:%v",
 					fpDesc.nodeId, blockId)
 				mgr.exec.Stop(kexec.StopInternalExecIOFailed)
@@ -1903,7 +1905,9 @@ func (mgr *MFDManager) writeMFDCache() error {
 		devBlockId += uint64(mfdSectorId) / uint64(sectorsPerBlock)
 
 		ioStat := mgr.writeBlockToDisk(packDesc.nodeId, block, hardware.BlockId(devBlockId))
-		if ioStat != ioPackets.IosComplete {
+		if ioStat == ioPackets.IosInternalError {
+			return fmt.Errorf("internal error")
+		} else if ioStat != ioPackets.IosComplete {
 			log.Printf("MFDMgr:writeMFDCache error writing MFD block status=%v", ioStat)
 			mgr.exec.Stop(kexec.StopInternalExecIOFailed)
 			return fmt.Errorf("error draining MFD cache")

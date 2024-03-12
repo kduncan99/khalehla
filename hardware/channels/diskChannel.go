@@ -23,12 +23,15 @@ type DiskChannel struct {
 }
 
 func NewDiskChannel() *DiskChannel {
-	return &DiskChannel{
+	dc := &DiskChannel{
 		devices:   make(map[hardware.NodeIdentifier]devices.DiskDevice),
 		cpChannel: make(chan *ChannelProgram, 10),
 		ioChannel: make(chan *ioPackets.DiskIoPacket),
 		packetMap: make(map[ioPackets.IoPacket]*ChannelProgram),
 	}
+
+	go dc.goRoutine()
+	return dc
 }
 
 func (ch *DiskChannel) GetNodeCategoryType() hardware.NodeCategoryType {
@@ -191,6 +194,8 @@ func (ch *DiskChannel) resolveIoPacket(chProg *ChannelProgram, ioPacket ioPacket
 }
 
 func (ch *DiskChannel) goRoutine() {
+	// TODO check the exec to see if it stops - if so, we need to cancel all outstanding IOs.
+	// TODO implement Reset() which also will cancel all outstanding IOs.
 	select {
 	case channelProgram := <-ch.cpChannel:
 		dev, ok := ch.devices[channelProgram.NodeIdentifier]

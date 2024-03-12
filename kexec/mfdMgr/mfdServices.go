@@ -510,7 +510,9 @@ func (mgr *MFDManager) InitializeMassStorage() {
 
 			buf := make([]pkg.Word36, wordsPerBlock)
 			ioStat := mgr.readBlockFromDisk(ddInfo.GetNodeIdentifier(), buf, dirTrackBlockId)
-			if ioStat != ioPackets.IosComplete {
+			if ioStat == ioPackets.IosInternalError {
+				return
+			} else if ioStat != ioPackets.IosComplete {
 				msg := fmt.Sprintf("IO error reading directory track on device %v", ddInfo.GetNodeName())
 				log.Printf("MFDMgr:%v", msg)
 				mgr.exec.SendExecReadOnlyMessage(msg, nil)
