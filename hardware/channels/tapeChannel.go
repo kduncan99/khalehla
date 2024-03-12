@@ -18,7 +18,7 @@ import (
 type TapeChannel struct {
 	devices   map[hardware.NodeIdentifier]devices.TapeDevice
 	cpChannel chan *ChannelProgram
-	ioChannel chan *ioPackets.DiskIoPacket
+	ioChannel chan *ioPackets.TapeIoPacket
 	packetMap map[ioPackets.IoPacket]*ChannelProgram
 }
 
@@ -26,6 +26,7 @@ func NewTapeChannel() *TapeChannel {
 	ch := &TapeChannel{
 		devices:   make(map[hardware.NodeIdentifier]devices.TapeDevice),
 		cpChannel: make(chan *ChannelProgram, 10),
+		ioChannel: make(chan *ioPackets.TapeIoPacket),
 		packetMap: make(map[ioPackets.IoPacket]*ChannelProgram),
 	}
 
@@ -169,7 +170,7 @@ func (ch *TapeChannel) resolveIoPacket(chProg *ChannelProgram, ioPacket ioPacket
 				}
 
 				subBuffer := byteBuffer[bufferIndex : bufferIndex+subSize]
-				wordCount, niFlag :=
+				niFlag, wordCount :=
 					transferFromBytes(subBuffer, 0, subSize, cw.Buffer, 0, cw.Direction, cw.Format)
 				chProg.WordsTransferred += wordCount
 				if niFlag {

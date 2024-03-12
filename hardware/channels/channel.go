@@ -34,7 +34,7 @@ func transferFromBytes(
 	destinationOffset uint,
 	direction TransferDirection,
 	format TransferFormat,
-) (wordCount uint, nonIntegral bool) {
+) (nonIntegral bool, wordCount uint) {
 	switch format {
 	case Transfer6Bit:
 		return transferFromBytes6Bit(source, sourceOffset, sourceLength, destination, destinationOffset, direction)
@@ -54,82 +54,15 @@ func transferFromBytes6Bit(
 	destination []pkg.Word36,
 	destinationOffset uint,
 	direction TransferDirection,
-) (wordCount uint, nonIntegral bool) {
-	wordCount = 0
-	nonIntegral = false
-
+) (nonIntegral bool, wordCount uint) {
 	switch direction {
 	case DirectionForward:
-		dx := destinationOffset
-		for sx := uint(0); sx < sourceLength; sx += 6 {
-			wordCount++
-			nonIntegral = true
-
-			destination[dx].SetW(0)
-			destination[dx].SetS1(uint64(source[sourceOffset+sx]))
-			sx++
-			if sx < sourceLength {
-				destination[dx].SetS2(uint64(source[sourceOffset+sx]))
-				sx++
-				if sx < sourceLength {
-					destination[dx].SetS3(uint64(source[sourceOffset+sx]))
-					sx++
-					if sx < sourceLength {
-						destination[dx].SetS4(uint64(source[sourceOffset+sx]))
-						sx++
-						if sx < sourceLength {
-							destination[dx].SetS5(uint64(source[sourceOffset+sx]))
-							sx++
-							if sx < sourceLength {
-								destination[dx].SetS6(uint64(source[sourceOffset+sx]))
-								sx++
-								nonIntegral = false
-							}
-						}
-					}
-				}
-			}
-			dx++
-		}
-
+		return pkg.ByteArray6BitToWord36(source, sourceOffset, sourceLength, destination, destinationOffset)
 	case DirectionBackward:
-		destLength := sourceLength * 2 / 9
-		dx := destinationOffset + destLength - 1
-		for sx := uint(0); sx < sourceLength; sx += 6 {
-			wordCount++
-			nonIntegral = true
-
-			destination[dx].SetW(0)
-			destination[dx].SetS6(uint64(source[sourceOffset+sx]))
-			sx++
-			if sx < sourceLength {
-				destination[dx].SetS5(uint64(source[sourceOffset+sx]))
-				sx++
-				if sx < sourceLength {
-					destination[dx].SetS4(uint64(source[sourceOffset+sx]))
-					sx++
-					if sx < sourceLength {
-						destination[dx].SetS3(uint64(source[sourceOffset+sx]))
-						sx++
-						if sx < sourceLength {
-							destination[dx].SetS2(uint64(source[sourceOffset+sx]))
-							sx++
-							if sx < sourceLength {
-								destination[dx].SetS1(uint64(source[sourceOffset+sx]))
-								sx++
-								nonIntegral = false
-							}
-						}
-					}
-				}
-			}
-			dx--
-		}
-
+		return pkg.ByteArray6BitToWord36Reversed(source, sourceOffset, sourceLength, destination, destinationOffset)
 	default:
+		return
 	}
-
-	return
 }
 
 func transferFromBytes8Bit(
@@ -139,66 +72,15 @@ func transferFromBytes8Bit(
 	destination []pkg.Word36,
 	destinationOffset uint,
 	direction TransferDirection,
-) (wordCount uint, nonIntegral bool) {
-	wordCount = 0
-	nonIntegral = false
-
+) (nonIntegral bool, wordCount uint) {
 	switch direction {
 	case DirectionForward:
-		dx := destinationOffset
-		for sx := uint(0); sx < sourceLength; sx += 4 {
-			wordCount++
-			nonIntegral = true
-
-			destination[dx].SetW(0)
-			destination[dx].SetQ1(uint64(source[sourceOffset+sx]))
-			sx++
-			if sx < sourceLength {
-				destination[dx].SetQ2(uint64(source[sourceOffset+sx]))
-				sx++
-				if sx < sourceLength {
-					destination[dx].SetQ3(uint64(source[sourceOffset+sx]))
-					sx++
-					if sx < sourceLength {
-						destination[dx].SetQ4(uint64(source[sourceOffset+sx]))
-						sx++
-						nonIntegral = false
-					}
-				}
-			}
-			dx++
-		}
-
+		return pkg.ByteArray8BitToWord36(source, sourceOffset, sourceLength, destination, destinationOffset)
 	case DirectionBackward:
-		destLength := sourceLength * 2 / 9
-		dx := destinationOffset + destLength - 1
-		for sx := uint(0); sx < sourceLength; sx += 4 {
-			wordCount++
-			nonIntegral = true
-
-			destination[dx].SetW(0)
-			destination[dx].SetQ4(uint64(source[sourceOffset+sx]))
-			sx++
-			if sx < sourceLength {
-				destination[dx].SetQ3(uint64(source[sourceOffset+sx]))
-				sx++
-				if sx < sourceLength {
-					destination[dx].SetQ2(uint64(source[sourceOffset+sx]))
-					sx++
-					if sx < sourceLength {
-						destination[dx].SetQ1(uint64(source[sourceOffset+sx]))
-						sx++
-						nonIntegral = false
-					}
-				}
-			}
-			dx--
-		}
-
+		return pkg.ByteArray8BitToWord36Reversed(source, sourceOffset, sourceLength, destination, destinationOffset)
 	default:
+		return
 	}
-
-	return
 }
 
 func transferFromBytesPacked(
@@ -208,54 +90,15 @@ func transferFromBytesPacked(
 	destination []pkg.Word36,
 	destinationOffset uint,
 	direction TransferDirection,
-) (wordCount uint, nonIntegral bool) {
-	// TODO I don't like this - I want one pair of master routines for packing/unpacking,
-	//   which can handle non-integral conversions, and I want them in pkg.
-	//   This code will simply call that code.
-	//   Further, the existing routines which require alignment, will be reworked to
-	//   verify alignment and then just call the master routines.
-	//   Finally, I want extensive unit testing of all that, before coming back here.
-	nonIntegral = false
+) (nonIntegral bool, wordCount uint) {
 	switch direction {
 	case DirectionForward:
-		subLen := sourceLength
-		mod := subLen % 9
-		if mod > 0 {
-			subLen -= mod
-		}
-
-		sx := sourceOffset
-		sy := sourceOffset + subLen
-		sub := source[sx:sy]
-		dx := destinationOffset
-		dy := destinationOffset + (subLen * 2 / 9)
-		pkg.UnpackWord36Strict(sub, destination[dx:dy])
-
-		wordCount = subLen * 2 / 9
-
-		if mod > 0 {
-			nonIntegral = true
-			padding := make([]byte, 9-mod)
-			sz := sourceOffset + sourceLength
-			trailBytes := append(source[sy:sz], padding...)
-
-			trailWordCount := uint(1)
-			if mod >= 5 {
-				trailWordCount = 2
-			}
-
-			dz := dy + trailWordCount
-			wordCount += trailWordCount
-			pkg.UnpackWord36Strict(trailBytes, destination[dy:dz])
-		}
-
+		return pkg.ByteArrayPackedToWord36(source, sourceOffset, sourceLength, destination, destinationOffset)
 	case DirectionBackward:
-		// TODO transferFromBytesPacked <-
-
+		return pkg.ByteArrayPackedToWord36Reversed(source, sourceOffset, sourceLength, destination, destinationOffset)
 	default:
+		return
 	}
-
-	return
 }
 
 func transferFromWords(
@@ -287,32 +130,12 @@ func transferFromWords6Bit(
 ) {
 	switch direction {
 	case DirectionForward:
-		sx := sourceOffset
-		dx := destinationOffset
-		for cx := uint(0); cx < sourceLength; cx++ {
-			destination[dx] = byte(source[sx].GetS1())
-			destination[dx+1] = byte(source[sx].GetS2())
-			destination[dx+2] = byte(source[sx].GetS3())
-			destination[dx+3] = byte(source[sx].GetS4())
-			destination[dx+4] = byte(source[sx].GetS5())
-			destination[dx+5] = byte(source[sx].GetS6())
-			sx++
-			dx += 6
-		}
+		pkg.Word36ToByteArray6Bit(source, sourceOffset, sourceLength, destination, destinationOffset)
+		break
 
 	case DirectionBackward:
-		sx := sourceOffset + sourceLength - 1
-		dx := destinationOffset
-		for cx := uint(0); cx < sourceLength; cx++ {
-			destination[dx] = byte(source[sx].GetS6())
-			destination[dx+1] = byte(source[sx].GetS5())
-			destination[dx+2] = byte(source[sx].GetS4())
-			destination[dx+3] = byte(source[sx].GetS3())
-			destination[dx+4] = byte(source[sx].GetS2())
-			destination[dx+5] = byte(source[sx].GetS1())
-			sx--
-			dx += 6
-		}
+		pkg.Word36ToByteArray6BitReversed(source, sourceOffset, sourceLength, destination, destinationOffset)
+		break
 
 	case DirectionStatic:
 		sx := sourceOffset
@@ -347,28 +170,12 @@ func transferFromWords8Bit(
 ) {
 	switch direction {
 	case DirectionForward:
-		sx := sourceOffset
-		dx := destinationOffset
-		for cx := uint(0); cx < sourceLength; cx++ {
-			destination[dx] = byte(source[sx].GetQ1())
-			destination[dx+1] = byte(source[sx].GetQ2())
-			destination[dx+2] = byte(source[sx].GetQ3())
-			destination[dx+3] = byte(source[sx].GetQ4())
-			sx++
-			dx += 4
-		}
+		pkg.Word36ToByteArray8Bit(source, sourceOffset, sourceLength, destination, destinationOffset)
+		break
 
 	case DirectionBackward:
-		sx := sourceOffset + sourceLength - 1
-		dx := destinationOffset
-		for cx := uint(0); cx < sourceLength; cx++ {
-			destination[dx] = byte(source[sx].GetQ4())
-			destination[dx+1] = byte(source[sx].GetQ3())
-			destination[dx+2] = byte(source[sx].GetQ2())
-			destination[dx+3] = byte(source[sx].GetQ1())
-			sx--
-			dx += 4
-		}
+		pkg.Word36ToByteArray8BitReversed(source, sourceOffset, sourceLength, destination, destinationOffset)
+		break
 
 	case DirectionStatic:
 		sx := sourceOffset
@@ -401,15 +208,12 @@ func transferFromWordsPacked(
 ) {
 	switch direction {
 	case DirectionForward:
-		destBytes := sourceLength * 9 / 2
-		pkg.PackWord36Strict(source[sourceOffset:sourceOffset+sourceLength],
-			destination[destinationOffset:destinationOffset+destBytes])
+		pkg.Word36ToByteArrayPacked(source, sourceOffset, sourceLength, destination, destinationOffset)
+		break
 
 	case DirectionBackward:
-		// TODO
-		// destBytes := sourceLength * 9 / 2
-		// pkg.PackWord36StrictReversed(source[sourceOffset:sourceOffset+sourceLength],
-		// 	destination[destinationOffset:destinationOffset+destBytes])
+		pkg.Word36ToByteArrayPackedReversed(source, sourceOffset, sourceLength, destination, destinationOffset)
+		break
 
 	case DirectionStatic:
 		temp := []pkg.Word36{source[sourceOffset], source[sourceOffset]}

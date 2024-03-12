@@ -50,6 +50,17 @@ var FieldataFromAscii = []int{
 	025, 026, 027, 030, 031, 032, 033, 034, 035, 036, 037, 054, 057, 055, 004, 077,
 }
 
+func SerializeUint32IntoBuffer(value uint32, buffer []byte) {
+	buffer[0] = byte(value >> 24)
+	buffer[1] = byte(value >> 16)
+	buffer[2] = byte(value >> 8)
+	buffer[3] = byte(value)
+}
+
+func DeserializeUint32FromBuffer(buffer []byte) uint32 {
+	return (uint32(buffer[0]) << 24) | (uint32(buffer[1]) << 16) | (uint32(buffer[2]) << 8) | uint32(buffer[3])
+}
+
 func Word36ToByteArrayPacked(
 	source []Word36,
 	sourceOffset uint,

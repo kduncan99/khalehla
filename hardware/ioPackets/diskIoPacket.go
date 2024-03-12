@@ -7,7 +7,6 @@ package ioPackets
 import (
 	"fmt"
 	"khalehla/hardware"
-	"khalehla/pkg"
 )
 
 type DiskIoPacket struct {
@@ -16,7 +15,7 @@ type DiskIoPacket struct {
 	IoFunction     IoFunction
 	IoStatus       IoStatus
 	BlockId        hardware.BlockId    // for read, write
-	Buffer         []pkg.Word36        // for read, readLabel, write
+	Buffer         []byte              // for read, readLabel, write
 	PackName       string              // for prep
 	PrepFactor     hardware.PrepFactor // for prep
 	TrackCount     hardware.TrackCount // for prep
@@ -27,10 +26,6 @@ type DiskIoPacket struct {
 
 func (pkt *DiskIoPacket) GetBlockId() hardware.BlockId {
 	return pkt.BlockId
-}
-
-func (pkt *DiskIoPacket) GetBuffer() []pkg.Word36 {
-	return pkt.Buffer
 }
 
 func (pkt *DiskIoPacket) GetListener() IoPacketListener {
@@ -105,7 +100,7 @@ func NewDiskIoPacketPrep(nodeId hardware.NodeIdentifier, packName string, prepFa
 	}
 }
 
-func NewDiskIoPacketRead(nodeId hardware.NodeIdentifier, blockId hardware.BlockId, buffer []pkg.Word36) *DiskIoPacket {
+func NewDiskIoPacketRead(nodeId hardware.NodeIdentifier, blockId hardware.BlockId, buffer []byte) *DiskIoPacket {
 	return &DiskIoPacket{
 		NodeId:     nodeId,
 		IoFunction: IofRead,
@@ -115,7 +110,7 @@ func NewDiskIoPacketRead(nodeId hardware.NodeIdentifier, blockId hardware.BlockI
 	}
 }
 
-func NewDiskIoPacketReadLabel(nodeId hardware.NodeIdentifier, buffer []pkg.Word36) *DiskIoPacket {
+func NewDiskIoPacketReadLabel(nodeId hardware.NodeIdentifier, buffer []byte) *DiskIoPacket {
 	return &DiskIoPacket{
 		NodeId:     nodeId,
 		IoFunction: IofReadLabel,
@@ -140,7 +135,7 @@ func NewDiskIoPacketUnmount(nodeId hardware.NodeIdentifier) *DiskIoPacket {
 	}
 }
 
-func NewDiskIoPacketWrite(nodeId hardware.NodeIdentifier, blockId hardware.BlockId, buffer []pkg.Word36) *DiskIoPacket {
+func NewDiskIoPacketWrite(nodeId hardware.NodeIdentifier, blockId hardware.BlockId, buffer []byte) *DiskIoPacket {
 	return &DiskIoPacket{
 		NodeId:     nodeId,
 		IoFunction: IofWrite,
@@ -150,7 +145,7 @@ func NewDiskIoPacketWrite(nodeId hardware.NodeIdentifier, blockId hardware.Block
 	}
 }
 
-func NewDiskIoPacketWriteLabel(nodeId hardware.NodeIdentifier, buffer []pkg.Word36) *DiskIoPacket {
+func NewDiskIoPacketWriteLabel(nodeId hardware.NodeIdentifier, buffer []byte) *DiskIoPacket {
 	return &DiskIoPacket{
 		NodeId:     nodeId,
 		IoFunction: IofWriteLabel,

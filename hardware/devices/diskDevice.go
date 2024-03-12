@@ -12,12 +12,10 @@ import (
 
 type DiskDevice interface {
 	Dump(dest io.Writer, indent string)
-	GetGeometry() *ioPackets.DiskPackGeometry
 	GetNodeCategoryType() hardware.NodeCategoryType
 	GetNodeDeviceType() hardware.NodeDeviceType
 	GetNodeModelType() hardware.NodeModelType
 	IsMounted() bool
-	IsPrepped() bool
 	IsReady() bool
 	IsWriteProtected() bool
 	SetIsReady(flag bool)

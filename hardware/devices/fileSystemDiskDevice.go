@@ -15,9 +15,8 @@ import (
 	"sync"
 )
 
-// TODO need to notify listener when IO is complete
-// TODO need to make this async
-
+/*
+TODO this is obsolete
 // This is a very simple pseudo disk device
 // We depart from the conventional disk layout in the following manner:
 //   There is no booting from disk, so there is no bootstrap in physical blocks 0 or 1
@@ -45,6 +44,7 @@ import (
 // +017,H1  Words per physical record (also prep_factor)
 // +020,H2  Attributes - we just set these all to zeros
 // +021     (non-canonical) total number of blocks on pack
+*/
 
 // Simple lookup table - the key is words per block, the value is bytes per block padded to power of two
 var bytesPerBlockMap = map[hardware.PrepFactor]uint{
@@ -57,15 +57,40 @@ var bytesPerBlockMap = map[hardware.PrepFactor]uint{
 	1792: 8192,
 }
 
+// fsDiskHeader is the first 16 bytes in the file.
+// It is not visible to the host.
+var fsIdentifierBytes = []byte{'F', 'S', 'T', 'P'}
+var fsIdentifier = pkg.DeserializeUint32FromBuffer(fsIdentifierBytes)
+
+type fsDiskHeader struct {
+	identifier uint32 // "FSTP"
+	blockSize  uint32
+	prepFactor uint32
+	trackCount uint32
+}
+
+func (h *fsDiskHeader) deserializeFrom(buffer []byte) {
+	h.identifier = pkg.DeserializeUint32FromBuffer(buffer[0:4])
+	h.blockSize = pkg.DeserializeUint32FromBuffer(buffer[4:8])
+	h.prepFactor = pkg.DeserializeUint32FromBuffer(buffer[8:12])
+	h.trackCount = pkg.DeserializeUint32FromBuffer(buffer[12:16])
+}
+
+func (h *fsDiskHeader) serializeInto(buffer []byte) {
+	pkg.SerializeUint32IntoBuffer(h.identifier, buffer[0:4])
+	pkg.SerializeUint32IntoBuffer(h.blockSize, buffer[4:8])
+	pkg.SerializeUint32IntoBuffer(h.prepFactor, buffer[8:12])
+	pkg.SerializeUint32IntoBuffer(h.trackCount, buffer[12:16])
+}
+
 type FileSystemDiskDevice struct {
 	fileName         *string
 	file             *os.File
+	diskHeader       fsDiskHeader
 	isReady          bool
 	isWriteProtected bool
 	packName         string
-	geometry         *ioPackets.DiskPackGeometry
 	mutex            sync.Mutex
-	buffer           []byte
 	verbose          bool
 }
 
@@ -84,6 +109,36 @@ func NewFileSystemDiskDevice(initialFileName *string) *FileSystemDiskDevice {
 	return dd
 }
 
+func (disk *FileSystemDiskDevice) FormatFile(
+	filename string,
+	prepFactor hardware.PrepFactor,
+	trackCount hardware.TrackCount,
+) error {
+	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC|os.O_SYNC, 0666)
+	if err != nil {
+		log.Printf("%v\n", err)
+		return err
+	}
+
+	fsDiskHeader := fsDiskHeader{
+		identifier: fsIdentifier,
+		blockSize:  uint32(bytesPerBlockMap[prepFactor]),
+		prepFactor: uint32(prepFactor),
+		trackCount: uint32(trackCount),
+	}
+
+	buffer := make([]byte, 16)
+	fsDiskHeader.serializeInto(buffer)
+	_, err = f.Write(buffer)
+	if err != nil {
+		log.Printf("%v\n", err)
+		return err
+	}
+
+	err = f.Close()
+	return err
+}
+
 func (disk *FileSystemDiskDevice) GetNodeCategoryType() hardware.NodeCategoryType {
 	return hardware.NodeCategoryDevice
 }
@@ -96,16 +151,8 @@ func (disk *FileSystemDiskDevice) GetNodeDeviceType() hardware.NodeDeviceType {
 	return hardware.NodeDeviceDisk
 }
 
-func (disk *FileSystemDiskDevice) GetGeometry() *ioPackets.DiskPackGeometry {
-	return disk.geometry
-}
-
 func (disk *FileSystemDiskDevice) IsMounted() bool {
 	return disk.file != nil
-}
-
-func (disk *FileSystemDiskDevice) IsPrepped() bool {
-	return disk.geometry != nil
 }
 
 func (disk *FileSystemDiskDevice) IsReady() bool {
@@ -141,20 +188,14 @@ func (disk *FileSystemDiskDevice) StartIo(pkt ioPackets.IoPacket) {
 		switch pkt.GetIoFunction() {
 		case ioPackets.IofMount:
 			disk.doMount(pkt.(*ioPackets.DiskIoPacket))
-		case ioPackets.IofPrep:
-			disk.doPrep(pkt.(*ioPackets.DiskIoPacket))
 		case ioPackets.IofRead:
 			disk.doRead(pkt.(*ioPackets.DiskIoPacket))
-		case ioPackets.IofReadLabel:
-			disk.doReadLabel(pkt.(*ioPackets.DiskIoPacket))
 		case ioPackets.IofReset:
 			disk.doReset(pkt.(*ioPackets.DiskIoPacket))
 		case ioPackets.IofUnmount:
 			disk.doUnmount(pkt.(*ioPackets.DiskIoPacket))
 		case ioPackets.IofWrite:
 			disk.doWrite(pkt.(*ioPackets.DiskIoPacket))
-		case ioPackets.IofWriteLabel:
-			disk.doWriteLabel(pkt.(*ioPackets.DiskIoPacket))
 		default:
 			pkt.SetIoStatus(ioPackets.IosInvalidFunction)
 		}
@@ -163,6 +204,7 @@ func (disk *FileSystemDiskDevice) StartIo(pkt ioPackets.IoPacket) {
 	if disk.verbose {
 		log.Printf("  ioStatus:%v", pkt.GetIoStatus())
 	}
+	pkt.GetListener().IoComplete(pkt)
 }
 
 func (disk *FileSystemDiskDevice) doMount(pkt *ioPackets.DiskIoPacket) {
@@ -181,19 +223,35 @@ func (disk *FileSystemDiskDevice) doMount(pkt *ioPackets.DiskIoPacket) {
 		return
 	}
 
-	disk.isReady = true
+	buffer := make([]byte, 16)
+	bytes, err := f.ReadAt(buffer, 0)
+	if err != nil {
+		log.Printf("FSDISK:%v", err)
+		pkt.SetIoStatus(ioPackets.IosSystemError)
+		return
+	}
 
-	// At this point, the pack is now mounted. It may not be prepped, but that is okay.
+	if bytes != 16 {
+		log.Printf("FSDISK:Cannot read fs header")
+		pkt.SetIoStatus(ioPackets.IosPackNotPrepped)
+		return
+	}
+
+	disk.diskHeader.deserializeFrom(buffer)
+	if disk.diskHeader.identifier != fsIdentifier {
+		log.Printf("FSDISK:Not formatted properly")
+		pkt.SetIoStatus(ioPackets.IosPackNotPrepped)
+		return
+	}
+
+	disk.isReady = true
 	disk.file = f
 	disk.isWriteProtected = pkt.WriteProtected
 	pkt.SetIoStatus(ioPackets.IosComplete)
-
-	err = disk.probeGeometry()
-	if err != nil {
-		log.Printf("%v\n", err)
-	}
 }
 
+/*
+TODO saving this because we need it somewhere... just not here
 func (disk *FileSystemDiskDevice) doPrep(pkt *ioPackets.DiskIoPacket) {
 	disk.mutex.Lock()
 	defer disk.mutex.Unlock()
@@ -310,6 +368,7 @@ func (disk *FileSystemDiskDevice) doPrep(pkt *ioPackets.DiskIoPacket) {
 
 	pkt.SetIoStatus(ioPackets.IosComplete)
 }
+*/
 
 func (disk *FileSystemDiskDevice) doRead(pkt *ioPackets.DiskIoPacket) {
 	disk.mutex.Lock()
@@ -320,80 +379,42 @@ func (disk *FileSystemDiskDevice) doRead(pkt *ioPackets.DiskIoPacket) {
 		return
 	}
 
-	if !disk.IsPrepped() {
-		pkt.SetIoStatus(ioPackets.IosPackNotPrepped)
-		return
-	}
-
 	if pkt.Buffer == nil {
 		pkt.SetIoStatus(ioPackets.IosNilBuffer)
 		return
 	}
 
-	if uint(len(pkt.Buffer)) != uint(disk.geometry.PrepFactor) {
+	if uint(len(pkt.Buffer)) != uint(disk.diskHeader.blockSize) {
 		pkt.SetIoStatus(ioPackets.IosInvalidBufferSize)
 		return
 	}
 
-	if uint64(pkt.BlockId) >= uint64(disk.geometry.BlockCount) {
+	blocksPerTrack := 1792 / disk.diskHeader.prepFactor
+	blockCount := uint64(disk.diskHeader.trackCount) * uint64(blocksPerTrack)
+	if uint64(pkt.BlockId) >= blockCount {
 		pkt.SetIoStatus(ioPackets.IosInvalidBlockId)
 		return
 	}
 
-	offset := int64(pkt.BlockId) * int64(disk.geometry.PaddedBytesPerBlock)
+	offset := int64(disk.diskHeader.blockSize) * int64(pkt.BlockId+1)
 	if disk.verbose {
-		log.Printf("  ReadAt offset=%v len=%v", offset, len(disk.buffer))
+		log.Printf("  ReadAt offset=%v len=%v", offset, disk.diskHeader.blockSize)
 	}
 
-	_, err := disk.file.ReadAt(disk.buffer, offset)
-	if err != nil {
-		log.Printf("Read Error:%v\n", err)
-		pkt.SetIoStatus(ioPackets.IosSystemError)
-		return
-	}
-	pkg.UnpackWord36Strict(disk.buffer[:disk.geometry.BytesPerBlock], pkt.Buffer)
-	if disk.verbose {
-		pkg.DumpWord36Buffer(pkt.Buffer, 7)
-	}
+	index := uint(0)
+	remaining := uint(disk.diskHeader.blockSize)
+	for remaining > 0 {
+		count, err := disk.file.ReadAt(pkt.Buffer[index:], offset)
+		if err != nil {
+			log.Printf("Read Error:%v\n", err)
+			pkt.SetIoStatus(ioPackets.IosSystemError)
+			return
+		}
 
-	pkt.SetIoStatus(ioPackets.IosComplete)
-}
-
-func (disk *FileSystemDiskDevice) doReadLabel(pkt *ioPackets.DiskIoPacket) {
-	disk.mutex.Lock()
-	defer disk.mutex.Unlock()
-
-	if !disk.IsReady() {
-		pkt.SetIoStatus(ioPackets.IosDeviceIsNotReady)
-		return
+		remaining -= uint(count)
+		index += uint(count)
+		offset += int64(count)
 	}
-
-	if !disk.IsPrepped() {
-		pkt.SetIoStatus(ioPackets.IosPackNotPrepped)
-		return
-	}
-
-	if pkt.Buffer == nil {
-		pkt.SetIoStatus(ioPackets.IosNilBuffer)
-		return
-	}
-
-	if uint(len(pkt.Buffer)) != 28 {
-		pkt.SetIoStatus(ioPackets.IosInvalidBufferSize)
-		return
-	}
-
-	if disk.verbose {
-		log.Printf("  ReadAt offset=%v len=%v", 0, len(disk.buffer))
-	}
-
-	_, err := disk.file.ReadAt(disk.buffer, 0)
-	if err != nil {
-		log.Printf("%v\n", err)
-		pkt.SetIoStatus(ioPackets.IosSystemError)
-		return
-	}
-	pkg.UnpackWord36Strict(disk.buffer[:126], pkt.Buffer)
 
 	pkt.SetIoStatus(ioPackets.IosComplete)
 }
@@ -426,7 +447,6 @@ func (disk *FileSystemDiskDevice) doUnmount(pkt *ioPackets.DiskIoPacket) {
 		log.Printf("%v\n", err)
 	}
 
-	disk.geometry = nil
 	disk.file = nil
 	disk.isReady = false
 	pkt.SetIoStatus(ioPackets.IosComplete)
@@ -441,8 +461,8 @@ func (disk *FileSystemDiskDevice) doWrite(pkt *ioPackets.DiskIoPacket) {
 		return
 	}
 
-	if !disk.IsPrepped() {
-		pkt.SetIoStatus(ioPackets.IosPackNotPrepped)
+	if disk.isWriteProtected {
+		pkt.SetIoStatus(ioPackets.IosWriteProtected)
 		return
 	}
 
@@ -451,137 +471,102 @@ func (disk *FileSystemDiskDevice) doWrite(pkt *ioPackets.DiskIoPacket) {
 		return
 	}
 
-	if disk.isWriteProtected {
-		pkt.SetIoStatus(ioPackets.IosWriteProtected)
-		return
-	}
-
-	if uint(len(pkt.Buffer)) != uint(disk.geometry.PrepFactor) {
+	if uint(len(pkt.Buffer)) != uint(disk.diskHeader.blockSize) {
 		pkt.SetIoStatus(ioPackets.IosInvalidBufferSize)
 		return
 	}
 
-	if uint64(pkt.BlockId) >= uint64(disk.geometry.BlockCount) {
+	blocksPerTrack := 1792 / disk.diskHeader.prepFactor
+	blockCount := uint64(disk.diskHeader.trackCount) * uint64(blocksPerTrack)
+	if uint64(pkt.BlockId) >= blockCount {
 		pkt.SetIoStatus(ioPackets.IosInvalidBlockId)
 		return
 	}
 
-	pkg.PackWord36Strict(pkt.Buffer, disk.buffer[:disk.geometry.BytesPerBlock])
-	offset := int64(pkt.BlockId) * int64(bytesPerBlockMap[disk.geometry.PrepFactor])
-	_, err := disk.file.WriteAt(disk.buffer, offset)
-	if err != nil {
-		log.Printf("Write Error:%v\n", err)
-		pkt.SetIoStatus(ioPackets.IosSystemError)
-		return
+	offset := int64(disk.diskHeader.blockSize) * int64(pkt.BlockId+1)
+	if disk.verbose {
+		log.Printf("  WriteAt offset=%v len=%v", offset, disk.diskHeader.blockSize)
+	}
+
+	index := uint(0)
+	remaining := uint(disk.diskHeader.blockSize)
+	for remaining > 0 {
+		count, err := disk.file.WriteAt(pkt.Buffer[index:], offset)
+		if err != nil {
+			log.Printf("Write Error:%v\n", err)
+			pkt.SetIoStatus(ioPackets.IosSystemError)
+			return
+		}
+
+		remaining -= uint(count)
+		index += uint(count)
+		offset += int64(count)
 	}
 
 	pkt.SetIoStatus(ioPackets.IosComplete)
 }
 
-func (disk *FileSystemDiskDevice) doWriteLabel(pkt *ioPackets.DiskIoPacket) {
-	disk.mutex.Lock()
-	defer disk.mutex.Unlock()
-
-	if !disk.IsReady() {
-		pkt.SetIoStatus(ioPackets.IosDeviceIsNotReady)
-		return
-	}
-
-	if !disk.IsPrepped() {
-		pkt.SetIoStatus(ioPackets.IosPackNotPrepped)
-		return
-	}
-
-	if pkt.Buffer == nil {
-		pkt.SetIoStatus(ioPackets.IosNilBuffer)
-		return
-	}
-
-	if disk.isWriteProtected {
-		pkt.SetIoStatus(ioPackets.IosWriteProtected)
-		return
-	}
-
-	if uint(len(pkt.Buffer)) != 28 {
-		pkt.SetIoStatus(ioPackets.IosInvalidBufferSize)
-		return
-	}
-
-	if disk.verbose {
-		pkg.DumpWord36Buffer(pkt.Buffer, 7)
-	}
-
-	pkg.PackWord36Strict(pkt.Buffer, disk.buffer)
-	_, err := disk.file.WriteAt(disk.buffer, 0)
-	if err != nil {
-		log.Printf("%v\n", err)
-		pkt.SetIoStatus(ioPackets.IosSystemError)
-		return
-	}
-
-	pkt.SetIoStatus(ioPackets.IosComplete)
-}
-
-// do this any time we need to read the geometry from a (hopefully) prepped pack.
-// we will pretend the prep factor is 28 - this will work for block 0
-func (disk *FileSystemDiskDevice) probeGeometry() error {
-	disk.geometry = nil
-
-	buffer := make([]byte, 128)
-	if disk.verbose {
-		log.Printf("  ReadAt offset=%v len=%v", 0, len(disk.buffer))
-	}
-
-	_, err := disk.file.ReadAt(buffer, 0)
-	if err != nil {
-		log.Printf("Cannot read disk label - assuming pack is not prepped\n")
-		return err
-	}
-
-	label := make([]pkg.Word36, 28)
-	pkg.UnpackWord36Strict(buffer[:126], label)
-	if disk.verbose {
-		pkg.DumpWord36Buffer(label, 7)
-	}
-
-	str := label[0].ToStringAsAscii()
-	if str != "VOL1" {
-		// invalid label - pack is not prepped
-		return fmt.Errorf("invalid label (not VOL1)")
-	}
-
-	packName := label[1].ToStringAsAscii() + label[2].ToStringAsAscii()[:2]
-	if !hardware.IsValidPackName(packName) {
-		return fmt.Errorf("invalid pack name '%v'", packName)
-	}
-
-	prepFactor := hardware.PrepFactor(label[4].GetH2())
-	if !hardware.IsValidPrepFactor(prepFactor) {
-		return fmt.Errorf("invalid prep factor %v", prepFactor)
-	}
-
-	blockCount := hardware.BlockCount(label[021].GetW())
-	blocksPerTrack := uint(1792 / prepFactor)
-	trackCount := hardware.TrackCount(blockCount / hardware.BlockCount(blocksPerTrack))
-	sectorsPerBlock := uint(prepFactor / 28)
-	bytesPerBlock := uint(prepFactor) * 9 / 2
-	paddedBytesPerBlock := bytesPerBlockMap[prepFactor]
-
-	disk.packName = packName
-	disk.geometry = &ioPackets.DiskPackGeometry{
-		PrepFactor:           prepFactor,
-		BlockCount:           blockCount,
-		BlocksPerTrack:       blocksPerTrack,
-		TrackCount:           trackCount,
-		SectorsPerBlock:      sectorsPerBlock,
-		BytesPerBlock:        bytesPerBlock,
-		PaddedBytesPerBlock:  paddedBytesPerBlock,
-		FirstDirTrackBlockId: 1792 / blocksPerTrack,
-	}
-	disk.buffer = make([]byte, bytesPerBlockMap[prepFactor])
-
-	return nil
-}
+// TODO obsolete
+//// do this any time we need to read the geometry from a (hopefully) prepped pack.
+//// we will pretend the prep factor is 28 - this will work for block 0
+//func (disk *FileSystemDiskDevice) probeGeometry() error {
+//	disk.geometry = nil
+//
+//	buffer := make([]byte, 128)
+//	if disk.verbose {
+//		log.Printf("  ReadAt offset=%v len=%v", 0, len(disk.buffer))
+//	}
+//
+//	_, err := disk.file.ReadAt(buffer, 0)
+//	if err != nil {
+//		log.Printf("Cannot read disk label - assuming pack is not prepped\n")
+//		return err
+//	}
+//
+//	label := make([]pkg.Word36, 28)
+//	pkg.UnpackWord36Strict(buffer[:126], label)
+//	if disk.verbose {
+//		pkg.DumpWord36Buffer(label, 7)
+//	}
+//
+//	str := label[0].ToStringAsAscii()
+//	if str != "VOL1" {
+//		// invalid label - pack is not prepped
+//		return fmt.Errorf("invalid label (not VOL1)")
+//	}
+//
+//	packName := label[1].ToStringAsAscii() + label[2].ToStringAsAscii()[:2]
+//	if !hardware.IsValidPackName(packName) {
+//		return fmt.Errorf("invalid pack name '%v'", packName)
+//	}
+//
+//	prepFactor := hardware.PrepFactor(label[4].GetH2())
+//	if !hardware.IsValidPrepFactor(prepFactor) {
+//		return fmt.Errorf("invalid prep factor %v", prepFactor)
+//	}
+//
+//	blockCount := hardware.BlockCount(label[021].GetW())
+//	blocksPerTrack := uint(1792 / prepFactor)
+//	trackCount := hardware.TrackCount(blockCount / hardware.BlockCount(blocksPerTrack))
+//	sectorsPerBlock := uint(prepFactor / 28)
+//	bytesPerBlock := uint(prepFactor) * 9 / 2
+//	paddedBytesPerBlock := bytesPerBlockMap[prepFactor]
+//
+//	disk.packName = packName
+//	disk.geometry = &ioPackets.DiskPackGeometry{
+//		PrepFactor:           prepFactor,
+//		BlockCount:           blockCount,
+//		BlocksPerTrack:       blocksPerTrack,
+//		TrackCount:           trackCount,
+//		SectorsPerBlock:      sectorsPerBlock,
+//		BytesPerBlock:        bytesPerBlock,
+//		PaddedBytesPerBlock:  paddedBytesPerBlock,
+//		FirstDirTrackBlockId: 1792 / blocksPerTrack,
+//	}
+//	disk.buffer = make([]byte, bytesPerBlockMap[prepFactor])
+//
+//	return nil
+//}
 
 func (disk *FileSystemDiskDevice) Dump(dest io.Writer, indent string) {
 	_, _ = fmt.Fprintf(dest, "%vRdy:%v WProt:%v pack:%v file:%v\n",
@@ -591,15 +576,8 @@ func (disk *FileSystemDiskDevice) Dump(dest io.Writer, indent string) {
 		disk.packName,
 		*disk.fileName)
 
-	if disk.geometry != nil {
-		str := fmt.Sprintf("  prep:%v trks:%v blks:%v sec/blk:%v blk/trk:%v bytes/blk:%v padded:%v\n",
-			disk.geometry.PrepFactor,
-			disk.geometry.TrackCount,
-			disk.geometry.BlockCount,
-			disk.geometry.SectorsPerBlock,
-			disk.geometry.BlocksPerTrack,
-			disk.geometry.BytesPerBlock,
-			disk.geometry.PaddedBytesPerBlock)
-		_, _ = fmt.Fprintf(dest, "%v%v", indent, str)
-	}
+	str := fmt.Sprintf("  prep:%v trks:%v\n",
+		disk.diskHeader.prepFactor,
+		disk.diskHeader.trackCount)
+	_, _ = fmt.Fprintf(dest, "%v%v", indent, str)
 }
