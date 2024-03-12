@@ -242,7 +242,7 @@ func (disk *FileSystemDiskDevice) doPrep(pkt *ioPackets.DiskIoPacket) {
 	label[021].SetW(blockCount)
 
 	buffer := make([]byte, 128)
-	pkg.PackWord36(label, buffer[:126])
+	pkg.PackWord36Strict(label, buffer[:126])
 	if disk.verbose {
 		log.Printf("  WriteAt offset=%v len=%v", 0, len(disk.buffer))
 	}
@@ -287,7 +287,7 @@ func (disk *FileSystemDiskDevice) doPrep(pkt *ioPackets.DiskIoPacket) {
 	buffer = make([]byte, ioLen)
 	byteCount := wLen * 9 / 2
 	for wx < 1792 {
-		pkg.PackWord36(dirTrack[wx:wx+wLen], buffer[0:byteCount])
+		pkg.PackWord36Strict(dirTrack[wx:wx+wLen], buffer[0:byteCount])
 		if disk.verbose {
 			log.Printf("  WriteAt offset=%v len=%v", offset, len(disk.buffer))
 		}
@@ -351,7 +351,7 @@ func (disk *FileSystemDiskDevice) doRead(pkt *ioPackets.DiskIoPacket) {
 		pkt.SetIoStatus(ioPackets.IosSystemError)
 		return
 	}
-	pkg.UnpackWord36(disk.buffer[:disk.geometry.BytesPerBlock], pkt.Buffer)
+	pkg.UnpackWord36Strict(disk.buffer[:disk.geometry.BytesPerBlock], pkt.Buffer)
 	if disk.verbose {
 		pkg.DumpWord36Buffer(pkt.Buffer, 7)
 	}
@@ -393,7 +393,7 @@ func (disk *FileSystemDiskDevice) doReadLabel(pkt *ioPackets.DiskIoPacket) {
 		pkt.SetIoStatus(ioPackets.IosSystemError)
 		return
 	}
-	pkg.UnpackWord36(disk.buffer[:126], pkt.Buffer)
+	pkg.UnpackWord36Strict(disk.buffer[:126], pkt.Buffer)
 
 	pkt.SetIoStatus(ioPackets.IosComplete)
 }
@@ -466,7 +466,7 @@ func (disk *FileSystemDiskDevice) doWrite(pkt *ioPackets.DiskIoPacket) {
 		return
 	}
 
-	pkg.PackWord36(pkt.Buffer, disk.buffer[:disk.geometry.BytesPerBlock])
+	pkg.PackWord36Strict(pkt.Buffer, disk.buffer[:disk.geometry.BytesPerBlock])
 	offset := int64(pkt.BlockId) * int64(bytesPerBlockMap[disk.geometry.PrepFactor])
 	_, err := disk.file.WriteAt(disk.buffer, offset)
 	if err != nil {
@@ -511,7 +511,7 @@ func (disk *FileSystemDiskDevice) doWriteLabel(pkt *ioPackets.DiskIoPacket) {
 		pkg.DumpWord36Buffer(pkt.Buffer, 7)
 	}
 
-	pkg.PackWord36(pkt.Buffer, disk.buffer)
+	pkg.PackWord36Strict(pkt.Buffer, disk.buffer)
 	_, err := disk.file.WriteAt(disk.buffer, 0)
 	if err != nil {
 		log.Printf("%v\n", err)
@@ -539,7 +539,7 @@ func (disk *FileSystemDiskDevice) probeGeometry() error {
 	}
 
 	label := make([]pkg.Word36, 28)
-	pkg.UnpackWord36(buffer[:126], label)
+	pkg.UnpackWord36Strict(buffer[:126], label)
 	if disk.verbose {
 		pkg.DumpWord36Buffer(label, 7)
 	}

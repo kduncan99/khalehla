@@ -123,7 +123,7 @@ func (dev *BinDevice) ReadVolumeHeader() (volHeader *VolumeHeader, err error) {
 		return nil, err
 	}
 
-	pkg.UnpackWord36(bytes, words)
+	pkg.UnpackWord36Strict(bytes, words)
 	sentinel := words[0].ToStringAsFieldata()
 	if sentinel != "**TF**" {
 		err = fmt.Errorf("found '%v' - expected '**TF**'", sentinel)
@@ -171,7 +171,7 @@ func (dev *BinDevice) ReadBlock() (data []pkg.Word36, eof bool, err error) {
 		return
 	}
 
-	pkg.UnpackWord36(bytes, header)
+	pkg.UnpackWord36Strict(bytes, header)
 	sentinel := header[0].ToStringAsFieldata()
 	if sentinel == "**EOF*" {
 		eof = true
@@ -198,7 +198,7 @@ func (dev *BinDevice) ReadBlock() (data []pkg.Word36, eof bool, err error) {
 	}
 	dev.currentSectorAddress += totalWords / 28
 
-	pkg.UnpackWord36(bytes, dataBlock)
+	pkg.UnpackWord36Strict(bytes, dataBlock)
 	data = dataBlock[headerWords : headerWords+dataWords]
 	return
 }

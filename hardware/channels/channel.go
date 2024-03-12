@@ -229,13 +229,13 @@ func transferFromBytesPacked(
 		sub := source[sx:sy]
 		dx := destinationOffset
 		dy := destinationOffset + (subLen * 2 / 9)
-		pkg.UnpackWord36(sub, destination[dx:dy])
+		pkg.UnpackWord36Strict(sub, destination[dx:dy])
 
 		wordCount = subLen * 2 / 9
 
 		if mod > 0 {
 			nonIntegral = true
-			padding := make([]byte, 9 - mod)
+			padding := make([]byte, 9-mod)
 			sz := sourceOffset + sourceLength
 			trailBytes := append(source[sy:sz], padding...)
 
@@ -246,11 +246,11 @@ func transferFromBytesPacked(
 
 			dz := dy + trailWordCount
 			wordCount += trailWordCount
-			pkg.UnpackWord36(trailBytes, destination[dy:dz])
+			pkg.UnpackWord36Strict(trailBytes, destination[dy:dz])
 		}
 
 	case DirectionBackward:
-		//TODO transferFromBytesPacked <-
+		// TODO transferFromBytesPacked <-
 
 	default:
 	}
@@ -402,18 +402,19 @@ func transferFromWordsPacked(
 	switch direction {
 	case DirectionForward:
 		destBytes := sourceLength * 9 / 2
-		pkg.PackWord36(source[sourceOffset:sourceOffset+sourceLength],
+		pkg.PackWord36Strict(source[sourceOffset:sourceOffset+sourceLength],
 			destination[destinationOffset:destinationOffset+destBytes])
 
 	case DirectionBackward:
-		destBytes := sourceLength * 9 / 2
-		pkg.PackWord36Reversed(source[sourceOffset:sourceOffset+sourceLength],
-			destination[destinationOffset:destinationOffset+destBytes])
+		// TODO
+		// destBytes := sourceLength * 9 / 2
+		// pkg.PackWord36StrictReversed(source[sourceOffset:sourceOffset+sourceLength],
+		// 	destination[destinationOffset:destinationOffset+destBytes])
 
 	case DirectionStatic:
 		temp := []pkg.Word36{source[sourceOffset], source[sourceOffset]}
 		for dx := uint(0); dx < sourceLength*9/2; dx += 9 {
-			pkg.PackWord36(temp, destination[dx:dx+9])
+			pkg.PackWord36Strict(temp, destination[dx:dx+9])
 		}
 
 	case DirectionSkip:

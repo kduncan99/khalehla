@@ -169,7 +169,7 @@ func (bd *PackedBlockDevice) readBlock(blockId pkg.BlockId, buffer []pkg.Word36)
 	pos := int64(blockId) * int64(bd.geometry.bytesPerBlock)
 	_, err = bd.file.ReadAt(bd.midBuffer, pos)
 	if err == nil {
-		pkg.UnpackWord36(bd.midBuffer, buffer)
+		pkg.UnpackWord36Strict(bd.midBuffer, buffer)
 	}
 	return err
 }
@@ -251,7 +251,7 @@ func (bd *PackedBlockDevice) writeBlock(blockId pkg.BlockId, buffer []pkg.Word36
 	pos := int64(blockId) * int64(bd.geometry.bytesPerBlock)
 	_, err = bd.file.ReadAt(bd.midBuffer, pos)
 	if err == nil {
-		pkg.UnpackWord36(bd.midBuffer, buffer)
+		pkg.UnpackWord36Strict(bd.midBuffer, buffer)
 	}
 	return err
 }
