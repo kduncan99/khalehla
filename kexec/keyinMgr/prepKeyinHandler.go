@@ -115,7 +115,7 @@ func (kh *PREPKeyinHandler) process() {
 	// TODO Make sure the device is RV (after we get the RV keyin implemented)
 
 	if !hardware.IsValidPackName(packName) {
-		str := fmt.Sprintf("%v is not a valid pack name", packName)
+		str := fmt.Sprintf("PREP %v %v is not a valid pack name", deviceName, packName)
 		kh.exec.SendExecReadOnlyMessage(str, &kh.source)
 		return
 	}
@@ -128,7 +128,7 @@ func (kh *PREPKeyinHandler) process() {
 
 	blockSize, blockCount, trackCount := dd.GetDiskGeometry()
 	if blockSize == 0 || blockCount == 0 || trackCount == 0 {
-		str := fmt.Sprintf("%v is not properly formatted", deviceName)
+		str := fmt.Sprintf("PREP %v pack is not properly formatted", deviceName)
 		kh.exec.SendExecReadOnlyMessage(str, &kh.source)
 		return
 	}
@@ -138,40 +138,34 @@ func (kh *PREPKeyinHandler) process() {
 	ioStat := kh.readBlock(nodeId, label, 0)
 	if ioStat == ioPackets.IosInternalError {
 		return
-	} else if ioStat == ioPackets.IosComplete {
-		// TODO Do we have a VOL1 label? If so, warn the operator
+	} else if ioStat != ioPackets.IosComplete {
+		// This is odd - the device knows the geometry, but we failed to read the disk label
+		str := fmt.Sprintf("PREP %v IO error reading pack label", deviceName)
+		kh.exec.SendExecReadOnlyMessage(str, &kh.source)
+		return
 	}
 
-	// basic geometry - some of these values exist simply so we do not have to constantly cast them to do math
-	blocksPerTrack := hardware.BlockCount(1792 / prepFactor)
-	dirTrackAddr := uint64(1792) // we set this to the device-relative word address of the initial directory track
+	// TODO console R/Rply message display current geometry, ask if we want to overwrite it
 
-	// create initial label and write it
-	for lx := 0; lx < len(label); lx++ {
-		label[lx] = 0
+	// Send an IofPrep to the disk to write the label and re-establish geometry
+	cp := &channels.ChannelProgram{
+		NodeIdentifier:   nodeId,
+		IoFunction:       ioPackets.IofPrep,
+		// PrepInfo
 	}
-
-	pkg.FromStringToAsciiWithOffset("VOL1", label, 0, 1)
-	pkg.FromStringToAsciiWithOffset(packName, label, 1, 2)
-	label[2].SetH2(0)
-	label[3].SetW(dirTrackAddr)
-	label[4].SetH1(uint64(blocksPerTrack))
-	label[4].SetH2(uint64(prepFactor))
-	label[5].SetW(0)      // no DRS tracks
-	label[014].SetS1(010) // Pretend we are a workstation utility
-	label[014].SetS2(1)   // VOL1 version
-	label[014].SetH2(10)  // heads per cylinder - make up something
-	label[016].SetW(uint64(trackCount))
-	label[017].SetH1(uint64(prepFactor))
-	label[021].SetW(uint64(blockCount))
-
-	ioStat = kh.writeBlock(nodeId, label, 0)
-	if ioStat == ioPackets.IosInternalError {
+	kh.exec.GetNodeManager().RouteIo(cp)
+	for cp.IoStatus == ioPackets.IosComplete || cp.IoStatus == ioPackets.IosNotStarted {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if cp.IoStatus != ioPackets.IosComplete {
+		str := fmt.Sprintf("PREP %v IO error writing pack label", deviceName)
+		kh.exec.SendExecReadOnlyMessage(str, &kh.source)
 		return
 	}
 
 	// write initial directory track...
 	// actually, we only need to write sectors 0 and 1, and any slop necessary to pad out to the prep factor.
+	blocksPerTrack := hardware.BlockCount(1792 / prepFactor)
 	dirTrack := make([]pkg.Word36, 1792)
 	availableTracks := trackCount - 2 // subtract label track and first directory track
 
@@ -196,8 +190,7 @@ func (kh *PREPKeyinHandler) process() {
 	s1[010].SetS3(1) // Sector 1 version
 	s1[010].SetT3(uint64(prepFactor))
 
-	// Figure out the block id which contains sector 0 of the first directory track.
-	dirBlockId := hardware.BlockId(blocksPerTrack)
+	dirBlockId := hardware.BlockId(blocksPerTrack) // assuming directory track is the second logical track
 	for wx := 0; wx < 56; wx += int(prepFactor) {
 		subBuffer := dirTrack[wx : wx+int(prepFactor)]
 		ioStat = kh.writeBlock(nodeId, subBuffer, dirBlockId)
@@ -217,9 +210,7 @@ func (kh *PREPKeyinHandler) thread() {
 	kh.timeFinished = time.Now()
 }
 
-// TODO when fac mgr is ready, we should assign the device to the exec
-//
-//	and let fac mgr do the IOs.
+// TODO when fac mgr is ready, we should assign the device to the exec and let fac mgr do the IOs.
 func (kh *PREPKeyinHandler) readBlock(
 	nodeId hardware.NodeIdentifier,
 	buffer []pkg.Word36,
