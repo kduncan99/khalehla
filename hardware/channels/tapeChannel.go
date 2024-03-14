@@ -10,6 +10,7 @@ import (
 	"khalehla/hardware"
 	"khalehla/hardware/devices"
 	"khalehla/hardware/ioPackets"
+	"log"
 	"time"
 )
 
@@ -20,6 +21,7 @@ type TapeChannel struct {
 	cpChannel chan *ChannelProgram
 	ioChannel chan *ioPackets.TapeIoPacket
 	packetMap map[ioPackets.IoPacket]*ChannelProgram
+	resetIos  bool
 }
 
 func NewTapeChannel() *TapeChannel {
@@ -53,6 +55,10 @@ func (ch *TapeChannel) AssignDevice(nodeIdentifier hardware.NodeIdentifier, devi
 
 	ch.devices[nodeIdentifier] = device.(devices.TapeDevice)
 	return nil
+}
+
+func (ch *TapeChannel) Reset() {
+	ch.resetIos = false
 }
 
 func (ch *TapeChannel) StartIo(cp *ChannelProgram) {
@@ -228,6 +234,17 @@ func (ch *TapeChannel) goRoutine() {
 		}
 
 	case <-time.After(100 * time.Millisecond):
+		if ch.resetIos {
+			log.Printf("CHDISK:Resetting IOs")
+			for _, chProg := range ch.packetMap {
+				chProg.IoStatus = ioPackets.IosCanceled
+				if chProg.Listener != nil {
+					chProg.Listener.ChannelProgramComplete(chProg)
+				}
+			}
+			ch.packetMap = make(map[ioPackets.IoPacket]*ChannelProgram)
+			ch.resetIos = false
+		}
 		break
 	}
 }

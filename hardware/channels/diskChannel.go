@@ -10,6 +10,7 @@ import (
 	"khalehla/hardware"
 	"khalehla/hardware/devices"
 	"khalehla/hardware/ioPackets"
+	"log"
 	"time"
 )
 
@@ -20,6 +21,7 @@ type DiskChannel struct {
 	cpChannel chan *ChannelProgram
 	ioChannel chan *ioPackets.DiskIoPacket
 	packetMap map[ioPackets.IoPacket]*ChannelProgram
+	resetIos  bool
 }
 
 func NewDiskChannel() *DiskChannel {
@@ -53,6 +55,10 @@ func (ch *DiskChannel) AssignDevice(nodeIdentifier hardware.NodeIdentifier, devi
 
 	ch.devices[nodeIdentifier] = device.(*devices.FileSystemDiskDevice)
 	return nil
+}
+
+func (ch *DiskChannel) Reset() {
+	ch.resetIos = false
 }
 
 func (ch *DiskChannel) StartIo(cp *ChannelProgram) {
@@ -230,6 +236,17 @@ func (ch *DiskChannel) goRoutine() {
 		}
 
 	case <-time.After(100 * time.Millisecond):
+		if ch.resetIos {
+			log.Printf("CHDISK:Resetting IOs")
+			for _, chProg := range ch.packetMap {
+				chProg.IoStatus = ioPackets.IosCanceled
+				if chProg.Listener != nil {
+					chProg.Listener.ChannelProgramComplete(chProg)
+				}
+			}
+			ch.packetMap = make(map[ioPackets.IoPacket]*ChannelProgram)
+			ch.resetIos = false
+		}
 		break
 	}
 }

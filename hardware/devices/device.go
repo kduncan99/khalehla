@@ -20,6 +20,7 @@ type Device interface {
 	GetNodeModelType() hardware.NodeModelType
 	IsMounted() bool
 	IsReady() bool
+	Reset()
 	SetVerbose(flag bool)
 	StartIo(ioPacket ioPackets.IoPacket)
 }
