@@ -11,6 +11,7 @@ const (
 	IosNotStarted
 	IosComplete
 	IosInProgress
+	IosCanceled // channel or device was reset
 
 	IosAtLoadPoint
 	IosInvalidChannelProgram
@@ -45,6 +46,7 @@ var IoStatusTable = map[IoStatus]string{
 	IosNotStarted:            "NotStarted",
 	IosComplete:              "Complete",
 	IosInProgress:            "InProgress",
+	IosCanceled:              "Canceled",
 	IosAtLoadPoint:           "AtLoadPoint",
 	IosDeviceDoesNotExist:    "DeviceDoesNotExist",
 	IosDeviceIsDown:          "DeviceIsDown",

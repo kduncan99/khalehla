@@ -20,4 +20,5 @@ type Node interface {
 	GetNodeDeviceType() NodeDeviceType
 	GetNodeModelType() NodeModelType
 	IsReady() bool
+	Reset()
 }

@@ -91,6 +91,10 @@ func (tape *FileSystemTapeDevice) IsWriteProtected() bool {
 	return tape.isWriteProtected
 }
 
+func (tape *FileSystemTapeDevice) Reset() {
+	// TODO nothing to do
+}
+
 func (tape *FileSystemTapeDevice) SetIsReady(flag bool) {
 	tape.isReady = flag
 }

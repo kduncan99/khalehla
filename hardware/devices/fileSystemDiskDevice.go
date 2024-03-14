@@ -104,6 +104,10 @@ func (disk *FileSystemDiskDevice) IsWriteProtected() bool {
 	return disk.isWriteProtected
 }
 
+func (disk *FileSystemDiskDevice) Reset() {
+	// TODO nothing to do
+}
+
 func (disk *FileSystemDiskDevice) SetIsReady(flag bool) {
 	disk.isReady = flag
 }
