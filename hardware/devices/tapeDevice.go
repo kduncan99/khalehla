@@ -21,6 +21,7 @@ type TapeDevice interface {
 	IsMounted() bool
 	IsReady() bool
 	IsWriteProtected() bool
+	Reset()
 	SetIsReady(flag bool)
 	SetIsWriteProtected(flag bool)
 	SetVerbose(flag bool)
