@@ -92,7 +92,7 @@ func (tape *FileSystemTapeDevice) IsWriteProtected() bool {
 }
 
 func (tape *FileSystemTapeDevice) Reset() {
-	// TODO nothing to do
+	// nothing to do
 }
 
 func (tape *FileSystemTapeDevice) SetIsReady(flag bool) {
