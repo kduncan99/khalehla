@@ -9,6 +9,7 @@ import (
 	"khalehla/kexec"
 	"khalehla/kexec/config"
 	"khalehla/kexec/exec"
+	"khalehla/klog"
 	"os"
 	"strconv"
 	"strings"
@@ -96,6 +97,8 @@ func main() {
 		showHelp()
 		return
 	}
+
+	klog.SetGlobalLevel(klog.LevelAll)
 
 	cfg := config.NewConfiguration()
 	if context.configFileName != nil {

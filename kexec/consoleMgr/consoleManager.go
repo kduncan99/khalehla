@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"io"
 	"khalehla/kexec"
+	"khalehla/klog"
 	"khalehla/pkg"
-	"log"
 	"sync"
 	"time"
 )
@@ -45,7 +45,7 @@ func NewConsoleManager(exec kexec.IExec) *ConsoleManager {
 
 // Boot is invoked when the exec is booting
 func (mgr *ConsoleManager) Boot() error {
-	log.Printf("ConsMgr:Boot")
+	klog.LogTrace("ConsMgr", "Boot")
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
@@ -65,7 +65,7 @@ func (mgr *ConsoleManager) Boot() error {
 
 // Close is invoked when the application is terminating
 func (mgr *ConsoleManager) Close() {
-	log.Printf("ConsMgr:Close")
+	klog.LogTrace("ConsMgr", "Close")
 	mgr.threadStop = true
 	for !mgr.threadDone {
 		time.Sleep(25 * time.Millisecond)
@@ -74,7 +74,7 @@ func (mgr *ConsoleManager) Close() {
 
 // Initialize is invoked when the application is starting
 func (mgr *ConsoleManager) Initialize() error {
-	log.Printf("ConsMgr:Initialize")
+	klog.LogTrace("ConsMgr", "Initialize")
 	mgr.consoles = make(map[kexec.ConsoleIdentifier]kexec.IConsole)
 	mgr.queuedReadOnly = make([]*kexec.ConsoleReadOnlyMessage, 0)
 	mgr.queuedReadReply = make(map[int]*readReplyTracker)
@@ -92,7 +92,7 @@ func (mgr *ConsoleManager) Initialize() error {
 
 // Stop is invoked when the exec is stopping
 func (mgr *ConsoleManager) Stop() {
-	log.Printf("ConsMgr:Stop")
+	klog.LogTrace("ConsMgr", "Stop")
 	// TODO
 	//  We should probably do something here, but I'm not sure what.
 }
@@ -102,7 +102,7 @@ func (mgr *ConsoleManager) Stop() {
 func (mgr *ConsoleManager) SendReadOnlyMessage(message *kexec.ConsoleReadOnlyMessage) {
 	// Log it and put it in the RCE tail sheet (unless it is the Exec)
 	if mgr.exec.GetConfiguration().LogTrace {
-		log.Printf("ConsMgr:Queueing %v*%v", message.Source.RunId, message.Text)
+		klog.LogInfoF("ConsMgr", "Queueing %v*%v", message.Source.RunId, message.Text)
 	}
 	if !message.Source.IsExec() {
 		message.Source.PostToTailSheet(message.Text)
@@ -119,7 +119,7 @@ func (mgr *ConsoleManager) SendReadOnlyMessage(message *kexec.ConsoleReadOnlyMes
 func (mgr *ConsoleManager) SendReadReplyMessage(message *kexec.ConsoleReadReplyMessage) error {
 	// Log it and put it in the RCE tail sheet (unless it is the Exec)
 	if mgr.exec.GetConfiguration().LogTrace {
-		log.Printf("ConsMgr:Queueing n-%v:%v", message.Source.RunId, message.Text)
+		klog.LogInfoF("ConsMgr", "Queueing n-%v:%v", message.Source.RunId, message.Text)
 	}
 	if !message.Source.IsExec() {
 		message.Source.PostToTailSheet(message.Text)
@@ -135,7 +135,8 @@ func (mgr *ConsoleManager) SendReadReplyMessage(message *kexec.ConsoleReadReplyM
 	mgr.mutex.Unlock()
 
 	if tracker.isCanceled {
-		return fmt.Errorf("read reply message was canceled")
+		klog.LogInfo("ConsMgr", "Read reply message was canceled")
+		return fmt.Errorf("msg cacneled")
 	}
 
 	return nil
@@ -291,13 +292,13 @@ func (mgr *ConsoleManager) checkForSolicitedInput() bool {
 			// we have a reply - find the tracker for this message
 			trackerId, err := mgr.findTrackerFor(consId, msgId)
 			if err != nil {
-				log.Printf("ConsMgr:Received reply for a message we are not tracking")
+				klog.LogWarning("ConsMgr", "Received reply for a message we are not tracking")
 				continue
 			}
 
 			tracker := mgr.queuedReadReply[trackerId]
 			if tracker.hasReply {
-				log.Printf("ConsMgr:Received reply for a message we already have a reply for")
+				klog.LogWarning("ConsMgr", "Received reply for a message we already have a reply for")
 				continue
 			}
 			if len(*reply) > tracker.message.MaxReplyLength {
@@ -307,7 +308,7 @@ func (mgr *ConsoleManager) checkForSolicitedInput() bool {
 
 			if mgr.exec.GetConfiguration().LogConsoleMessages && !tracker.message.DoNotLogReply {
 				consw36 := pkg.Word36(consId)
-				log.Printf("ConsMgr:%v %v %v", consw36.ToStringAsFieldata(), msgId, *reply)
+				klog.LogInfoF("ConsMgr", "ConsMgr:%v %v %v", consw36.ToStringAsFieldata(), msgId, *reply)
 				tracker.message.Source.PostToTailSheet(fmt.Sprintf("%v %v", msgId, reply))
 			}
 
@@ -332,7 +333,7 @@ func (mgr *ConsoleManager) checkForUnsolicitedInput() bool {
 		} else if input != nil {
 			// send the raw input to the exec, and let it deal with parsing issues
 			if mgr.exec.GetConfiguration().LogConsoleMessages {
-				log.Printf("ConsMgr:%v", *input)
+				klog.LogInfoF("ConsMgr", "%v", *input)
 			}
 			km := mgr.exec.GetKeyinManager()
 			km.PostKeyin(consId, *input)
@@ -348,7 +349,7 @@ func (mgr *ConsoleManager) checkForUnsolicitedInput() bool {
 func (mgr *ConsoleManager) dropConsole(consoleId kexec.ConsoleIdentifier) {
 	consId := pkg.Word36(consoleId)
 	if mgr.exec.GetConfiguration().LogTrace {
-		log.Printf("ConsMgr: Deleting unreponsive console %v", consId.ToStringAsFieldata())
+		klog.LogInfoF("ConsMgr", "Deleting unresponsive console %v", consId.ToStringAsFieldata())
 	}
 	delete(mgr.consoles, consoleId)
 
