@@ -87,7 +87,7 @@ func (e *Exec) Boot(session uint, jumpKeys []bool, invokerChannel chan kexec.Sto
 	if session == 0 || e.jumpKeys[kexec.JumpKey1Index] {
 		// Let the operator adjust the configuration
 		accepted := []string{"DONE"}
-		_, _ = e.SendExecRestrictedReadReplyMessage("Modify Config then answer DONE", accepted)
+		_, _ = e.SendExecRestrictedReadReplyMessage("Modify Config then answer DONE", accepted, nil)
 		if e.stopFlag {
 			invokerChannel <- e.stopCode
 			return
@@ -209,9 +209,14 @@ func (e *Exec) SendExecReadOnlyMessage(message string, routing *kexec.ConsoleIde
 	e.consoleMgr.SendReadOnlyMessage(&consMsg)
 }
 
-func (e *Exec) SendExecReadReplyMessage(message string, maxReplyChars int) (string, error) {
+func (e *Exec) SendExecReadReplyMessage(
+	message string,
+	maxReplyChars int,
+	routing *kexec.ConsoleIdentifier,
+) (string, error) {
 	consMsg := kexec.ConsoleReadReplyMessage{
 		Source:         e.runControlEntry,
+		Routing:        routing,
 		Text:           message,
 		DoNotEmitRunId: true,
 		MaxReplyLength: maxReplyChars,
@@ -225,7 +230,11 @@ func (e *Exec) SendExecReadReplyMessage(message string, maxReplyChars int) (stri
 	return consMsg.Reply, nil
 }
 
-func (e *Exec) SendExecRestrictedReadReplyMessage(message string, accepted []string) (string, error) {
+func (e *Exec) SendExecRestrictedReadReplyMessage(
+	message string,
+	accepted []string,
+	routing *kexec.ConsoleIdentifier,
+) (string, error) {
 	if len(accepted) == 0 {
 		return "", fmt.Errorf("bad accepted list")
 	}
@@ -239,6 +248,7 @@ func (e *Exec) SendExecRestrictedReadReplyMessage(message string, accepted []str
 
 	consMsg := kexec.ConsoleReadReplyMessage{
 		Source:         e.runControlEntry,
+		Routing:        routing,
 		Text:           message,
 		DoNotEmitRunId: true,
 		MaxReplyLength: maxReplyLen,

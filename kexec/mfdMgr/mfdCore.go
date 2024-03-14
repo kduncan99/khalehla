@@ -1179,7 +1179,7 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*kexec.
 
 	replies := []string{"Y", "N"}
 	msg = "Mass Storage will be Initialized - Do You Want To Continue? Y/N"
-	reply, err := mgr.exec.SendExecRestrictedReadReplyMessage(msg, replies)
+	reply, err := mgr.exec.SendExecRestrictedReadReplyMessage(msg, replies, nil)
 	if err != nil {
 		return err
 	} else if reply != "Y" {

@@ -56,8 +56,8 @@ type IExec interface {
 	Initialize() error
 	PerformDump(fullFlag bool) (string, error)
 	SendExecReadOnlyMessage(message string, routing *ConsoleIdentifier)
-	SendExecReadReplyMessage(message string, maxReplyChars int) (string, error)
-	SendExecRestrictedReadReplyMessage(message string, accepted []string) (string, error)
+	SendExecReadReplyMessage(message string, maxReplyChars int, routing *ConsoleIdentifier) (string, error)
+	SendExecRestrictedReadReplyMessage(message string, accepted []string, routing *ConsoleIdentifier) (string, error)
 	SetJumpKey(jkNumber int, value bool)
 	Stop(code StopCode)
 }

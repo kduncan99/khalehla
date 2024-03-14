@@ -12,6 +12,24 @@ func IsValidFilenameChar(ch byte) bool {
 	return (ch >= 'A' && ch <= 'Z') || ch == '-' || ch == '$'
 }
 
+func IsValidNodeName(name string) bool {
+	if len(name) < 1 || len(name) > 6 {
+		return false
+	}
+
+	if name[0] < 'A' || name[0] > 'Z' {
+		return false
+	}
+
+	for nx := 1; nx < len(name); nx++ {
+		if (name[nx] < 'A' || name[nx] > 'Z') && (name[nx] < '0' || name[nx] > '9') {
+			return false
+		}
+	}
+
+	return true
+}
+
 func IsValidQualifierChar(ch byte) bool {
 	return (ch >= 'A' && ch <= 'Z') || ch == '-' || ch == '$'
 }
@@ -43,24 +61,6 @@ func IsValidQualifier(qualifier string) bool {
 
 	for chx := range qualifier {
 		if !IsValidQualifierChar(qualifier[chx]) {
-			return false
-		}
-	}
-
-	return true
-}
-
-func IsValidNodeName(name string) bool {
-	if len(name) < 1 || len(name) > 6 {
-		return false
-	}
-
-	if name[0] < 'A' || name[0] > 'Z' {
-		return false
-	}
-
-	for nx := 1; nx < len(name); nx++ {
-		if (name[nx] < 'A' || name[nx] > 'Z') && (name[nx] < '0' || name[nx] > '9') {
 			return false
 		}
 	}

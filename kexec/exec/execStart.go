@@ -14,7 +14,7 @@ func (e *Exec) performInitialBoot() {
 	if e.jumpKeys[kexec.JumpKey13Index] {
 		msg := "Jump key 13 is set on initial boot - Continue? Y/N"
 		accepted := []string{"Y", "N"}
-		reply, _ := e.SendExecRestrictedReadReplyMessage(msg, accepted)
+		reply, _ := e.SendExecRestrictedReadReplyMessage(msg, accepted, nil)
 		if e.stopFlag {
 			return
 		} else if reply == "N" {

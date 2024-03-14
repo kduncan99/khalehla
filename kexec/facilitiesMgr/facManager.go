@@ -298,8 +298,7 @@ func (mgr *FacilitiesManager) diskBecameReady(nodeId hardware.NodeIdentifier) {
 		ni, _ := nm.GetNodeInfoByIdentifier(nodeId)
 		ddi := ni.(*nodeMgr.DiskDeviceInfo)
 		dev := ddi.GetDiskDevice()
-		blockSize, _, _ := dev.GetDiskGeometry()
-		prepFactor := hardware.PrepFactorFromBlockSize[blockSize]
+		_, _, prepFactor, _ := dev.GetDiskGeometry()
 
 		label := make([]pkg.Word36, prepFactor)
 		cw := channels.ControlWord{
