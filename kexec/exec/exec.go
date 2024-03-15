@@ -13,7 +13,7 @@ import (
 	"khalehla/kexec/keyinMgr"
 	"khalehla/kexec/mfdMgr"
 	"khalehla/kexec/nodeMgr"
-	"log"
+	"khalehla/klog"
 	"os"
 	"strings"
 	"time"
@@ -115,7 +115,7 @@ func (e *Exec) Boot(session uint, jumpKeys []bool, invokerChannel chan kexec.Sto
 
 // Close invokes the Close method on each of the managers in a particular order.
 func (e *Exec) Close() {
-	log.Printf("Exec:Close")
+	klog.LogTrace("Exec", "Close")
 	managers := []kexec.IManager{
 		e.mfdMgr,
 		e.facMgr,
