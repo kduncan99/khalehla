@@ -186,9 +186,7 @@ func (mgr *MFDManager) allocateDirectoryTrack(
 	trackId, _ = chosenDesc.freeSpaceTable.AllocateTrack()
 	chosenDesc.mfdTrackCount++
 
-	if mgr.exec.GetConfiguration().LogTrace {
-		klog.LogInfoF("MFDMgr", "allocateDirectorySector returns ldat=%06o track=%012o", chosenLDAT, trackId)
-	}
+	klog.LogInfoF("MFDMgr", "allocateDirectorySector returns ldat=%06o track=%012o", chosenLDAT, trackId)
 	return chosenLDAT, trackId, nil
 }
 

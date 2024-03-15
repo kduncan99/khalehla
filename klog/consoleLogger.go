@@ -18,8 +18,12 @@ func NewConsoleLogger(initialLevel Level) *ConsoleLogger {
 	}
 }
 
+func (lg *ConsoleLogger) Close() {
+	// nothing to do
+}
+
 func (lg *ConsoleLogger) Log(level Level, message string) {
-	if level <= globalLevel && globalEnabled {
+	if level <= lg.level && lg.enabled {
 		fmt.Println(message)
 	}
 }

@@ -21,6 +21,7 @@ type Channel interface {
 	GetNodeDeviceType() hardware.NodeDeviceType
 	GetNodeModelType() hardware.NodeModelType
 	Reset()
+	SetVerbose(bool)
 	StartIo(program *ChannelProgram)
 }
 

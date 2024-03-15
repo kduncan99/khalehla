@@ -114,14 +114,17 @@ func (mgr *NodeManager) Initialize() error {
 	// End TODOs
 
 	// Create channels
+	verbose := mgr.exec.GetConfiguration().LogIOs
 	for _, cInfo := range mgr.channelInfos {
 		cInfo.CreateNode()
+		cInfo.GetChannel().SetVerbose(verbose)
 		mgr.nextChannel = append(mgr.nextChannel, cInfo.GetNodeIdentifier())
 	}
 
 	// Create devices
 	for _, dInfo := range mgr.deviceInfos {
 		dInfo.CreateNode()
+		dInfo.GetDevice().SetVerbose(verbose)
 		dInfo.GetDevice().SetVerbose(mgr.exec.GetConfiguration().LogIOs)
 	}
 
@@ -177,7 +180,13 @@ func (mgr *NodeManager) Initialize() error {
 // Stop is invoked when the exec is stopping
 func (mgr *NodeManager) Stop() {
 	klog.LogTrace("NodeMgr", "Stop")
-	// nothing to do
+	// Reset all devices and channels
+	for _, ci := range mgr.channelInfos {
+		ci.GetChannel().Reset()
+	}
+	for _, di := range mgr.deviceInfos {
+		di.GetDevice().Reset()
+	}
 }
 
 func (mgr *NodeManager) GetChannelInfos() []ChannelInfo {

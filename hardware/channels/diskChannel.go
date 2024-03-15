@@ -10,7 +10,7 @@ import (
 	"khalehla/hardware"
 	"khalehla/hardware/devices"
 	"khalehla/hardware/ioPackets"
-	"log"
+	"khalehla/klog"
 	"time"
 )
 
@@ -22,6 +22,7 @@ type DiskChannel struct {
 	ioChannel chan *ioPackets.DiskIoPacket
 	packetMap map[ioPackets.IoPacket]*ChannelProgram
 	resetIos  bool
+	verbose   bool
 }
 
 func NewDiskChannel() *DiskChannel {
@@ -48,6 +49,10 @@ func (ch *DiskChannel) GetNodeModelType() hardware.NodeModelType {
 	return hardware.NodeModelDiskChannel
 }
 
+func (ch *DiskChannel) SetVerbose(flag bool) {
+	ch.verbose = flag
+}
+
 func (ch *DiskChannel) AssignDevice(nodeIdentifier hardware.NodeIdentifier, device devices.Device) error {
 	if device.GetNodeDeviceType() != hardware.NodeDeviceDisk {
 		return fmt.Errorf("device is not a disk")
@@ -58,10 +63,13 @@ func (ch *DiskChannel) AssignDevice(nodeIdentifier hardware.NodeIdentifier, devi
 }
 
 func (ch *DiskChannel) Reset() {
-	ch.resetIos = false
+	ch.resetIos = true
 }
 
 func (ch *DiskChannel) StartIo(cp *ChannelProgram) {
+	if ch.verbose {
+		klog.LogInfoF("CHDISK", "StartIo:%v", cp.GetString())
+	}
 	cp.IoStatus = ioPackets.IosInProgress
 	ch.cpChannel <- cp
 }
@@ -200,8 +208,6 @@ func (ch *DiskChannel) resolveIoPacket(chProg *ChannelProgram, ioPacket ioPacket
 }
 
 func (ch *DiskChannel) goRoutine() {
-	// TODO check the exec to see if it stops - if so, we need to cancel all outstanding IOs.
-	// TODO implement Reset() which also will cancel all outstanding IOs.
 	select {
 	case channelProgram := <-ch.cpChannel:
 		dev, ok := ch.devices[channelProgram.NodeIdentifier]
@@ -237,7 +243,7 @@ func (ch *DiskChannel) goRoutine() {
 
 	case <-time.After(100 * time.Millisecond):
 		if ch.resetIos {
-			log.Printf("CHDISK:Resetting IOs")
+			klog.LogInfo("CHDISK", "Resetting IOs")
 			for _, chProg := range ch.packetMap {
 				chProg.IoStatus = ioPackets.IosCanceled
 				if chProg.Listener != nil {

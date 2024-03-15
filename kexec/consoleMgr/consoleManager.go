@@ -100,10 +100,8 @@ func (mgr *ConsoleManager) Stop() {
 // SendReadOnlyMessage queues a RO message and returns immediately.
 // The ConsoleManager thread will handle actually sending the message to all the consoles if/as appropriate.
 func (mgr *ConsoleManager) SendReadOnlyMessage(message *kexec.ConsoleReadOnlyMessage) {
-	// Log it and put it in the RCE tail sheet (unless it is the Exec)
-	if mgr.exec.GetConfiguration().LogTrace {
-		klog.LogInfoF("ConsMgr", "Queueing %v*%v", message.Source.RunId, message.Text)
-	}
+	// LogF it and put it in the RCE tail sheet (unless it is the Exec)
+	klog.LogInfoF("ConsMgr", "Queueing %v*%v", message.Source.RunId, message.Text)
 	if !message.Source.IsExec() {
 		message.Source.PostToTailSheet(message.Text)
 	}
@@ -117,10 +115,8 @@ func (mgr *ConsoleManager) SendReadOnlyMessage(message *kexec.ConsoleReadOnlyMes
 // The wait is terminated if the RCE goes into contingency mode, or if the exec stops.
 // During the waiting period, the ConsoleManager thread will send the message, then poll for a reply as necessary.
 func (mgr *ConsoleManager) SendReadReplyMessage(message *kexec.ConsoleReadReplyMessage) error {
-	// Log it and put it in the RCE tail sheet (unless it is the Exec)
-	if mgr.exec.GetConfiguration().LogTrace {
-		klog.LogInfoF("ConsMgr", "Queueing n-%v:%v", message.Source.RunId, message.Text)
-	}
+	// LogF it and put it in the RCE tail sheet (unless it is the Exec)
+	klog.LogInfoF("ConsMgr", "Queueing n-%v:%v", message.Source.RunId, message.Text)
 	if !message.Source.IsExec() {
 		message.Source.PostToTailSheet(message.Text)
 	}
@@ -348,11 +344,9 @@ func (mgr *ConsoleManager) checkForUnsolicitedInput() bool {
 // call under lock
 func (mgr *ConsoleManager) dropConsole(consoleId kexec.ConsoleIdentifier) {
 	consId := pkg.Word36(consoleId)
-	if mgr.exec.GetConfiguration().LogTrace {
-		klog.LogInfoF("ConsMgr", "Deleting unresponsive console %v", consId.ToStringAsFieldata())
-	}
-	delete(mgr.consoles, consoleId)
+	klog.LogInfoF("ConsMgr", "Deleting unresponsive console %v", consId.ToStringAsFieldata())
 
+	delete(mgr.consoles, consoleId)
 	for _, tracker := range mgr.queuedReadReply {
 		if tracker.replyConsole != nil && *tracker.replyConsole == consoleId {
 			tracker.replyConsole = nil

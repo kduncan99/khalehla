@@ -98,7 +98,10 @@ func main() {
 		return
 	}
 
+	klog.ClearLoggers()
+	klog.RegisterLogger(klog.NewTimestampedFileLogger(klog.LevelAll, "kexec"))
 	klog.SetGlobalLevel(klog.LevelAll)
+	defer klog.Close()
 
 	cfg := config.NewConfiguration()
 	if context.configFileName != nil {

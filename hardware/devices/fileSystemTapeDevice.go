@@ -9,7 +9,7 @@ import (
 	"io"
 	"khalehla/hardware"
 	"khalehla/hardware/ioPackets"
-	"log"
+	"khalehla/klog"
 	"os"
 	"sync"
 )
@@ -109,7 +109,7 @@ func (tape *FileSystemTapeDevice) SetVerbose(flag bool) {
 
 func (tape *FileSystemTapeDevice) StartIo(pkt ioPackets.IoPacket) {
 	if tape.verbose {
-		log.Printf("FSTAPE:%v", pkt.GetString())
+		klog.LogInfo("FSTAPE", pkt.GetString())
 	}
 	pkt.SetIoStatus(ioPackets.IosInProgress)
 
@@ -146,7 +146,7 @@ func (tape *FileSystemTapeDevice) StartIo(pkt ioPackets.IoPacket) {
 	}
 
 	if tape.verbose {
-		log.Printf("FSTAPE:ioStatus=%v", pkt.GetIoStatus())
+		klog.LogInfoF("FSTAPE", "ioStatus=%v", pkt.GetIoStatus())
 	}
 	if pkt.GetListener() != nil {
 		pkt.GetListener().IoComplete(pkt)
@@ -457,7 +457,7 @@ func (tape *FileSystemTapeDevice) doUnmount(pkt *ioPackets.TapeIoPacket) {
 
 	err := tape.file.Close()
 	if err != nil {
-		log.Printf("%v\n", err)
+		klog.LogErrorF("FSTAPE", "Error closing file:%v", err)
 	}
 
 	tape.isReady = false

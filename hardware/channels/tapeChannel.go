@@ -10,7 +10,7 @@ import (
 	"khalehla/hardware"
 	"khalehla/hardware/devices"
 	"khalehla/hardware/ioPackets"
-	"log"
+	"khalehla/klog"
 	"time"
 )
 
@@ -22,6 +22,7 @@ type TapeChannel struct {
 	ioChannel chan *ioPackets.TapeIoPacket
 	packetMap map[ioPackets.IoPacket]*ChannelProgram
 	resetIos  bool
+	verbose   bool
 }
 
 func NewTapeChannel() *TapeChannel {
@@ -48,6 +49,10 @@ func (ch *TapeChannel) GetNodeModelType() hardware.NodeModelType {
 	return hardware.NodeModelTapeLibraryChannel
 }
 
+func (ch *TapeChannel) SetVerbose(flag bool) {
+	ch.verbose = flag
+}
+
 func (ch *TapeChannel) AssignDevice(nodeIdentifier hardware.NodeIdentifier, device devices.Device) error {
 	if device.GetNodeDeviceType() != hardware.NodeDeviceTape {
 		return fmt.Errorf("device is not a tape")
@@ -58,10 +63,13 @@ func (ch *TapeChannel) AssignDevice(nodeIdentifier hardware.NodeIdentifier, devi
 }
 
 func (ch *TapeChannel) Reset() {
-	ch.resetIos = false
+	ch.resetIos = true
 }
 
 func (ch *TapeChannel) StartIo(cp *ChannelProgram) {
+	if ch.verbose {
+		klog.LogInfoF("CHTAPE", "StartIo:%v", cp.GetString())
+	}
 	cp.IoStatus = ioPackets.IosInProgress
 	ch.cpChannel <- cp
 }
@@ -198,8 +206,6 @@ func (ch *TapeChannel) resolveIoPacket(chProg *ChannelProgram, ioPacket ioPacket
 }
 
 func (ch *TapeChannel) goRoutine() {
-	// TODO check the exec to see if it stops - if so, we need to cancel all outstanding IOs.
-	// TODO implement Reset() which also will cancel all outstanding IOs.
 	select {
 	case channelProgram := <-ch.cpChannel:
 		dev, ok := ch.devices[channelProgram.NodeIdentifier]
@@ -235,7 +241,7 @@ func (ch *TapeChannel) goRoutine() {
 
 	case <-time.After(100 * time.Millisecond):
 		if ch.resetIos {
-			log.Printf("CHDISK:Resetting IOs")
+			klog.LogInfo("CHTAPE", "Resetting IOs")
 			for _, chProg := range ch.packetMap {
 				chProg.IoStatus = ioPackets.IosCanceled
 				if chProg.Listener != nil {
