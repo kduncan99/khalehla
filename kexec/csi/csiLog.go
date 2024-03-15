@@ -5,10 +5,9 @@
 package csi
 
 import (
-	"fmt"
 	"khalehla/kexec"
 	"khalehla/kexec/facilitiesMgr"
-	"log"
+	"khalehla/klog"
 )
 
 // handleLog
@@ -29,22 +28,22 @@ func handleLog(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, re
 	}
 
 	validMask := uint64(kexec.DOption | kexec.ROption)
-	if !checkIllegalOptions(pkt, optWord, validMask, facResult) {
+	if !facilitiesMgr.CheckIllegalOptions(pkt.rce, optWord, validMask, facResult, pkt.sourceIsExecRequest) {
 		resultCode = 0_600000_000000
 		return
 	}
 
 	text := pkt.pcs.operandFields[0][0]
 	if len(text) == 0 {
-		log.Printf("%v:Missing log message '%v'", pkt.rce.RunId, pkt.pcs.originalStatement)
+		klog.LogWarningF("CSILog",
+			"%v:Missing log message '%v'", pkt.rce.RunId, pkt.pcs.originalStatement)
 		if pkt.sourceIsExecRequest {
-			pkt.rce.PostContingency(kexec.ContingencyTypeErrorMode, 04, 040)
+			pkt.rce.PostContingency(012, 04, 040)
 		}
 
 		return nil, 0_600000_000000
 	}
 
-	msg := fmt.Sprintf("%v:%v", pkt.rce.RunId, text)
-	log.Printf(msg)
+	klog.LogInfo(pkt.rce.RunId, text)
 	return
 }

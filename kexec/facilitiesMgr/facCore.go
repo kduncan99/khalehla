@@ -201,45 +201,6 @@ func checkIllegalOptionCombination(
 	return ok
 }
 
-// checkIllegalOptions compares the given options word to the allowed options word,
-// producing a fac message for each option set in the given word which does not appear in the allowed word.
-// Returns true if no such instances were found, else false
-// If not ok and the source is an ER CSF$/ACSF$/CSI$, we post a contingency
-func checkIllegalOptions(
-	rce *kexec.RunControlEntry,
-	givenOptions uint64,
-	allowedOptions uint64,
-	facResult *FacStatusResult,
-	sourceIsExec bool,
-) bool {
-	bit := uint64(kexec.AOption)
-	letter := 'A'
-	ok := true
-
-	for {
-		if bit&givenOptions != 0 && bit&allowedOptions == 0 {
-			param := string(letter)
-			facResult.PostMessage(kexec.FacStatusIllegalOption, []string{param})
-			ok = false
-		}
-
-		if bit == kexec.ZOption {
-			break
-		} else {
-			letter++
-			bit >>= 1
-		}
-	}
-
-	if !ok {
-		if sourceIsExec {
-			rce.PostContingency(012, 04, 040)
-		}
-	}
-
-	return ok
-}
-
 // checkReadKey verifies the given read key against the key in the provided fileSetInfo.
 // If the file check fails, we update facResult and resultCode, and maybe post a contingency.
 func checkReadKey(
@@ -582,7 +543,7 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 		usage == config.EquipmentUsageWordAddressableMassStorage {
 
 		allowedOpts := uint64(kexec.IOption | kexec.TOption | kexec.ZOption)
-		if !checkIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
+		if !CheckIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
 			resultCode |= 0_600000_000000
 			return
 		}
@@ -597,7 +558,7 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 		allowedOpts := uint64(kexec.EOption | kexec.FOption | kexec.HOption | kexec.IOption | kexec.JOption |
 			kexec.LOption | kexec.MOption | kexec.NOption | kexec.OOption | kexec.ROption | kexec.SOption |
 			kexec.TOption | kexec.VOption | kexec.WOption | kexec.XOption | kexec.ZOption)
-		if !checkIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
+		if !CheckIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
 			resultCode |= 0_600000_000000
 			return
 		}
@@ -874,7 +835,7 @@ func (mgr *FacilitiesManager) catalogFixedFile(
 
 	allowedOpts := uint64(kexec.BOption | kexec.GOption | kexec.POption |
 		kexec.ROption | kexec.VOption | kexec.WOption | kexec.ZOption)
-	if !checkIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
+	if !CheckIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
 		resultCode |= 0_600000_000000
 		return
 	}
@@ -930,7 +891,7 @@ func (mgr *FacilitiesManager) catalogRemovableFile(
 
 	allowedOpts := uint64(kexec.BOption | kexec.GOption | kexec.POption |
 		kexec.ROption | kexec.VOption | kexec.WOption | kexec.ZOption)
-	if !checkIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
+	if !CheckIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
 		resultCode |= 0_600000_000000
 		return
 	}
@@ -993,7 +954,7 @@ func (mgr *FacilitiesManager) catalogTapeFile(
 	allowedOpts := uint64(kexec.EOption|kexec.GOption|kexec.HOption|kexec.JOption|
 		kexec.LOption|kexec.MOption|kexec.OOption) | kexec.POption | kexec.ROption |
 		kexec.SOption | kexec.VOption | kexec.WOption | kexec.ZOption
-	if !checkIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
+	if !CheckIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
 		// TODO implement CatalogTapeFile()
 	}
 

@@ -209,6 +209,47 @@ func (mgr *FacilitiesManager) CatalogFile(
 	return
 }
 
+// CheckIllegalOptions compares the given options word to the allowed options word,
+// producing a fac message for each option set in the given word which does not appear in the allowed word.
+// Returns true if no such instances were found, else false
+// If not ok and the source is an ER CSF$/ACSF$/CSI$, we post a contingency
+// This function does not have a good place to live - we put it here because it is mostly used by
+// facmgr, and also by csi which is a client of facmgr.
+func CheckIllegalOptions(
+	rce *kexec.RunControlEntry,
+	givenOptions uint64,
+	allowedOptions uint64,
+	facResult *FacStatusResult,
+	sourceIsExec bool,
+) bool {
+	bit := uint64(kexec.AOption)
+	letter := 'A'
+	ok := true
+
+	for {
+		if bit&givenOptions != 0 && bit&allowedOptions == 0 {
+			param := string(letter)
+			facResult.PostMessage(kexec.FacStatusIllegalOption, []string{param})
+			ok = false
+		}
+
+		if bit == kexec.ZOption {
+			break
+		} else {
+			letter++
+			bit >>= 1
+		}
+	}
+
+	if !ok {
+		if sourceIsExec {
+			rce.PostContingency(012, 04, 040)
+		}
+	}
+
+	return ok
+}
+
 func (mgr *FacilitiesManager) FreeFile(
 	rce *kexec.RunControlEntry,
 	fileSpecification kexec.FileSpecification,

@@ -31,7 +31,7 @@ func handleQual(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, r
 	}
 
 	validMask := uint64(kexec.DOption | kexec.ROption)
-	if !pkt.rce.CheckIllegalOptions(optWord, validMask, facResult, pkt.sourceIsExecRequest) {
+	if !facilitiesMgr.CheckIllegalOptions(pkt.rce, optWord, validMask, facResult, pkt.sourceIsExecRequest) {
 		resultCode = 0_600000_000000
 		return
 	}
@@ -58,7 +58,7 @@ func handleQual(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, r
 		if len(qualifier) == 0 {
 			log.Printf("%v: Missing qualifier '%v'", pkt.rce.RunId, pkt.pcs.originalStatement)
 			if pkt.sourceIsExecRequest {
-				pkt.rce.PostContingency(kexec.ContingencyTypeErrorMode, 04, 040)
+				pkt.rce.PostContingency(012, 04, 040)
 			}
 			facResult.PostMessage(kexec.FacStatusDirectoryOrQualifierMustAppear, nil)
 			resultCode = 0_600000_000000
@@ -73,7 +73,7 @@ func handleQual(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, r
 		if len(qualifier) == 0 {
 			log.Printf("%v: Missing qualifier '%v'", pkt.rce.RunId, pkt.pcs.originalStatement)
 			if pkt.sourceIsExecRequest {
-				pkt.rce.PostContingency(kexec.ContingencyTypeErrorMode, 04, 040)
+				pkt.rce.PostContingency(012, 04, 040)
 			}
 			facResult.PostMessage(kexec.FacStatusDirectoryOrQualifierMustAppear, nil)
 			resultCode = 0_600000_000000
@@ -89,7 +89,7 @@ func handleQual(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, r
 			log.Printf("%v: Should not specify qualifier with R option '%v'",
 				pkt.rce.RunId, pkt.pcs.originalStatement)
 			if pkt.sourceIsExecRequest {
-				pkt.rce.PostContingency(kexec.ContingencyTypeErrorMode, 04, 040)
+				pkt.rce.PostContingency(012, 04, 040)
 			}
 			facResult.PostMessage(kexec.FacStatusDirectoryAndQualifierMayNotAppear, nil)
 			resultCode = 0_600000_000000
@@ -103,7 +103,7 @@ func handleQual(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, r
 	} else {
 		log.Printf("%v: Conflicting options '%v'", pkt.rce.RunId, pkt.pcs.originalStatement)
 		if pkt.sourceIsExecRequest {
-			pkt.rce.PostContingency(kexec.ContingencyTypeErrorMode, 04, 040)
+			pkt.rce.PostContingency(012, 04, 040)
 		}
 
 		facResult.PostMessage(kexec.FacStatusIllegalOptionCombination, []string{"D", "R"})
@@ -112,7 +112,7 @@ func handleQual(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, r
 
 syntaxError:
 	if pkt.sourceIsExecRequest {
-		pkt.rce.PostContingency(kexec.ContingencyTypeErrorMode, 04, 040)
+		pkt.rce.PostContingency(012, 04, 040)
 	}
 	facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, nil)
 	resultCode = 0_600000_000000

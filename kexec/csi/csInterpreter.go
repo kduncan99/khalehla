@@ -7,7 +7,7 @@ package csi
 import (
 	"khalehla/kexec"
 	"khalehla/kexec/facilitiesMgr"
-	"log"
+	"khalehla/klog"
 	"strings"
 )
 
@@ -22,7 +22,7 @@ const (
 
 type handlerPacket struct {
 	exec                kexec.IExec
-	rce                 kexec.RunControlEntry
+	rce                 *kexec.RunControlEntry
 	isTip               bool
 	source              controlStatementSource
 	sourceIsExecRequest bool
@@ -45,7 +45,7 @@ type ParsedControlStatement struct {
 // as well as a more generic resultCode, suitable for return in A0 from ER CSF$/ACSF$.
 func HandleControlStatement(
 	exec kexec.IExec,
-	rce kexec.RunControlEntry,
+	rce *kexec.RunControlEntry,
 	source controlStatementSource,
 	pcs *ParsedControlStatement,
 ) (facResult *facilitiesMgr.FacStatusResult, resultCode uint64) {
@@ -61,7 +61,8 @@ func HandleControlStatement(
 	switch pcs.mnemonic {
 	case "ADD":
 		if pkt.isTip || source == CSTSourceERCSI {
-			log.Printf("%v:CS '%v' not allowed for TIP or ER CSI$", rce.GetRunId(), pcs.originalStatement)
+			klog.LogWarningF("CSKeyin", "CS '%v' not allowed for TIP or ER CSI$",
+				rce.RunId, pcs.originalStatement)
 			rce.PostContingency(012, 04, 042)
 
 			facResult = facilitiesMgr.NewFacResult()
@@ -76,7 +77,8 @@ func HandleControlStatement(
 
 	case "BRKPT":
 		if pkt.isTip || source == CSTSourceERCSI {
-			log.Printf("%v:CS '%v' not allowed for TIP or ER CSI$", rce.GetRunId(), pcs.originalStatement)
+			klog.LogWarningF("CSKeyin", "CS '%v' not allowed for TIP or ER CSI$",
+				rce.RunId, pcs.originalStatement)
 			rce.PostContingency(012, 04, 042)
 
 			facResult = facilitiesMgr.NewFacResult()
@@ -91,7 +93,8 @@ func HandleControlStatement(
 
 	case "@CKPT":
 		if pkt.isTip || source == CSTSourceERCSI {
-			log.Printf("%v:CS '%v' not allowed for TIP or ER CSI$", rce.GetRunId(), pcs.originalStatement)
+			klog.LogWarningF("CSKeyin",
+				"CS '%v' not allowed for TIP or ER CSI$", rce.RunId, pcs.originalStatement)
 			rce.PostContingency(012, 04, 042)
 
 			facResult = facilitiesMgr.NewFacResult()
@@ -106,7 +109,8 @@ func HandleControlStatement(
 
 	case "@LOG":
 		if source == CSTSourceERCSI {
-			log.Printf("%v:CS '%v' not allowed for ER CSI$", rce.GetRunId(), pcs.originalStatement)
+			klog.LogWarningF("CSKeyin",
+				"CS '%v' not allowed for ER CSI$", rce.RunId, pcs.originalStatement)
 			rce.PostContingency(012, 04, 042)
 
 			facResult = facilitiesMgr.NewFacResult()
@@ -127,7 +131,8 @@ func HandleControlStatement(
 
 	case "@START":
 		if source == CSTSourceERCSI {
-			log.Printf("%v:CS '%v' not allowed for ER CSI$", rce.GetRunId(), pcs.originalStatement)
+			klog.LogWarningF("CSKeyin",
+				"CS '%v' not allowed for ER CSI$", rce.RunId, pcs.originalStatement)
 
 			rce.PostContingency(012, 04, 042)
 			facResult = facilitiesMgr.NewFacResult()
@@ -139,7 +144,8 @@ func HandleControlStatement(
 
 	case "@SYM":
 		if source == CSTSourceERCSI {
-			log.Printf("%v:CS '%v' not allowed for ER CSI$", rce.GetRunId(), pcs.originalStatement)
+			klog.LogWarningF("CSKeyin",
+				"CS '%v' not allowed for ER CSI$", rce.RunId, pcs.originalStatement)
 
 			rce.PostContingency(012, 04, 042)
 			facResult = facilitiesMgr.NewFacResult()
@@ -151,7 +157,8 @@ func HandleControlStatement(
 
 	case "@SYMCN":
 		if pkt.isTip || source == CSTSourceERCSI {
-			log.Printf("%v:CS '%v' not allowed for TIP or ER CSI$", rce.GetRunId(), pcs.originalStatement)
+			klog.LogWarningF("CSKeyin",
+				"CS '%v' not allowed for TIP or ER CSI$", rce.RunId, pcs.originalStatement)
 
 			rce.PostContingency(012, 04, 042)
 			facResult = facilitiesMgr.NewFacResult()
@@ -166,7 +173,8 @@ func HandleControlStatement(
 	}
 
 	// syntax error
-	log.Printf("%v:CS '%v' invalid control statement", rce.GetRunId(), pcs.originalStatement)
+	klog.LogWarningF("CSKeyin",
+		"CS '%v' invalid control statement", rce.RunId, pcs.originalStatement)
 	rce.PostContingency(012, 04, 040)
 
 	facResult = facilitiesMgr.NewFacResult()
@@ -223,7 +231,8 @@ func ParseControlStatement(
 	p := kexec.NewParser(working)
 	if p.IsAtEnd() || !p.ParseSpecificCharacter('@') {
 		// does not start with '@' - invalid statement
-		log.Printf("%v:CS Syntax Error '%v' does not start with @", rce.GetRunId(), statement)
+		klog.LogWarningF("CSKeyin",
+			"CS Syntax Error '%v' does not start with @", rce.RunId, statement)
 		rce.PostContingency(012, 04, 040)
 
 		facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
@@ -349,7 +358,7 @@ func cleanOptions(pkt *handlerPacket) (result uint64, ok bool) {
 
 	for _, opt := range strings.ToUpper(pkt.pcs.optionsFields[0]) {
 		if opt < 'A' || opt > 'Z' {
-			log.Printf("%v:CS Syntax Error in options field", pkt.rce.GetRunId())
+			klog.LogWarningF("CSKeyin", "CS Syntax Error in options field", pkt.rce.RunId)
 			if pkt.sourceIsExecRequest {
 				pkt.rce.PostContingency(012, 04, 040)
 			}
