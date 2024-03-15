@@ -9,7 +9,7 @@ import (
 	"khalehla/kexec"
 	"khalehla/kexec/config"
 	"khalehla/kexec/mfdMgr"
-	"log"
+	"khalehla/klog"
 	"strconv"
 	"strings"
 )
@@ -709,7 +709,7 @@ func (mgr *FacilitiesManager) catalogCommon(
 		if result == mfdMgr.MFDInternalError {
 			return false
 		} else if result != mfdMgr.MFDSuccessful {
-			log.Printf("FacMgr:MFD failed to create file set")
+			klog.LogFatal("FacMgr", "MFD failed to create file set")
 			exec.Stop(kexec.StopFacilitiesComplex)
 			return false
 		}
@@ -793,7 +793,7 @@ func (mgr *FacilitiesManager) catalogCommon(
 			if result == mfdMgr.MFDInternalError {
 				return false
 			} else if result != mfdMgr.MFDSuccessful {
-				log.Printf("FacMGR:Cannot delete oldest file cycle")
+				klog.LogFatal("FacMGR", "Cannot delete oldest file cycle")
 				mgr.exec.Stop(kexec.StopFacilitiesComplex)
 				*resultCode |= 0_400000_000000
 				return false

@@ -13,8 +13,8 @@ import (
 	"khalehla/hardware/ioPackets"
 	"khalehla/kexec"
 	"khalehla/kexec/nodeMgr"
+	"khalehla/klog"
 	"khalehla/pkg"
-	"log"
 	"sync"
 	"time"
 )
@@ -37,7 +37,7 @@ func NewFacilitiesManager(exec kexec.IExec) *FacilitiesManager {
 
 // Boot is invoked when the exec is booting
 func (mgr *FacilitiesManager) Boot() error {
-	log.Printf("FacMgr:Boot")
+	klog.LogTrace("FacMgr", "Boot")
 
 	// clear device ready notifications
 	mgr.deviceReadyNotificationQueue = make(map[hardware.NodeIdentifier]bool)
@@ -58,19 +58,19 @@ func (mgr *FacilitiesManager) Boot() error {
 
 // Close is invoked when the application is terminating
 func (mgr *FacilitiesManager) Close() {
-	log.Printf("FacMgr:Close")
+	klog.LogTrace("FacMgr", "Close")
 	// nothing to do
 }
 
 // Initialize is invoked when the application starts
 func (mgr *FacilitiesManager) Initialize() error {
-	log.Printf("FacMgr:Initialize")
+	klog.LogTrace("FacMgr", "Initialize")
 	// nothing to do here
 	return nil
 }
 
 func (mgr *FacilitiesManager) Stop() {
-	log.Printf("FacMgr:Stop")
+	klog.LogTrace("FacMgr", "Stop")
 	for !mgr.threadDone {
 		time.Sleep(25 * time.Millisecond)
 	}
@@ -82,17 +82,15 @@ func (mgr *FacilitiesManager) AssignDiskDeviceToExec(deviceId hardware.NodeIdent
 
 	diskAttr, ok := mgr.inventory.disks[deviceId]
 	if !ok {
-		msg := fmt.Sprintf("Device %v is not known", deviceId)
-		log.Println(msg)
+		klog.LogFatalF("FacMgr", "Device %v is not known", deviceId)
 		mgr.exec.Stop(kexec.StopFacilitiesComplex)
-		return fmt.Errorf(msg)
+		return fmt.Errorf("")
 	}
 
 	if diskAttr.AssignedTo != nil {
-		msg := fmt.Sprintf("Device %v is already assigned to %v", deviceId, diskAttr.AssignedTo.RunId)
-		log.Println(msg)
+		klog.LogFatalF("FacMgr", "Device %v is already assigned to %v", deviceId, diskAttr.AssignedTo.RunId)
 		mgr.exec.Stop(kexec.StopFacilitiesComplex)
-		return fmt.Errorf(msg)
+		return fmt.Errorf("")
 	}
 
 	// TODO Need to update the Exec RCE fac item table, once we have fac item tables
@@ -284,7 +282,7 @@ func (mgr *FacilitiesManager) SetNodeStatus(nodeId hardware.NodeIdentifier, stat
 // this waits on IO, so do NOT call it under lock.
 func (mgr *FacilitiesManager) diskBecameReady(nodeId hardware.NodeIdentifier) {
 	// Device became ready - any pack attributes we have, are obsolete, so reload them
-	log.Printf("FacMgr:Disk %v became ready", nodeId)
+	klog.LogInfoF("FacMgr", "Disk %v became ready", nodeId)
 
 	mgr.mutex.Lock()
 
@@ -325,7 +323,7 @@ func (mgr *FacilitiesManager) diskBecameReady(nodeId hardware.NodeIdentifier) {
 		} else if cp.IoStatus != ioPackets.IosComplete {
 			mgr.mutex.Unlock()
 
-			log.Printf("FacMgr:IO Error reading label disk:%v", cp.GetString())
+			klog.LogInfoF("FacMgr", "IO Error reading label disk:%v", cp.GetString())
 			consMsg := fmt.Sprintf("%v IO ERROR Reading Pack Label - Status=%v",
 				diskAttr.GetNodeName(), ioPackets.IoStatusTable[cp.IoStatus])
 			mgr.exec.SendExecReadOnlyMessage(consMsg, nil)

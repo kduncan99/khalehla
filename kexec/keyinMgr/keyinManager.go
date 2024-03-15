@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 	"khalehla/kexec"
-	"log"
+	"khalehla/klog"
 	"strings"
 	"sync"
 	"time"
@@ -94,7 +94,7 @@ func NewKeyinManager(exec kexec.IExec) *KeyinManager {
 
 // Boot is invoked when the exec is booting - return an error to stop the boot
 func (mgr *KeyinManager) Boot() error {
-	log.Printf("KeyinMgr:Boot")
+	klog.LogTrace("KeyinMgr", "Boot")
 	mgr.postedKeyins = make([]*keyinInfo, 0)
 	mgr.pendingHandlers = make([]KeyinHandler, 0)
 	go mgr.thread()
@@ -103,19 +103,19 @@ func (mgr *KeyinManager) Boot() error {
 
 // Close is invoked when the application is shutting down
 func (mgr *KeyinManager) Close() {
-	log.Printf("KeyinMgr:Close")
+	klog.LogTrace("KeyinMgr", "Close")
 	// nothing to do
 }
 
 // Initialize is invoked when the application is starting up
 func (mgr *KeyinManager) Initialize() error {
-	log.Printf("KeyinMgr:Initialized")
+	klog.LogTrace("KeyinMgr", "Initialized")
 	return nil
 }
 
 // Stop is invoked when the exec is stopping
 func (mgr *KeyinManager) Stop() {
-	log.Printf("KeyinMgr:Stop")
+	klog.LogTrace("KeyinMgr", "Stop")
 	for !mgr.threadDone {
 		time.Sleep(25 * time.Millisecond)
 	}

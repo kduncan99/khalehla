@@ -7,7 +7,6 @@ package keyinMgr
 import (
 	"fmt"
 	"khalehla/kexec"
-	"log"
 	"strings"
 	"time"
 )
@@ -79,7 +78,6 @@ func (kh *DUKeyinHandler) thread() {
 	fileName, err := kh.exec.PerformDump(true)
 	if err != nil {
 		msg := fmt.Sprintf("DU Keyin - %v", err)
-		log.Printf("DU:%s\n", msg)
 		kh.exec.SendExecReadOnlyMessage(msg, &kh.source)
 		return
 	}

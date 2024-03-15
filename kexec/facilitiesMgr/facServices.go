@@ -8,7 +8,7 @@ import (
 	"khalehla/hardware"
 	"khalehla/kexec"
 	"khalehla/kexec/mfdMgr"
-	"log"
+	"khalehla/klog"
 	"strings"
 )
 
@@ -59,7 +59,7 @@ func (mgr *FacilitiesManager) AssignFile(
 	if len(operandFields) >= 2 {
 		mnemonic = operandFields[1][0]
 		if len(mnemonic) > 6 {
-			log.Printf("%v:Mnemonic %v too long", rce.RunId, mnemonic)
+			klog.LogInfoF(rce.RunId, "Mnemonic %v too long", mnemonic)
 			facResult.PostMessage(kexec.FacStatusAssignMnemonicTooLong, []string{mnemonic})
 			resultCode |= 0_600000_000000
 			return
@@ -69,7 +69,7 @@ func (mgr *FacilitiesManager) AssignFile(
 	models, usage, ok := mgr.selectEquipmentModel(mnemonic, nil)
 	if !ok {
 		// This isn't going to work for us.
-		log.Printf("%v:Mnemonic %v not configured", rce.RunId, mnemonic)
+		klog.LogInfoF(rce.RunId, "Mnemonic %v not configured", mnemonic)
 		facResult.PostMessage(kexec.FacStatusMnemonicIsNotConfigured, []string{mnemonic})
 		resultCode |= 0_600000_000000
 		return
@@ -156,7 +156,7 @@ func (mgr *FacilitiesManager) CatalogFile(
 	}
 
 	if len(mnemonic) > 6 {
-		log.Printf("%v:Mnemonic %v too long", rce.RunId, mnemonic)
+		klog.LogInfoF(rce.RunId, "Mnemonic %v too long", mnemonic)
 		facResult.PostMessage(kexec.FacStatusAssignMnemonicTooLong, []string{mnemonic})
 		resultCode |= 0_600000_000000
 		return
@@ -165,7 +165,7 @@ func (mgr *FacilitiesManager) CatalogFile(
 	models, usage, ok := mgr.selectEquipmentModel(mnemonic, fsInfo)
 	if !ok {
 		// This isn't going to work for us.
-		log.Printf("%v:Mnemonic %v not configured", rce.RunId, mnemonic)
+		klog.LogInfoF(rce.RunId, "Mnemonic %v not configured", mnemonic)
 		facResult.PostMessage(kexec.FacStatusMnemonicIsNotConfigured, []string{mnemonic})
 		resultCode |= 0_600000_000000
 		return

@@ -11,7 +11,7 @@ import (
 	"khalehla/hardware/channels"
 	"khalehla/hardware/ioPackets"
 	"khalehla/kexec"
-	"log"
+	"khalehla/klog"
 	"sync"
 	"time"
 )
@@ -45,14 +45,14 @@ func NewNodeManager(exec kexec.IExec) *NodeManager {
 
 // Boot is invoked when the exec is booting
 func (mgr *NodeManager) Boot() error {
-	log.Printf("NodeMgr:Boot")
+	klog.LogTrace("NodeMgr", "Boot")
 	// nothing to do
 	return nil
 }
 
 // Close is invoked when the application is terminating
 func (mgr *NodeManager) Close() {
-	log.Printf("NodeMgr:Close")
+	klog.LogTrace("NodeMgr", "Close")
 	mgr.threadStop = true
 	for !mgr.threadDone {
 		time.Sleep(25 * time.Millisecond)
@@ -63,7 +63,7 @@ func (mgr *NodeManager) Close() {
 
 // Initialize is invoked when the application is starting
 func (mgr *NodeManager) Initialize() error {
-	log.Printf("NodeMgr:Initialized")
+	klog.LogTrace("NodeMgr", "Initialized")
 	mgr.nodeInfos = make(map[hardware.NodeIdentifier]NodeInfo)
 	mgr.channelInfos = make(map[hardware.NodeIdentifier]ChannelInfo)
 	mgr.deviceInfos = make(map[hardware.NodeIdentifier]DeviceInfo)
@@ -133,10 +133,10 @@ func (mgr *NodeManager) Initialize() error {
 			dchInfo := cInfo.(*DiskChannelInfo)
 			for _, dInfo := range dchInfo.deviceInfos {
 				did := dInfo.GetNodeIdentifier()
-				log.Printf("NodeMgr:assigning %v to %v", dInfo.GetNodeName(), cInfo.GetNodeName())
+				klog.LogInfoF("NodeMgr", "assigning %v to %v", dInfo.GetNodeName(), cInfo.GetNodeName())
 				err := mgr.channelInfos[cid].GetChannel().AssignDevice(did, mgr.deviceInfos[did].GetDevice())
 				if err != nil {
-					log.Printf("NodeMgr:%v", err)
+					klog.LogError("NodeMgr", err.Error())
 					errors = true
 				} else {
 					dInfo.SetIsAccessible(true)
@@ -146,10 +146,10 @@ func (mgr *NodeManager) Initialize() error {
 			tchInfo := cInfo.(*TapeChannelInfo)
 			for _, dInfo := range tchInfo.deviceInfos {
 				did := dInfo.GetNodeIdentifier()
-				log.Printf("NodeMgr:assigning %v to %v", dInfo.GetNodeName(), cInfo.GetNodeName())
+				klog.LogInfoF("NodeMgr", "assigning %v to %v", dInfo.GetNodeName(), cInfo.GetNodeName())
 				err := mgr.channelInfos[cid].GetChannel().AssignDevice(did, mgr.deviceInfos[did].GetDevice())
 				if err != nil {
-					log.Printf("NodeMgr:%v", err)
+					klog.LogError("NodeMgr", err.Error())
 					errors = true
 				} else {
 					dInfo.SetIsAccessible(true)
@@ -160,11 +160,12 @@ func (mgr *NodeManager) Initialize() error {
 
 	for _, dInfo := range mgr.deviceInfos {
 		if !dInfo.IsAccessible() {
-			log.Printf("NodeMgr:%v is not accessible", dInfo.GetNodeName())
+			klog.LogInfoF("NodeMgr", "%v is not accessible", dInfo.GetNodeName())
 		}
 	}
 
 	if errors {
+		klog.LogFatal("NodeMgr", "initialization errors exist")
 		mgr.exec.Stop(kexec.StopInitializationSystemConfigurationError)
 		return fmt.Errorf("init error")
 	}
@@ -175,7 +176,7 @@ func (mgr *NodeManager) Initialize() error {
 
 // Stop is invoked when the exec is stopping
 func (mgr *NodeManager) Stop() {
-	log.Printf("NodeMgr:Stop")
+	klog.LogTrace("NodeMgr", "Stop")
 	// nothing to do
 }
 
@@ -233,9 +234,7 @@ func (mgr *NodeManager) GetNodeInfoByIdentifier(nodeId hardware.NodeIdentifier) 
 
 // RouteIo handles all disk and tape IO for the exec
 func (mgr *NodeManager) RouteIo(cp *channels.ChannelProgram) {
-	if mgr.exec.GetConfiguration().LogIOs {
-		log.Printf("NodeMgr:RouteIO %v", cp.GetString())
-	}
+	klog.LogTraceF("NodeMgr", "RouteIO %v", cp.GetString())
 
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
@@ -299,7 +298,8 @@ func (mgr *NodeManager) selectChannelForDevice(devInfo DeviceInfo) (ChannelInfo,
 	}
 
 	// if we get here, something is badly wrong
-	log.Printf("NodeMgr: Cannot satisfy channel selection for accessible device")
+	klog.LogError("NodeMgr", "Cannot satisfy channel selection for accessible device")
+	mgr.exec.Stop(kexec.StopErrorAccessingFacilitiesDataStructure)
 	return nil, fmt.Errorf("internal error")
 }
 
