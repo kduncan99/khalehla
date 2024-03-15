@@ -13,8 +13,8 @@ import (
 	"khalehla/hardware/ioPackets"
 	"khalehla/kexec"
 	"khalehla/kexec/nodeMgr"
+	"khalehla/klog"
 	"khalehla/pkg"
-	"log"
 	"math/rand"
 	"time"
 )
@@ -66,9 +66,7 @@ func adjustLeadItemLinks(leadItem0 []pkg.Word36, leadItem1 []pkg.Word36, shift u
 func (mgr *MFDManager) allocateDirectorySector(
 	preferredLDAT kexec.LDATIndex,
 ) (kexec.MFDRelativeAddress, []pkg.Word36, error) {
-	if mgr.exec.GetConfiguration().LogTrace {
-		log.Printf("MFDMgr:allocateDirectorySector(ldat=%06o)", preferredLDAT)
-	}
+	klog.LogTraceF("MFDMgr", "allocateDirectorySector(ldat=%06o)", preferredLDAT)
 
 	// Are there any free sectors? If not, allocate a directory track
 	if len(mgr.freeMFDSectors) == 0 {
@@ -121,9 +119,7 @@ func (mgr *MFDManager) allocateDirectorySector(
 		data[wx] = 0
 	}
 
-	if mgr.exec.GetConfiguration().LogTrace {
-		log.Printf("MFDMgr:allocateDirectorySector returns %012o", chosenAddress)
-	}
+	klog.LogTraceF("MFDMgr", "allocateDirectorySector returns %012o", chosenAddress)
 	return chosenAddress, data, nil
 }
 
@@ -137,9 +133,7 @@ func (mgr *MFDManager) allocateDirectorySector(
 func (mgr *MFDManager) allocateDirectoryTrack(
 	preferredLDAT kexec.LDATIndex,
 ) (kexec.LDATIndex, kexec.MFDTrackId, error) {
-	if mgr.exec.GetConfiguration().LogTrace {
-		log.Printf("MFDMgr:allocateDirectoryTrack(ldat=%v)", preferredLDAT)
-	}
+	klog.LogTraceF("MFDMgr", "allocateDirectoryTrack(ldat=%v)", preferredLDAT)
 
 	chosenLDAT := kexec.InvalidLDAT
 	var chosenDesc *packDescriptor
@@ -171,7 +165,7 @@ func (mgr *MFDManager) allocateDirectoryTrack(
 	}
 
 	if chosenLDAT == kexec.InvalidLDAT {
-		log.Printf("MFDMgr:No space available for directory track allocation")
+		klog.LogFatal("MFDMgr", "No space available for directory track allocation")
 		mgr.exec.Stop(kexec.StopExecRequestForMassStorageFailed)
 		return 0, 0, fmt.Errorf("no disk")
 	}
@@ -193,7 +187,7 @@ func (mgr *MFDManager) allocateDirectoryTrack(
 	chosenDesc.mfdTrackCount++
 
 	if mgr.exec.GetConfiguration().LogTrace {
-		log.Printf("MFDMgr:allocateDirectorySector returns ldat=%06o track=%012o", chosenLDAT, trackId)
+		klog.LogInfoF("MFDMgr", "allocateDirectorySector returns ldat=%06o track=%012o", chosenLDAT, trackId)
 	}
 	return chosenLDAT, trackId, nil
 }
@@ -213,7 +207,7 @@ func (mgr *MFDManager) allocateFileSpace(
 
 	faSet, ok := mgr.acceleratedFileAllocations[mainItem0Address]
 	if !ok {
-		log.Printf("MFDMgr:allocateFileSpace main item %12o is not accelerated into memory", mainItem0Address)
+		klog.LogFatalF("MFDMgr", "allocateFileSpace main item %12o is not accelerated into memory", mainItem0Address)
 		mgr.exec.Stop(kexec.StopDirectoryErrors)
 		return MFDInternalError
 	}
@@ -230,7 +224,7 @@ func (mgr *MFDManager) allocateFileSpace(
 	if fa != nil {
 		pDesc, ok := mgr.fixedPackDescriptors[fa.LDATIndex]
 		if !ok {
-			log.Printf("MFDMgr:allocateFileSpace no packDesc for LDAT %06o", fa.LDATIndex)
+			klog.LogFatalF("MFDMgr", "allocateFileSpace no packDesc for LDAT %06o", fa.LDATIndex)
 			mgr.exec.Stop(kexec.StopDirectoryErrors)
 			return MFDInternalError
 		}
@@ -369,20 +363,20 @@ func (mgr *MFDManager) allocateSpecificTrack(
 	ldatIndex kexec.LDATIndex,
 	deviceTrackId hardware.TrackId) error {
 
-	fae, ok := mgr.acceleratedFileAllocations[mainItem0Address]
+	fas, ok := mgr.acceleratedFileAllocations[mainItem0Address]
 	if !ok {
-		log.Printf("MFDMgr:allocateSpecificTrack Cannot find fae for address %012o", mainItem0Address)
+		klog.LogFatalF("MFDMgr", "allocateSpecificTrack Cannot find fas for address %012o", mainItem0Address)
 		mgr.exec.Stop(kexec.StopDirectoryErrors)
-		return fmt.Errorf("fae not loaded")
+		return fmt.Errorf("fas not loaded")
 	}
 
 	re := NewFileAllocation(fileTrackId, trackCount, ldatIndex, deviceTrackId)
-	fae.mergeIntoFileAllocationSet(re)
+	fas.mergeIntoFileAllocationSet(re)
 
-	if fileTrackId > fae.HighestTrackAllocated {
-		fae.HighestTrackAllocated = fileTrackId
+	if fileTrackId > fas.HighestTrackAllocated {
+		fas.HighestTrackAllocated = fileTrackId
 	}
-	fae.IsUpdated = true
+	fas.IsUpdated = true
 
 	return nil
 }
@@ -391,7 +385,7 @@ func (mgr *MFDManager) allocateSpecificTrack(
 // One consequence is the cataloging of SYS$*MFD$$.
 // Since this is used during initialization we do not call it under lock.
 func (mgr *MFDManager) bootstrapMFD() error {
-	log.Printf("MFDMgr:bootstrapMFD start")
+	klog.LogTrace("MFDMgr", "bootstrapMFD start")
 
 	cfg := mgr.exec.GetConfiguration()
 
@@ -516,7 +510,7 @@ func (mgr *MFDManager) bootstrapMFD() error {
 		return err
 	}
 
-	log.Printf("MFDMgr:bootstrapMFD done")
+	klog.LogTrace("MFDMgr", "bootstrapMFD done")
 	return nil
 }
 
@@ -746,7 +740,7 @@ func (mgr *MFDManager) checkCycle(
 	return
 
 oops:
-	log.Printf("MFDMgr:(a)newRange is %v which is more than max range %v", newCycleRange, fsInfo.MaxCycleRange)
+	klog.LogFatalF("MFDMgr", "newRange is %v which is more than max range %v", newCycleRange, fsInfo.MaxCycleRange)
 	mgr.exec.Stop(kexec.StopDirectoryErrors)
 	result = MFDInternalError
 	return
@@ -774,17 +768,17 @@ func (mgr *MFDManager) convertFileRelativeTrackId(
 	fileTrackId hardware.TrackId,
 ) (kexec.LDATIndex, hardware.TrackId, error) {
 
-	fae, ok := mgr.acceleratedFileAllocations[mainItem0Address]
+	fas, ok := mgr.acceleratedFileAllocations[mainItem0Address]
 	if !ok {
-		log.Printf("MFDMgr:convertFileRelativeTrackId Cannot find fae for address %012o", mainItem0Address)
+		klog.LogFatalF("MFDMgr", "convertFileRelativeTrackId Cannot find fas for address %012o", mainItem0Address)
 		mgr.exec.Stop(kexec.StopDirectoryErrors)
-		return 0, 0, fmt.Errorf("fae not loaded")
+		return 0, 0, fmt.Errorf("fas not loaded")
 	}
 
 	ldat := kexec.LDATIndex(0_400000)
 	devTrackId := hardware.TrackId(0)
-	if fileTrackId <= fae.HighestTrackAllocated {
-		for _, fileAlloc := range fae.FileAllocations {
+	if fileTrackId <= fas.HighestTrackAllocated {
+		for _, fileAlloc := range fas.FileAllocations {
 			if fileTrackId < fileAlloc.FileRegion.TrackId {
 				// list is ascending - if we get here, there's no point in continuing
 				break
@@ -810,7 +804,7 @@ func (mgr *MFDManager) dropFileCycle(
 ) MFDResult {
 	fas, ok := mgr.acceleratedFileAllocations[mainItem0Address]
 	if !ok {
-		log.Printf("MFDMgr:Attempt to drop non-accelerated file cycle mainItem0: %012o", mainItem0Address)
+		klog.LogFatalF("MFDMgr", "Attempt to drop non-accelerated file cycle mainItem0: %012o", mainItem0Address)
 		mgr.exec.Stop(kexec.StopDirectoryErrors)
 		return MFDInternalError
 	}
@@ -920,7 +914,7 @@ func (mgr *MFDManager) findDASEntryForSector(
 	for dasAddr != kexec.InvalidLink {
 		das, err := mgr.getMFDSector(dasAddr)
 		if err != nil {
-			log.Printf("MFDMgr:findDASEntrySector cannot compose MFD address for %012o", sectorAddr)
+			klog.LogFatalF("MFDMgr", "findDASEntrySector cannot compose MFD address for %012o", sectorAddr)
 			mgr.exec.Stop(kexec.StopDirectoryErrors)
 			return 0, 0, nil, err
 		}
@@ -950,7 +944,7 @@ func (mgr *MFDManager) findDASEntryForSector(
 	}
 
 	// We did not find the DAS entry - complain and crash
-	log.Printf("MFDMgr:Cannot find DAS for sector %012o", sectorAddr)
+	klog.LogFatalF("MFDMgr", "Cannot find DAS for sector %012o", sectorAddr)
 	mgr.exec.Stop(kexec.StopDirectoryErrors)
 	return 0, 0, nil, fmt.Errorf("cannot find DAS")
 }
@@ -1135,7 +1129,7 @@ func (mgr *MFDManager) getMFDBlock(address kexec.MFDRelativeAddress) ([]pkg.Word
 	ldatAndTrack := address & 0_007777_777700
 	data, ok := mgr.cachedTracks[ldatAndTrack]
 	if !ok {
-		log.Printf("MFDMgr:getMFDBlock address:%v is not in cache", address)
+		klog.LogFatalF("MFDMgr", "getMFDBlock address:%v is not in cache", address)
 		mgr.exec.Stop(kexec.StopDirectoryErrors)
 		return nil, fmt.Errorf("internal error")
 	}
@@ -1157,7 +1151,7 @@ func (mgr *MFDManager) getMFDSector(address kexec.MFDRelativeAddress) ([]pkg.Wor
 	ldatAndTrack := address & 0_007777_777700
 	data, ok := mgr.cachedTracks[ldatAndTrack]
 	if !ok {
-		log.Printf("MFDMgr:getMFDSector address:%v is not in cache", address)
+		klog.LogFatalF("MFDMgr", "getMFDSector address:%v is not in cache", address)
 		mgr.exec.Stop(kexec.StopDirectoryErrors)
 		return nil, fmt.Errorf("internal error")
 	}
@@ -1254,7 +1248,7 @@ func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*kexec.
 			if ioStat == ioPackets.IosInternalError {
 				return fmt.Errorf("init stopped")
 			} else if ioStat != ioPackets.IosComplete {
-				log.Printf("MFDMgr:initializeFixed cannot read directory track dev:%v blockId:%v",
+				klog.LogFatalF("MFDMgr", "initializeFixed cannot read directory track dev:%v blockId:%v",
 					fpDesc.nodeId, blockId)
 				mgr.exec.Stop(kexec.StopInternalExecIOFailed)
 				return fmt.Errorf("IO error")
@@ -1679,14 +1673,14 @@ func (mgr *MFDManager) releaseFileCycleTrackRegion(
 ) MFDResult {
 	fas, ok := mgr.acceleratedFileAllocations[mainItem0Address]
 	if !ok {
-		log.Printf("MFDMgr:convertFileRelativeTrackId Cannot find alloc for address %012o", mainItem0Address)
+		klog.LogFatalF("MFDMgr", "convertFileRelativeTrackId Cannot find alloc for address %012o", mainItem0Address)
 		mgr.exec.Stop(kexec.StopDirectoryErrors)
 		return MFDInternalError
 	}
 
 	ldat, devTrackId := fas.extractRegionFromFileAllocationSet(region)
 	if ldat == kexec.InvalidLDAT {
-		log.Printf("MFDMgr:convertFileRelativeTrackId Cannot extract alloc for address %012o", mainItem0Address)
+		klog.LogFatalF("MFDMgr", "convertFileRelativeTrackId Cannot extract alloc for address %012o", mainItem0Address)
 		mgr.exec.Stop(kexec.StopDirectoryErrors)
 		return MFDInternalError
 	}
@@ -1703,13 +1697,13 @@ func (mgr *MFDManager) releaseTrackRegion(
 ) MFDResult {
 	packDesc, ok := mgr.fixedPackDescriptors[ldatIndex]
 	if !ok {
-		log.Printf("MFDMgr:Cannot find pack descriptor for LDAT %v", ldatIndex)
+		klog.LogFatalF("MFDMgr", "Cannot find pack descriptor for LDAT %v", ldatIndex)
 		mgr.exec.Stop(kexec.StopDirectoryErrors)
 		return MFDInternalError
 	}
 
 	if !packDesc.freeSpaceTable.MarkTrackRegionUnallocated(region.TrackId, region.TrackCount) {
-		log.Printf("MFDMgr:Cannot unallocation region LDAT %v TrkId %v Count %v",
+		klog.LogFatalF("MFDMgr", "Cannot un-allocate region LDAT %v TrkId %v Count %v",
 			ldatIndex, region.TrackId, region.TrackCount)
 		mgr.exec.Stop(kexec.StopDirectoryErrors)
 		return MFDInternalError
@@ -1755,7 +1749,7 @@ func (mgr *MFDManager) writeBlockToDisk(
 func (mgr *MFDManager) writeFileAllocationEntryUpdatesForFileCycle(mainItem0Address kexec.MFDRelativeAddress) error {
 	fas, ok := mgr.acceleratedFileAllocations[mainItem0Address]
 	if !ok {
-		log.Printf("MFDMgr:convertFileRelativeTrackId Cannot find alloc for address %012o", mainItem0Address)
+		klog.LogFatalF("MFDMgr", "convertFileRelativeTrackId Cannot find alloc for address %012o", mainItem0Address)
 		mgr.exec.Stop(kexec.StopDirectoryErrors)
 		return fmt.Errorf("fas not loaded")
 	}
@@ -1864,14 +1858,12 @@ func (mgr *MFDManager) writeLookupTableEntry(
 // Currently, we do our own resolution of file-relative address to disk-relative.
 // CALL UNDER LOCK
 func (mgr *MFDManager) writeMFDCache() error {
-	if mgr.exec.GetConfiguration().LogTrace {
-		log.Printf("MFDMgr:writeMFDCache (%v dirty blocks)", len(mgr.dirtyBlocks))
-	}
+	klog.LogTraceF("MFDMgr", "writeMFDCache (%v dirty blocks)", len(mgr.dirtyBlocks))
 
 	for blockAddr := range mgr.dirtyBlocks {
 		block, err := mgr.getMFDBlock(blockAddr)
 		if err != nil {
-			log.Printf("MFDMgr:writeMFDCache cannot find MFD block for dirty block address:%012o", blockAddr)
+			klog.LogFatalF("MFDMgr", "writeMFDCache cannot find MFD block for dirty block address:%012o", blockAddr)
 			mgr.exec.Stop(kexec.StopDirectoryErrors)
 			return fmt.Errorf("error draining MFD cache")
 		}
@@ -1881,12 +1873,12 @@ func (mgr *MFDManager) writeMFDCache() error {
 
 		ldat, devTrackId, err := mgr.convertFileRelativeTrackId(mgr.mfdFileMainItem0Address, hardware.TrackId(mfdTrackId))
 		if err != nil {
-			log.Printf("MFDMgr:writeMFDCache error converting mfdaddr:%012o TrackId:%06o",
+			klog.LogFatalF("MFDMgr", "writeMFDCache error converting mfdaddr:%012o TrackId:%06o",
 				mgr.mfdFileMainItem0Address, mfdTrackId)
 			mgr.exec.Stop(kexec.StopDirectoryErrors)
 			return fmt.Errorf("error draining MFD cache")
 		} else if ldat == 0_400000 {
-			log.Printf("MFDMgr:writeMFDCache error converting mfdaddr:%012o TrackId:%06o track not allocated",
+			klog.LogFatalF("MFDMgr", "writeMFDCache error converting mfdaddr:%012o TrackId:%06o track not allocated",
 				mgr.mfdFileMainItem0Address, mfdTrackId)
 			mgr.exec.Stop(kexec.StopDirectoryErrors)
 			return fmt.Errorf("error draining MFD cache")
@@ -1894,7 +1886,7 @@ func (mgr *MFDManager) writeMFDCache() error {
 
 		packDesc, ok := mgr.fixedPackDescriptors[ldat]
 		if !ok {
-			log.Printf("MFDMgr:writeMFDCache cannot find packDesc for ldat:%04v", ldat)
+			klog.LogFatalF("MFDMgr", "writeMFDCache cannot find packDesc for ldat:%04v", ldat)
 			mgr.exec.Stop(kexec.StopDirectoryErrors)
 			return fmt.Errorf("error draining MFD cache")
 		}
@@ -1908,7 +1900,7 @@ func (mgr *MFDManager) writeMFDCache() error {
 		if ioStat == ioPackets.IosInternalError {
 			return fmt.Errorf("internal error")
 		} else if ioStat != ioPackets.IosComplete {
-			log.Printf("MFDMgr:writeMFDCache error writing MFD block status=%v", ioStat)
+			klog.LogFatalF("MFDMgr", "writeMFDCache error writing MFD block status=%v", ioStat)
 			mgr.exec.Stop(kexec.StopInternalExecIOFailed)
 			return fmt.Errorf("error draining MFD cache")
 		}
