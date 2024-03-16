@@ -156,7 +156,7 @@ func (dev *FileSystemTapeDevice) StartIo(pkt ioPackets.IoPacket) {
 	}
 
 	if dev.verbose {
-		klog.LogInfoF(dev.logName, "ioStatus=%v", pkt.GetIoStatus())
+		klog.LogInfoF(dev.logName, "ioStatus:%v", ioPackets.IoStatusTable[pkt.GetIoStatus()])
 	}
 	if pkt.GetListener() != nil {
 		pkt.GetListener().IoComplete(pkt)

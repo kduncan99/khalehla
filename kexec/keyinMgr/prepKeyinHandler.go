@@ -13,6 +13,7 @@ import (
 	"khalehla/kexec/facilitiesMgr"
 	"khalehla/kexec/nodeMgr"
 	"khalehla/pkg"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -29,6 +30,8 @@ type PREPKeyinHandler struct {
 
 	removable  bool
 	deviceName string
+	prepFactor int
+	trackCount int
 	packName   string
 }
 
@@ -50,10 +53,9 @@ func (kh *PREPKeyinHandler) Abort() {
 
 func (kh *PREPKeyinHandler) CheckSyntax() bool {
 	// Syntax:
-	//   PREP,[F|R] device,pack_name
-
+	//   PREP,[F|R] device,prepFactor,trackCount,pack_name
 	split := strings.Split(kh.arguments, ",")
-	if len(kh.options) != 1 || len(split) != 2 {
+	if len(kh.options) != 1 || len(split) != 4 {
 		return false
 	}
 
@@ -63,8 +65,17 @@ func (kh *PREPKeyinHandler) CheckSyntax() bool {
 	}
 	kh.removable = upOpts == "R"
 
+	var err error
 	kh.deviceName = strings.ToUpper(split[0])
-	kh.packName = strings.ToUpper(split[1])
+	kh.prepFactor, err = strconv.Atoi(split[1])
+	if err != nil {
+		return false
+	}
+	kh.trackCount, err = strconv.Atoi(split[2])
+	if err != nil {
+		return false
+	}
+	kh.packName = strings.ToUpper(split[3])
 	if !kexec.IsValidNodeName(kh.deviceName) || !hardware.IsValidPackName(kh.packName) {
 		fmt.Printf("[%v] [%v]\n", kh.deviceName, kh.packName)
 		return false
@@ -120,6 +131,16 @@ func (kh *PREPKeyinHandler) process() {
 		return
 	}
 
+	if !hardware.IsValidPrepFactor(hardware.PrepFactor(kh.prepFactor)) {
+		kh.exec.SendExecReadOnlyMessage("Invalid PrepFactor", &kh.source)
+		return
+	}
+
+	if kh.trackCount < 10000 || kh.trackCount > 262143 {
+		kh.exec.SendExecReadOnlyMessage("Invalid TrackCount", &kh.source)
+		return
+	}
+
 	// TODO Make sure the device is RV (after we get the RV keyin implemented)
 
 	nodeId := attr.GetNodeIdentifier()
@@ -128,12 +149,12 @@ func (kh *PREPKeyinHandler) process() {
 	ddi := nodeInfo.(*nodeMgr.DiskDeviceInfo)
 	dd := ddi.GetDiskDevice()
 
-	blockSize, blockCount, prepFactor, trackCount := dd.GetDiskGeometry()
-	if blockSize == 0 || blockCount == 0 || trackCount == 0 {
+	blockSize, blockCount, currentPrepFactor, currentTrackCount := dd.GetDiskGeometry()
+	if blockSize == 0 || blockCount == 0 || currentTrackCount == 0 {
 		str := fmt.Sprintf("PREP %v pack is not properly formatted", kh.deviceName)
 		kh.exec.SendExecReadOnlyMessage(str, &kh.source)
 	} else {
-		label := make([]pkg.Word36, prepFactor)
+		label := make([]pkg.Word36, currentPrepFactor)
 		ioStat := kh.readBlock(nodeId, label, 0)
 		if ioStat == ioPackets.IosInternalError {
 			return
@@ -157,8 +178,8 @@ func (kh *PREPKeyinHandler) process() {
 
 	// Send an IofPrep to the disk to write the label and re-establish geometry
 	pi := ioPackets.IoPrepInfo{
-		PrepFactor:  prepFactor,
-		TrackCount:  trackCount,
+		PrepFactor:  hardware.PrepFactor(kh.prepFactor),
+		TrackCount:  hardware.TrackCount(kh.trackCount),
 		PackName:    kh.packName,
 		IsRemovable: kh.removable,
 	}
@@ -180,9 +201,9 @@ func (kh *PREPKeyinHandler) process() {
 
 	// write initial directory track...
 	// actually, we only need to write sectors 0 and 1, and any slop necessary to pad out to the prep factor.
-	blocksPerTrack := hardware.BlockCount(1792 / prepFactor)
+	blocksPerTrack := hardware.BlockCount(1792 / kh.prepFactor)
 	dirTrack := make([]pkg.Word36, 1792)
-	availableTracks := trackCount - 2 // subtract label track and first directory track
+	availableTracks := kh.trackCount - 2 // subtract label track and first directory track
 
 	// sector 0
 	das := dirTrack[0:28]
@@ -203,11 +224,11 @@ func (kh *PREPKeyinHandler) process() {
 	}
 	s1[010].SetT1(uint64(blocksPerTrack))
 	s1[010].SetS3(1) // Sector 1 version
-	s1[010].SetT3(uint64(prepFactor))
+	s1[010].SetT3(uint64(kh.prepFactor))
 
 	dirBlockId := hardware.BlockId(blocksPerTrack) // assuming directory track is the second logical track
-	for wx := 0; wx < 56; wx += int(prepFactor) {
-		subBuffer := dirTrack[wx : wx+int(prepFactor)]
+	for wx := 0; wx < 56; wx += kh.prepFactor {
+		subBuffer := dirTrack[wx : wx+kh.prepFactor]
 		ioStat := kh.writeBlock(nodeId, subBuffer, dirBlockId)
 		if ioStat == ioPackets.IosInternalError {
 			str := fmt.Sprintf("PREP %v IO error %v writing directory track", kh.deviceName, cp.IoStatus)

@@ -60,7 +60,7 @@ func NewFileSystemDiskDevice(initialFileName *string) *FileSystemDiskDevice {
 			MountInfo:  mi,
 		}
 		dev.doMount(pkt)
-		dev.isReady = pkt.GetIoStatus() == ioPackets.IosComplete
+		dev.isReady = pkt.GetIoStatus() == ioPackets.IosComplete || pkt.GetIoStatus() == ioPackets.IosPackNotPrepped
 	}
 
 	return dev
@@ -157,7 +157,7 @@ func (dev *FileSystemDiskDevice) StartIo(pkt ioPackets.IoPacket) {
 	}
 
 	if dev.verbose {
-		klog.LogInfoF(dev.logName, "ioStatus:%v", pkt.GetIoStatus())
+		klog.LogInfoF(dev.logName, "ioStatus:%v", ioPackets.IoStatusTable[pkt.GetIoStatus()])
 	}
 	if pkt.GetListener() != nil {
 		pkt.GetListener().IoComplete(pkt)
