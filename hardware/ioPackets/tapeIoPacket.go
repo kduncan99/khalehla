@@ -49,7 +49,11 @@ func (pkt *TapeIoPacket) GetString() string {
 		detStr += fmt.Sprintf("bytes:%v ", pkt.DataLength)
 	}
 	if pkt.IoFunction == IofMount {
-		detStr += fmt.Sprintf("file:%v writeProt:%v ", pkt.MountInfo.Filename, pkt.MountInfo.WriteProtect)
+		if pkt.MountInfo == nil {
+			detStr += "no MountInfo "
+		} else {
+			detStr += fmt.Sprintf("file:%v writeProt:%v ", pkt.MountInfo.Filename, pkt.MountInfo.WriteProtect)
+		}
 	}
 
 	return fmt.Sprintf("func:%s %sstat:%s", funcStr, detStr, statStr)

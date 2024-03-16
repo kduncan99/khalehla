@@ -48,6 +48,7 @@ type ChannelProgram struct {
 	BlockId          hardware.BlockId       // for disk
 	ControlWords     []ControlWord          // for reads and writes
 	MountInfo        *ioPackets.IoMountInfo // for mount
+	PrepInfo         *ioPackets.IoPrepInfo  // for prep
 	BytesTransferred uint
 	WordsTransferred uint
 	Listener         ChannelSender

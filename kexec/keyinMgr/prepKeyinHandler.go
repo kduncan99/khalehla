@@ -54,7 +54,6 @@ func (kh *PREPKeyinHandler) CheckSyntax() bool {
 
 	split := strings.Split(kh.arguments, ",")
 	if len(kh.options) != 1 || len(split) != 2 {
-		fmt.Printf("%v %v\n", len(kh.options), len(split)) // TODO remove
 		return false
 	}
 
@@ -157,17 +156,24 @@ func (kh *PREPKeyinHandler) process() {
 	}
 
 	// Send an IofPrep to the disk to write the label and re-establish geometry
+	pi := ioPackets.IoPrepInfo{
+		PrepFactor:  prepFactor,
+		TrackCount:  trackCount,
+		PackName:    kh.packName,
+		IsRemovable: kh.removable,
+	}
 	cp := &channels.ChannelProgram{
 		NodeIdentifier: nodeId,
 		IoFunction:     ioPackets.IofPrep,
-		// PrepInfo
+		PrepInfo:       &pi,
 	}
+
 	kh.exec.GetNodeManager().RouteIo(cp)
-	for cp.IoStatus == ioPackets.IosComplete || cp.IoStatus == ioPackets.IosNotStarted {
+	for cp.IoStatus == ioPackets.IosInProgress || cp.IoStatus == ioPackets.IosNotStarted {
 		time.Sleep(10 * time.Millisecond)
 	}
 	if cp.IoStatus != ioPackets.IosComplete {
-		str := fmt.Sprintf("PREP %v IO error writing pack label", kh.deviceName)
+		str := fmt.Sprintf("PREP %v IO error %v writing pack label", kh.deviceName, cp.IoStatus)
 		kh.exec.SendExecReadOnlyMessage(str, &kh.source)
 		return
 	}
@@ -204,10 +210,15 @@ func (kh *PREPKeyinHandler) process() {
 		subBuffer := dirTrack[wx : wx+int(prepFactor)]
 		ioStat := kh.writeBlock(nodeId, subBuffer, dirBlockId)
 		if ioStat == ioPackets.IosInternalError {
+			str := fmt.Sprintf("PREP %v IO error %v writing directory track", kh.deviceName, cp.IoStatus)
+			kh.exec.SendExecReadOnlyMessage(str, &kh.source)
 			return
 		}
 		dirBlockId++
 	}
+
+	str := fmt.Sprintf("PREP %v Complete", kh.deviceName)
+	kh.exec.SendExecReadOnlyMessage(str, &kh.source)
 }
 
 func (kh *PREPKeyinHandler) thread() {

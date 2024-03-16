@@ -64,11 +64,19 @@ func (pkt *DiskIoPacket) GetString() string {
 		detStr += fmt.Sprintf("blkId:%v ", pkt.BlockId)
 	}
 	if pkt.IoFunction == IofPrep {
-		detStr += fmt.Sprintf("prep:%v tracks:%v packName:%v rem:%v",
-			pkt.PrepInfo.PrepFactor, pkt.PrepInfo.TrackCount, pkt.PrepInfo.PackName, pkt.PrepInfo.IsRemovable)
+		if pkt.PrepInfo == nil {
+			detStr += "no PrepInfo "
+		} else {
+			detStr += fmt.Sprintf("prep:%v tracks:%v packName:%v rem:%v ",
+				pkt.PrepInfo.PrepFactor, pkt.PrepInfo.TrackCount, pkt.PrepInfo.PackName, pkt.PrepInfo.IsRemovable)
+		}
 	}
 	if pkt.IoFunction == IofMount {
-		detStr += fmt.Sprintf("file:%v writeProt:%v ", pkt.MountInfo.Filename, pkt.MountInfo.WriteProtect)
+		if pkt.MountInfo == nil {
+			detStr += "no MountInfo "
+		} else {
+			detStr += fmt.Sprintf("file:%v writeProt:%v ", pkt.MountInfo.Filename, pkt.MountInfo.WriteProtect)
+		}
 	}
 
 	return fmt.Sprintf("func:%s %sstat:%s", funcStr, detStr, statStr)

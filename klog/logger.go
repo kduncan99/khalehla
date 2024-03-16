@@ -75,48 +75,48 @@ func LogF(level Level, source string, format string, parameters ...interface{}) 
 	}
 }
 
-func LogFatal(source string, format string) {
-	LogF(LevelFatal, source, format)
+func LogFatal(source string, message string) {
+	Log(LevelFatal, source, message)
 }
 
 func LogFatalF(source string, format string, parameters ...interface{}) {
 	LogF(LevelFatal, source, format, parameters...)
 }
 
-func LogError(source string, format string) {
-	LogF(LevelError, source, format)
+func LogError(source string, message string) {
+	Log(LevelError, source, message)
 }
 
 func LogErrorF(source string, format string, parameters ...interface{}) {
 	LogF(LevelError, source, format, parameters...)
 }
 
-func LogWarning(source string, format string) {
-	LogF(LevelWarning, source, format)
+func LogWarning(source string, message string) {
+	Log(LevelWarning, source, message)
 }
 
 func LogWarningF(source string, format string, parameters ...interface{}) {
 	LogF(LevelWarning, source, format, parameters...)
 }
 
-func LogInfo(source string, format string) {
-	LogF(LevelInfo, source, format)
+func LogInfo(source string, message string) {
+	Log(LevelInfo, source, message)
 }
 
 func LogInfoF(source string, format string, parameters ...interface{}) {
 	LogF(LevelInfo, source, format, parameters...)
 }
 
-func LogDebug(source string, format string) {
-	LogF(LevelDebug, source, format)
+func LogDebug(source string, message string) {
+	Log(LevelDebug, source, message)
 }
 
 func LogDebugF(source string, format string, parameters ...interface{}) {
 	LogF(LevelDebug, source, format, parameters...)
 }
 
-func LogTrace(source string, format string) {
-	LogF(LevelTrace, source, format)
+func LogTrace(source string, message string) {
+	Log(LevelTrace, source, message)
 }
 
 func LogTraceF(source string, format string, parameters ...interface{}) {

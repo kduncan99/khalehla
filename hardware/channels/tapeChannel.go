@@ -11,6 +11,7 @@ import (
 	"khalehla/hardware/devices"
 	"khalehla/hardware/ioPackets"
 	"khalehla/klog"
+	"sync"
 	"time"
 )
 
@@ -25,6 +26,7 @@ type TapeChannel struct {
 	packetMap  map[ioPackets.IoPacket]*ChannelProgram
 	resetIos   bool
 	verbose    bool
+	mutex      sync.Mutex
 }
 
 func NewTapeChannel() *TapeChannel {
@@ -32,7 +34,7 @@ func NewTapeChannel() *TapeChannel {
 		identifier: hardware.GetNextNodeIdentifier(),
 		devices:    make(map[hardware.NodeIdentifier]devices.TapeDevice),
 		cpChannel:  make(chan *ChannelProgram, 10),
-		ioChannel:  make(chan *ioPackets.TapeIoPacket),
+		ioChannel:  make(chan *ioPackets.TapeIoPacket, 10),
 		packetMap:  make(map[ioPackets.IoPacket]*ChannelProgram),
 	}
 
@@ -94,6 +96,10 @@ func (ch *TapeChannel) Dump(dest io.Writer, indent string) {
 	}
 }
 
+func (ch *TapeChannel) IoComplete(ioPkt ioPackets.IoPacket) {
+	ch.ioChannel <- ioPkt.(*ioPackets.TapeIoPacket)
+}
+
 func (ch *TapeChannel) prepareIoPacket(chProg *ChannelProgram) (*ioPackets.TapeIoPacket, bool) {
 	// Verify the channel program is not too-badly buggered
 	for _, cw := range chProg.ControlWords {
@@ -117,6 +123,7 @@ func (ch *TapeChannel) prepareIoPacket(chProg *ChannelProgram) (*ioPackets.TapeI
 	pkt := &ioPackets.TapeIoPacket{}
 	pkt.IoFunction = chProg.IoFunction
 	pkt.IoStatus = ioPackets.IosNotStarted
+	pkt.Listener = ch
 
 	if chProg.IoFunction == ioPackets.IofWrite {
 		// If this is a data transfer to the device,
@@ -205,60 +212,71 @@ func (ch *TapeChannel) resolveIoPacket(chProg *ChannelProgram, ioPacket ioPacket
 	}
 
 	if nonIntegral {
-		ioPacket.SetIoStatus(ioPackets.IosNonIntegralRead)
+		chProg.IoStatus = ioPackets.IosNonIntegralRead
 	} else if overRun {
-		ioPacket.SetIoStatus(ioPackets.IosReadOverrun)
+		chProg.IoStatus = ioPackets.IosReadOverrun
 	} else {
-		ioPacket.SetIoStatus(chProg.IoStatus)
+		chProg.IoStatus = ioPacket.GetIoStatus()
 	}
 }
 
 func (ch *TapeChannel) goRoutine() {
-	select {
-	case channelProgram := <-ch.cpChannel:
-		dev, ok := ch.devices[channelProgram.NodeIdentifier]
-		if !ok {
-			channelProgram.IoStatus = ioPackets.IosDeviceDoesNotExist
-			if channelProgram.Listener != nil {
-				channelProgram.Listener.ChannelProgramComplete(channelProgram)
-			}
-			break
-		}
-
-		ioPkt, ok := ch.prepareIoPacket(channelProgram)
-		if !ok {
-			channelProgram.IoStatus = ioPackets.IosInvalidChannelProgram
-			if channelProgram.Listener != nil {
-				channelProgram.Listener.ChannelProgramComplete(channelProgram)
-			}
-			break
-		}
-
-		dev.StartIo(ioPkt)
-		ch.packetMap[ioPkt] = channelProgram
-
-	case ioPacket := <-ch.ioChannel:
-		channelProgram, ok := ch.packetMap[ioPacket]
-		if ok {
-			ch.resolveIoPacket(channelProgram, ioPacket)
-			if channelProgram.Listener != nil {
-				channelProgram.Listener.ChannelProgramComplete(channelProgram)
-			}
-			delete(ch.packetMap, ioPacket)
-		}
-
-	case <-time.After(100 * time.Millisecond):
-		if ch.resetIos {
-			klog.LogInfo(ch.logName, "Resetting IOs")
-			for _, chProg := range ch.packetMap {
-				chProg.IoStatus = ioPackets.IosCanceled
-				if chProg.Listener != nil {
-					chProg.Listener.ChannelProgramComplete(chProg)
+	klog.LogTrace(ch.logName, "goRoutine started")
+	for {
+		select {
+		case channelProgram := <-ch.cpChannel:
+			ch.mutex.Lock()
+			dev, ok := ch.devices[channelProgram.NodeIdentifier]
+			if !ok {
+				channelProgram.IoStatus = ioPackets.IosDeviceDoesNotExist
+				if channelProgram.Listener != nil {
+					channelProgram.Listener.ChannelProgramComplete(channelProgram)
 				}
+				ch.mutex.Unlock()
+				break
 			}
-			ch.packetMap = make(map[ioPackets.IoPacket]*ChannelProgram)
-			ch.resetIos = false
+
+			ioPkt, ok := ch.prepareIoPacket(channelProgram)
+			if !ok {
+				channelProgram.IoStatus = ioPackets.IosInvalidChannelProgram
+				if channelProgram.Listener != nil {
+					channelProgram.Listener.ChannelProgramComplete(channelProgram)
+				}
+				ch.mutex.Unlock()
+				break
+			}
+
+			dev.StartIo(ioPkt)
+			ch.packetMap[ioPkt] = channelProgram
+			ch.mutex.Unlock()
+
+		case ioPacket := <-ch.ioChannel:
+			ch.mutex.Lock()
+			channelProgram, ok := ch.packetMap[ioPacket]
+			if ok {
+				ch.resolveIoPacket(channelProgram, ioPacket)
+				if channelProgram.Listener != nil {
+					channelProgram.Listener.ChannelProgramComplete(channelProgram)
+				}
+				delete(ch.packetMap, ioPacket)
+			}
+			ch.mutex.Unlock()
+
+		case <-time.After(100 * time.Millisecond):
+			if ch.resetIos {
+				klog.LogInfo(ch.logName, "Resetting IOs")
+				ch.mutex.Lock()
+				for _, chProg := range ch.packetMap {
+					chProg.IoStatus = ioPackets.IosCanceled
+					if chProg.Listener != nil {
+						chProg.Listener.ChannelProgramComplete(chProg)
+					}
+				}
+				ch.packetMap = make(map[ioPackets.IoPacket]*ChannelProgram)
+				ch.mutex.Unlock()
+				ch.resetIos = false
+			}
+			break
 		}
-		break
 	}
 }
