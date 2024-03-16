@@ -17,22 +17,26 @@ import (
 // TapeChannel routes IOs to the appropriate deviceInfos which it manages.
 // Some day in the future we may add caching, perhaps in a CacheTapeChannel.
 type TapeChannel struct {
-	devices   map[hardware.NodeIdentifier]devices.TapeDevice
-	cpChannel chan *ChannelProgram
-	ioChannel chan *ioPackets.TapeIoPacket
-	packetMap map[ioPackets.IoPacket]*ChannelProgram
-	resetIos  bool
-	verbose   bool
+	identifier hardware.NodeIdentifier
+	logName    string
+	devices    map[hardware.NodeIdentifier]devices.TapeDevice
+	cpChannel  chan *ChannelProgram
+	ioChannel  chan *ioPackets.TapeIoPacket
+	packetMap  map[ioPackets.IoPacket]*ChannelProgram
+	resetIos   bool
+	verbose    bool
 }
 
 func NewTapeChannel() *TapeChannel {
 	ch := &TapeChannel{
-		devices:   make(map[hardware.NodeIdentifier]devices.TapeDevice),
-		cpChannel: make(chan *ChannelProgram, 10),
-		ioChannel: make(chan *ioPackets.TapeIoPacket),
-		packetMap: make(map[ioPackets.IoPacket]*ChannelProgram),
+		identifier: hardware.GetNextNodeIdentifier(),
+		devices:    make(map[hardware.NodeIdentifier]devices.TapeDevice),
+		cpChannel:  make(chan *ChannelProgram, 10),
+		ioChannel:  make(chan *ioPackets.TapeIoPacket),
+		packetMap:  make(map[ioPackets.IoPacket]*ChannelProgram),
 	}
 
+	ch.logName = fmt.Sprintf("CHTAPE[%v]", ch.identifier)
 	go ch.goRoutine()
 	return ch
 }
@@ -43,6 +47,10 @@ func (ch *TapeChannel) GetNodeCategoryType() hardware.NodeCategoryType {
 
 func (ch *TapeChannel) GetNodeDeviceType() hardware.NodeDeviceType {
 	return hardware.NodeDeviceTape
+}
+
+func (ch *TapeChannel) GetNodeIdentifier() hardware.NodeIdentifier {
+	return ch.identifier
 }
 
 func (ch *TapeChannel) GetNodeModelType() hardware.NodeModelType {
@@ -68,14 +76,14 @@ func (ch *TapeChannel) Reset() {
 
 func (ch *TapeChannel) StartIo(cp *ChannelProgram) {
 	if ch.verbose {
-		klog.LogInfoF("CHTAPE", "StartIo:%v", cp.GetString())
+		klog.LogInfoF(ch.logName, "StartIo:%v", cp.GetString())
 	}
 	cp.IoStatus = ioPackets.IosInProgress
 	ch.cpChannel <- cp
 }
 
 func (ch *TapeChannel) Dump(dest io.Writer, indent string) {
-	_, _ = fmt.Fprintf(dest, "%vTapeChannel connections\n", indent)
+	_, _ = fmt.Fprintf(dest, "%vTapeChannel %v connections\n", indent, ch.identifier)
 	for id := range ch.devices {
 		_, _ = fmt.Fprintf(dest, "%v  %v\n", indent, id)
 	}
@@ -241,7 +249,7 @@ func (ch *TapeChannel) goRoutine() {
 
 	case <-time.After(100 * time.Millisecond):
 		if ch.resetIos {
-			klog.LogInfo("CHTAPE", "Resetting IOs")
+			klog.LogInfo(ch.logName, "Resetting IOs")
 			for _, chProg := range ch.packetMap {
 				chProg.IoStatus = ioPackets.IosCanceled
 				if chProg.Listener != nil {

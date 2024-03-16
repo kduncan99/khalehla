@@ -17,6 +17,7 @@ type Device interface {
 	Dump(destination io.Writer, indent string)
 	GetNodeCategoryType() hardware.NodeCategoryType
 	GetNodeDeviceType() hardware.NodeDeviceType
+	GetNodeIdentifier() hardware.NodeIdentifier
 	GetNodeModelType() hardware.NodeModelType
 	IsMounted() bool
 	IsReady() bool

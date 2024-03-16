@@ -70,62 +70,52 @@ func (mgr *NodeManager) Initialize() error {
 
 	// read configuration
 	// TODO from a data file or database or something
-	chan0 := NewDiskChannelInfo("CHDISK")
-	chan1 := NewTapeChannelInfo("CHTAPE")
-
-	mgr.channelInfos[chan0.GetNodeIdentifier()] = chan0
-	mgr.channelInfos[chan1.GetNodeIdentifier()] = chan1
+	chInfo0 := NewDiskChannelInfo("CHDISK")
+	chInfo1 := NewTapeChannelInfo("CHTAPE")
+	chInfos := []ChannelInfo{chInfo0, chInfo1}
 
 	fn1 := "media/fix000.pack"
-	disk0 := NewDiskDeviceInfo("DISK0", &fn1)
+	ddInfo0 := NewDiskDeviceInfo("DISK0", &fn1)
 	fn2 := "media/fix001.pack"
-	disk1 := NewDiskDeviceInfo("DISK1", &fn2)
+	ddInfo1 := NewDiskDeviceInfo("DISK1", &fn2)
 	fn3 := "media/fix002.pack"
-	disk2 := NewDiskDeviceInfo("DISK2", &fn3)
+	ddInfo2 := NewDiskDeviceInfo("DISK2", &fn3)
 	fn4 := "media/rem000.pack"
-	disk3 := NewDiskDeviceInfo("DISK3", &fn4)
+	ddInfo3 := NewDiskDeviceInfo("DISK3", &fn4)
 
-	tape0 := NewTapeDeviceInfo("TAPE0")
-	tape1 := NewTapeDeviceInfo("TAPE1")
+	tdInfo0 := NewTapeDeviceInfo("TAPE0")
+	tdInfo1 := NewTapeDeviceInfo("TAPE1")
 
-	mgr.deviceInfos[disk0.nodeIdentifier] = disk0
-	mgr.deviceInfos[disk1.nodeIdentifier] = disk1
-	mgr.deviceInfos[disk2.nodeIdentifier] = disk2
-	mgr.deviceInfos[disk3.nodeIdentifier] = disk3
-	mgr.deviceInfos[tape0.nodeIdentifier] = tape0
-	mgr.deviceInfos[tape1.nodeIdentifier] = tape1
+	devInfos := []DeviceInfo{ddInfo0, ddInfo1, ddInfo2, ddInfo3, tdInfo0, tdInfo1}
 
-	chan0.deviceInfos = []*DiskDeviceInfo{disk0, disk1, disk2, disk3}
-	chan1.deviceInfos = []*TapeDeviceInfo{tape0, tape1}
+	chInfo0.deviceInfos = []*DiskDeviceInfo{ddInfo0, ddInfo1, ddInfo2, ddInfo3}
+	chInfo1.deviceInfos = []*TapeDeviceInfo{tdInfo0, tdInfo1}
 
-	disk0.channelInfos = []*DiskChannelInfo{chan0}
-	disk1.channelInfos = []*DiskChannelInfo{chan0}
-	disk2.channelInfos = []*DiskChannelInfo{chan0}
-	disk3.channelInfos = []*DiskChannelInfo{chan0}
-	tape0.channelInfos = []*TapeChannelInfo{chan1}
-	tape1.channelInfos = []*TapeChannelInfo{chan1}
-
-	for nodeId, chInfo := range mgr.channelInfos {
-		mgr.nodeInfos[nodeId] = chInfo
-	}
-	for nodeId, devInfo := range mgr.deviceInfos {
-		mgr.nodeInfos[nodeId] = devInfo
-	}
-	// End TODOs
+	ddInfo0.channelInfos = []*DiskChannelInfo{chInfo0}
+	ddInfo1.channelInfos = []*DiskChannelInfo{chInfo0}
+	ddInfo2.channelInfos = []*DiskChannelInfo{chInfo0}
+	ddInfo3.channelInfos = []*DiskChannelInfo{chInfo0}
+	tdInfo0.channelInfos = []*TapeChannelInfo{chInfo1}
+	tdInfo1.channelInfos = []*TapeChannelInfo{chInfo1}
 
 	// Create channels
 	verbose := mgr.exec.GetConfiguration().LogIOs
-	for _, cInfo := range mgr.channelInfos {
+	for _, cInfo := range chInfos {
 		cInfo.CreateNode()
+		klog.LogInfoF("NodeMgr", "Created channel %v '%v'", cInfo.GetNodeIdentifier(), cInfo.GetNodeName())
 		cInfo.GetChannel().SetVerbose(verbose)
+		mgr.channelInfos[cInfo.GetNodeIdentifier()] = cInfo
+		mgr.nodeInfos[cInfo.GetNodeIdentifier()] = cInfo
 		mgr.nextChannel = append(mgr.nextChannel, cInfo.GetNodeIdentifier())
 	}
 
 	// Create devices
-	for _, dInfo := range mgr.deviceInfos {
+	for _, dInfo := range devInfos {
 		dInfo.CreateNode()
+		klog.LogInfoF("NodeMgr", "Created device %v '%v'", dInfo.GetNodeIdentifier(), dInfo.GetNodeName())
 		dInfo.GetDevice().SetVerbose(verbose)
-		dInfo.GetDevice().SetVerbose(mgr.exec.GetConfiguration().LogIOs)
+		mgr.deviceInfos[dInfo.GetNodeIdentifier()] = dInfo
+		mgr.nodeInfos[dInfo.GetNodeIdentifier()] = dInfo
 	}
 
 	// Connect devices to channels

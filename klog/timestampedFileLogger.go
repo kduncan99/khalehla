@@ -20,7 +20,7 @@ type TimestampedFileLogger struct {
 
 func NewTimestampedFileLogger(initialLevel Level, prefix string) *TimestampedFileLogger {
 	now := time.Now()
-	filename := fmt.Sprintf("%v-%04v%02v%02v%02v%02v%02v.log",
+	filename := fmt.Sprintf("%v-%04v%02v%02v-%02v%02v%02v.log",
 		prefix, now.Year(), int(now.Month()), now.Day(), now.Hour(), now.Minute(), now.Second())
 	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC|os.O_SYNC, 0666)
 	if err != nil {

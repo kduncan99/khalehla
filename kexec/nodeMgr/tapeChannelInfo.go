@@ -9,21 +9,18 @@ import (
 	"io"
 	"khalehla/hardware"
 	"khalehla/hardware/channels"
-	"khalehla/pkg"
 )
 
 type TapeChannelInfo struct {
-	nodeName       string
-	nodeIdentifier hardware.NodeIdentifier
-	channel        *channels.TapeChannel
-	deviceInfos    []*TapeDeviceInfo
+	nodeName    string
+	channel     *channels.TapeChannel
+	deviceInfos []*TapeDeviceInfo
 }
 
 func NewTapeChannelInfo(nodeName string) *TapeChannelInfo {
 	return &TapeChannelInfo{
-		nodeName:       nodeName,
-		nodeIdentifier: hardware.NodeIdentifier(pkg.NewFromStringToFieldata(nodeName, 1)[0]),
-		deviceInfos:    make([]*TapeDeviceInfo, 0),
+		nodeName:    nodeName,
+		deviceInfos: make([]*TapeDeviceInfo, 0),
 	}
 }
 
@@ -52,7 +49,7 @@ func (tci *TapeChannelInfo) GetNodeDeviceType() hardware.NodeDeviceType {
 }
 
 func (tci *TapeChannelInfo) GetNodeIdentifier() hardware.NodeIdentifier {
-	return hardware.NodeIdentifier(tci.nodeIdentifier)
+	return tci.channel.GetNodeIdentifier()
 }
 
 func (tci *TapeChannelInfo) GetNodeName() string {

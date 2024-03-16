@@ -16,6 +16,7 @@ type TapeDevice interface {
 	GetFilesExtended() uint
 	GetNodeCategoryType() hardware.NodeCategoryType
 	GetNodeDeviceType() hardware.NodeDeviceType
+	GetNodeIdentifier() hardware.NodeIdentifier
 	GetNodeModelType() hardware.NodeModelType
 	IsAtLoadPoint() bool
 	IsMounted() bool

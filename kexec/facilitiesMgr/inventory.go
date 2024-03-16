@@ -33,15 +33,17 @@ func (i *inventory) injectNode(nodeInfo nodeMgr.NodeInfo) {
 		switch devInfo.GetNodeDeviceType() {
 		case hardware.NodeDeviceDisk:
 			attr := &kexec.DiskAttributes{
-				Name:   devInfo.GetNodeName(),
-				Status: kexec.FacNodeStatusUp,
+				Identifier: devInfo.GetNodeIdentifier(),
+				Name:       devInfo.GetNodeName(),
+				Status:     kexec.FacNodeStatusUp,
 			}
 			i.nodes[devId] = attr
 			i.disks[devId] = attr
 		case hardware.NodeDeviceTape:
 			attr := &mfdMgr.TapeAttributes{
-				Name:   devInfo.GetNodeName(),
-				Status: kexec.FacNodeStatusUp,
+				Identifier: devInfo.GetNodeIdentifier(),
+				Name:       devInfo.GetNodeName(),
+				Status:     kexec.FacNodeStatusUp,
 			}
 			i.nodes[devId] = attr
 			i.tapes[devId] = attr

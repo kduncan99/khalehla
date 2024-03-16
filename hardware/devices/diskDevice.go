@@ -15,6 +15,7 @@ type DiskDevice interface {
 	GetDiskGeometry() (hardware.BlockSize, hardware.BlockCount, hardware.PrepFactor, hardware.TrackCount)
 	GetNodeCategoryType() hardware.NodeCategoryType
 	GetNodeDeviceType() hardware.NodeDeviceType
+	GetNodeIdentifier() hardware.NodeIdentifier
 	GetNodeModelType() hardware.NodeModelType
 	IsMounted() bool
 	IsReady() bool

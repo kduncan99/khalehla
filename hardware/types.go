@@ -20,6 +20,9 @@ type BlockSize uint32
 // Current valid values include 28, 56, 112, 224, 448, 896, and 1792.
 type PrepFactor uint
 
+// NodeIdentifier unique identifier for this node - assigned by whatever entity manages the hardware
+type NodeIdentifier uint
+
 // TrackCount represents a number of software tracks, each of which contain 1792 words of storage
 type TrackCount uint
 

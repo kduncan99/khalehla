@@ -6,19 +6,26 @@ package hardware
 
 import (
 	"io"
-	"khalehla/pkg"
+	"sync"
 )
 
-// NodeIdentifier uniquely identifies a particular device or channel (or anything else identifiable which we manage)
-// It is currently implemented as the 1-6 character device Name, all caps alphas and/or digits LJSF
-// stored as Fieldata in a Word36 struct
-type NodeIdentifier pkg.Word36
+var nextNodeIdentifier NodeIdentifier = 1
+var mutex sync.Mutex
 
 type Node interface {
 	Dump(destination io.Writer, indent string)
 	GetNodeCategoryType() NodeCategoryType
 	GetNodeDeviceType() NodeDeviceType
+	GetNodeIdentifier() NodeIdentifier
 	GetNodeModelType() NodeModelType
 	IsReady() bool
 	Reset()
+}
+
+func GetNextNodeIdentifier() (ni NodeIdentifier) {
+	mutex.Lock()
+	ni = nextNodeIdentifier
+	nextNodeIdentifier++
+	mutex.Unlock()
+	return
 }

@@ -9,21 +9,18 @@ import (
 	"io"
 	"khalehla/hardware"
 	"khalehla/hardware/channels"
-	"khalehla/pkg"
 )
 
 type DiskChannelInfo struct {
-	nodeName       string
-	nodeIdentifier hardware.NodeIdentifier
-	channel        *channels.DiskChannel
-	deviceInfos    []*DiskDeviceInfo
+	nodeName    string
+	channel     *channels.DiskChannel
+	deviceInfos []*DiskDeviceInfo
 }
 
 func NewDiskChannelInfo(nodeName string) *DiskChannelInfo {
 	return &DiskChannelInfo{
-		nodeName:       nodeName,
-		nodeIdentifier: hardware.NodeIdentifier(pkg.NewFromStringToFieldata(nodeName, 1)[0]),
-		deviceInfos:    make([]*DiskDeviceInfo, 0),
+		nodeName:    nodeName,
+		deviceInfos: make([]*DiskDeviceInfo, 0),
 	}
 }
 
@@ -52,7 +49,7 @@ func (dci *DiskChannelInfo) GetNodeDeviceType() hardware.NodeDeviceType {
 }
 
 func (dci *DiskChannelInfo) GetNodeIdentifier() hardware.NodeIdentifier {
-	return hardware.NodeIdentifier(dci.nodeIdentifier)
+	return dci.channel.GetNodeIdentifier()
 }
 
 func (dci *DiskChannelInfo) GetNodeName() string {

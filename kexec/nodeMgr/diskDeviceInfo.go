@@ -9,12 +9,10 @@ import (
 	"io"
 	"khalehla/hardware"
 	"khalehla/hardware/devices"
-	"khalehla/pkg"
 )
 
 type DiskDeviceInfo struct {
 	nodeName        string
-	nodeIdentifier  hardware.NodeIdentifier
 	initialFileName *string
 	device          devices.DiskDevice
 	channelInfos    []*DiskChannelInfo
@@ -27,7 +25,6 @@ type DiskDeviceInfo struct {
 func NewDiskDeviceInfo(nodeName string, initialFileName *string) *DiskDeviceInfo {
 	return &DiskDeviceInfo{
 		nodeName:        nodeName,
-		nodeIdentifier:  hardware.NodeIdentifier(pkg.NewFromStringToFieldata(nodeName, 1)[0]),
 		initialFileName: initialFileName,
 		channelInfos:    make([]*DiskChannelInfo, 0),
 	}
@@ -66,7 +63,7 @@ func (ddi *DiskDeviceInfo) GetNodeDeviceType() hardware.NodeDeviceType {
 }
 
 func (ddi *DiskDeviceInfo) GetNodeIdentifier() hardware.NodeIdentifier {
-	return ddi.nodeIdentifier
+	return ddi.device.GetNodeIdentifier()
 }
 
 func (ddi *DiskDeviceInfo) GetNodeName() string {
@@ -90,8 +87,7 @@ func (ddi *DiskDeviceInfo) SetIsReady(flag bool) {
 }
 
 func (ddi *DiskDeviceInfo) Dump(dest io.Writer, indent string) {
-	did := pkg.Word36(ddi.nodeIdentifier)
-	str := fmt.Sprintf("%v id:0%v ready:%v", ddi.nodeName, did.ToStringAsOctal(), ddi.isReady)
+	str := fmt.Sprintf("%v ready:%v", ddi.nodeName, ddi.isReady)
 
 	str += " channels:"
 	for _, chInfo := range ddi.channelInfos {

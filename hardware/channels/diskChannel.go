@@ -17,24 +17,28 @@ import (
 // DiskChannel routes IOs to the appropriate deviceInfos which it manages.
 // Some day in the future we may add caching, perhaps in a CacheDiskChannel.
 type DiskChannel struct {
-	devices   map[hardware.NodeIdentifier]devices.DiskDevice
-	cpChannel chan *ChannelProgram
-	ioChannel chan *ioPackets.DiskIoPacket
-	packetMap map[ioPackets.IoPacket]*ChannelProgram
-	resetIos  bool
-	verbose   bool
+	identifier hardware.NodeIdentifier
+	logName    string
+	devices    map[hardware.NodeIdentifier]devices.DiskDevice
+	cpChannel  chan *ChannelProgram
+	ioChannel  chan *ioPackets.DiskIoPacket
+	packetMap  map[ioPackets.IoPacket]*ChannelProgram
+	resetIos   bool
+	verbose    bool
 }
 
 func NewDiskChannel() *DiskChannel {
-	dc := &DiskChannel{
-		devices:   make(map[hardware.NodeIdentifier]devices.DiskDevice),
-		cpChannel: make(chan *ChannelProgram, 10),
-		ioChannel: make(chan *ioPackets.DiskIoPacket),
-		packetMap: make(map[ioPackets.IoPacket]*ChannelProgram),
+	ch := &DiskChannel{
+		identifier: hardware.GetNextNodeIdentifier(),
+		devices:    make(map[hardware.NodeIdentifier]devices.DiskDevice),
+		cpChannel:  make(chan *ChannelProgram, 10),
+		ioChannel:  make(chan *ioPackets.DiskIoPacket),
+		packetMap:  make(map[ioPackets.IoPacket]*ChannelProgram),
 	}
 
-	go dc.goRoutine()
-	return dc
+	ch.logName = fmt.Sprintf(ch.logName, ch.identifier)
+	go ch.goRoutine()
+	return ch
 }
 
 func (ch *DiskChannel) GetNodeCategoryType() hardware.NodeCategoryType {
@@ -43,6 +47,10 @@ func (ch *DiskChannel) GetNodeCategoryType() hardware.NodeCategoryType {
 
 func (ch *DiskChannel) GetNodeDeviceType() hardware.NodeDeviceType {
 	return hardware.NodeDeviceDisk
+}
+
+func (ch *DiskChannel) GetNodeIdentifier() hardware.NodeIdentifier {
+	return ch.identifier
 }
 
 func (ch *DiskChannel) GetNodeModelType() hardware.NodeModelType {
@@ -68,14 +76,14 @@ func (ch *DiskChannel) Reset() {
 
 func (ch *DiskChannel) StartIo(cp *ChannelProgram) {
 	if ch.verbose {
-		klog.LogInfoF("CHDISK", "StartIo:%v", cp.GetString())
+		klog.LogInfoF(ch.logName, "StartIo:%v", cp.GetString())
 	}
 	cp.IoStatus = ioPackets.IosInProgress
 	ch.cpChannel <- cp
 }
 
 func (ch *DiskChannel) Dump(dest io.Writer, indent string) {
-	_, _ = fmt.Fprintf(dest, "%vDiskChannel connections\n", indent)
+	_, _ = fmt.Fprintf(dest, "%vDiskChannel %v connections\n", indent, ch.identifier)
 	for id := range ch.devices {
 		_, _ = fmt.Fprintf(dest, "%v  %v\n", indent, id)
 	}
@@ -243,7 +251,7 @@ func (ch *DiskChannel) goRoutine() {
 
 	case <-time.After(100 * time.Millisecond):
 		if ch.resetIos {
-			klog.LogInfo("CHDISK", "Resetting IOs")
+			klog.LogInfo(ch.logName, "Resetting IOs")
 			for _, chProg := range ch.packetMap {
 				chProg.IoStatus = ioPackets.IosCanceled
 				if chProg.Listener != nil {

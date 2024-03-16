@@ -117,16 +117,20 @@ func (kh *FSKeyinHandler) IsAllowed() bool {
 }
 
 func (kh *FSKeyinHandler) emitStatusStrings(statStrings []string) {
-	for sx := 0; sx < len(statStrings); {
-		str := statStrings[sx]
-		sx++
-		if !strings.ContainsRune(str, '*') {
-			if sx < len(statStrings) && !strings.ContainsRune(statStrings[sx], '*') {
-				str = fmt.Sprintf("%-33s%s", str, statStrings[sx])
-				sx++
+	if len(statStrings) == 0 {
+		kh.exec.SendExecReadOnlyMessage("NO DEVICES", &kh.source)
+	} else {
+		for sx := 0; sx < len(statStrings); {
+			str := statStrings[sx]
+			sx++
+			if !strings.ContainsRune(str, '*') {
+				if sx < len(statStrings) && !strings.ContainsRune(statStrings[sx], '*') {
+					str = fmt.Sprintf("%-33s%s", str, statStrings[sx])
+					sx++
+				}
 			}
+			kh.exec.SendExecReadOnlyMessage(str, &kh.source)
 		}
-		kh.exec.SendExecReadOnlyMessage(str, &kh.source)
 	}
 }
 
@@ -215,6 +219,7 @@ func (kh *FSKeyinHandler) handleOption() {
 		return
 	case "FDISK":
 		// TODO FS,FDISK
+		// "NO FIXED DISK CONFIGURED"
 	case "MS":
 		// TODO FS,MS
 	case "PACK":
@@ -223,6 +228,7 @@ func (kh *FSKeyinHandler) handleOption() {
 		// TODO FS,PACKS
 	case "RDISK":
 		// TODO FS,RDISK
+		// "NO REMOVABLE DISKS PRESENT"
 	case "TAPE":
 		kh.handleAllOf(hardware.NodeCategoryDevice, hardware.NodeDeviceTape)
 		return

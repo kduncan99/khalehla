@@ -84,7 +84,7 @@ func LogFatalF(source string, format string, parameters ...interface{}) {
 }
 
 func LogError(source string, format string) {
-	LogF(LevelError, source, format, nil)
+	LogF(LevelError, source, format)
 }
 
 func LogErrorF(source string, format string, parameters ...interface{}) {
