@@ -52,10 +52,3 @@ const (
 	YOption = 0_000000_000002
 	ZOption = 0_000000_000001
 )
-
-const (
-	ExecPhaseNotStarted ExecPhase = iota
-	ExecPhaseInitializing
-	ExecPhaseRunning
-	ExecPhaseStopped
-)

@@ -47,7 +47,7 @@ func NewExec(cfg *config.Configuration) *Exec {
 	e.keyinMgr = keyinMgr.NewKeyinManager(e)
 	e.mfdMgr = mfdMgr.NewMFDManager(e)
 	e.nodeMgr = nodeMgr.NewNodeManager(e)
-	e.phase = kexec.ExecPhaseNotStarted
+	e.phase = ExecPhaseNotStarted
 
 	return e
 }
@@ -57,7 +57,7 @@ func NewExec(cfg *config.Configuration) *Exec {
 func (e *Exec) Boot(session uint, jumpKeys []bool, invokerChannel chan kexec.StopCode) {
 	e.jumpKeys = jumpKeys
 	e.stopFlag = false
-	e.phase = kexec.ExecPhaseInitializing
+	e.phase = ExecPhaseInitializing
 
 	// ExecRunControlEntry is the RCE for the EXEC - it always exists and is always (or should always be) in the RCT
 	e.runControlEntry = kexec.NewExecRunControlEntry(e.configuration.MasterAccountId)
@@ -283,7 +283,11 @@ func (e *Exec) Stop(code kexec.StopCode) {
 	// TODO need to set contingency in the Exec RCE
 	e.stopFlag = true
 	e.stopCode = code
-	e.phase = kexec.ExecPhaseStopped
+	if e.phase == ExecPhaseRunning {
+		e.phase = ExecPhaseStopped
+	} else {
+		e.phase = ExecPhaseInitStopped
+	}
 }
 
 func (e *Exec) PerformDump(fullFlag bool) (string, error) {
