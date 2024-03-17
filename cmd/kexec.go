@@ -126,6 +126,7 @@ func main() {
 	channel := make(chan kexec.StopCode)
 	session := uint(0)
 
+	// TODO Need to implement boot-loop restriction
 	for {
 		if context.jumpKeys[kexec.JumpKey2Index] {
 			fmt.Println("::Performing pre-boot system dump...")

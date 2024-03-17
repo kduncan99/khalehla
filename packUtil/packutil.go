@@ -155,6 +155,51 @@ func showLabelRecord(
 		fmt.Printf("Total Blocks:         %d\n", label[021].GetW())
 	}
 
+	dirTrackAddr := label[3].GetW()
+	blocksPerTrack := 1792 / prepFactor
+	dirBlockId := hardware.BlockId(uint(dirTrackAddr) / 1792 * uint(blocksPerTrack))
+	dirBlock := make([]pkg.Word36, prepFactor)
+	err = ioRead(channel, devId, dirBlock, dirBlockId, prepFactor)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Sector 0:")
+	pkg.DumpWord36Buffer(dirBlock[0:28], 7)
+
+	var sector1 []pkg.Word36
+	if prepFactor == 28 {
+		dirBlockId++
+		sector1 = make([]pkg.Word36, prepFactor)
+		err = ioRead(channel, devId, sector1, dirBlockId, prepFactor)
+		if err != nil {
+			return err
+		}
+	} else {
+		sector1 = dirBlock[28:56]
+	}
+
+	fmt.Println("Sector 1:")
+	pkg.DumpWord36Buffer(sector1, 7)
+
+	if interpret {
+		fmt.Printf("HMBT DRWAddr:     %v\n", sector1[0].ToStringAsOctal())
+		fmt.Printf("SMBT DRWAddr:     %v\n", sector1[1].ToStringAsOctal())
+		fmt.Printf("Max Avail Tracks: %012o (%v)\n", sector1[2].GetW(), sector1[2].GetW())
+		fmt.Printf("Available Tracks: %012o (%v)\n", sector1[3].GetW(), sector1[3].GetW())
+		fmt.Printf("PackId:           %v\n", sector1[4].ToStringAsFieldata())
+		remStr := ""
+		if sector1[5].GetH1() == 0 {
+			remStr = " (removable)"
+		}
+		fmt.Printf("LDAT Index:       %06o%v\n", sector1[5].GetH1(), remStr)
+		fmt.Printf("MBT Length:       %06o\n", sector1[5].GetH2())
+		fmt.Printf("Records/Track:    %v\n", sector1[010].GetT1())
+		fmt.Printf("Words/Record:     %v\n", sector1[010].GetT3())
+		fmt.Printf("Removable LDAT:   %06o\n", sector1[020].GetH1())
+		fmt.Printf("DAS Offset:       %06o\n", sector1[020].GetH2())
+	}
+
 	return nil
 }
 

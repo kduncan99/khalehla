@@ -143,23 +143,25 @@ func (mgr *FacilitiesManager) GetNodeStatusString(nodeId hardware.NodeIdentifier
 		str = "UP" + accStr
 	}
 
-	da, ok := mgr.inventory.disks[nodeId]
+	diskAttr, ok := mgr.inventory.disks[nodeId]
 	if ok {
 		//	[[*] [R|F] PACKID pack-id]
-		if da.AssignedTo != nil {
+		if diskAttr.AssignedTo != nil {
 			str += " * "
 		} else {
 			str += "   "
 		}
 
-		if da.PackLabelInfo != nil {
-			if da.IsFixed {
+		if diskAttr.PackLabelInfo != nil {
+			if diskAttr.IsFixed {
 				str += "F "
-			} else {
+			} else if diskAttr.IsRemovable {
 				str += "R "
+			} else {
+				str += "  "
 			}
 
-			str += "PACKID " + da.PackLabelInfo.PackId
+			str += "PACKID " + diskAttr.PackLabelInfo.PackId
 		}
 	}
 

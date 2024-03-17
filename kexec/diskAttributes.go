@@ -16,6 +16,7 @@ type DiskAttributes struct {
 	PackLabelInfo *PackLabelInfo
 	IsPrepped     bool
 	IsFixed       bool
+	IsRemovable   bool
 }
 
 func (da *DiskAttributes) GetFacNodeStatus() FacNodeStatus {
