@@ -17,6 +17,7 @@ import (
 
 // DiskChannel routes IOs to the appropriate deviceInfos which it manages.
 // Some day in the future we may add caching, perhaps in a CacheDiskChannel.
+// DiskChannel ChannelPrograms can have only one control word for reads and writes.
 type DiskChannel struct {
 	identifier hardware.NodeIdentifier
 	logName    string
@@ -102,25 +103,44 @@ func (ch *DiskChannel) IoComplete(ioPkt ioPackets.IoPacket) {
 
 func (ch *DiskChannel) prepareIoPacket(chProg *ChannelProgram) (*ioPackets.DiskIoPacket, bool) {
 	// Verify the channel program is not too-badly buggered
-	for _, cw := range chProg.ControlWords {
-		// packed format must have an even number of words
-		if cw.Format == TransferPacked && cw.Length%2 != 0 {
+	if chProg.IoFunction == ioPackets.IofRead || chProg.IoFunction == ioPackets.IofWrite {
+		if len(chProg.ControlWords) != 1 {
+			fmt.Println("Foo1")
 			return nil, false
 		}
-		if cw.Format == Transfer6Bit || cw.Format == Transfer8Bit {
+		for _, cw := range chProg.ControlWords {
+			if cw.Format != TransferPacked || cw.Length%2 != 0 {
+				fmt.Println("Foo2")
+				return nil, false
+			}
+			if cw.Direction == DirectionForward {
+				// transfer must be within the limits of the given buffer
+				if cw.Offset+cw.Length >= uint(len(cw.Buffer)) {
+					fmt.Println("Foo3")
+					return nil, false
+				}
+			} else if cw.Direction == DirectionStatic {
+				// Static transfer start word must be within the limits of the given buffer
+				if cw.Offset >= uint(len(cw.Buffer)) {
+					fmt.Println("Foo4")
+					return nil, false
+				}
+			}
+		}
+	} else if chProg.IoFunction == ioPackets.IofPrep {
+		if chProg.PrepInfo == nil || len(chProg.ControlWords) != 0 {
 			return nil, false
 		}
-		if cw.Direction == DirectionBackward || cw.Direction == DirectionForward {
-			// transfer must be within the limits of the given buffer
-			if cw.Offset+cw.Length >= uint(len(cw.Buffer)) {
-				return nil, false
-			}
-		} else if cw.Direction == DirectionStatic {
-			// Static transfer start word must be within the limits of the given buffer
-			if cw.Offset >= uint(len(cw.Buffer)) {
-				return nil, false
-			}
+	} else if chProg.IoFunction == ioPackets.IofMount {
+		if chProg.MountInfo == nil || len(chProg.ControlWords) != 0 {
+			return nil, false
 		}
+	} else if chProg.IoFunction == ioPackets.IofUnmount {
+		if len(chProg.ControlWords) != 0 {
+			return nil, false
+		}
+	} else {
+		return nil, false
 	}
 
 	pkt := &ioPackets.DiskIoPacket{}

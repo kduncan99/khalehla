@@ -297,60 +297,64 @@ func (mgr *FacilitiesManager) diskBecameReady(nodeId hardware.NodeIdentifier) {
 		ddi := ni.(*nodeMgr.DiskDeviceInfo)
 		dev := ddi.GetDiskDevice()
 		_, _, prepFactor, _ := dev.GetDiskGeometry()
-
-		label := make([]pkg.Word36, prepFactor)
-		cw := channels.ControlWord{
-			Buffer:    label,
-			Offset:    0,
-			Length:    0,
-			Direction: channels.DirectionForward,
-			Format:    channels.TransferPacked,
-		}
-		cp := &channels.ChannelProgram{
-			NodeIdentifier: nodeId,
-			IoFunction:     ioPackets.IofRead,
-			BlockId:        0,
-			ControlWords:   []channels.ControlWord{cw},
-		}
-
-		nm.RouteIo(cp)
-		for cp.IoStatus == ioPackets.IosInProgress || cp.IoStatus == ioPackets.IosNotStarted {
-			time.Sleep(10 * time.Millisecond)
-		}
-		if cp.IoStatus == ioPackets.IosInternalError {
-			mgr.mutex.Unlock()
-			return
-		} else if cp.IoStatus != ioPackets.IosComplete {
-			mgr.mutex.Unlock()
-
-			klog.LogInfoF("FacMgr", "IO Error reading label disk:%v", cp.GetString())
-			consMsg := fmt.Sprintf("%v IO ERROR Reading Pack Label - Status=%v",
-				diskAttr.GetNodeName(), ioPackets.IoStatusTable[cp.IoStatus])
+		if prepFactor == 0 {
+			consMsg := fmt.Sprintf("%v Pack is not prepped", diskAttr.GetNodeName())
 			mgr.exec.SendExecReadOnlyMessage(consMsg, nil)
-
-			// if unit is UP or SU, make it DN
-			if facStat == kexec.FacNodeStatusUp || facStat == kexec.FacNodeStatusSuspended {
-				_ = mgr.SetNodeStatus(nodeId, kexec.FacNodeStatusDown)
+		} else {
+			label := make([]pkg.Word36, prepFactor)
+			cw := channels.ControlWord{
+				Buffer:    label,
+				Offset:    0,
+				Length:    uint(prepFactor),
+				Direction: channels.DirectionForward,
+				Format:    channels.TransferPacked,
 			}
-			return
-		}
-
-		var ok bool
-		diskAttr.PackLabelInfo, ok = kexec.NewPackLabelInfo(label)
-		if !ok {
-			mgr.mutex.Unlock()
-
-			consMsg := fmt.Sprintf("%v Pack has no VOL1 label", diskAttr.GetNodeName())
-			mgr.exec.SendExecReadOnlyMessage(consMsg, nil)
-
-			// if unit is UP or SU, tell node manager to DN the unit
-			if facStat == kexec.FacNodeStatusUp || facStat == kexec.FacNodeStatusSuspended {
-				_ = mgr.SetNodeStatus(nodeId, kexec.FacNodeStatusDown)
+			cp := &channels.ChannelProgram{
+				NodeIdentifier: nodeId,
+				IoFunction:     ioPackets.IofRead,
+				BlockId:        0,
+				ControlWords:   []channels.ControlWord{cw},
 			}
-			return
-		}
 
-		diskAttr.IsPrepped = true
+			nm.RouteIo(cp)
+			for cp.IoStatus == ioPackets.IosInProgress || cp.IoStatus == ioPackets.IosNotStarted {
+				time.Sleep(10 * time.Millisecond)
+			}
+			if cp.IoStatus == ioPackets.IosInternalError {
+				mgr.mutex.Unlock()
+				return
+			} else if cp.IoStatus != ioPackets.IosComplete {
+				mgr.mutex.Unlock()
+
+				klog.LogInfoF("FacMgr", "IO Error reading label disk:%v", cp.GetString())
+				consMsg := fmt.Sprintf("%v IO ERROR Reading Pack Label - Status=%v",
+					diskAttr.GetNodeName(), ioPackets.IoStatusTable[cp.IoStatus])
+				mgr.exec.SendExecReadOnlyMessage(consMsg, nil)
+
+				// if unit is UP or SU, make it DN
+				if facStat == kexec.FacNodeStatusUp || facStat == kexec.FacNodeStatusSuspended {
+					_ = mgr.SetNodeStatus(nodeId, kexec.FacNodeStatusDown)
+				}
+				return
+			}
+
+			var ok bool
+			diskAttr.PackLabelInfo, ok = kexec.NewPackLabelInfo(label)
+			if !ok {
+				mgr.mutex.Unlock()
+
+				consMsg := fmt.Sprintf("%v Pack has no VOL1 label", diskAttr.GetNodeName())
+				mgr.exec.SendExecReadOnlyMessage(consMsg, nil)
+
+				// if unit is UP or SU, tell node manager to DN the unit
+				if facStat == kexec.FacNodeStatusUp || facStat == kexec.FacNodeStatusSuspended {
+					_ = mgr.SetNodeStatus(nodeId, kexec.FacNodeStatusDown)
+				}
+				return
+			}
+
+			diskAttr.IsPrepped = true
+		}
 	}
 
 	mgr.mutex.Unlock()

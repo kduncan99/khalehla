@@ -18,7 +18,8 @@ type ChannelSender interface {
 type TransferFormat uint
 
 const (
-	TransferPacked TransferFormat = iota
+	NoTransferFormat TransferFormat = iota
+	TransferPacked
 	Transfer8Bit
 	Transfer6Bit
 )
@@ -26,7 +27,8 @@ const (
 type TransferDirection uint
 
 const (
-	DirectionForward TransferDirection = iota
+	NoTransferDirection TransferDirection = iota
+	DirectionForward
 	DirectionBackward
 	DirectionStatic
 	DirectionSkip
