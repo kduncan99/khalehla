@@ -105,16 +105,27 @@ func (ch *TapeChannel) prepareIoPacket(chProg *ChannelProgram) (*ioPackets.TapeI
 	for _, cw := range chProg.ControlWords {
 		// packed format must have an even number of words
 		if cw.Format == TransferPacked && cw.Length%2 != 0 {
+			if ch.verbose {
+				klog.LogInfoF(ch.logName, "Invalid length in control word:%v", cw.Length)
+			}
 			return nil, false
 		}
 		if cw.Direction == DirectionBackward || cw.Direction == DirectionForward {
 			// Fwd/Back transfer must be within the limits of the given buffer
-			if cw.Offset+cw.Length >= uint(len(cw.Buffer)) {
+			if cw.Offset+cw.Length > uint(len(cw.Buffer)) {
+				if ch.verbose {
+					klog.LogInfoF(ch.logName, "Invalid control word offset:%v or length:%v for buffer length:%v",
+						cw.Offset, cw.Length, len(cw.Buffer))
+				}
 				return nil, false
 			}
 		} else if cw.Direction == DirectionStatic {
 			// Static transfer start word must be within the limits of the given buffer
-			if cw.Offset >= uint(len(cw.Buffer)) {
+			if cw.Offset > uint(len(cw.Buffer)) {
+				if ch.verbose {
+					klog.LogInfoF(ch.logName, "Invalid control word offset:%v or length:%v for buffer length:%v",
+						cw.Offset, cw.Length, len(cw.Buffer))
+				}
 				return nil, false
 			}
 		}
@@ -229,6 +240,9 @@ func (ch *TapeChannel) goRoutine() {
 			dev, ok := ch.devices[channelProgram.NodeIdentifier]
 			if !ok {
 				channelProgram.IoStatus = ioPackets.IosDeviceDoesNotExist
+				if ch.verbose {
+					klog.LogErrorF(ch.logName, "RejectIo:%v", channelProgram.GetString())
+				}
 				if channelProgram.Listener != nil {
 					channelProgram.Listener.ChannelProgramComplete(channelProgram)
 				}
@@ -239,6 +253,9 @@ func (ch *TapeChannel) goRoutine() {
 			ioPkt, ok := ch.prepareIoPacket(channelProgram)
 			if !ok {
 				channelProgram.IoStatus = ioPackets.IosInvalidChannelProgram
+				if ch.verbose {
+					klog.LogErrorF(ch.logName, "RejectIo:%v", channelProgram.GetString())
+				}
 				if channelProgram.Listener != nil {
 					channelProgram.Listener.ChannelProgramComplete(channelProgram)
 				}
@@ -261,6 +278,9 @@ func (ch *TapeChannel) goRoutine() {
 				delete(ch.packetMap, ioPacket)
 			}
 			ch.mutex.Unlock()
+			if ch.verbose && channelProgram != nil {
+				klog.LogInfoF(ch.logName, "EndIo:%v", channelProgram.GetString())
+			}
 
 		case <-time.After(100 * time.Millisecond):
 			if ch.resetIos {

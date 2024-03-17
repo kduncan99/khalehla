@@ -57,8 +57,10 @@ type ChannelProgram struct {
 }
 
 func (cp *ChannelProgram) GetString() string {
-	return fmt.Sprintf("node:%v func:%v blk:%v",
+	return fmt.Sprintf("node:%v func:%v blk:%v stat:%v(%v)",
 		cp.NodeIdentifier,
 		ioPackets.IoFunctionTable[cp.IoFunction],
-		cp.BlockId)
+		cp.BlockId,
+		cp.IoStatus,
+		ioPackets.IoStatusTable[cp.IoStatus])
 }

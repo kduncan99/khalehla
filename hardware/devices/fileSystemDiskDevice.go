@@ -211,7 +211,7 @@ func (dev *FileSystemDiskDevice) doMount(pkt *ioPackets.DiskIoPacket) {
 	}
 
 	label := make([]pkg.Word36, 28)
-	pkg.ByteArrayPackedToWord36(buffer, 0, 0, label, 0)
+	pkg.ByteArrayPackedToWord36(buffer, 0, 126, label, 0)
 
 	if label[0].ToStringAsAscii() != "VOL1" {
 		klog.LogError(dev.logName, "No VOL1 label")
@@ -314,8 +314,8 @@ func (dev *FileSystemDiskDevice) doPrep(pkt *ioPackets.DiskIoPacket) {
 	label[021].SetW(uint64(dev.blockGeometry.TrackCount))
 
 	buffer := make([]byte, dev.blockGeometry.BytesPerBlock)
-	pkg.Word36ToByteArrayPacked(label, 0, 0, buffer, 0)
-	err := readExact(dev, buffer, 126, 0)
+	pkg.Word36ToByteArrayPacked(label, 0, uint(len(label)), buffer, 0)
+	err := writeExact(dev, buffer, uint32(len(buffer)), 0)
 	if err != nil {
 		klog.LogErrorF(dev.logName, "Cannot write label:%v", err)
 		pkt.SetIoStatus(ioPackets.IosSystemError)
@@ -354,7 +354,7 @@ func (dev *FileSystemDiskDevice) doRead(pkt *ioPackets.DiskIoPacket) {
 		return
 	}
 
-	offset := int64(dev.blockGeometry.BytesPerBlock) * int64(pkt.BlockId+1)
+	offset := int64(dev.blockGeometry.BytesPerBlock) * int64(pkt.BlockId)
 	if dev.verbose {
 		klog.LogInfoF(dev.logName, "ReadAt offset=%v len=%v", offset, dev.blockGeometry.BytesPerBlock)
 	}

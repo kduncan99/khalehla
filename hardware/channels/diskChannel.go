@@ -102,29 +102,51 @@ func (ch *DiskChannel) IoComplete(ioPkt ioPackets.IoPacket) {
 }
 
 func (ch *DiskChannel) prepareIoPacket(chProg *ChannelProgram) (*ioPackets.DiskIoPacket, bool) {
-	// Verify the channel program is not too-badly buggered
+	// Verify the channel program is not too-badly buggered.
+	// Note that for us, there must be exactly one control word if we are transferring data.
 	if chProg.IoFunction == ioPackets.IofRead || chProg.IoFunction == ioPackets.IofWrite {
 		if len(chProg.ControlWords) != 1 {
-			fmt.Println("Foo1")
+			if ch.verbose {
+				klog.LogInfoF(ch.logName, "Invalid number of control words:%v", len(chProg.ControlWords))
+			}
 			return nil, false
 		}
 		for _, cw := range chProg.ControlWords {
-			if cw.Format != TransferPacked || cw.Length%2 != 0 {
-				fmt.Println("Foo2")
+			if cw.Format != TransferPacked {
+				if ch.verbose {
+					klog.LogInfoF(ch.logName, "Invalid transfer format in control word:%v", cw.Format)
+				}
+				return nil, false
+			}
+			if cw.Length%2 != 0 {
+				if ch.verbose {
+					klog.LogInfoF(ch.logName, "Invalid length in control word:%v", cw.Length)
+				}
 				return nil, false
 			}
 			if cw.Direction == DirectionForward {
 				// transfer must be within the limits of the given buffer
-				if cw.Offset+cw.Length >= uint(len(cw.Buffer)) {
-					fmt.Println("Foo3")
+				if cw.Offset+cw.Length > uint(len(cw.Buffer)) {
+					if ch.verbose {
+						klog.LogInfoF(ch.logName, "Invalid control word offset:%v or length:%v for buffer length:%v",
+							cw.Offset, cw.Length, len(cw.Buffer))
+					}
 					return nil, false
 				}
 			} else if cw.Direction == DirectionStatic {
 				// Static transfer start word must be within the limits of the given buffer
-				if cw.Offset >= uint(len(cw.Buffer)) {
-					fmt.Println("Foo4")
+				if cw.Offset > uint(len(cw.Buffer)) {
+					if ch.verbose {
+						klog.LogInfoF(ch.logName, "Invalid control word offset:%v or length:%v for buffer length:%v",
+							cw.Offset, cw.Length, len(cw.Buffer))
+					}
 					return nil, false
 				}
+			} else {
+				if ch.verbose {
+					klog.LogInfoF(ch.logName, "Invalid transfer direction:%v", cw.Direction)
+				}
+				return nil, false
 			}
 		}
 	} else if chProg.IoFunction == ioPackets.IofPrep {
@@ -151,38 +173,23 @@ func (ch *DiskChannel) prepareIoPacket(chProg *ChannelProgram) (*ioPackets.DiskI
 	byteCount := uint(0)
 	wordCount := uint(0)
 	if chProg.IoFunction == ioPackets.IofRead || chProg.IoFunction == ioPackets.IofWrite {
+		cw := chProg.ControlWords[0]
 		pkt.BlockId = chProg.BlockId
-		for _, cw := range chProg.ControlWords {
-			wordCount += cw.Length
-		}
-
+		wordCount += cw.Length
 		bytes, ok := hardware.BlockSizeFromPrepFactor[hardware.PrepFactor(wordCount)]
 		if !ok {
 			return nil, false
 		}
 
 		byteCount = uint(bytes)
-	}
-
-	if chProg.IoFunction == ioPackets.IofWrite {
-		// If this is a data transfer to the device,
-		// we have to gather and translate caller's Word36 data into a byte buffer.
 		pkt.Buffer = make([]byte, byteCount)
-		bx := uint(0)
-		for _, cw := range chProg.ControlWords {
-			switch cw.Format {
-			case Transfer6Bit:
-				byteCount += 6 * cw.Length
-			case Transfer8Bit:
-				byteCount += 4 * cw.Length
-			case TransferPacked:
-				byteCount += cw.Length * 9 / 2
-			}
-			transferFromWords(cw.Buffer, cw.Offset, cw.Length, pkt.Buffer[bx:bx+byteCount], bx, cw.Direction, cw.Format)
-		}
 
-		chProg.BytesTransferred = byteCount
-		chProg.WordsTransferred = wordCount
+		if chProg.IoFunction == ioPackets.IofWrite {
+			// If this is a data transfer to the device, we have to translate caller's Word36 data into a byte buffer.
+			transferFromWords(cw.Buffer, cw.Offset, cw.Length, pkt.Buffer, 0, cw.Direction, cw.Format)
+			chProg.BytesTransferred = byteCount
+			chProg.WordsTransferred = wordCount
+		}
 	} else if chProg.IoFunction == ioPackets.IofRead {
 		pkt.BlockId = chProg.BlockId
 	} else if chProg.IoFunction == ioPackets.IofMount {
@@ -195,53 +202,19 @@ func (ch *DiskChannel) prepareIoPacket(chProg *ChannelProgram) (*ioPackets.DiskI
 }
 
 func (ch *DiskChannel) resolveIoPacket(chProg *ChannelProgram, ioPacket ioPackets.IoPacket) {
-	nonIntegral := false
-	overRun := false
 	if chProg.IoFunction == ioPackets.IofRead {
-		if chProg.IoStatus == ioPackets.IosComplete {
+		if ioPacket.GetIoStatus() == ioPackets.IosComplete {
 			chProg.BytesTransferred = uint(len(ioPacket.(*ioPackets.DiskIoPacket).Buffer))
 			chProg.WordsTransferred = 0
-
-			byteBuffer := ioPacket.(*ioPackets.DiskIoPacket).Buffer
-			bytesRemaining := chProg.BytesTransferred
-			bufferIndex := uint(0)
-
-			for _, cw := range chProg.ControlWords {
-				var byteCount uint
-				switch cw.Format {
-				case Transfer6Bit:
-					byteCount += 6 * cw.Length
-				case Transfer8Bit:
-					byteCount += 4 * cw.Length
-				case TransferPacked:
-					byteCount += cw.Length * 9 / 2
-				}
-
-				subSize := byteCount
-				if subSize > bytesRemaining {
-					subSize = bytesRemaining
-				}
-
-				subBuffer := byteBuffer[bufferIndex : bufferIndex+subSize]
-				niFlag, wordCount :=
-					transferFromBytes(subBuffer, 0, subSize, cw.Buffer, 0, cw.Direction, cw.Format)
-				chProg.WordsTransferred += wordCount
-				if niFlag {
-					nonIntegral = true
-				}
-			}
-
-			overRun = bytesRemaining > 0
+			buffer := ioPacket.(*ioPackets.DiskIoPacket).Buffer
+			cw := chProg.ControlWords[0]
+			byteCount := cw.Length * 9 / 2
+			transferFromBytes(buffer, 0, byteCount, cw.Buffer, 0, cw.Direction, cw.Format)
+			chProg.WordsTransferred += cw.Length
 		}
 	}
 
-	if nonIntegral {
-		chProg.IoStatus = ioPackets.IosNonIntegralRead
-	} else if overRun {
-		chProg.IoStatus = ioPackets.IosReadOverrun
-	} else {
-		chProg.IoStatus = ioPacket.GetIoStatus()
-	}
+	chProg.IoStatus = ioPacket.GetIoStatus()
 }
 
 func (ch *DiskChannel) goRoutine() {
@@ -253,6 +226,9 @@ func (ch *DiskChannel) goRoutine() {
 			dev, ok := ch.devices[channelProgram.NodeIdentifier]
 			if !ok {
 				channelProgram.IoStatus = ioPackets.IosDeviceDoesNotExist
+				if ch.verbose {
+					klog.LogErrorF(ch.logName, "RejectIo:%v", channelProgram.GetString())
+				}
 				if channelProgram.Listener != nil {
 					channelProgram.Listener.ChannelProgramComplete(channelProgram)
 				}
@@ -263,6 +239,9 @@ func (ch *DiskChannel) goRoutine() {
 			ioPkt, ok := ch.prepareIoPacket(channelProgram)
 			if !ok {
 				channelProgram.IoStatus = ioPackets.IosInvalidChannelProgram
+				if ch.verbose {
+					klog.LogErrorF(ch.logName, "RejectIo:%v", channelProgram.GetString())
+				}
 				if channelProgram.Listener != nil {
 					channelProgram.Listener.ChannelProgramComplete(channelProgram)
 				}
@@ -285,6 +264,9 @@ func (ch *DiskChannel) goRoutine() {
 				delete(ch.packetMap, ioPacket)
 			}
 			ch.mutex.Unlock()
+			if ch.verbose && channelProgram != nil {
+				klog.LogInfoF(ch.logName, "EndIo:%v", channelProgram.GetString())
+			}
 
 		case <-time.After(100 * time.Millisecond):
 			if ch.resetIos {

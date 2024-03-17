@@ -43,6 +43,7 @@ const (
 )
 
 var IoStatusTable = map[IoStatus]string{
+	0:                        "<none>",
 	IosNotStarted:            "NotStarted",
 	IosComplete:              "Complete",
 	IosInProgress:            "InProgress",

@@ -7,13 +7,14 @@ package packUtil
 import (
 	"errors"
 	"fmt"
+	"khalehla/hardware"
 	"khalehla/hardware/channels"
 	"khalehla/hardware/devices"
 	"khalehla/hardware/ioPackets"
-	"khalehla/kexec"
 	"khalehla/pkg"
 	"os"
 	"strconv"
+	"time"
 )
 
 func DoUsage() {
@@ -30,15 +31,16 @@ func DoPrep(args []string) error {
 	fileName := args[0]
 
 	packName := args[1]
-	if !kexec.IsValidPackName(packName) {
+	if !hardware.IsValidPackName(packName) {
 		return fmt.Errorf("invalid pack name")
 	}
 
-	prepFactor, err := strconv.Atoi(args[2])
-	if err != nil || prepFactor <= 0 {
+	pfInt, err := strconv.Atoi(args[2])
+	if err != nil || pfInt <= 0 {
 		return fmt.Errorf("error in prepfactor argument")
 	}
-	if !kexec.IsValidPrepFactor(kexec.PrepFactor(prepFactor)) {
+	prepFactor := hardware.PrepFactor(pfInt)
+	if !hardware.IsValidPrepFactor(prepFactor) {
 		return fmt.Errorf("invalid prep factor (use 28, 56, 112, 224, 448, 896, or 1792)")
 	}
 
@@ -60,26 +62,28 @@ func DoPrep(args []string) error {
 
 	dc := channels.NewDiskChannel()
 	dd := devices.NewFileSystemDiskDevice(nil)
-	devId := kexec.NodeIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
-	_ = dc.AssignDevice(devId, dd)
+	nodeId := hardware.NodeIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
+	_ = dc.AssignDevice(nodeId, dd)
 
-	pkt := ioPackets.NewDiskIoPacketMount(devId, fileName, false)
-	dc.RouteIo(pkt)
-	if pkt.GetIoStatus() != ioPackets.IosComplete {
-		fmt.Printf("%v\n", pkt.GetString())
-		return fmt.Errorf("status %v returned while mounting pack file %v", pkt.GetIoStatus(), fileName)
+	err = ioMount(dc, nodeId, fileName)
+	if err != nil {
+		return err
 	}
 
-	pkt = ioPackets.NewDiskIoPacketPrep(devId, packName, kexec.PrepFactor(prepFactor), kexec.TrackCount(trackCount), removable)
-	dc.RouteIo(pkt)
-	if pkt.GetIoStatus() != ioPackets.IosComplete {
-		return fmt.Errorf("status %v returned while prepping pack file %v", pkt.GetIoStatus(), fileName)
+	err = ioPrep(dc, nodeId, prepFactor, hardware.TrackCount(trackCount), packName, removable)
+	if err != nil {
+		return err
 	}
 
-	showLabelRecord(dc, devId, true)
+	err = showLabelRecord(dc, nodeId, prepFactor, true)
+	if err != nil {
+		return err
+	}
 
-	pkt = ioPackets.NewDiskIoPacketUnmount(devId)
-	dc.RouteIo(pkt)
+	err = ioUnmount(dc, nodeId)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -100,44 +104,145 @@ func DoShow(args []string) error {
 
 	dc := channels.NewDiskChannel()
 	dd := devices.NewFileSystemDiskDevice(nil)
-	devId := kexec.NodeIdentifier(pkg.NewFromStringToFieldata("DISK0", 1)[0])
-	_ = dc.AssignDevice(devId, dd)
+	nodeId := hardware.NodeIdentifier(1)
+	_ = dc.AssignDevice(nodeId, dd)
 
-	pkt := ioPackets.NewDiskIoPacketMount(devId, fileName, false)
-	dc.RouteIo(pkt)
-	if !dd.IsPrepped() {
+	err := ioMount(dc, nodeId, fileName)
+	if err != nil {
+		return err
+	}
+
+	_, _, prepFactor, _ := dd.GetDiskGeometry()
+	if prepFactor == 0 {
 		return fmt.Errorf("pack is not prepped")
 	}
 
-	showLabelRecord(dc, devId, true)
+	err = showLabelRecord(dc, nodeId, prepFactor, true)
+	if err != nil {
+		return err
+	}
 
-	pkt = ioPackets.NewDiskIoPacketUnmount(devId)
-	dc.RouteIo(pkt)
+	err = ioUnmount(dc, nodeId)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
-func showLabelRecord(channel channels.Channel, devId kexec.NodeIdentifier, interpret bool) {
-	label := make([]pkg.Word36, 28)
-	pkt := ioPackets.NewDiskIoPacketReadLabel(devId, label)
-	channel.RouteIo(pkt)
-	if pkt.GetIoStatus() != ioPackets.IosComplete {
-		fmt.Printf("Status %v returned while reading label\n", pkt.GetIoStatus())
-		return
+func showLabelRecord(
+	channel *channels.DiskChannel,
+	devId hardware.NodeIdentifier,
+	prepFactor hardware.PrepFactor,
+	interpret bool,
+) error {
+	label := make([]pkg.Word36, prepFactor)
+	err := ioRead(channel, devId, label, 0, prepFactor)
+	if err != nil {
+		return err
 	}
 
 	fmt.Println("Label Record:")
-	pkg.DumpWord36Buffer(label, 7)
-	if !interpret {
-		return
+	pkg.DumpWord36Buffer(label[0:28], 7)
+	if interpret {
+		fmt.Printf("Pack Name:            %v%v\n", label[1].ToStringAsAscii(), label[2].ToStringAsAscii())
+		fmt.Printf("First Dir Track DRWA: %v\n", label[3].ToStringAsOctal())
+		fmt.Printf("Records Per Track:    %d\n", label[4].GetH1())
+		fmt.Printf("Words Per Record:     %d\n", label[4].GetH2())
+		fmt.Printf("VOL1 Version:         %d\n", label[014].GetS2())
+		fmt.Printf("Disk Capacity:        %d tracks\n", label[016].GetW())
+		fmt.Printf("Words Per Phys Record:%d\n", label[017].GetH1())
+		fmt.Printf("Total Blocks:         %d\n", label[021].GetW())
 	}
 
-	fmt.Printf("Pack Name:            %v%v\n", label[1].ToStringAsAscii(), label[2].ToStringAsAscii())
-	fmt.Printf("First Dir Track DRWA: %v\n", label[3].ToStringAsOctal())
-	fmt.Printf("Records Per Track:    %d\n", label[4].GetH1())
-	fmt.Printf("Words Per Record:     %d\n", label[4].GetH2())
-	fmt.Printf("VOL1 Version:         %d\n", label[014].GetS2())
-	fmt.Printf("Disk Capacity:        %d tracks\n", label[016].GetW())
-	fmt.Printf("Words Per Phys Record:%d\n", label[017].GetH1())
-	fmt.Printf("Total Blocks:         %d\n", label[021].GetW())
+	return nil
+}
+
+func io(
+	ch *channels.DiskChannel,
+	cp *channels.ChannelProgram,
+) error {
+	ch.StartIo(cp)
+	for cp.IoStatus == ioPackets.IosNotStarted || cp.IoStatus == ioPackets.IosInProgress {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if cp.IoStatus != ioPackets.IosComplete {
+		fmt.Printf("IO error:%v status:%v\n", cp.GetString(), ioPackets.IoStatusTable[cp.IoStatus])
+		return fmt.Errorf("error:%v", cp.GetString())
+	}
+
+	return nil
+}
+
+func ioMount(
+	ch *channels.DiskChannel,
+	nodeIdentifier hardware.NodeIdentifier,
+	fileName string,
+) error {
+	mi := &ioPackets.IoMountInfo{
+		Filename:     fileName,
+		WriteProtect: false,
+	}
+	cp := &channels.ChannelProgram{
+		NodeIdentifier: nodeIdentifier,
+		IoFunction:     ioPackets.IofMount,
+		MountInfo:      mi,
+	}
+	return io(ch, cp)
+}
+
+func ioPrep(
+	ch *channels.DiskChannel,
+	nodeIdentifier hardware.NodeIdentifier,
+	prepFactor hardware.PrepFactor,
+	trackCount hardware.TrackCount,
+	packName string,
+	removable bool,
+) error {
+	pi := &ioPackets.IoPrepInfo{
+		PrepFactor:  prepFactor,
+		TrackCount:  trackCount,
+		PackName:    packName,
+		IsRemovable: removable,
+	}
+	cp := &channels.ChannelProgram{
+		NodeIdentifier: nodeIdentifier,
+		IoFunction:     ioPackets.IofPrep,
+		PrepInfo:       pi,
+	}
+	return io(ch, cp)
+}
+
+func ioRead(
+	ch *channels.DiskChannel,
+	nodeIdentifier hardware.NodeIdentifier,
+	buffer []pkg.Word36,
+	blockId hardware.BlockId,
+	prepFactor hardware.PrepFactor,
+) error {
+	cw := channels.ControlWord{
+		Buffer:    buffer,
+		Offset:    0,
+		Length:    uint(prepFactor),
+		Direction: channels.DirectionForward,
+		Format:    channels.TransferPacked,
+	}
+	cp := &channels.ChannelProgram{
+		NodeIdentifier: nodeIdentifier,
+		IoFunction:     ioPackets.IofRead,
+		BlockId:        blockId,
+		ControlWords:   []channels.ControlWord{cw},
+	}
+	return io(ch, cp)
+}
+
+func ioUnmount(
+	ch *channels.DiskChannel,
+	nodeIdentifier hardware.NodeIdentifier,
+) error {
+	cp := &channels.ChannelProgram{
+		NodeIdentifier: nodeIdentifier,
+		IoFunction:     ioPackets.IofUnmount,
+	}
+	return io(ch, cp)
 }

@@ -189,12 +189,9 @@ func (kh *PREPKeyinHandler) process() {
 		PrepInfo:       &pi,
 	}
 
-	kh.exec.GetNodeManager().RouteIo(cp)
-	for cp.IoStatus == ioPackets.IosInProgress || cp.IoStatus == ioPackets.IosNotStarted {
-		time.Sleep(10 * time.Millisecond)
-	}
-	if cp.IoStatus != ioPackets.IosComplete {
-		str := fmt.Sprintf("PREP %v IO error %v writing pack label", kh.deviceName, cp.IoStatus)
+	ioStat := kh.io(cp)
+	if ioStat != ioPackets.IosComplete {
+		str := fmt.Sprintf("PREP %v IO error %v writing pack label", kh.deviceName, ioStat)
 		kh.exec.SendExecReadOnlyMessage(str, &kh.source)
 		return
 	}
@@ -229,9 +226,9 @@ func (kh *PREPKeyinHandler) process() {
 	dirBlockId := hardware.BlockId(blocksPerTrack) // assuming directory track is the second logical track
 	for wx := 0; wx < 56; wx += kh.prepFactor {
 		subBuffer := dirTrack[wx : wx+kh.prepFactor]
-		ioStat := kh.writeBlock(nodeId, subBuffer, dirBlockId)
-		if ioStat == ioPackets.IosInternalError {
-			str := fmt.Sprintf("PREP %v IO error %v writing directory track", kh.deviceName, cp.IoStatus)
+		ioStat = kh.writeBlock(nodeId, subBuffer, dirBlockId)
+		if ioStat != ioPackets.IosComplete {
+			str := fmt.Sprintf("PREP %v IO error %v writing directory track", kh.deviceName, ioStat)
 			kh.exec.SendExecReadOnlyMessage(str, &kh.source)
 			return
 		}
@@ -252,6 +249,17 @@ func (kh *PREPKeyinHandler) thread() {
 }
 
 // TODO when fac mgr is ready, we should assign the device to the exec and let fac mgr do the IOs.
+func (kh *PREPKeyinHandler) io(
+	cp *channels.ChannelProgram,
+) ioPackets.IoStatus {
+	kh.exec.GetNodeManager().RouteIo(cp)
+	for cp.IoStatus == ioPackets.IosInProgress || cp.IoStatus == ioPackets.IosNotStarted {
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	return cp.IoStatus
+}
+
 func (kh *PREPKeyinHandler) readBlock(
 	nodeId hardware.NodeIdentifier,
 	buffer []pkg.Word36,
@@ -271,12 +279,7 @@ func (kh *PREPKeyinHandler) readBlock(
 		ControlWords:   []channels.ControlWord{cw},
 	}
 
-	kh.exec.GetNodeManager().RouteIo(cp)
-	for cp.IoStatus == ioPackets.IosComplete || cp.IoStatus == ioPackets.IosNotStarted {
-		time.Sleep(10 * time.Millisecond)
-	}
-
-	return cp.IoStatus
+	return kh.io(cp)
 }
 
 func (kh *PREPKeyinHandler) writeBlock(
@@ -298,10 +301,5 @@ func (kh *PREPKeyinHandler) writeBlock(
 		ControlWords:   []channels.ControlWord{cw},
 	}
 
-	kh.exec.GetNodeManager().RouteIo(cp)
-	for cp.IoStatus == ioPackets.IosComplete || cp.IoStatus == ioPackets.IosNotStarted {
-		time.Sleep(10 * time.Millisecond)
-	}
-
-	return cp.IoStatus
+	return kh.io(cp)
 }

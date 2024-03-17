@@ -322,6 +322,7 @@ func ByteArrayPackedToWord36(
 
 		case 8:
 			destination[dx].Or(uint64(source[sx]))
+			dx++
 			sx++
 			nonIntegral = false
 		}
