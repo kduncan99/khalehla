@@ -23,7 +23,7 @@ type DKeyinHandler struct {
 	timeFinished    time.Time
 }
 
-func NewDKeyinHandler(exec kexec.IExec, source kexec.ConsoleIdentifier, options string, arguments string) KeyinHandler {
+func NewDKeyinHandler(exec kexec.IExec, source kexec.ConsoleIdentifier, options string, arguments string) IKeyinHandler {
 	return &DKeyinHandler{
 		exec:            exec,
 		source:          source,

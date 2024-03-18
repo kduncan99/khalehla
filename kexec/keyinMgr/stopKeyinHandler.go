@@ -21,7 +21,7 @@ type StopKeyinHandler struct {
 	timeFinished    time.Time
 }
 
-func NewStopKeyinHandler(exec kexec.IExec, source kexec.ConsoleIdentifier, options string, arguments string) KeyinHandler {
+func NewStopKeyinHandler(exec kexec.IExec, source kexec.ConsoleIdentifier, options string, arguments string) IKeyinHandler {
 	return &StopKeyinHandler{
 		exec:            exec,
 		source:          source,

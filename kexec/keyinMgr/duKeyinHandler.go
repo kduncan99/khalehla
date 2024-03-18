@@ -22,7 +22,7 @@ type DUKeyinHandler struct {
 	timeFinished    time.Time
 }
 
-func NewDUKeyinHandler(exec kexec.IExec, source kexec.ConsoleIdentifier, options string, arguments string) KeyinHandler {
+func NewDUKeyinHandler(exec kexec.IExec, source kexec.ConsoleIdentifier, options string, arguments string) IKeyinHandler {
 	return &DUKeyinHandler{
 		exec:            exec,
 		source:          source,

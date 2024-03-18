@@ -192,11 +192,11 @@ func (mgr *FacilitiesManager) IsDeviceAssigned(deviceId hardware.NodeIdentifier)
 	return false
 }
 
-func (mgr *FacilitiesManager) NotifyDeviceReady(deviceId hardware.NodeIdentifier, isReady bool) {
+func (mgr *FacilitiesManager) NotifyDeviceReady(nodeIdentifier hardware.NodeIdentifier, isReady bool) {
 	// queue this for the thread to pick up
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
-	mgr.deviceReadyNotificationQueue[deviceId] = isReady
+	mgr.deviceReadyNotificationQueue[nodeIdentifier] = isReady
 }
 
 func (mgr *FacilitiesManager) SetNodeStatus(nodeId hardware.NodeIdentifier, status kexec.FacNodeStatus) error {
@@ -283,13 +283,14 @@ func (mgr *FacilitiesManager) SetNodeStatus(nodeId hardware.NodeIdentifier, stat
 // diskBecameReady handles the notification which arrives after a unit attention.
 // this waits on IO, so do NOT call it under lock.
 func (mgr *FacilitiesManager) diskBecameReady(nodeId hardware.NodeIdentifier) {
-	// Device became ready - any pack attributes we have, are obsolete, so reload them
-	klog.LogInfoF("FacMgr", "Disk %v became ready", nodeId)
-
+	// Device became ready - any pack attributes we have are obsolete, so reload them
 	mgr.mutex.Lock()
 
 	diskAttr := mgr.inventory.disks[nodeId]
 	diskAttr.PackLabelInfo = nil
+	klog.LogInfoF("FacMgr", "Disk %v [%v] became ready", nodeId, diskAttr.GetNodeName())
+	msg := fmt.Sprintf("%v Device Ready", diskAttr.GetNodeName())
+	mgr.exec.SendExecReadOnlyMessage(msg, nil)
 
 	// we only care if the unit is UP, SU, or RV (i.e., not DN)
 	facStat := diskAttr.GetFacNodeStatus()
@@ -365,7 +366,17 @@ func (mgr *FacilitiesManager) diskBecameReady(nodeId hardware.NodeIdentifier) {
 func (mgr *FacilitiesManager) tapeBecameReady(nodeId hardware.NodeIdentifier) {
 	// Device became ready
 	// what we do here depends upon the current state of the device...
+	mgr.mutex.Lock()
+
+	diskAttr := mgr.inventory.disks[nodeId]
+	diskAttr.PackLabelInfo = nil
+	klog.LogInfoF("FacMgr", "Disk %v [%v] became ready", nodeId, diskAttr.GetNodeName())
+	msg := fmt.Sprintf("%v Device Ready", diskAttr.GetNodeName())
+	mgr.exec.SendExecReadOnlyMessage(msg, nil)
+
 	// TODO implmement tapeBecameReady()
+
+	mgr.mutex.Unlock()
 }
 
 func (mgr *FacilitiesManager) thread() {

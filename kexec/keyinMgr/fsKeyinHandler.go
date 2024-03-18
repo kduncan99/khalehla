@@ -32,7 +32,7 @@ type FSKeyinHandler struct {
 	timeFinished    time.Time
 }
 
-func NewFSKeyinHandler(exec kexec.IExec, source kexec.ConsoleIdentifier, options string, arguments string) KeyinHandler {
+func NewFSKeyinHandler(exec kexec.IExec, source kexec.ConsoleIdentifier, options string, arguments string) IKeyinHandler {
 	return &FSKeyinHandler{
 		exec:            exec,
 		source:          source,

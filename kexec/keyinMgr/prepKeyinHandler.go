@@ -35,7 +35,7 @@ type PREPKeyinHandler struct {
 	packName   string
 }
 
-func NewPREPKeyinHandler(exec kexec.IExec, source kexec.ConsoleIdentifier, options string, arguments string) KeyinHandler {
+func NewPREPKeyinHandler(exec kexec.IExec, source kexec.ConsoleIdentifier, options string, arguments string) IKeyinHandler {
 	return &PREPKeyinHandler{
 		exec:            exec,
 		source:          source,

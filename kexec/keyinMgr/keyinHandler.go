@@ -6,7 +6,7 @@ package keyinMgr
 
 import "time"
 
-type KeyinHandler interface {
+type IKeyinHandler interface {
 	Abort()
 	CheckSyntax() bool
 	GetArguments() string

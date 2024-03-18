@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-var handlerTable = map[string]func(kexec.IExec, kexec.ConsoleIdentifier, string, string) KeyinHandler{
+var handlerTable = map[string]func(kexec.IExec, kexec.ConsoleIdentifier, string, string) IKeyinHandler{
 	"$!": NewStopKeyinHandler,
 	// "AP"
 	// "AT"
@@ -27,7 +27,7 @@ var handlerTable = map[string]func(kexec.IExec, kexec.ConsoleIdentifier, string,
 	// "DN"
 	"DU": NewDUKeyinHandler,
 	// "E"
-	// "FA"
+	"FA": NewFAKeyinHandler,
 	// "FB"
 	// "FC" ?
 	// "FF"
@@ -84,7 +84,7 @@ type KeyinManager struct {
 	mutex           sync.Mutex
 	threadDone      bool
 	postedKeyins    []*keyinInfo
-	pendingHandlers []KeyinHandler
+	pendingHandlers []IKeyinHandler
 }
 
 func NewKeyinManager(exec kexec.IExec) *KeyinManager {
@@ -97,7 +97,7 @@ func NewKeyinManager(exec kexec.IExec) *KeyinManager {
 func (mgr *KeyinManager) Boot() error {
 	klog.LogTrace("KeyinMgr", "Boot")
 	mgr.postedKeyins = make([]*keyinInfo, 0)
-	mgr.pendingHandlers = make([]KeyinHandler, 0)
+	mgr.pendingHandlers = make([]IKeyinHandler, 0)
 	go mgr.thread()
 	return nil
 }

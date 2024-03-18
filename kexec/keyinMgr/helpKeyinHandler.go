@@ -21,7 +21,7 @@ type HELPKeyinHandler struct {
 	timeFinished    time.Time
 }
 
-func NewHELPKeyinHandler(exec kexec.IExec, source kexec.ConsoleIdentifier, options string, arguments string) KeyinHandler {
+func NewHELPKeyinHandler(exec kexec.IExec, source kexec.ConsoleIdentifier, options string, arguments string) IKeyinHandler {
 	return &HELPKeyinHandler{
 		exec:            exec,
 		source:          source,
