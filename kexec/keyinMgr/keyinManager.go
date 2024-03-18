@@ -31,7 +31,8 @@ var handlerTable = map[string]func(kexec.IExec, kexec.ConsoleIdentifier, string,
 	// "FB"
 	// "FC" ?
 	// "FF"
-	"FS": NewFSKeyinHandler,
+	"FS":   NewFSKeyinHandler,
+	"HELP": NewHELPKeyinHandler,
 	// "II"
 	// "IN"
 	// "IT"

@@ -45,6 +45,12 @@ func (kh *StopKeyinHandler) GetCommand() string {
 	return "$!"
 }
 
+func (kh *StopKeyinHandler) GetHelp() []string {
+	return []string{
+		"$!",
+		"Initiates auto-recovery of the operating system"}
+}
+
 func (kh *StopKeyinHandler) GetOptions() string {
 	return kh.options
 }

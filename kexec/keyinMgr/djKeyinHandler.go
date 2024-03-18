@@ -42,16 +42,22 @@ func (kh *DJKeyinHandler) CheckSyntax() bool {
 	return len(kh.options) == 0 && len(kh.arguments) == 0
 }
 
+func (kh *DJKeyinHandler) GetArguments() string {
+	return kh.arguments
+}
+
 func (kh *DJKeyinHandler) GetCommand() string {
 	return "DJ"
 }
 
-func (kh *DJKeyinHandler) GetOptions() string {
-	return kh.options
+func (kh *DJKeyinHandler) GetHelp() []string {
+	return []string{
+		"DJ",
+		"Displays the jump keys which are currently set"}
 }
 
-func (kh *DJKeyinHandler) GetArguments() string {
-	return kh.arguments
+func (kh *DJKeyinHandler) GetOptions() string {
+	return kh.options
 }
 
 func (kh *DJKeyinHandler) GetTimeFinished() time.Time {

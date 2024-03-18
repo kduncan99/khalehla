@@ -15,23 +15,6 @@ import (
 )
 
 /*
-FS KEYIN - component DOES NOT EXIST, INPUT IGNORED
-FS KEYIN - eqp-mnemonic EQUIPMENT MNEMONIC ILLEGAL, INPUT IGNORED
-  (Exec) An equipment mnemonic cannot be entered on any keyin other than the DN,PACK keyin.
-FS KEYIN - inhibits INHIBITS ILLEGAL, INPUT IGNORED
-  (Exec) Inhibits cannot be entered on any keyin other than the MD keyin.
-FS KEYIN NOT ALLOWED - DIRECTORY ID MUST BE dir-id
-  (Exec) The directory-id of a pack and a directory-id specified on the keyin are opposite
-  (for example, a local pack-id and shared were specified on the keyin).
-FS KEYIN - NO UNIT EXISTS IN THE PREMOUNT ONLY STATUS, INPUT IGNORED
-FS KEYIN - option OPTION DOES NOT EXIST, INPUT IGNORED
-  (Exec) An illegal FS keyin was entered. The variable option is the option that you specified on your FS keyin.
-FS NOT ALLOWED UNTIL MASS STORAGE INITIALIZED OR RECOVERED
-  (Exec) An FS,PACK keyin is not allowed until the recovery files have been created or restored.
-FS,PACK KEYIN ERROR - MHFS IS NOT AVAILABLE
-  (Exec) The FS,PACK/SHARED keyin is not allowed because Multi-Host File Sharing (MHFS) is down or not available.
-FS,PACK NOT ALLOWED - dir-id IS ILLEGAL DIRECTORY ID
-
 Variations we accept:
 	FS,[ CM | DISK | FDISK | MS | PACK | RDISK | TAPE ]
 	FS node_name[,...]
@@ -86,16 +69,24 @@ func (kh *FSKeyinHandler) CheckSyntax() bool {
 	return true
 }
 
+func (kh *FSKeyinHandler) GetArguments() string {
+	return kh.arguments
+}
+
 func (kh *FSKeyinHandler) GetCommand() string {
 	return "FS"
 }
 
-func (kh *FSKeyinHandler) GetOptions() string {
-	return kh.options
+func (kh *FSKeyinHandler) GetHelp() []string {
+	return []string{
+		"FS,[ CM | DISK[S] | FDISK | MS | PACK[S] | RDISK | TAPE[S] ]",
+		"FS node_name[,...]",
+		"FS,ALL channel_name",
+		"Displays facility status for various system components"}
 }
 
-func (kh *FSKeyinHandler) GetArguments() string {
-	return kh.arguments
+func (kh *FSKeyinHandler) GetOptions() string {
+	return kh.options
 }
 
 func (kh *FSKeyinHandler) GetTimeFinished() time.Time {

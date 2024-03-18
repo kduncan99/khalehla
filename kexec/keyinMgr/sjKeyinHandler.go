@@ -53,16 +53,22 @@ func (kh *SJKeyinHandler) CheckSyntax() bool {
 	return true
 }
 
+func (kh *SJKeyinHandler) GetArguments() string {
+	return kh.arguments
+}
+
 func (kh *SJKeyinHandler) GetCommand() string {
 	return "SJ"
 }
 
-func (kh *SJKeyinHandler) GetOptions() string {
-	return kh.options
+func (kh *SJKeyinHandler) GetHelp() []string {
+	return []string{
+		"SJ jumpKey,...",
+		"Sets the indicated jump keys"}
 }
 
-func (kh *SJKeyinHandler) GetArguments() string {
-	return kh.arguments
+func (kh *SJKeyinHandler) GetOptions() string {
+	return kh.options
 }
 
 func (kh *SJKeyinHandler) GetTimeFinished() time.Time {

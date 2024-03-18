@@ -9,9 +9,10 @@ import "time"
 type KeyinHandler interface {
 	Abort()
 	CheckSyntax() bool
+	GetArguments() string
 	GetCommand() string
 	GetOptions() string
-	GetArguments() string
+	GetHelp() []string
 	GetTimeFinished() time.Time
 	Invoke()
 	IsAllowed() bool

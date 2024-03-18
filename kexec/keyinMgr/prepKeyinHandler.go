@@ -84,16 +84,24 @@ func (kh *PREPKeyinHandler) CheckSyntax() bool {
 	return true
 }
 
+func (kh *PREPKeyinHandler) GetArguments() string {
+	return kh.arguments
+}
+
 func (kh *PREPKeyinHandler) GetCommand() string {
 	return "PREP"
 }
 
-func (kh *PREPKeyinHandler) GetOptions() string {
-	return kh.options
+func (kh *PREPKeyinHandler) GetHelp() []string {
+	return []string{
+		"PREP,[F|R] device,prep_factor,track_count,pack_name",
+		"Preps a virtual or real disk pack for use as mass storage",
+		"Use F for fixed packs, R for removable packs",
+		"prep_factor and track_count should be zero for real disk packs"}
 }
 
-func (kh *PREPKeyinHandler) GetArguments() string {
-	return kh.arguments
+func (kh *PREPKeyinHandler) GetOptions() string {
+	return kh.options
 }
 
 func (kh *PREPKeyinHandler) GetTimeFinished() time.Time {

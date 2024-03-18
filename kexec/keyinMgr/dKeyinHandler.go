@@ -51,16 +51,22 @@ func (kh *DKeyinHandler) CheckSyntax() bool {
 	return true
 }
 
+func (kh *DKeyinHandler) GetArguments() string {
+	return kh.arguments
+}
+
 func (kh *DKeyinHandler) GetCommand() string {
 	return "D"
 }
 
-func (kh *DKeyinHandler) GetOptions() string {
-	return kh.options
+func (kh *DKeyinHandler) GetHelp() []string {
+	return []string{
+		"D",
+		"Displays the system date and time"}
 }
 
-func (kh *DKeyinHandler) GetArguments() string {
-	return kh.arguments
+func (kh *DKeyinHandler) GetOptions() string {
+	return kh.options
 }
 
 func (kh *DKeyinHandler) GetTimeFinished() time.Time {

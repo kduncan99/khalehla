@@ -46,6 +46,12 @@ func (kh *DUKeyinHandler) GetCommand() string {
 	return "DU"
 }
 
+func (kh *DUKeyinHandler) GetHelp() []string {
+	return []string{
+		"DU MP",
+		"Creates a system dump"}
+}
+
 func (kh *DUKeyinHandler) GetOptions() string {
 	return kh.options
 }
