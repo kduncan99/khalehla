@@ -108,10 +108,12 @@ func (fas *FileAllocationSet) mergeIntoFileAllocationSet(newEntry *FileAllocatio
 			}
 
 			// the new entry is not contiguous with the previous, nor with the next. splice it in.
-			newTable := fas.FileAllocations[:rex]
+			newTable := make([]*FileAllocation, 0)
+			newTable = append(newTable, fas.FileAllocations[:rex]...)
 			newTable = append(newTable, newEntry)
 			newTable = append(newTable, fas.FileAllocations[rex:]...)
 			fas.FileAllocations = newTable
+			fas.IsUpdated = true
 			return
 		}
 

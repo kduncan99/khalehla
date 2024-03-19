@@ -368,8 +368,8 @@ func (mgr *MFDManager) allocateSpecificTrack(
 		return fmt.Errorf("fas not loaded")
 	}
 
-	re := NewFileAllocation(fileTrackId, trackCount, ldatIndex, deviceTrackId)
-	fas.mergeIntoFileAllocationSet(re)
+	fileAlloc := NewFileAllocation(fileTrackId, trackCount, ldatIndex, deviceTrackId)
+	fas.mergeIntoFileAllocationSet(fileAlloc)
 
 	if fileTrackId > fas.HighestTrackAllocated {
 		fas.HighestTrackAllocated = fileTrackId
@@ -462,8 +462,8 @@ func (mgr *MFDManager) bootstrapMFD() error {
 	// including *particularly* the file allocation table.
 	// We need to create one allocation region for each pack's initial directory track.
 	highestMFDTrackId := hardware.TrackId(0)
-	fae := NewFileAllocationSet(mainItem0Addr, 0_400000_000000)
-	mgr.acceleratedFileAllocations[mainItem0Addr] = fae
+	fas := NewFileAllocationSet(mainItem0Addr, 0_400000_000000)
+	mgr.acceleratedFileAllocations[mainItem0Addr] = fas
 
 	for ldat, desc := range mgr.fixedPackDescriptors {
 		mfdTrackId := hardware.TrackId(ldat << 12)
@@ -1321,7 +1321,7 @@ func (mgr *MFDManager) initializeRemovable(disks map[*nodeMgr.DiskDeviceInfo]*ke
 	return nil
 }
 
-// loadFileAllocationSet initializes the fae for a particular file instance.
+// loadFileAllocationSet initializes the fas for a particular file instance.
 // If we return an error, we've already stopped the exec
 // CALL UNDER LOCK
 func (mgr *MFDManager) loadFileAllocationSet(
