@@ -199,18 +199,21 @@ func (mgr *FacilitiesManager) NotifyDeviceReady(nodeIdentifier hardware.NodeIden
 	mgr.deviceReadyNotificationQueue[nodeIdentifier] = isReady
 }
 
-func (mgr *FacilitiesManager) SetNodeStatus(nodeId hardware.NodeIdentifier, status kexec.FacNodeStatus) error {
+func (mgr *FacilitiesManager) SetNodeStatus(nodeId hardware.NodeIdentifier, status kexec.FacNodeStatus) bool {
+	klog.LogTraceF("FacMgr", "SetNodeStatus nodeId=%v status=%v", nodeId, status)
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
 	nodeAttr, ok := mgr.inventory.nodes[nodeId]
 	if !ok {
-		return fmt.Errorf("node not found")
+		klog.LogErrorF("FacMgr", "SetNodeStatus node %v not found", nodeId)
+		return false
 	}
 
 	// for now, we do not allow changing status of anything except devices
 	if nodeAttr.GetNodeCategoryType() != hardware.NodeCategoryDevice {
-		return fmt.Errorf("not allowed")
+		klog.LogErrorF("FacMgr", "SetNodeStatus node %v not a device", nodeId)
+		return false
 	}
 
 	stopExec := false
@@ -218,57 +221,68 @@ func (mgr *FacilitiesManager) SetNodeStatus(nodeId hardware.NodeIdentifier, stat
 
 	switch status {
 	case kexec.FacNodeStatusDown:
-		if nodeAttr.GetNodeCategoryType() == hardware.NodeCategoryDevice {
-			if nodeAttr.GetNodeDeviceType() == hardware.NodeDeviceDisk {
-				nodeAttr.SetFacNodeStatus(status)
-				stopExec = mgr.IsDeviceAssigned(nodeId)
-				break
-			} else if nodeAttr.GetNodeDeviceType() == hardware.NodeDeviceDisk {
-				// Reset the tape device (unmounts it as part of the process)
-				// We don't need to wait for IO to complete.
-				cp := &channels.ChannelProgram{
-					NodeIdentifier: nodeId,
-					IoFunction:     ioPackets.IofReset,
-				}
-				nodeManager.RouteIo(cp)
-				nodeAttr.SetFacNodeStatus(status)
-				if mgr.IsDeviceAssigned(nodeId) {
-					// TODO - un-assign the device from the run
-					// TODO - tell Exec to abort the run to which the thing was assigned
-				}
-				break
+		if nodeAttr.GetNodeDeviceType() == hardware.NodeDeviceDisk {
+			nodeAttr.SetFacNodeStatus(status)
+			stopExec = mgr.IsDeviceAssigned(nodeId)
+			break
+		} else if nodeAttr.GetNodeDeviceType() == hardware.NodeDeviceTape {
+			// Reset the tape device (unmounts it as part of the process)
+			// We don't need to wait for IO to complete.
+			cp := &channels.ChannelProgram{
+				NodeIdentifier: nodeId,
+				IoFunction:     ioPackets.IofReset,
 			}
+			nodeManager.RouteIo(cp)
+			nodeAttr.SetFacNodeStatus(status)
+			if mgr.IsDeviceAssigned(nodeId) {
+				// TODO - un-assign the device from the run
+				// TODO - tell Exec to abort the run to which the thing was assigned
+			}
+			break
+		} else {
+			// anything else
+			klog.LogErrorF("FacMgr", "SetNodeStatus node %v DN not allowed, not a disk or tape device", nodeId)
+			return false
 		}
-		// anything else
-		return fmt.Errorf("not allowed")
 
 	case kexec.FacNodeStatusReserved:
-		if nodeAttr.GetNodeCategoryType() == hardware.NodeCategoryDevice {
+		if nodeAttr.GetNodeDeviceType() == hardware.NodeDeviceDisk {
+			// TODO RV disk
 			nodeAttr.SetFacNodeStatus(status)
+		} else if nodeAttr.GetNodeDeviceType() == hardware.NodeDeviceTape {
+			// TODO RV tape
 		} else {
 			// anything other than disk or tape
-			return fmt.Errorf("not allowed")
+			klog.LogErrorF("FacMgr", "SetNodeStatus node %v RV not allowed, not a disk or tape device", nodeId)
+			return false
 		}
 
 	case kexec.FacNodeStatusSuspended:
-		if nodeAttr.GetNodeCategoryType() == hardware.NodeCategoryDevice &&
-			nodeAttr.GetNodeDeviceType() == hardware.NodeDeviceDisk {
+		if nodeAttr.GetNodeDeviceType() == hardware.NodeDeviceDisk {
+			// TODO check for SU of last UP disk
 			nodeAttr.SetFacNodeStatus(status)
 		} else {
 			// anything other than disk
-			return fmt.Errorf("not allowed")
+			klog.LogErrorF("FacMgr", "SetNodeStatus node %v SU not allowed, not a disk device", nodeId)
+			return false
 		}
 
 	case kexec.FacNodeStatusUp:
-		if nodeAttr.GetNodeCategoryType() == hardware.NodeCategoryDevice {
+		if nodeAttr.GetNodeDeviceType() == hardware.NodeDeviceDisk {
+			// TODO UP disk
 			nodeAttr.SetFacNodeStatus(status)
+		} else if nodeAttr.GetNodeDeviceType() == hardware.NodeDeviceTape {
+			// TODO UP tape
 		} else {
 			// anything other than disk or tape
-			return fmt.Errorf("not allowed")
+			klog.LogErrorF("FacMgr", "SetNodeStatus node %v UP not allowed, not a disk or tape device", nodeId)
+			return false
 		}
 
 	default:
-		return fmt.Errorf("internal error")
+		klog.LogFatalF("FacMgr", "SetNodeStatus node %v status %v not recognized", nodeId, status)
+		mgr.exec.Stop(kexec.StopFacilitiesComplex)
+		return false
 	}
 
 	msg := nodeAttr.GetNodeName() + " " + mgr.GetNodeStatusString(nodeId)
@@ -277,7 +291,7 @@ func (mgr *FacilitiesManager) SetNodeStatus(nodeId hardware.NodeIdentifier, stat
 		mgr.exec.Stop(kexec.StopConsoleResponseRequiresReboot)
 	}
 
-	return nil
+	return true
 }
 
 // diskBecameReady handles the notification which arrives after a unit attention.

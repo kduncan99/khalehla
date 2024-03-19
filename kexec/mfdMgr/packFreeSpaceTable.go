@@ -24,6 +24,33 @@ func NewPackFreeSpaceTable(capacity hardware.TrackCount) *PackFreeSpaceTable {
 	return fst
 }
 
+func (fst *PackFreeSpaceTable) appendEntry(region *kexec.TrackRegion) {
+	fst.Content = append(fst.Content, region)
+}
+
+func (fst *PackFreeSpaceTable) prependEntry(region *kexec.TrackRegion) {
+	temp := []*kexec.TrackRegion{region}
+	temp = append(temp, fst.Content...)
+	fst.Content = temp
+}
+
+func (fst *PackFreeSpaceTable) removeEntryAt(index int) {
+	temp := make([]*kexec.TrackRegion, 0)
+	temp = append(temp, fst.Content[:index]...)
+	if index < len(fst.Content)-1 {
+		temp = append(temp, fst.Content[index+1:]...)
+	}
+	fst.Content = temp
+}
+
+func (fst *PackFreeSpaceTable) spliceNewEntryAt(region *kexec.TrackRegion, index int) {
+	temp := make([]*kexec.TrackRegion, 0)
+	temp = append(temp, fst.Content[:index]...)
+	temp = append(temp, region)
+	temp = append(temp, fst.Content[index:]...)
+	fst.Content = temp
+}
+
 // AllocateTrack allocates one track - used primarily for MFD expansion
 // an error return does NOT imply an exec stop
 func (fst *PackFreeSpaceTable) AllocateTrack() (kexec.MFDTrackId, error) {
@@ -72,7 +99,7 @@ func (fst *PackFreeSpaceTable) AllocateTrackRegion(trackCount hardware.TrackCoun
 	// Try to satisfy the request with a single region of the exact requested size
 	for cx, region := range fst.Content {
 		if region.TrackCount == trackCount {
-			fst.Content = append(fst.Content[:cx], fst.Content[cx+1:]...)
+			fst.removeEntryAt(cx)
 			return region
 		}
 	}
@@ -93,7 +120,7 @@ func (fst *PackFreeSpaceTable) AllocateTrackRegion(trackCount hardware.TrackCoun
 		}
 	}
 
-	fst.Content = append(fst.Content[:largestIndex], fst.Content[largestIndex+1:]...)
+	fst.removeEntryAt(largestIndex)
 	return largest
 }
 
@@ -160,7 +187,7 @@ func (fst *PackFreeSpaceTable) MarkTrackRegionAllocated(
 			// Does the requested region exactly match the current entry?
 			// If so, just remove the current entry
 			if fsRegion.TrackCount == trackCount {
-				fst.Content = append(fst.Content[:fx], fst.Content[fx:]...)
+				fst.removeEntryAt(fx)
 				return true
 			}
 
@@ -180,8 +207,7 @@ func (fst *PackFreeSpaceTable) MarkTrackRegionAllocated(
 			// Break the region into two sections. Messy. Don't like it.
 			newRegion := kexec.NewTrackRegion(entryLimit, hardware.TrackCount(entryLimit-reqTrackLimit))
 			fsRegion.TrackCount = hardware.TrackCount(trackId - fsRegion.TrackId)
-			newTable := append(fst.Content[0:fx+1], newRegion)
-			fst.Content = append(newTable, fst.Content[fx+1])
+			fst.spliceNewEntryAt(newRegion, fx+1)
 			return true
 		}
 	}
@@ -216,13 +242,13 @@ func (fst *PackFreeSpaceTable) MarkTrackRegionUnallocated(
 			return false
 		}
 
-		// Is requested region between this entry and the next?
-		// If so, we need to coalesce this and the next region
+		// Is requested region exactly between this entry and the next?
+		// If so, we need to coalesce this region with the next
 		if fx < len(fst.Content)-1 {
 			fsNext := fst.Content[fx+1]
 			if trackId == entryTrackLimit && reqTrackLimit == fst.Content[fx+1].TrackId {
 				fsRegion.TrackCount += trackCount + fsNext.TrackCount
-				fst.Content = append(fst.Content[:fx+1], fst.Content[fx+1:]...)
+				fst.removeEntryAt(fx + 1)
 				return true
 			}
 		}
@@ -244,15 +270,14 @@ func (fst *PackFreeSpaceTable) MarkTrackRegionUnallocated(
 		// If it is ahead of this entry, then we just need to insert a new entry for the requested region.
 		if trackId < fsRegion.TrackId {
 			re := kexec.NewTrackRegion(trackId, trackCount)
-			newTable := append(fst.Content[:fx], re)
-			fst.Content = append(newTable, fst.Content[fx:]...)
+			fst.appendEntry(re)
 			return true
 		}
 	}
 
 	// Region is somewhere at the end of the pack. Create a new entry.
 	re := kexec.NewTrackRegion(trackId, trackCount)
-	fst.Content = append(fst.Content, re)
+	fst.appendEntry(re)
 	return true
 }
 

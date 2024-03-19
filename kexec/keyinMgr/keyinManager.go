@@ -191,7 +191,10 @@ func (mgr *KeyinManager) prune() {
 	now := time.Now()
 	for phx, handler := range mgr.pendingHandlers {
 		if handler.IsDone() && now.Sub(handler.GetTimeFinished()).Seconds() > 60 {
-			mgr.pendingHandlers = append(mgr.pendingHandlers[:phx], mgr.pendingHandlers[phx+1:]...)
+			temp := make([]IKeyinHandler, 0)
+			temp = append(temp, mgr.pendingHandlers[:phx]...)
+			temp = append(temp, mgr.pendingHandlers[phx+1:]...)
+			mgr.pendingHandlers = temp
 		} else {
 			phx++
 		}

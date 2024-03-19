@@ -31,6 +31,25 @@ func NewFileAllocationSet(
 	}
 }
 
+func (fas *FileAllocationSet) appendEntry(alloc *FileAllocation) {
+	fas.FileAllocations = append(fas.FileAllocations, alloc)
+}
+
+func (fas *FileAllocationSet) insertEntryAt(alloc *FileAllocation, index int) {
+	temp := make([]*FileAllocation, 0)
+	temp = append(temp, fas.FileAllocations[:index]...)
+	temp = append(temp, alloc)
+	temp = append(temp, fas.FileAllocations[index:]...)
+	fas.FileAllocations = temp
+}
+
+func (fas *FileAllocationSet) removeEntryAt(index int) {
+	temp := make([]*FileAllocation, 0)
+	temp = append(temp, fas.FileAllocations[:index]...)
+	temp = append(temp, fas.FileAllocations[index+1:]...)
+	fas.FileAllocations = temp
+}
+
 // extractRegionFromFileAllocationSet extracts the allocation described by the given region
 // from this file allocation set.
 // Caller MUST ensure that the requested region is a subset (or a match) of exactly one existing entry.
@@ -46,7 +65,7 @@ func (fas *FileAllocationSet) extractRegionFromFileAllocationSet(
 
 			if fileAlloc.FileRegion.TrackCount == region.TrackCount {
 				// deallocating the entire file allocation
-				fas.FileAllocations = append(fas.FileAllocations[:rex], fas.FileAllocations[rex+1:]...)
+				fas.removeEntryAt(rex)
 			} else {
 				// deallocating from the front of the file allocation
 				fileAlloc.FileRegion.TrackId += hardware.TrackId(region.TrackCount)
@@ -73,9 +92,7 @@ func (fas *FileAllocationSet) extractRegionFromFileAllocationSet(
 				newAlloc := NewFileAllocation(newTrackId, newTrackCount, fileAlloc.LDATIndex, newDevTrackId)
 
 				fileAlloc.FileRegion.TrackCount = hardware.TrackCount(region.TrackId - fileAlloc.FileRegion.TrackId)
-
-				temp := append(fas.FileAllocations[:rex+1], newAlloc)
-				fas.FileAllocations = append(temp, fas.FileAllocations[rex+1:]...)
+				fas.insertEntryAt(newAlloc, rex+1)
 			}
 			fas.IsUpdated = true
 			return
@@ -108,11 +125,7 @@ func (fas *FileAllocationSet) mergeIntoFileAllocationSet(newEntry *FileAllocatio
 			}
 
 			// the new entry is not contiguous with the previous, nor with the next. splice it in.
-			newTable := make([]*FileAllocation, 0)
-			newTable = append(newTable, fas.FileAllocations[:rex]...)
-			newTable = append(newTable, newEntry)
-			newTable = append(newTable, fas.FileAllocations[rex:]...)
-			fas.FileAllocations = newTable
+			fas.insertEntryAt(newEntry, rex)
 			fas.IsUpdated = true
 			return
 		}
@@ -133,7 +146,7 @@ func (fas *FileAllocationSet) mergeIntoFileAllocationSet(newEntry *FileAllocatio
 	}
 
 	// If we get here, the new entry is definitely not contiguous with any existing entry.
-	fas.FileAllocations = append(fas.FileAllocations, newEntry)
+	fas.appendEntry(newEntry)
 	fas.IsUpdated = true
 }
 

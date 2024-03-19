@@ -70,7 +70,7 @@ type IFacilitiesManager interface {
 	Stop()             // invoked when the exec is stopping
 	GetDiskAttributes(identifier hardware.NodeIdentifier) (*DiskAttributes, bool)
 	GetNodeAttributes(nodeId hardware.NodeIdentifier) (NodeAttributes, bool)
-	SetNodeStatus(nodeId hardware.NodeIdentifier, status FacNodeStatus) error
+	SetNodeStatus(nodeId hardware.NodeIdentifier, status FacNodeStatus) bool
 }
 
 type IKeyinManager interface {
