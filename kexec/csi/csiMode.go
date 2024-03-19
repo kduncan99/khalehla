@@ -6,9 +6,11 @@ package csi
 
 import (
 	"khalehla/kexec/facilitiesMgr"
+	"khalehla/klog"
 )
 
 func handleMode(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
+	klog.LogTraceF("CSI", "handleMode:%v", *pkt.pcs)
 
 	/*
 		@MODE,options filename [,noise/processor/tape/format/

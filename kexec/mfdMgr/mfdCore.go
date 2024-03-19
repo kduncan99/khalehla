@@ -1476,23 +1476,23 @@ func populateMassStorageMainItem0(
 	pkg.FromStringToFieldata(filename, mainItem0[3:5])
 	pkg.FromStringToFieldata(projectId, mainItem0[5:7])
 	pkg.FromStringToFieldata(accountId, mainItem0[7:9])
-	mainItem0[11].SetW(uint64(leadItem0Address))
-	mainItem0[11].SetS1(0) // disable flags
+	mainItem0[013].SetW(uint64(leadItem0Address))
+	mainItem0[013].SetS1(0) // disable flags
 
-	mainItem0[12].SetT1(descriptorFlags.Compose())
+	mainItem0[014].SetT1(descriptorFlags.Compose())
 
-	mainItem0[13].SetW(uint64(mainItem1Address))
-	mainItem0[13].SetS1(pcharFlags.Compose())
+	mainItem0[015].SetW(uint64(mainItem1Address))
+	mainItem0[015].SetS1(pcharFlags.Compose())
 
-	mainItem0[14].FromStringToFieldata(mnemonic)
+	mainItem0[016].FromStringToFieldata(mnemonic)
 
-	mainItem0[17].SetH1(inhibitFlags.Compose())
-	mainItem0[17].SetT3(absoluteCycle)
+	mainItem0[021].SetH1(inhibitFlags.Compose())
+	mainItem0[021].SetT3(absoluteCycle)
 
 	swTimeNow := kexec.GetSWTimeFromSystemTime(time.Now())
-	mainItem0[19].SetW(swTimeNow)
-	mainItem0[20].SetH1(reserve)
-	mainItem0[21].SetH1(maximum)
+	mainItem0[023].SetW(swTimeNow)
+	mainItem0[024].SetH1(reserve)
+	mainItem0[025].SetH1(maximum)
 
 	if isRemovable {
 		var rKey pkg.Word36

@@ -17,6 +17,7 @@ import (
 // Inserts a message into the system log.
 // The entire message is in pcs.operandFields[0][0]
 func handleLog(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, resultCode uint64) {
+	klog.LogTraceF("CSI", "handleLog:%v", *pkt.pcs)
 	facResult = facilitiesMgr.NewFacResult()
 	resultCode = 0
 

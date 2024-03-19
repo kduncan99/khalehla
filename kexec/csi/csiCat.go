@@ -7,12 +7,14 @@ package csi
 import (
 	"khalehla/kexec"
 	"khalehla/kexec/facilitiesMgr"
+	"khalehla/klog"
 )
 
 // handleCat updates the default and/or implied qualifier for the run control entry.
 // pcs.operandFields[0] contains the full file specification in a single subfield
 // pcs.operandFields[1..n] may contain multiple subfields
 func handleCat(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, resultCode uint64) {
+	klog.LogTraceF("CSI", "handleCat:%v", *pkt.pcs)
 	facResult = facilitiesMgr.NewFacResult()
 	resultCode = 0
 

@@ -5,8 +5,18 @@
 package exec
 
 import (
+	"fmt"
 	"khalehla/kexec"
+	"khalehla/kexec/csi"
 )
+
+func (e *Exec) callCSI(statement string) uint64 {
+	pcs, _, stat := csi.ParseControlStatement(e.runControlEntry, statement)
+	if stat&0_400000_000000 == 0 {
+		_, stat = csi.HandleControlStatement(e, e.runControlEntry, csi.CSTSourceERCSF, pcs)
+	}
+	return stat
+}
 
 // performInitialBoot is invoked on the first session initiated by the application.
 // being here does NOT imply JK13, although that is a possibility
@@ -28,6 +38,8 @@ func (e *Exec) performInitialBoot() {
 	}
 
 	// TODO ASG,A SYS$*MFD$$
+	stat := e.callCSI("@ASG,A SYS$*MFD$$")
+	fmt.Printf("stat:%012o\n", stat)
 
 	// TODO security officer setup
 

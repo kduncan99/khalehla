@@ -6,9 +6,11 @@ package csi
 
 import (
 	"khalehla/kexec/facilitiesMgr"
+	"khalehla/klog"
 )
 
 func handleRstrt(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
+	klog.LogTraceF("CSI", "handleRstrt:%v", *pkt.pcs)
 
 	/*
 		@RSTRT[,scheduling-priority/options/processor-dispatching-priority]

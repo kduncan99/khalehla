@@ -44,6 +44,7 @@ func (mgr *FacilitiesManager) AssignFile(
 	optionWord uint64,
 	operandFields [][]string,
 ) (facResult *FacStatusResult, resultCode uint64) {
+	klog.LogTraceF("FacMgr", "AssignFile [%v] %v", rce.RunId, *fileSpecification)
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
@@ -52,6 +53,7 @@ func (mgr *FacilitiesManager) AssignFile(
 
 	mutuallyExclusiveOptions := uint64(kexec.AOption | kexec.COption | kexec.POption | kexec.TOption)
 	if !checkIllegalOptionCombination(rce, optionWord, mutuallyExclusiveOptions, facResult, sourceIsExecRequest) {
+		klog.LogInfoF("FacMgr", "[%v] Illegal option combination %012o", rce.RunId, optionWord)
 		return
 	}
 
@@ -59,7 +61,7 @@ func (mgr *FacilitiesManager) AssignFile(
 	if len(operandFields) >= 2 {
 		mnemonic = operandFields[1][0]
 		if len(mnemonic) > 6 {
-			klog.LogInfoF(rce.RunId, "Mnemonic %v too long", mnemonic)
+			klog.LogInfoF("FacMgr", "[%v] Mnemonic %v too long", rce.RunId, mnemonic)
 			facResult.PostMessage(kexec.FacStatusAssignMnemonicTooLong, []string{mnemonic})
 			resultCode |= 0_600000_000000
 			return
@@ -69,7 +71,7 @@ func (mgr *FacilitiesManager) AssignFile(
 	models, usage, ok := mgr.selectEquipmentModel(mnemonic, nil)
 	if !ok {
 		// This isn't going to work for us.
-		klog.LogInfoF(rce.RunId, "Mnemonic %v not configured", mnemonic)
+		klog.LogInfoF(rce.RunId, "[%v] Mnemonic %v not configured", rce.RunId, mnemonic)
 		facResult.PostMessage(kexec.FacStatusMnemonicIsNotConfigured, []string{mnemonic})
 		resultCode |= 0_600000_000000
 		return
@@ -97,6 +99,8 @@ func (mgr *FacilitiesManager) AssignFile(
 	if resultCode&0_400000_000000 == 0 {
 		facResult.PostMessage(kexec.FacStatusComplete, []string{"ASG"})
 	}
+
+	klog.LogTraceF(rce.RunId, "AssignFile resultCode %012o", resultCode)
 	return
 }
 
@@ -130,6 +134,7 @@ func (mgr *FacilitiesManager) CatalogFile(
 	optionWord uint64,
 	operandFields [][]string,
 ) (facResult *FacStatusResult, resultCode uint64) {
+	klog.LogTraceF("FacMgr", "CatalogFile [%v] %v", rce.RunId, *fileSpecification)
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
@@ -256,6 +261,7 @@ func (mgr *FacilitiesManager) FreeFile(
 	optionWord uint64,
 	operandFields [][]string,
 ) (facResult *FacStatusResult, resultCode uint64) {
+	klog.LogTraceF("FacMgr", "FreeFile [%v] %v", rce.RunId, fileSpecification)
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
@@ -307,6 +313,7 @@ func (mgr *FacilitiesManager) Use(
 	optionWord uint64,
 	operandFields [][]string,
 ) (facResult *FacStatusResult, resultCode uint64) {
+	klog.LogTraceF("FacMgr", "Use [%v] %v", rce.RunId, *fileSpecification)
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 

@@ -6,9 +6,11 @@ package csi
 
 import (
 	"khalehla/kexec/facilitiesMgr"
+	"khalehla/klog"
 )
 
 func handleCkpt(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
+	klog.LogTraceF("CSI", "handleCkpt:%v", *pkt.pcs)
 
 	/*
 		@CKPT[,options] [filename.element,,eqpmnt-type,reel-1/.../reel-n,,,,CTL-pool]

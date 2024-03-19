@@ -5,10 +5,13 @@
 package csi
 
 import (
+	"khalehla/kexec"
 	"khalehla/kexec/facilitiesMgr"
+	"khalehla/klog"
 )
 
-func handleAsg(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
+func handleAsg(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, resultCode uint64) {
+	klog.LogTraceF("CSI", "handleAsg:%v", *pkt.pcs)
 	/*
 		Mass-Storage:
 			@ASG[,options] filename[,type/reserve/granule/maximum/placement][,pack-id-1/.../pack-id-n,,,ACR-name]
@@ -40,6 +43,38 @@ func handleAsg(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
 			H, I, T, Z
 	*/
 
-	// TODO implement
-	return nil, 0
+	facResult = facilitiesMgr.NewFacResult()
+	resultCode = 0
+
+	// basic options validation - we'll do more specific checks later
+	optWord, ok := cleanOptions(pkt)
+	if !ok {
+		facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, nil)
+		resultCode = 0_600000_000000
+		klog.LogTraceF("CSI", "handleAsg stat=%012o", resultCode)
+		return
+	}
+
+	// get the file specification and find the fileset if one exists
+	var fsString string
+	if len(pkt.pcs.operandFields) == 0 || len(pkt.pcs.operandFields[0]) == 0 {
+		fsString = pkt.pcs.operandFields[0][0]
+	}
+
+	p := kexec.NewParser(fsString)
+	fileSpec, fsCode, ok := kexec.ParseFileSpecification(p)
+	if !ok || fileSpec == nil {
+		if pkt.sourceIsExecRequest {
+			pkt.rce.PostContingency(012, 04, 040)
+		}
+		facResult.PostMessage(fsCode, []string{})
+		resultCode = 0_600000_000000
+		klog.LogTraceF("CSI", "handleAsg stat=%012o", resultCode)
+		return
+	}
+
+	fm := pkt.exec.GetFacilitiesManager().(*facilitiesMgr.FacilitiesManager)
+	facResult, resultCode = fm.AssignFile(pkt.rce, pkt.sourceIsExecRequest, fileSpec, optWord, pkt.pcs.operandFields)
+	klog.LogTraceF("CSI", "handleAsg stat=%012o", resultCode)
+	return
 }

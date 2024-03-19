@@ -6,10 +6,12 @@ package csi
 
 import (
 	"khalehla/kexec/facilitiesMgr"
+	"khalehla/klog"
 )
 
 // handleAdd
 func handleAdd(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
+	klog.LogTraceF("CSI", "handleAdd:%v", *pkt.pcs)
 	/*
 		@ADD[,options] name
 		options:

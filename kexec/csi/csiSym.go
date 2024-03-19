@@ -6,10 +6,11 @@ package csi
 
 import (
 	"khalehla/kexec/facilitiesMgr"
+	"khalehla/klog"
 )
 
 func handleSym(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
-
+	klog.LogTraceF("CSI", "handleSym:%v", *pkt.pcs)
 	/*
 		@SYM,options filename,[number,device,pname-1/pname-2/pname-3/.../pname-n,banner]
 		@SYM,options filename,[number,user-id/U,pname-1/pname/pname-3/.../pname-n,banner]

@@ -411,10 +411,13 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 	optionWord uint64,
 	operandFields [][]string,
 ) (facResult *FacStatusResult, resultCode uint64) {
+	klog.LogTraceF("FacMgr", "assignCatalogedFile [%v]", rce.RunId)
+
 	// TODO implement assignCatalogedFile()
 	mm := mgr.exec.GetMFDManager().(*mfdMgr.MFDManager)
 	_ /*fsIdent*/, mfdResult := mm.GetFileSetIdentifier(fileSpecification.Qualifier, fileSpecification.Filename)
 	if mfdResult == mfdMgr.MFDNotFound {
+		klog.LogInfoF("FacMgr", "[%v] file not cataloged", rce.RunId)
 		facResult.PostMessage(kexec.FacStatusFileIsNotCataloged, nil)
 		resultCode |= 0_400010_000000
 		return
@@ -474,6 +477,7 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 		E:242333 Assignment of units of the requested equipment type is not allowed.
 	*/
 
+	klog.LogInfoF("FacMgr", "assignCatalogedFile exit resultCode %012o", resultCode)
 	return
 }
 
@@ -487,6 +491,8 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 	models []hardware.NodeModel,
 	usage config.EquipmentUsage,
 ) (facResult *FacStatusResult, resultCode uint64) {
+	klog.LogTraceF("FacMgr", "assignTemporaryFile [%v]", rce.RunId)
+
 	// For temporary files, we ignore any provided read/write keys.
 	// Check fac items to see if an item already exists with the given specification.
 	alreadyAssigned := false
@@ -521,12 +527,14 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 				if !prevFacItem.IsDisk() {
 					facResult.PostMessage(kexec.FacStatusAttemptToChangeGenericType, nil)
 					resultCode |= 0_600000_000000
+					klog.LogInfoF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 					return
 				}
 			} else if usage == config.EquipmentUsageTape {
 				if !prevFacItem.IsTape() {
 					facResult.PostMessage(kexec.FacStatusAttemptToChangeGenericType, nil)
 					resultCode |= 0_600000_000000
+					klog.LogInfoF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 					return
 				}
 			}
@@ -536,6 +544,7 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 
 		facResult.PostMessage(kexec.FacStatusFileAlreadyAssigned, nil)
 		resultCode |= 0_100000_000000
+		klog.LogInfoF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 		return
 	}
 
@@ -545,12 +554,14 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 		allowedOpts := uint64(kexec.IOption | kexec.TOption | kexec.ZOption)
 		if !CheckIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
 			resultCode |= 0_600000_000000
+			klog.LogInfoF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 			return
 		}
 
 		if !mgr.checkSubFields(operandFields, asgDiskFSIs) {
 			facResult.PostMessage(kexec.FacStatusUndefinedFieldOrSubfield, nil)
 			resultCode |= 0_600000_000000
+			klog.LogInfoF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 			return
 		}
 	} else if usage == config.EquipmentUsageTape {
@@ -560,12 +571,14 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 			kexec.TOption | kexec.VOption | kexec.WOption | kexec.XOption | kexec.ZOption)
 		if !CheckIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
 			resultCode |= 0_600000_000000
+			klog.LogInfoF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 			return
 		}
 
 		if !mgr.checkSubFields(operandFields, asgTapeFSIs) {
 			facResult.PostMessage(kexec.FacStatusUndefinedFieldOrSubfield, nil)
 			resultCode |= 0_600000_000000
+			klog.LogInfoF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 			return
 		}
 	}
@@ -575,6 +588,7 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 		if facItem.GetFilename() == fileSpecification.Filename {
 			facResult.PostMessage(kexec.FacStatusFilenameNotUnique, nil)
 			resultCode |= 0_004000_000000
+			klog.LogInfoF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 			break
 		}
 	}
@@ -592,6 +606,7 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 		// TODO check for tape unit availability (hold condition)
 	}
 
+	klog.LogInfoF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 	return
 }
 
@@ -602,6 +617,8 @@ func (mgr *FacilitiesManager) assignToBeCatalogedFile(
 	optionWord uint64,
 	operandFields [][]string,
 ) (facResult *FacStatusResult, resultCode uint64) {
+	klog.LogTraceF("FacMgr", "assignToBeCatalogedFile [%v]", rce.RunId)
+
 	// TODO implement assignToBeCatalogedFile()
 	mm := mgr.exec.GetMFDManager().(*mfdMgr.MFDManager)
 	_ /*fsIdent*/, mfdResult := mm.GetFileSetIdentifier(fileSpecification.Qualifier, fileSpecification.Filename)

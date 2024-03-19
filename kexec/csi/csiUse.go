@@ -7,10 +7,12 @@ package csi
 import (
 	"khalehla/kexec"
 	"khalehla/kexec/facilitiesMgr"
+	"khalehla/klog"
 	"strings"
 )
 
 func handleUse(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, resultCode uint64) {
+	klog.LogTraceF("CSI", "handleUse:%v", *pkt.pcs)
 	facResult = facilitiesMgr.NewFacResult()
 	resultCode = 0
 

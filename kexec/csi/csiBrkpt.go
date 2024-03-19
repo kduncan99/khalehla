@@ -6,10 +6,11 @@ package csi
 
 import (
 	"khalehla/kexec/facilitiesMgr"
+	"khalehla/klog"
 )
 
 func handleBrkpt(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, resultCode uint64) {
-
+	klog.LogTraceF("CSI", "handleBrkpt:%v", *pkt.pcs)
 	/*
 			For primary print files
 				@BRKPT,L PRINT$[/part-name]

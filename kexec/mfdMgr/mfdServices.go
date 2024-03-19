@@ -10,6 +10,7 @@ import (
 	"khalehla/hardware/ioPackets"
 	"khalehla/kexec"
 	"khalehla/kexec/nodeMgr"
+	"khalehla/klog"
 	"khalehla/pkg"
 	"log"
 	"strings"
@@ -27,6 +28,7 @@ import (
 func (mgr *MFDManager) AccelerateFileCycle(
 	fcIdentifier FileCycleIdentifier,
 ) MFDResult {
+	klog.LogTraceF("MFDMgr", "AccelerateFileCycle %012o", fcIdentifier)
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
@@ -39,6 +41,8 @@ func (mgr *MFDManager) AccelerateFileCycle(
 	// increment total times assigned *and* assigned indicator
 	mainItem0[017].SetH1(mainItem0[017].GetH1() + 1)
 	mainItem0[021].SetT2(mainItem0[021].GetT2() + 1)
+	fmt.Printf("%012o : %012o\n", mainItem0[017], mainItem0[021]) //TODO remove
+	mgr.markDirectorySectorDirty(mainItem0Addr)
 
 	_, err = mgr.loadFileAllocationSet(mainItem0Addr)
 	if err != nil {

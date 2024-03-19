@@ -6,9 +6,11 @@ package csi
 
 import (
 	"khalehla/kexec/facilitiesMgr"
+	"khalehla/klog"
 )
 
 func handleFree(pkt *handlerPacket) (*facilitiesMgr.FacStatusResult, uint64) {
+	klog.LogTraceF("CSI", "handleFree:%v", *pkt.pcs)
 
 	/*
 		@FREE[,options] filename

@@ -6,9 +6,11 @@ package csi
 
 import (
 	"khalehla/kexec/facilitiesMgr"
+	"khalehla/klog"
 )
 
 func handleStart(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, resultCode uint64) {
+	klog.LogTraceF("CSI", "handleStart:%v", *pkt.pcs)
 
 	/*
 		@START runstream-name

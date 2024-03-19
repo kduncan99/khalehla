@@ -20,6 +20,7 @@ import (
 // D and R are mutually exclusive.
 // We do not support directory-id at the moment
 func handleQual(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, resultCode uint64) {
+	klog.LogTraceF("CSI", "handleQual:%v", *pkt.pcs)
 	facResult = facilitiesMgr.NewFacResult()
 	resultCode = 0
 

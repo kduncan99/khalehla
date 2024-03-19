@@ -49,9 +49,10 @@ func HandleControlStatement(
 	source controlStatementSource,
 	pcs *ParsedControlStatement,
 ) (facResult *facilitiesMgr.FacStatusResult, resultCode uint64) {
-
+	klog.LogTraceF("CSI", "HandleControlStatement [%v]", rce.RunId)
 	pkt := handlerPacket{
 		exec:                exec,
+		pcs:                 pcs,
 		rce:                 rce,
 		isTip:               rce.IsTIP(),
 		source:              source,
@@ -68,12 +69,17 @@ func HandleControlStatement(
 			facResult = facilitiesMgr.NewFacResult()
 			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
+			klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
 			return
 		}
-		return handleAdd(&pkt)
+		facResult, resultCode = handleAdd(&pkt)
+		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
+		return
 
 	case "ASG":
-		return handleAsg(&pkt)
+		facResult, resultCode = handleAsg(&pkt)
+		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
+		return
 
 	case "BRKPT":
 		if pkt.isTip || source == CSTSourceERCSI {
@@ -84,12 +90,17 @@ func HandleControlStatement(
 			facResult = facilitiesMgr.NewFacResult()
 			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
+			klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
 			return
 		}
-		return handleBrkpt(&pkt)
+		facResult, resultCode = handleBrkpt(&pkt)
+		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
+		return
 
 	case "@CAT":
-		return handleCat(&pkt)
+		facResult, resultCode = handleCat(&pkt)
+		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
+		return
 
 	case "@CKPT":
 		if pkt.isTip || source == CSTSourceERCSI {
@@ -100,12 +111,17 @@ func HandleControlStatement(
 			facResult = facilitiesMgr.NewFacResult()
 			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
+			klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
 			return
 		}
-		return handleCkpt(&pkt)
+		facResult, resultCode = handleCkpt(&pkt)
+		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
+		return
 
 	case "@FREE":
-		return handleFree(&pkt)
+		facResult, resultCode = handleFree(&pkt)
+		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
+		return
 
 	case "@LOG":
 		if source == CSTSourceERCSI {
@@ -116,18 +132,27 @@ func HandleControlStatement(
 			facResult = facilitiesMgr.NewFacResult()
 			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
+			klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
 			return
 		}
-		return handleLog(&pkt)
+		facResult, resultCode = handleLog(&pkt)
+		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
+		return
 
 	case "@MODE":
-		return handleMode(&pkt)
+		facResult, resultCode = handleMode(&pkt)
+		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
+		return
 
 	case "@QUAL":
-		return handleQual(&pkt)
+		facResult, resultCode = handleQual(&pkt)
+		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
+		return
 
 	case "@RSTRT":
-		return handleRstrt(&pkt)
+		facResult, resultCode = handleRstrt(&pkt)
+		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
+		return
 
 	case "@START":
 		if source == CSTSourceERCSI {
@@ -138,9 +163,12 @@ func HandleControlStatement(
 			facResult = facilitiesMgr.NewFacResult()
 			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
+			klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
 			return
 		}
-		return handleStart(&pkt)
+		facResult, resultCode = handleStart(&pkt)
+		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
+		return
 
 	case "@SYM":
 		if source == CSTSourceERCSI {
@@ -151,9 +179,12 @@ func HandleControlStatement(
 			facResult = facilitiesMgr.NewFacResult()
 			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
+			klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
 			return
 		}
-		return handleSym(&pkt)
+		facResult, resultCode = handleSym(&pkt)
+		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
+		return
 
 	case "@SYMCN":
 		if pkt.isTip || source == CSTSourceERCSI {
@@ -164,12 +195,17 @@ func HandleControlStatement(
 			facResult = facilitiesMgr.NewFacResult()
 			facResult.PostMessage(kexec.FacStatusIllegalControlStatement, []string{})
 			resultCode = 0_400000_000000
+			klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
 			return
 		}
-		return handleSymcn(&pkt)
+		facResult, resultCode = handleSymcn(&pkt)
+		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
+		return
 
 	case "@USE":
-		return handleUse(&pkt)
+		facResult, resultCode = handleUse(&pkt)
+		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
+		return
 	}
 
 	// syntax error
@@ -186,18 +222,18 @@ func HandleControlStatement(
 // ParseControlStatement takes raw text input and splits it into its particular parts with little regard
 // as to the semantics of any particular portion.
 //
-// format:
+// format
 //
 //	'@' [wsp] [ label ':' ]
-//		[wsp] mnemonic [',' [wsp] option_field]
-//		[wsp] field [',' [ws] field ]...
-//		[' ' '.' ' ' command]
+//	   [wsp] mnemonic [',' [wsp] option_field]
+//	   [wsp] field [',' [ws] field ]...
+//	   [' ' '.' ' ' command]
 //
-// option_field:
+// option_field
 //
 //	subfield [ '/' [wsp] subfield ]...
 //
-// field:
+// field
 //
 //	subfield [ '/' [wsp] subfield ]...
 //
@@ -207,9 +243,10 @@ func HandleControlStatement(
 // fully-composed multi-line statement passed to us as a single string.
 // We do not check image length here - that must be dealt with at a higher level.
 func ParseControlStatement(
-	rce kexec.RunControlEntry,
+	rce *kexec.RunControlEntry,
 	statement string,
 ) (pcs *ParsedControlStatement, facResult *facilitiesMgr.FacStatusResult, resultCode uint64) {
+	klog.LogTraceF("CSI", "ParseControlStatement [%v] %v", rce.RunId, statement)
 	pcs = &ParsedControlStatement{
 		label:             "",
 		mnemonic:          "",
@@ -219,6 +256,8 @@ func ParseControlStatement(
 	}
 	facResult = facilitiesMgr.NewFacResult()
 	resultCode = 0
+
+	foo // There's a bug in here somewhere - cannot parse file specification
 
 	// trim comment
 	working := statement + " "
@@ -237,6 +276,7 @@ func ParseControlStatement(
 
 		facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
 		resultCode = 0_400000_000000
+		klog.LogTraceF("CSI", "ParseControlStatement stat=%012o", resultCode)
 		return
 	}
 
@@ -254,8 +294,10 @@ func ParseControlStatement(
 		if !p.IsAtEnd() {
 			facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
 			resultCode = 0_400000_000000
+			klog.LogTraceF("CSI", "ParseControlStatement stat=%012o", resultCode)
 			return
 		} else {
+			klog.LogTrace("CSI", "ParseControlStatement empty statement")
 			return
 		}
 	}
@@ -272,6 +314,7 @@ func ParseControlStatement(
 			// error in mnemonic
 			facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
 			resultCode = 0_400000_000000
+			klog.LogTraceF("CSI", "ParseControlStatement stat=%012o", resultCode)
 			return
 		} else if !found {
 			// either an empty labeled statement, or a syntax error
@@ -279,8 +322,10 @@ func ParseControlStatement(
 			if !p.IsAtEnd() {
 				facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
 				resultCode = 0_400000_000000
+				klog.LogTraceF("CSI", "ParseControlStatement stat=%012o", resultCode)
 				return
 			} else {
+				klog.LogTrace("CSI", "ParseControlStatement empty label")
 				return
 			}
 		}
@@ -298,6 +343,7 @@ func ParseControlStatement(
 			} else if term == ',' {
 				facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, []string{})
 				resultCode = 0_400000_000000
+				klog.LogTraceF("CSI", "ParseControlStatement stat=%012o", resultCode)
 				return
 			} else {
 				p.SkipSpaces()
@@ -312,6 +358,7 @@ func ParseControlStatement(
 		str := p.GetRemainder()
 		pcs.operandFields = make([][]string, 1)
 		pcs.operandFields[0] = []string{str}
+		klog.LogTrace("CSI", "ParseControlStatement exit")
 		return
 	}
 
@@ -347,6 +394,7 @@ func ParseControlStatement(
 		}
 	}
 
+	klog.LogTrace("CSI", "ParseControlStatement exit")
 	return
 }
 
