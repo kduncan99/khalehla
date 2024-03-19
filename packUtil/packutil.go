@@ -11,6 +11,7 @@ import (
 	"khalehla/hardware/channels"
 	"khalehla/hardware/devices"
 	"khalehla/hardware/ioPackets"
+	"khalehla/kexec/mfdMgr"
 	"khalehla/pkg"
 	"os"
 	"strconv"
@@ -75,7 +76,32 @@ func DoPrep(args []string) error {
 		return err
 	}
 
-	err = showLabelRecord(dc, nodeId, prepFactor, true)
+	// Need to read the label for the next part
+	label := make([]pkg.Word36, prepFactor)
+	err = ioRead(dc, nodeId, label, 0, prepFactor)
+	if err != nil {
+		return err
+	}
+
+	// Populate and write the initial directory track
+	dirTrack := make([]pkg.Word36, 1792)
+	mfdMgr.PopulateInitialDirectoryTrack(label, !removable, dirTrack)
+	dirTrackDRWA := label[03].GetW()
+	dirTrackAddr := dirTrackDRWA / 1792
+	blocksPerTrack := label[04].GetH1()
+	dirBlockAddr := dirTrackAddr * blocksPerTrack
+	blockId := hardware.BlockId(dirBlockAddr)
+	wx := uint(0)
+	for wx < 1792 {
+		err = ioWrite(dc, nodeId, dirTrack[wx:wx+uint(prepFactor)], blockId, prepFactor)
+		if err != nil {
+			return err
+		}
+		blockId++
+		wx += uint(prepFactor)
+	}
+
+	err = showLabelAndDirectory(dc, nodeId, prepFactor, true)
 	if err != nil {
 		return err
 	}
@@ -117,7 +143,7 @@ func DoShow(args []string) error {
 		return fmt.Errorf("pack is not prepped")
 	}
 
-	err = showLabelRecord(dc, nodeId, prepFactor, true)
+	err = showLabelAndDirectory(dc, nodeId, prepFactor, true)
 	if err != nil {
 		return err
 	}
@@ -130,7 +156,7 @@ func DoShow(args []string) error {
 	return nil
 }
 
-func showLabelRecord(
+func showLabelAndDirectory(
 	channel *channels.DiskChannel,
 	devId hardware.NodeIdentifier,
 	prepFactor hardware.PrepFactor,
@@ -288,6 +314,29 @@ func ioUnmount(
 	cp := &channels.ChannelProgram{
 		NodeIdentifier: nodeIdentifier,
 		IoFunction:     ioPackets.IofUnmount,
+	}
+	return io(ch, cp)
+}
+
+func ioWrite(
+	ch *channels.DiskChannel,
+	nodeIdentifier hardware.NodeIdentifier,
+	buffer []pkg.Word36,
+	blockId hardware.BlockId,
+	prepFactor hardware.PrepFactor,
+) error {
+	cw := channels.ControlWord{
+		Buffer:    buffer,
+		Offset:    0,
+		Length:    uint(prepFactor),
+		Direction: channels.DirectionForward,
+		Format:    channels.TransferPacked,
+	}
+	cp := &channels.ChannelProgram{
+		NodeIdentifier: nodeIdentifier,
+		IoFunction:     ioPackets.IofWrite,
+		BlockId:        blockId,
+		ControlWords:   []channels.ControlWord{cw},
 	}
 	return io(ch, cp)
 }

@@ -45,7 +45,7 @@ func (pl *PackLabelInfo) PopulateFrom(buffer []pkg.Word36) bool {
 		return false
 	}
 
-	pl.PackId = strings.TrimRight(buffer[1].ToStringAsAscii()+buffer[2].ToStringAsAscii(), " ")
+	pl.PackId = strings.TrimRight((buffer[1].ToStringAsAscii() + buffer[2].ToStringAsAscii())[0:6], " ")
 	pl.FirstDirectoryTrackAddress = DeviceRelativeWordAddress(buffer[3].GetW())
 	pl.RecordsPerTrack = uint(buffer[4].GetH1())
 	pl.WordsPerRecord = uint(buffer[4].GetH2())

@@ -12,6 +12,7 @@ import (
 	"khalehla/kexec/nodeMgr"
 	"khalehla/pkg"
 	"log"
+	"strings"
 )
 
 // mfdServices contains code which provides directory-level services to all other exec code
@@ -557,13 +558,42 @@ func (mgr *MFDManager) InitializeMassStorage() {
 	return
 }
 
-// RecoverMassStorage handles MFD recovery for what is NOT a JK13 boot.
-// If we return an error, we must previously stop the exec.
-func (mgr *MFDManager) RecoverMassStorage() {
-	// TODO implement RecoverMassStorage()
-	mgr.exec.SendExecReadOnlyMessage("MFD Recovery is not implemented", nil)
-	mgr.exec.Stop(kexec.StopDirectoryErrors)
-	return
+func PopulateInitialDirectoryTrack(
+	packLabel []pkg.Word36,
+	isFixed bool,
+	directoryTrack []pkg.Word36,
+) {
+	for wx := 0; wx < 1792; wx++ {
+		directoryTrack[wx].SetW(0)
+	}
+
+	packName := strings.TrimRight((packLabel[1].ToStringAsAscii() + packLabel[2].ToStringAsAscii())[0:6], " ")
+	recordsPerTrack := packLabel[04].GetH1()
+	wordsPerRecord := packLabel[04].GetH2()
+	//blocksPerTrack := hardware.BlockCount(1792 / kh.prepFactor)
+	//directoryTrack := make([]pkg.Word36, 1792)
+	availableTracks := packLabel[016].GetW() - 2 // subtract label track and first directory track
+
+	// sector 0
+	sector0 := directoryTrack[0:28]
+	sector0[1].SetW(0_600000_000000) // first 2 sectors are allocated
+	for dx := 3; dx < 27; dx += 3 {
+		sector0[dx].SetW(0_400000_000000)
+	}
+	sector0[27].SetW(0_400000_000000)
+
+	// sector 1
+	s1 := directoryTrack[28:56]
+	// leave +0 and +1 alone (We aren't doing HMBT/SMBT so we don't need the addresses)
+	s1[2].SetW(availableTracks)
+	s1[3].SetW(availableTracks)
+	s1[4].FromStringToFieldata(packName)
+	if isFixed {
+		s1[5].SetH1(0_400000)
+	}
+	s1[010].SetT1(recordsPerTrack)
+	s1[010].SetS3(1) // Sector 1 version
+	s1[010].SetT3(wordsPerRecord)
 }
 
 // PurgeDirectory causes the MFD to write all dirty MFD sectors to disk
@@ -574,6 +604,15 @@ func (mgr *MFDManager) PurgeDirectory() MFDResult {
 		return MFDInternalError
 	}
 	return MFDSuccessful
+}
+
+// RecoverMassStorage handles MFD recovery for what is NOT a JK13 boot.
+// If we return an error, we must previously stop the exec.
+func (mgr *MFDManager) RecoverMassStorage() {
+	// TODO implement RecoverMassStorage()
+	mgr.exec.SendExecReadOnlyMessage("MFD Recovery is not implemented", nil)
+	mgr.exec.Stop(kexec.StopDirectoryErrors)
+	return
 }
 
 // SetFileCycleRange updates the max file cycle range for the indicated fileset.

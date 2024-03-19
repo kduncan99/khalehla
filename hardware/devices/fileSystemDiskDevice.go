@@ -227,7 +227,7 @@ func (dev *FileSystemDiskDevice) doMount(pkt *ioPackets.DiskIoPacket) {
 	}
 
 	label[2].SetH2(040040)
-	packName := strings.TrimRight(label[1].ToStringAsAscii()+label[2].ToStringAsAscii(), " ")
+	packName := strings.TrimRight((label[1].ToStringAsAscii() + label[2].ToStringAsAscii())[0:6], " ")
 	if !hardware.IsValidPackName(packName) {
 		klog.LogErrorF(dev.logName, "VOL1 label contains invalid pack name:%v", packName)
 		pkt.SetIoStatus(ioPackets.IosPackNotPrepped)

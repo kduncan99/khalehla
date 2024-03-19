@@ -11,6 +11,7 @@ import (
 	"khalehla/hardware/ioPackets"
 	"khalehla/kexec"
 	"khalehla/kexec/facilitiesMgr"
+	"khalehla/kexec/mfdMgr"
 	"khalehla/kexec/nodeMgr"
 	"khalehla/pkg"
 	"strconv"
@@ -178,7 +179,7 @@ func (kh *PREPKeyinHandler) process() {
 		if err != nil {
 			return
 		} else if reply == "N" {
-			str := fmt.Sprintf("PREP %v canceld", kh.deviceName)
+			str := fmt.Sprintf("PREP %v canceled", kh.deviceName)
 			kh.exec.SendExecReadOnlyMessage(str, &kh.source)
 			return
 		}
@@ -204,43 +205,34 @@ func (kh *PREPKeyinHandler) process() {
 		return
 	}
 
-	// write initial directory track...
-	// actually, we only need to write sectors 0 and 1, and any slop necessary to pad out to the prep factor.
-	blocksPerTrack := hardware.BlockCount(1792 / kh.prepFactor)
+	// Need to read the label for the next part
+	label := make([]pkg.Word36, kh.prepFactor)
+	ioStat = kh.readBlock(nodeId, label, 0)
+	if ioStat == ioPackets.IosInternalError {
+		str := fmt.Sprintf("PREP %v IO error %v (re)reading pack label", kh.deviceName, ioStat)
+		kh.exec.SendExecReadOnlyMessage(str, &kh.source)
+		return
+	}
+
+	// Populate and write the initial directory track
 	dirTrack := make([]pkg.Word36, 1792)
-	availableTracks := kh.trackCount - 2 // subtract label track and first directory track
-
-	// sector 0
-	das := dirTrack[0:28]
-	das[1].SetW(0_600000_000000) // first 2 sectors are allocated
-	for dx := 3; dx < 27; dx += 3 {
-		das[dx].SetW(0_400000_000000)
-	}
-	das[27].SetW(0_400000_000000)
-
-	// sector 1
-	s1 := dirTrack[28:56]
-	// leave +0 and +1 alone (We aren't doing HMBT/SMBT so we don't need the addresses)
-	s1[2].SetW(uint64(availableTracks))
-	s1[3].SetW(uint64(availableTracks))
-	s1[4].FromStringToFieldata(kh.packName)
-	if !kh.removable {
-		s1[5].SetH1(0_400000)
-	}
-	s1[010].SetT1(uint64(blocksPerTrack))
-	s1[010].SetS3(1) // Sector 1 version
-	s1[010].SetT3(uint64(kh.prepFactor))
-
-	dirBlockId := hardware.BlockId(blocksPerTrack) // assuming directory track is the second logical track
-	for wx := 0; wx < 56; wx += kh.prepFactor {
-		subBuffer := dirTrack[wx : wx+kh.prepFactor]
-		ioStat = kh.writeBlock(nodeId, subBuffer, dirBlockId)
-		if ioStat != ioPackets.IosComplete {
+	mfdMgr.PopulateInitialDirectoryTrack(label, !kh.removable, dirTrack)
+	dirTrackDRWA := label[03].GetW()
+	dirTrackAddr := dirTrackDRWA / 1792
+	blocksPerTrack := label[04].GetH1()
+	dirBlockAddr := dirTrackAddr * blocksPerTrack
+	wordsPerBlock := label[04].GetH2()
+	blockId := hardware.BlockId(dirBlockAddr)
+	wx := uint64(0)
+	for wx < 1792 {
+		ioStat = kh.writeBlock(nodeId, dirTrack[wx:wx+wordsPerBlock], blockId)
+		if ioStat == ioPackets.IosInternalError {
 			str := fmt.Sprintf("PREP %v IO error %v writing directory track", kh.deviceName, ioStat)
 			kh.exec.SendExecReadOnlyMessage(str, &kh.source)
 			return
 		}
-		dirBlockId++
+		blockId++
+		wx += wordsPerBlock
 	}
 
 	str := fmt.Sprintf("PREP %v Complete", kh.deviceName)
