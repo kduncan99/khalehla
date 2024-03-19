@@ -220,29 +220,32 @@ type erERRHandler struct{}
 type erEXITHandler struct{}
 
 func (h *erABORTHandler) Invoke(ctx *erContext) {
-
+	// ER ABORT$
 }
 
 func (h *erACSFHandler) Invoke(ctx *erContext) {
 	// L A0,(image-length,image-address)
+	// ER ACSF$
 }
 
 func (h *erCSFHandler) Invoke(ctx *erContext) {
 	// L A0,(image-length,image-address)
+	// ER CSF$
 }
 
 func (h *erCSIHandler) Invoke(ctx *erContext) {
 	// L A0,(image-length,image-address)
+	// ER CSI$
 }
 
 func (h *erEABTHandler) Invoke(ctx *erContext) {
-
+	// ER EABT$
 }
 
 func (h *erERRHandler) Invoke(ctx *erContext) {
-
+	// ER ERR$
 }
 
 func (h *erEXITHandler) Invoke(ctx *erContext) {
-
+	// ER EXIT$
 }
