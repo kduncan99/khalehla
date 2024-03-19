@@ -16,3 +16,12 @@ const (
 	LevelTrace
 	LevelAll Level = 99
 )
+
+var LevelLookup = map[Level]string{
+	LevelFatal:   "FATAL",
+	LevelError:   "ERROR",
+	LevelWarning: "WARN",
+	LevelInfo:    "INFO",
+	LevelDebug:   "DEBUG",
+	LevelTrace:   "TRACE",
+}

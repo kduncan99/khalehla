@@ -49,8 +49,9 @@ func SetGlobalLevel(level Level) {
 func Log(level Level, source string, message string) {
 	if level <= globalLevel && globalEnabled {
 		now := time.Now()
-		msg := fmt.Sprintf("%04v%02v%02v-%02v%02v%02v:%s:%s",
-			now.Year(), int(now.Month()), now.Day(), now.Hour(), now.Minute(), now.Second(), source, message)
+		msg := fmt.Sprintf("%04v%02v%02v-%02v%02v%02v:%s:%s:%s",
+			now.Year(), int(now.Month()), now.Day(), now.Hour(), now.Minute(), now.Second(),
+			LevelLookup[level], source, message)
 
 		for lg, lgSrc := range loggers {
 			if lgSrc == nil || *lgSrc == source {
@@ -63,8 +64,9 @@ func Log(level Level, source string, message string) {
 func LogF(level Level, source string, format string, parameters ...interface{}) {
 	if level <= globalLevel && globalEnabled {
 		now := time.Now()
-		msg := fmt.Sprintf("%04v%02v%02v-%02v%02v%02v:%s:",
-			now.Year(), int(now.Month()), now.Day(), now.Hour(), now.Minute(), now.Second(), source)
+		msg := fmt.Sprintf("%04v%02v%02v-%02v%02v%02v:%s:%s:",
+			now.Year(), int(now.Month()), now.Day(), now.Hour(), now.Minute(), now.Second(),
+			LevelLookup[level], source)
 		msg += fmt.Sprintf(format, parameters...)
 
 		for lg, lgSrc := range loggers {
