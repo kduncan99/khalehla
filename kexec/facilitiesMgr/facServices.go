@@ -270,6 +270,36 @@ func (mgr *FacilitiesManager) FreeFile(
 	return
 }
 
+func (mgr *FacilitiesManager) GetTrackCounts() (
+	msAccessible hardware.TrackCount,
+	msAvailable hardware.TrackCount,
+	mfdAccessible hardware.TrackCount,
+	mfdAvailable hardware.TrackCount,
+) {
+	mgr.mutex.Lock()
+	defer mgr.mutex.Unlock()
+
+	msAccessible = 0
+	msAvailable = 0
+	mfdAccessible = 0
+	mfdAvailable = 0
+
+	mm := mgr.exec.GetMFDManager().(*mfdMgr.MFDManager)
+	for nodeId, diskAttr := range mgr.inventory.disks {
+		stat := diskAttr.GetFacNodeStatus()
+		if stat == kexec.FacNodeStatusUp || stat == kexec.FacNodeStatusSuspended {
+			msAcc, msAvail, mfdAcc, mfdAvail := mm.GetTrackCountsForPack(nodeId)
+			msAccessible += msAcc
+			if stat == kexec.FacNodeStatusUp {
+				msAvailable += msAvail
+				mfdAccessible += mfdAcc
+				mfdAvailable += mfdAvail
+			}
+		}
+	}
+	return
+}
+
 func (mgr *FacilitiesManager) Use(
 	rce *kexec.RunControlEntry,
 	internalName string,

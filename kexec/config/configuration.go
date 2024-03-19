@@ -50,6 +50,8 @@ type Configuration struct {
 	RunMaximumSize                 uint64 // max granules for SYS$*RUN$ file
 	SacrdInitialReserve            uint64 // initial reserve for SYS$*SEC@ACR$ file
 	SacrdAssignMnemonic            string // assign mnemonic for SYS$*SEC@ACR$ file
+	StandardRoloutAvailabilityGoal float32
+	StandardRoloutStartThreshold   float32
 	SecurityOfficerUserId          string // could be empty, in which case operator is prompted at boot time
 	SymbiontBufferSize             uint64 // Buffer size used for standard and alternate read/write buffers
 	SystemTapeEquipment            string // assign mnemonic for exec tape requests
@@ -104,6 +106,8 @@ func NewConfiguration() *Configuration {
 	cfg.SacrdInitialReserve = 10
 	cfg.SacrdAssignMnemonic = "F"
 	cfg.SecurityOfficerUserId = ""
+	cfg.StandardRoloutStartThreshold = 1.50
+	cfg.StandardRoloutAvailabilityGoal = 3.00
 	cfg.SymbiontBufferSize = 224
 	cfg.SystemTapeEquipment = "T"
 	cfg.TapeAccessRestrictedByAccount = false

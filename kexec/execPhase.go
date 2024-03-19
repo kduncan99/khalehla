@@ -2,12 +2,12 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package exec
+package kexec
 
-import "khalehla/kexec"
+type ExecPhase uint
 
 const (
-	ExecPhaseNotStarted kexec.ExecPhase = iota
+	ExecPhaseNotStarted ExecPhase = iota
 	ExecPhaseInitializing
 	ExecPhaseInitStopped // initialization error
 	ExecPhaseRunning

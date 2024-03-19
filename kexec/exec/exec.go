@@ -47,7 +47,7 @@ func NewExec(cfg *config.Configuration) *Exec {
 	e.keyinMgr = keyinMgr.NewKeyinManager(e)
 	e.mfdMgr = mfdMgr.NewMFDManager(e)
 	e.nodeMgr = nodeMgr.NewNodeManager(e)
-	e.phase = ExecPhaseNotStarted
+	e.phase = kexec.ExecPhaseNotStarted
 
 	return e
 }
@@ -57,7 +57,7 @@ func NewExec(cfg *config.Configuration) *Exec {
 func (e *Exec) Boot(session uint, jumpKeys []bool, invokerChannel chan kexec.StopCode) {
 	e.jumpKeys = jumpKeys
 	e.stopFlag = false
-	e.phase = ExecPhaseInitializing
+	e.phase = kexec.ExecPhaseInitializing
 
 	// ExecRunControlEntry is the RCE for the EXEC - it always exists and is always (or should always be) in the RCT
 	e.runControlEntry = kexec.NewExecRunControlEntry(e.configuration.MasterAccountId)
@@ -99,6 +99,8 @@ func (e *Exec) Boot(session uint, jumpKeys []bool, invokerChannel chan kexec.Sto
 	} else {
 		e.performRecoveryBoot()
 	}
+
+	e.phase = kexec.ExecPhaseRunning
 
 	// Now wait for someone to stop us
 	for !e.stopFlag {
@@ -283,10 +285,10 @@ func (e *Exec) Stop(code kexec.StopCode) {
 	// TODO need to set contingency in the Exec RCE
 	e.stopFlag = true
 	e.stopCode = code
-	if e.phase == ExecPhaseRunning {
-		e.phase = ExecPhaseStopped
+	if e.phase == kexec.ExecPhaseRunning {
+		e.phase = kexec.ExecPhaseStopped
 	} else {
-		e.phase = ExecPhaseInitStopped
+		e.phase = kexec.ExecPhaseInitStopped
 	}
 }
 

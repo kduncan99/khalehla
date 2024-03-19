@@ -16,7 +16,6 @@ type ConsoleIdentifier pkg.Word36
 
 type ContingencyType uint
 type DeviceRelativeWordAddress uint
-type ExecPhase uint
 type FacStatus uint
 type Granularity uint
 type LDATIndex uint64

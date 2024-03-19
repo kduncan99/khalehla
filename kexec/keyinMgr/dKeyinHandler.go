@@ -6,7 +6,6 @@ package keyinMgr
 
 import (
 	"fmt"
-	"io"
 	"khalehla/kexec"
 	"strings"
 	"time"
@@ -85,14 +84,6 @@ func (kh *DKeyinHandler) IsDone() bool {
 
 func (kh *DKeyinHandler) IsAllowed() bool {
 	return true
-}
-
-func (kh *DKeyinHandler) Dump(dest io.Writer, indent string) {
-	_, _ = fmt.Fprintf(dest, "%vD KEYIN ----------------------------------------------------\n", indent)
-
-	_, _ = fmt.Fprintf(dest, "%v  threadStarted:  %v\n", indent, kh.threadStarted)
-	_, _ = fmt.Fprintf(dest, "%v  threadStopped:  %v\n", indent, kh.threadStopped)
-	_, _ = fmt.Fprintf(dest, "%v  terminateThread: %v\n", indent, kh.terminateThread)
 }
 
 func (kh *DKeyinHandler) thread() {

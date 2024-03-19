@@ -152,7 +152,7 @@ func main() {
 				fmt.Printf("::Dump written to file %v\n", fileName)
 			}
 			break
-		} else if e.GetPhase() == exec.ExecPhaseInitStopped {
+		} else if e.GetPhase() == kexec.ExecPhaseInitStopped {
 			fmt.Println("::Exec stopped during initialization - recovery not possible")
 			break
 		} else {

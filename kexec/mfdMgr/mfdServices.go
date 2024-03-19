@@ -464,6 +464,27 @@ func (mgr *MFDManager) GetFileSetInfo(
 	return
 }
 
+func (mgr *MFDManager) GetTrackCountsForPack(nodeIdentifier hardware.NodeIdentifier) (
+	msAccessible hardware.TrackCount,
+	msAvailable hardware.TrackCount,
+	mfdAccessible hardware.TrackCount,
+	mfdAvailable hardware.TrackCount,
+) {
+	_, packDesc, ok := mgr.getPackDescriptorForNodeIdentifier(nodeIdentifier)
+	if ok {
+		msAccessible = packDesc.freeSpaceTable.Capacity
+		msAvailable = packDesc.freeSpaceTable.GetFreeTrackCount()
+		mfdAccessible = 4096
+		mfdAvailable = mfdAccessible - packDesc.mfdTrackCount
+	} else {
+		msAccessible = 0
+		msAvailable = 0
+		mfdAccessible = 0
+		mfdAvailable = 0
+	}
+	return
+}
+
 // InitializeMassStorage handles MFD initialization for what is effectively a JK13 boot.
 // If we return an error, we must previously stop the exec.
 func (mgr *MFDManager) InitializeMassStorage() {
@@ -570,8 +591,6 @@ func PopulateInitialDirectoryTrack(
 	packName := strings.TrimRight((packLabel[1].ToStringAsAscii() + packLabel[2].ToStringAsAscii())[0:6], " ")
 	recordsPerTrack := packLabel[04].GetH1()
 	wordsPerRecord := packLabel[04].GetH2()
-	//blocksPerTrack := hardware.BlockCount(1792 / kh.prepFactor)
-	//directoryTrack := make([]pkg.Word36, 1792)
 	availableTracks := packLabel[016].GetW() - 2 // subtract label track and first directory track
 
 	// sector 0

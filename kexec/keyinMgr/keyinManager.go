@@ -40,7 +40,7 @@ var handlerTable = map[string]func(kexec.IExec, kexec.ConsoleIdentifier, string,
 	// "LC"
 	// "LG"
 	// "MR"
-	// "MS"
+	"MS": NewMSKeyinHandler,
 	// "PM" ?
 	// "PR" ?
 	"PREP": NewPREPKeyinHandler,

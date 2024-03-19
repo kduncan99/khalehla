@@ -1160,6 +1160,17 @@ func (mgr *MFDManager) getMFDSector(address kexec.MFDRelativeAddress) ([]pkg.Wor
 	return data[start:end], nil
 }
 
+func (mgr *MFDManager) getPackDescriptorForNodeIdentifier(
+	nodeIdentifier hardware.NodeIdentifier,
+) (kexec.LDATIndex, *packDescriptor, bool) {
+	for ldat, packDesc := range mgr.fixedPackDescriptors {
+		if packDesc.nodeId == nodeIdentifier {
+			return ldat, packDesc, true
+		}
+	}
+	return 0, nil, false
+}
+
 // initializeFixed initializes the fixed pool for a jk13 boot
 func (mgr *MFDManager) initializeFixed(disks map[*nodeMgr.DiskDeviceInfo]*kexec.DiskAttributes) error {
 	msg := fmt.Sprintf("Fixed Disk Pool = %v Devices", len(disks))
