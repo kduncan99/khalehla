@@ -138,6 +138,8 @@ func (mgr *FacilitiesManager) CatalogFile(
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
+	// TODO @CAT f(0). is legal and is the same as @CAT f.
+
 	facResult = NewFacResult()
 	resultCode = 0
 

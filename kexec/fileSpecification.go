@@ -108,12 +108,15 @@ func (fs *FileSpecification) parseRelativeCycle(p *Parser) (found bool, fsCode F
 	}
 
 	p.SkipSpaces()
+
 	var pos bool
 	var neg bool
 	pos = p.ParseSpecificCharacter('+')
 	if !pos {
 		neg = p.ParseSpecificCharacter('-')
 	}
+
+	// TODO Need to parse (+0), (0), and (-0) as relative file cycle positive zero.
 
 	if !pos && !neg {
 		p.ResetPosition()

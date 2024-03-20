@@ -416,9 +416,17 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 
 	// TODO implement assignCatalogedFile()
 	mm := mgr.exec.GetMFDManager().(*mfdMgr.MFDManager)
-	_ /*fsIdent*/, mfdResult := mm.GetFileSetIdentifier(fileSpecification.Qualifier, fileSpecification.Filename)
+	fsIdent, mfdResult := mm.GetFileSetIdentifier(fileSpecification.Qualifier, fileSpecification.Filename)
 	if mfdResult == mfdMgr.MFDNotFound {
 		klog.LogInfoF("FacMgr", "[%v] file not cataloged", rce.RunId)
+		facResult.PostMessage(kexec.FacStatusFileIsNotCataloged, nil)
+		resultCode |= 0_400010_000000
+		return
+	}
+
+	fsInfo, mfdResult := mm.GetFileSetInfo(fsIdent)
+	if mfdResult == mfdMgr.MFDNotFound {
+		klog.LogInfoF("FacMgr", "[%v] internal error", rce.RunId)
 		facResult.PostMessage(kexec.FacStatusFileIsNotCataloged, nil)
 		resultCode |= 0_400010_000000
 		return
@@ -432,11 +440,7 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 	//	24	Read-only file cataloged with an R option
 	//	25	Write-only file cataloged with a W option
 
-	// file cycle stuff
-	if fileSpecification.FileCycleSpec.IsAbsolute() {
-		// TODO assignCatalogedFile() handle absolute file cycle
-		// Is this file already assigned?
-	} else if fileSpecification.FileCycleSpec.IsRelative() {
+	if fileSpecification.FileCycleSpec.IsRelative() && *fileSpecification.FileCycleSpec.AbsoluteCycle != 0 {
 		// TODO assignCatalogedFile() handle relative file cycle
 		// The following needs to be excised into a separate function so other top-level assign functions can use it.
 		//
@@ -461,11 +465,77 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 		// and the appropriate absolute F-cycle number. However, if you specify an absolute F-cycle, the Exec does not
 		// attempt to convert it to a relative F-cycle. In this case, the file is known to the assigning run only by its
 		// absolute F-cycle."
-	} else {
-		// TODO assignCatalogedFile() handle no file cycle specified
-		// Is the file already assigned with no file cycle specified?
-		// Is it already assigned via
+
+		facResult.PostMessage(kexec.FacStatusFileIsNotCataloged, nil)
+		resultCode |= 0_400010_000000
+		klog.LogTraceF("FacMgr", "[%v] file does not exist", rce.RunId)
+		return
 	}
+
+	var absCycle uint
+	if fileSpecification.FileCycleSpec.IsAbsolute() {
+		absCycle = *fileSpecification.FileCycleSpec.AbsoluteCycle
+	} else {
+		// caller either specified relative cycle 0, or did not specify any cycle.
+		// either way, we assume highest absolute cycle.
+		absCycle = fsInfo.CycleInfo[0].AbsoluteCycle
+	}
+
+	// Is it already assigned?
+	for _, facItem := range rce.FacilityItems {
+		if fileSpecification.Filename == facItem.GetFilename() &&
+			fileSpecification.Qualifier == facItem.GetQualifier() &&
+			absCycle == facItem.GetAbsoluteCycle() {
+			// TODO check for attempt to change settings
+			facResult.PostMessage(kexec.FacStatusFileAlreadyAssigned, nil)
+			resultCode |= 0_100000_000000
+			klog.LogTraceF("FacMgr", "[%v] already assigned", rce.RunId)
+			return
+		}
+	}
+
+	// See if the thing exists, and if it does, assign it
+	for _, ci := range fsInfo.CycleInfo {
+		if ci.AbsoluteCycle == absCycle {
+			// TODO
+			//  What if it is to-be-cataloged? pretend it does not yet exist? try experiment
+			//  W:121433 File is cataloged as a read-only file.
+			//  W:122433 File is cataloged write-only.
+			//  E:241233 File is being dropped.
+			//  6	That portion of the file Name used as the internal Name for I/O packets is not unique.
+			//  7	X option specified; file already in exclusive use.
+			//  8*†	Incorrect read key for cataloged file
+			//  9*†	Incorrect write key for cataloged file
+			//  10	Write key that exists in the master file directory is not specified in the @ASG control statement (file assigned in the read-only mode).
+			//  11	Read key that exists in the master file directory is not specified in the @ASG control statement (file assigned in the write-only mode).
+			//  12*†Read key specified in the @ASG control statement; none exists in the master file directory.
+			//  13*†Write key specified in the @ASG control statement; none exists in the master file directory.
+			//  16*	Mass storage file has been rolled out (only if the Z option is used;
+			//  otherwise, the run is held until the file is rolled in).
+			//  17*	Request on wait Status for facilities. For a tape file, this usually means a tape unit is not currently
+			//  available. For a disk file, this usually is caused by an exclusive use conflict with another run
+			//  (only if the Z option is used; otherwise, the run is held).
+			//  18*	For cataloged files, an option conflict occurred:
+			//  The D and K options were specified.
+			//  	C or U, or P, R, or W in combination with C or U, was specified for a file that already exists in the directory.
+			//  	C was specified on a @CAT image.
+			//      For a tape, an option conflict occurred on tape assignment (for example, FJ without Media Manager installed).
+			//  19*	File assigned exclusively to another run
+			//  20	Find was made on a cataloged file request and the file was already assigned to another run.
+			//  21*	File to be decataloged when no run has file assigned
+			//  22*	Project-id incorrect for cataloged private file
+			//  24	Read-only file cataloged with an R option
+			//  25	Write-only file cataloged with a W option
+			//  28	File specified on the @ASG control statement has been disabled because the file was assigned during a system failure.
+			//  29*	File specified on the @ASG control statement has been disabled because the file has been rolled out and the
+			//      backup copy is unrecoverable, unless an @ENABLE command, followed by an @ASG,A command, is used to retry the loading operation.
+		}
+	}
+
+	facResult.PostMessage(kexec.FacStatusFileIsNotCataloged, nil)
+	resultCode |= 0_400010_000000
+	klog.LogTraceF("FacMgr", "[%v] file does not exist", rce.RunId)
+	return
 
 	/*
 		E:241433 Attempt to change assign mnemonic.
@@ -477,9 +547,6 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 		E:242233 Attempt to change maximum granules on a write inhibited file.
 		E:242333 Assignment of units of the requested equipment type is not allowed.
 	*/
-
-	klog.LogInfoF("FacMgr", "assignCatalogedFile exit resultCode %012o", resultCode)
-	return
 }
 
 // assignTemporaryFile is invoked for any @ASG,T situation.
