@@ -65,6 +65,17 @@ const (
 	FacStatusUndefinedFieldOrSubfield                = 0255733
 	FacStatusIncorrectWriteKey                       = 0256633
 	FacStatusFileNotCatalogedWithWriteKey            = 0256733
+	FacStatusHoldForReelRejected                     = 0257033
+	FacStatusHoldForPackRejected                     = 0257133
+	FacStatusHoldForTapeUnitRejected                 = 0257233
+	FacStatusHoldForDiskUnitRejected                 = 0257333
+	FacStatusHoldForXUseRejected                     = 0257433
+	FacStatusHoldForReleaseXUseRejected              = 0257533
+	FacStatusHoldForRollbackRejected                 = 0257633
+	FacStatusHoldForRemDiskRejected                  = 0260133
+	FacStatusHoldForDevCURejected                    = 0260233
+	FacStatusHoldForFCycleConflictRejected           = 0260333
+	FacStatusHoldForMassStorageSpaceRejected         = 0260433
 	FacStatusDirectoryAndQualifierMayNotAppear       = 0262633
 	FacStatusDirectoryOrQualifierMustAppear          = 0263033
 )
