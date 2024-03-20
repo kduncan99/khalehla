@@ -57,13 +57,18 @@ func handleAsg(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, re
 
 	// get the file specification and find the fileset if one exists
 	var fsString string
-	if len(pkt.pcs.operandFields) == 0 || len(pkt.pcs.operandFields[0]) == 0 {
+	if len(pkt.pcs.operandFields) > 0 || len(pkt.pcs.operandFields[0]) > 0 {
 		fsString = pkt.pcs.operandFields[0][0]
+	} else {
+		facResult.PostMessage(kexec.FacStatusFilenameIsRequired, nil)
+		resultCode = 0_600000_000000
+		klog.LogTraceF("CSI", "handleAsg stat=%012o", resultCode)
+		return
 	}
 
 	p := kexec.NewParser(fsString)
 	fileSpec, fsCode, ok := kexec.ParseFileSpecification(p)
-	if !ok || fileSpec == nil {
+	if !ok {
 		if pkt.sourceIsExecRequest {
 			pkt.rce.PostContingency(012, 04, 040)
 		}

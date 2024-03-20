@@ -5,15 +5,18 @@
 package exec
 
 import (
-	"fmt"
 	"khalehla/kexec"
 	"khalehla/kexec/csi"
+	"khalehla/klog"
 )
 
 func (e *Exec) callCSI(statement string) uint64 {
 	pcs, _, stat := csi.ParseControlStatement(e.runControlEntry, statement)
 	if stat&0_400000_000000 == 0 {
 		_, stat = csi.HandleControlStatement(e, e.runControlEntry, csi.CSTSourceERCSF, pcs)
+	}
+	if stat&0_400000_000000 != 0 {
+		klog.LogErrorF("Exec", "Status %012o : %v", stat, statement)
 	}
 	return stat
 }
@@ -37,9 +40,11 @@ func (e *Exec) performInitialBoot() {
 		return
 	}
 
-	// TODO ASG,A SYS$*MFD$$
 	stat := e.callCSI("@ASG,A SYS$*MFD$$")
-	fmt.Printf("stat:%012o\n", stat)
+	if stat&0_400000_000000 != 0 {
+		e.Stop(kexec.StopFileAssignErrorOccurredDuringSystemInitialization)
+		return
+	}
 
 	// TODO security officer setup
 

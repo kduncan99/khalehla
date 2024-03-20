@@ -78,7 +78,6 @@ func (kh *PREPKeyinHandler) CheckSyntax() bool {
 	}
 	kh.packName = strings.ToUpper(split[3])
 	if !kexec.IsValidNodeName(kh.deviceName) || !hardware.IsValidPackName(kh.packName) {
-		fmt.Printf("[%v] [%v]\n", kh.deviceName, kh.packName)
 		return false
 	}
 

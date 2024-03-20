@@ -9,6 +9,7 @@ import (
 	"khalehla/kexec"
 	"khalehla/kexec/config"
 	"khalehla/kexec/mfdMgr"
+	"khalehla/kexec/nodeMgr"
 	"khalehla/klog"
 	"strconv"
 	"strings"
@@ -976,4 +977,60 @@ func (mgr *FacilitiesManager) catalogTapeFile(
 	}
 
 	return nil, 0
+}
+
+func (mgr *FacilitiesManager) getNodeStatusString(nodeId hardware.NodeIdentifier) string {
+	accStr := "   "
+	nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
+	ni, _ := nm.GetNodeInfoByIdentifier(nodeId)
+	if !ni.IsAccessible() {
+		accStr = " NA"
+	}
+
+	str := ""
+	facStat := mgr.inventory.nodes[nodeId].GetFacNodeStatus()
+	switch facStat {
+	case kexec.FacNodeStatusDown:
+		str = "DN" + accStr
+	case kexec.FacNodeStatusReserved:
+		str = "RV" + accStr
+	case kexec.FacNodeStatusSuspended:
+		str = "SU" + accStr
+	case kexec.FacNodeStatusUp:
+		str = "UP" + accStr
+	}
+
+	diskAttr, ok := mgr.inventory.disks[nodeId]
+	if ok {
+		//	[[*] [R|F] PACKID pack-id]
+		if diskAttr.AssignedTo != nil {
+			str += " * "
+		} else {
+			str += "   "
+		}
+
+		if diskAttr.PackLabelInfo != nil {
+			if diskAttr.IsFixed {
+				str += "F "
+			} else if diskAttr.IsRemovable {
+				str += "R "
+			} else {
+				str += "  "
+			}
+
+			str += "PACKID " + diskAttr.PackLabelInfo.PackId
+		}
+	}
+
+	// ta, ok := mgr.inventory.tapes[deviceId]
+	// if ok {
+	//	if ta.AssignedTo != nil {
+	//		//	[* RUNID run-id REEL reel [RING|NORING] [POS [*]ffff[+|-][*]bbbbbb | POS LOST]]
+	//		str += "* RUNID " + ta.AssignedTo.RunId + " REEL " + ta.reelNumber
+	//		// TODO RING | NORING in FS display for tape unit
+	//		// TODO POS in FS display for tape unit
+	//	}
+	// }
+
+	return str
 }

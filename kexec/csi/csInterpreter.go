@@ -257,8 +257,6 @@ func ParseControlStatement(
 	facResult = facilitiesMgr.NewFacResult()
 	resultCode = 0
 
-	foo // There's a bug in here somewhere - cannot parse file specification
-
 	// trim comment
 	working := statement + " "
 	ix := strings.Index(working, " . ")

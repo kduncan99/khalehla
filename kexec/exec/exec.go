@@ -100,7 +100,9 @@ func (e *Exec) Boot(session uint, jumpKeys []bool, invokerChannel chan kexec.Sto
 		e.performRecoveryBoot()
 	}
 
-	e.phase = kexec.ExecPhaseRunning
+	if !e.stopFlag {
+		e.phase = kexec.ExecPhaseRunning
+	}
 
 	// Now wait for someone to stop us
 	for !e.stopFlag {

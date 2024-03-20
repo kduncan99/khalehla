@@ -40,6 +40,11 @@ func handleUse(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, re
 	var fsString string
 	if len(pkt.pcs.operandFields) > 1 || len(pkt.pcs.operandFields[1]) > 0 {
 		fsString = pkt.pcs.operandFields[1][0]
+	} else {
+		facResult.PostMessage(kexec.FacStatusFilenameIsRequired, nil)
+		resultCode = 0_600000_000000
+		klog.LogTraceF("CSI", "handleAsg stat=%012o", resultCode)
+		return
 	}
 
 	p := kexec.NewParser(fsString)

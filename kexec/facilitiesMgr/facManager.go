@@ -76,29 +76,6 @@ func (mgr *FacilitiesManager) Stop() {
 	}
 }
 
-func (mgr *FacilitiesManager) AssignDiskDeviceToExec(deviceId hardware.NodeIdentifier) error {
-	mgr.mutex.Lock()
-	defer mgr.mutex.Unlock()
-
-	diskAttr, ok := mgr.inventory.disks[deviceId]
-	if !ok {
-		klog.LogFatalF("FacMgr", "Device %v is not known", deviceId)
-		mgr.exec.Stop(kexec.StopFacilitiesComplex)
-		return fmt.Errorf("")
-	}
-
-	if diskAttr.AssignedTo != nil {
-		klog.LogFatalF("FacMgr", "Device %v is already assigned to %v", deviceId, diskAttr.AssignedTo.RunId)
-		mgr.exec.Stop(kexec.StopFacilitiesComplex)
-		return fmt.Errorf("")
-	}
-
-	// TODO Need to update the Exec RCE fac item table, once we have fac item tables
-
-	diskAttr.AssignedTo = mgr.exec.GetRunControlEntry()
-	return nil
-}
-
 func (mgr *FacilitiesManager) GetDiskAttributes(nodeId hardware.NodeIdentifier) (*kexec.DiskAttributes, bool) {
 	attr, ok := mgr.inventory.nodes[nodeId]
 	return attr.(*kexec.DiskAttributes), ok
@@ -123,59 +100,7 @@ func (mgr *FacilitiesManager) GetNodeStatusString(nodeId hardware.NodeIdentifier
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
-	accStr := "   "
-	nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
-	ni, _ := nm.GetNodeInfoByIdentifier(nodeId)
-	if !ni.IsAccessible() {
-		accStr = " NA"
-	}
-
-	str := ""
-	facStat := mgr.inventory.nodes[nodeId].GetFacNodeStatus()
-	switch facStat {
-	case kexec.FacNodeStatusDown:
-		str = "DN" + accStr
-	case kexec.FacNodeStatusReserved:
-		str = "RV" + accStr
-	case kexec.FacNodeStatusSuspended:
-		str = "SU" + accStr
-	case kexec.FacNodeStatusUp:
-		str = "UP" + accStr
-	}
-
-	diskAttr, ok := mgr.inventory.disks[nodeId]
-	if ok {
-		//	[[*] [R|F] PACKID pack-id]
-		if diskAttr.AssignedTo != nil {
-			str += " * "
-		} else {
-			str += "   "
-		}
-
-		if diskAttr.PackLabelInfo != nil {
-			if diskAttr.IsFixed {
-				str += "F "
-			} else if diskAttr.IsRemovable {
-				str += "R "
-			} else {
-				str += "  "
-			}
-
-			str += "PACKID " + diskAttr.PackLabelInfo.PackId
-		}
-	}
-
-	// ta, ok := mgr.inventory.tapes[deviceId]
-	// if ok {
-	//	if ta.AssignedTo != nil {
-	//		//	[* RUNID run-id REEL reel [RING|NORING] [POS [*]ffff[+|-][*]bbbbbb | POS LOST]]
-	//		str += "* RUNID " + ta.AssignedTo.RunId + " REEL " + ta.reelNumber
-	//		// TODO RING | NORING in FS display for tape unit
-	//		// TODO POS in FS display for tape unit
-	//	}
-	// }
-
-	return str
+	return mgr.getNodeStatusString(nodeId)
 }
 
 func (mgr *FacilitiesManager) IsDeviceAssigned(deviceId hardware.NodeIdentifier) bool {
@@ -285,7 +210,7 @@ func (mgr *FacilitiesManager) SetNodeStatus(nodeId hardware.NodeIdentifier, stat
 		return false
 	}
 
-	msg := nodeAttr.GetNodeName() + " " + mgr.GetNodeStatusString(nodeId)
+	msg := nodeAttr.GetNodeName() + " " + mgr.getNodeStatusString(nodeId)
 	mgr.exec.SendExecReadOnlyMessage(msg, nil)
 	if stopExec {
 		mgr.exec.Stop(kexec.StopConsoleResponseRequiresReboot)
