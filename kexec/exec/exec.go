@@ -199,6 +199,15 @@ func (e *Exec) Initialize() error {
 	return nil
 }
 
+func (e *Exec) RollbackFile(
+	qualifier string,
+	filename string,
+	absoluteCycle uint,
+) {
+	// TODO RollbackFile()
+	// update SYS$*RUN$ runstream or whatever we have to do, and start it with deadline
+}
+
 func (e *Exec) SetConfiguration(config *config.Configuration) {
 	e.configuration = config
 }

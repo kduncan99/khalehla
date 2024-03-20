@@ -55,6 +55,7 @@ type IExec interface {
 	GetStopFlag() bool
 	Initialize() error
 	PerformDump(fullFlag bool) (string, error)
+	RollbackFile(qualifier string, filename string, absoluteCycle uint)
 	SendExecReadOnlyMessage(message string, routing *ConsoleIdentifier)
 	SendExecReadReplyMessage(message string, maxReplyChars int, routing *ConsoleIdentifier) (string, error)
 	SendExecRestrictedReadReplyMessage(message string, accepted []string, routing *ConsoleIdentifier) (string, error)
