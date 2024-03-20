@@ -414,7 +414,6 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 ) (facResult *FacStatusResult, resultCode uint64) {
 	klog.LogTraceF("FacMgr", "assignCatalogedFile [%v]", rce.RunId)
 
-	// TODO implement assignCatalogedFile()
 	mm := mgr.exec.GetMFDManager().(*mfdMgr.MFDManager)
 	fsIdent, mfdResult := mm.GetFileSetIdentifier(fileSpecification.Qualifier, fileSpecification.Filename)
 	if mfdResult == mfdMgr.MFDNotFound {
@@ -432,13 +431,19 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 		return
 	}
 
-	// TODO AssignFile() for already assigned files, see ECL 4.3 for security access validation
+	// for already assigned files, see ECL 4.3 for security access validation
 	//   see ECL 7.2.4 for changing certain fields
 
-	//	W:121433 File is cataloged as a read-only file.
-	//	W:122433 File is cataloged write-only.
-	//	24	Read-only file cataloged with an R option
-	//	25	Write-only file cataloged with a W option
+	/*
+		E:241433 Attempt to change assign mnemonic.
+		E:241533 Illegal attempt to change assignment type.
+		E:241633 Attempt to change generic type of the file.
+		E:241733 Attempt to change granularity.
+		E:242033 Attempt to change initial reserve of write inhibited file.
+		E:242133 Attempt to change maximum granules of a file cataloged under a different account.
+		E:242233 Attempt to change maximum granules on a write inhibited file.
+		E:242333 Assignment of units of the requested equipment type is not allowed.
+	*/
 
 	if fileSpecification.FileCycleSpec.IsRelative() && *fileSpecification.FileCycleSpec.AbsoluteCycle != 0 {
 		// TODO assignCatalogedFile() handle relative file cycle
@@ -486,7 +491,7 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 		if fileSpecification.Filename == facItem.GetFilename() &&
 			fileSpecification.Qualifier == facItem.GetQualifier() &&
 			absCycle == facItem.GetAbsoluteCycle() {
-			// TODO check for attempt to change settings
+			// TODO assignCatalogedFile() check for attempt to change settings
 			facResult.PostMessage(kexec.FacStatusFileAlreadyAssigned, nil)
 			resultCode |= 0_100000_000000
 			klog.LogTraceF("FacMgr", "[%v] already assigned", rce.RunId)
@@ -497,7 +502,7 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 	// See if the thing exists, and if it does, assign it
 	for _, ci := range fsInfo.CycleInfo {
 		if ci.AbsoluteCycle == absCycle {
-			// TODO
+			// TODO  assignCatalogedFile()
 			//  What if it is to-be-cataloged? pretend it does not yet exist? try experiment
 			//  W:121433 File is cataloged as a read-only file.
 			//  W:122433 File is cataloged write-only.
@@ -536,17 +541,6 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 	resultCode |= 0_400010_000000
 	klog.LogTraceF("FacMgr", "[%v] file does not exist", rce.RunId)
 	return
-
-	/*
-		E:241433 Attempt to change assign mnemonic.
-		E:241533 Illegal attempt to change assignment type.
-		E:241633 Attempt to change generic type of the file.
-		E:241733 Attempt to change granularity.
-		E:242033 Attempt to change initial reserve of write inhibited file.
-		E:242133 Attempt to change maximum granules of a file cataloged under a different account.
-		E:242233 Attempt to change maximum granules on a write inhibited file.
-		E:242333 Assignment of units of the requested equipment type is not allowed.
-	*/
 }
 
 // assignTemporaryFile is invoked for any @ASG,T situation.
