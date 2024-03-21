@@ -340,7 +340,7 @@ func (mgr *MFDManager) DecelerateFileCycle(
 			if dFlags.ToBeWriteOnly {
 				inhibitFlags.IsWriteOnly = true
 			}
-			inhibitFlags.isAssignedExclusive = false
+			inhibitFlags.IsAssignedExclusive = false
 			mainItem0[021].SetS2(inhibitFlags.Compose())
 
 			// clear to-be settings in main item

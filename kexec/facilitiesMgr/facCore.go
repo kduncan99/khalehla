@@ -5,6 +5,7 @@
 package facilitiesMgr
 
 import (
+	"fmt"
 	"khalehla/hardware"
 	"khalehla/kexec"
 	"khalehla/kexec/config"
@@ -13,7 +14,84 @@ import (
 	"khalehla/klog"
 	"strconv"
 	"strings"
+	"time"
 )
+
+/*
+TODO Placement topics for fixed disk
+placement
+
+  Specifies the placement of the file on a controller or device. The specification can be a logical or absolute request.
+  The placement can be any of the following:
+    *cu
+      Is a controller name (absolute request).
+   *device
+   	  Is a device name (absolute request).
+   i
+      i Is a letter, A to Z, representing logical subsystems A through Z
+   in
+      n is a number, 1 to 15, representing a logical device on controller i.
+
+If an absolute placement cannot be done as specified, it is rejected.
+The Exec attempts the following file assignments:
+  - Files with the same logical specifications (that is, the same controller and device number) are assigned to the same physical device.
+  - Files with the same logical controller but different device numbers are assigned to different physical devices on the same control unit.
+  - Files with different logical controllers and device numbers are assigned to physical devices that are reachable by
+    completely different CUs within the CONV selection string for the assign type specified.
+
+Since logical placement is driven off of logical CU selections, specifying logical placement causes the Exec to avoid
+placing this file into memory space, even if MEMFL is specified for the assign type. Consequently, do not use the
+logical placement field if you want a file placed in memory on systems with MEMFLSZ configured. If a logical
+specification cannot be honored on a device within the CONV selection string, processing of the assign request ignores
+the placement field.
+
+Placement on removable disk is not supported. The pack-ID enables you to specify allocation on a removable disk.
+
+When the file is cataloged, placement information is placed in the directory to indicate the type of selection
+(logical or absolute, controller or device) and the device chosen for initial allocation. The directory cell containing
+this information is not affected by subsequent assignment of the file.
+
+On reassignment, a placement specification is taken as a placement change overriding the last device used for allocation.
+A maximum of six characters, seven in the case of absolute placement, is allowed for specification of this subfield.
+
+Logical placement specifications have meaning only within the current run. For example, logical controller "A" can
+represent two different physical controllers in two different runs.
+
+Logical placement applies only to the reserve specified. If the file dynamically expands beyond the initial reserve,
+the Exec attempts to allocate on the same device as the last placement specified. If this is not possible,the expansion
+occurs on devices other than those specified in the placement field.
+
+If the file is expanded through static expansion (reserve specified) and the file was created with absolute placement,
+the Exec allocates mass storage only on the device originally specified, unless a different device is specified in the
+placement field on the assignment. If there is not enough room on the specified (either implicitly or explicitly) device
+to satisfy the request, the request is rejected.
+*/
+
+/*
+TODO pack-id topics for removable disk
+pack-ID
+  Specifies the removable disk packs required for the file. Pack-IDs consist of from one to six characters of the set
+  A through Z, 0 through 9. The pack-IDs for cataloged files are recorded in the master file directory and need not be
+  specified on reassignments.
+
+A pack's master file directory must have sufficient space available to record the file otherwise a generation request is
+rejected with the following message:
+  E:207433 File cannot be created due to lack of removable directory space on pack pack-id.
+
+A pack-ID cannot be specified unless the type subfield is also specified. If pack-ID is omitted on requests for
+non-cataloged file space, fixed disk is assumed if disk equipment is requested. For cataloged removable disk files,
+specification of a pack-ID causes the pack to be mounted and registered. If already registered, the pack information is
+compared with the image for compatibility.
+
+All cycles of a removable disk file must be on the same set of packs.
+The maximum number of pack-IDs that can be specified on an @ASG statement is 510.
+Many jobs can specify the same set of removable disk packs for unique files.
+Pack-IDs can be added to unassigned single file cycle files by specifying the original pack-ID list with the new
+  pack-IDs appended on an @ASG,A request.
+Packs can only be added if the A option is specified (but not the Y option).
+Packs cannot be added to currently assigned files or to files that have more than one file cycle.
+If packs are being added, you must have delete access to the file.
+*/
 
 type fieldSubfieldIndex struct {
 	fieldIndex    int
@@ -405,6 +483,184 @@ func (mgr *FacilitiesManager) selectEquipmentModel(
 
 // -----------------------------------------------------------------------------
 
+// assignWait
+// Disk assign should *not* invoke us if E or Y option is set.
+// Callers *should* invoke us even with Z-option set, so that we can reject the request if necessary
+// with the proper fac status codes.
+func (mgr *FacilitiesManager) assignWait(
+	rce *kexec.RunControlEntry,
+	optionWord uint64,
+	fsInfo *mfdMgr.FixedFileCycleInfo, // nil if we are waiting on temporary file
+	// TODO equipment type, code, whatever in case we need a disk or tape unit
+	facResult *FacStatusResult,
+) (resultCode uint64) {
+	klog.LogTraceF("FacMgr", "[%v] assignWait", rce.RunId)
+	resultCode = 0
+
+	xOption := optionWord&kexec.XOption != 0
+	zOption := optionWord&kexec.ZOption != 0
+
+	rollbackRequested := false
+	waitingForDiskUnit := false
+	waitingForTapeUnit := false
+	waitingForXUse := false       // we need X-use and file is assigned elsewhere
+	waitingOnXUseRelease := false // we need the file, but it is assigned exclusively elsewhere
+	waitingOnRollback := false    // file is rolled out
+	var waitingForDiskUnitStart time.Time
+	var waitingForTapeUnitStart time.Time
+	var waitingForXUseStart time.Time
+	var waitingOnXUseReleaseStart time.Time
+	var waitingOnRollbackStart time.Time
+	waitStartTime := time.Now()
+	lastMessageSent := waitStartTime.Add(time.Duration(-5) * time.Minute)
+
+	for {
+		// Cataloged file involved?
+		if fsInfo != nil {
+			// Is the file currently rolled out?
+			if fsInfo.DescriptorFlags.Unloaded {
+				if !rollbackRequested {
+					// we have to do this bit instead of relying on waitingOnRollback
+					// because specifying Z option won't wait, but *does* request rollback.
+					mgr.exec.RollbackFile(fsInfo.Qualifier, fsInfo.Filename, fsInfo.AbsoluteFileCycle)
+					rollbackRequested = true
+				}
+				if zOption {
+					facResult.PostMessage(kexec.FacStatusHoldForRollbackRejected, nil)
+					resultCode |= 0_400001_000000
+					break
+				}
+				if !waitingOnRollback {
+					waitingOnRollbackStart = time.Now()
+					waitingOnRollback = true
+					// TODO set wait on Rollback in RCE
+				}
+			} else {
+				if waitingOnRollback {
+					// TODO clear wait on Rollback in RCE
+					waitingOnRollback = false
+				}
+			}
+
+			// Is the file exclusively assigned elsewhere? (we wouldn't be here if it was assigned to us)
+			if fsInfo.InhibitFlags.IsAssignedExclusive {
+				if zOption {
+					facResult.PostMessage(kexec.FacStatusHoldForReleaseXUseRejected, nil)
+					resultCode |= 0_400001_000000
+					break
+				}
+				if !waitingOnXUseRelease {
+					waitingOnXUseReleaseStart = time.Now()
+					waitingOnXUseRelease = true
+					// TODO set wait on XUse in RCE
+				}
+			} else {
+				if waitingOnXUseRelease {
+					// TODO clear wait on XUse in RCE
+					waitingOnXUseRelease = false
+				}
+			}
+
+			// Are we asking for exclusive use of an already-assigned file?
+			if xOption && !fsInfo.InhibitFlags.IsReadOnly && fsInfo.AssignedIndicator > 0 {
+				if zOption {
+					facResult.PostMessage(kexec.FacStatusHoldForXUseRejected, nil)
+					resultCode |= 0_400001_000000
+					break
+				}
+				if !waitingForXUse {
+					waitingForXUseStart = time.Now()
+					waitingForXUse = true
+					// TODO set wait for XUse in RCE
+				}
+			} else {
+				if waitingForXUse {
+					// TODO clear wait for XUse in RCE
+					waitingForXUse = false
+				}
+			}
+		}
+
+		if !waitingForDiskUnit && !waitingForTapeUnit && !waitingOnRollback && !waitingOnXUseRelease && !waitingForXUse {
+			break
+		}
+
+		mgr.mutex.Unlock()
+
+		// Time to send messages? (only for batch or demand)
+		if rce.IsBatch() || rce.IsDemand() {
+			now := time.Now()
+			if now.After(lastMessageSent.Add(time.Duration(2) * time.Minute)) {
+				if waitingForDiskUnit {
+					// "Run %v held for disk unit availability for %v min.")
+					waitTime := now.Sub(waitingForDiskUnitStart).Minutes()
+					msg := fmt.Sprintln(FacStatusMessageTemplates[kexec.FacStatusRunHeldForDiskUnitAvailability], rce.RunId, waitTime)
+					rce.PostToPrint(msg, 1)
+				}
+				if waitingForTapeUnit {
+					// "Run %v held for tape unit availability for %v min.")
+					waitTime := now.Sub(waitingForTapeUnitStart).Minutes()
+					msg := fmt.Sprintln(FacStatusMessageTemplates[kexec.FacStatusRunHeldForTapeUnitAvailability], rce.RunId, waitTime)
+					rce.PostToPrint(msg, 1)
+				}
+				if waitingForXUse {
+					// "Run %v held for need of exclusive use for %v min."
+					waitTime := now.Sub(waitingForXUseStart).Minutes()
+					msg := fmt.Sprintln(FacStatusMessageTemplates[kexec.FacStatusRunHeldForNeedOfExclusiveUse], rce.RunId, waitTime)
+					rce.PostToPrint(msg, 1)
+				}
+				if waitingOnXUseRelease {
+					// "Run %v held for exclusive file use release for %v min."
+					waitTime := now.Sub(waitingOnXUseReleaseStart).Minutes()
+					msg := fmt.Sprintln(FacStatusMessageTemplates[kexec.FacStatusRunHeldForExclusiveFileUseRelease], rce.RunId, waitTime)
+					rce.PostToPrint(msg, 1)
+				}
+				if waitingOnRollback {
+					// "Run %v held for rollback of unloaded file for %v min."
+					waitTime := now.Sub(waitingOnRollbackStart).Minutes()
+					msg := fmt.Sprintln(FacStatusMessageTemplates[kexec.FacStatusRunHeldForRollback], rce.RunId, waitTime)
+					rce.PostToPrint(msg, 1)
+				}
+				lastMessageSent = now
+			}
+		}
+
+		time.Sleep(50 * time.Millisecond)
+		mgr.mutex.Lock()
+	}
+
+	klog.LogTraceF("FacMgr", "[%v] returning %012o", rce.RunId, resultCode)
+	return
+}
+
+// assignCatalogedFixedFileToRun assumes the requested file exists, and that all security checks are complete.
+// We are responsible for waiting on or for exclusive use, and for rollback if appropriate.
+// We are also responsible for creating the appropriate facility item.
+func (mgr *FacilitiesManager) assignCatalogedFixedFileToRun(
+	rce *kexec.RunControlEntry,
+	fileSpecification *kexec.FileSpecification,
+	optionWord uint64,
+	fsInfo *mfdMgr.FixedFileCycleInfo,
+	facResult *FacStatusResult,
+) (resultCode uint64) {
+	resultCode = 0
+	if optionWord&(kexec.EOption|kexec.YOption) == 0 {
+		resultCode |= mgr.assignWait(rce, 0, fsInfo, facResult)
+	}
+
+	// Check for hold for fcycle conflict
+	// TODO
+
+	// Check for any applicable warning status codes
+	// (except file-already-assigned - we should already have taken care of that)
+	// TODO
+
+	// Create facility item
+	// TODO
+
+	return
+}
+
 func (mgr *FacilitiesManager) assignCatalogedFile(
 	rce *kexec.RunControlEntry,
 	sourceIsExecRequest bool,
@@ -430,6 +686,8 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 		resultCode |= 0_400010_000000
 		return
 	}
+
+	// TODO check read/write keys
 
 	// for already assigned files, see ECL 4.3 for security access validation
 	//   see ECL 7.2.4 for changing certain fields
@@ -502,8 +760,12 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 	// See if the thing exists, and if it does, assign it
 	for _, ci := range fsInfo.CycleInfo {
 		if ci.AbsoluteCycle == absCycle {
-			// TODO  assignCatalogedFile()
+			// TODO
 			//  What if it is to-be-cataloged? pretend it does not yet exist? try experiment
+
+			// TODO check private status - can we access the thing?
+
+			// TODO
 			//  W:121433 File is cataloged as a read-only file.
 			//  W:122433 File is cataloged write-only.
 			//  E:241233 File is being dropped.

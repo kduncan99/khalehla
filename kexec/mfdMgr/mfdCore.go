@@ -448,7 +448,7 @@ func (mgr *MFDManager) bootstrapMFD() error {
 			IsGuarded:           true,
 			IsUnloadInhibited:   true,
 			IsPrivate:           true,
-			isAssignedExclusive: false,
+			IsAssignedExclusive: false,
 			IsWriteOnly:         false,
 			IsReadOnly:          false,
 		},

@@ -10,7 +10,7 @@ type InhibitFlags struct {
 	IsGuarded           bool
 	IsUnloadInhibited   bool
 	IsPrivate           bool
-	isAssignedExclusive bool
+	IsAssignedExclusive bool
 	IsWriteOnly         bool
 	IsReadOnly          bool
 }
@@ -26,7 +26,7 @@ func (inf *InhibitFlags) Compose() uint64 {
 	if inf.IsPrivate {
 		value |= 010
 	}
-	if inf.isAssignedExclusive {
+	if inf.IsAssignedExclusive {
 		value |= 004
 	}
 	if inf.IsWriteOnly {
@@ -42,7 +42,7 @@ func (inf *InhibitFlags) ExtractFrom(field uint64) {
 	inf.IsGuarded = field&040 != 0
 	inf.IsUnloadInhibited = field&020 != 0
 	inf.IsPrivate = field&010 != 0
-	inf.isAssignedExclusive = field&004 != 0
+	inf.IsAssignedExclusive = field&004 != 0
 	inf.IsWriteOnly = field&002 != 0
 	inf.IsReadOnly = field&001 != 0
 }

@@ -139,6 +139,10 @@ func (rce *RunControlEntry) PostContingencyWithAuxiliary(
 	// TODO
 }
 
+func (rce *RunControlEntry) PostToPrint(text string, lineSkip uint) {
+	// TODO
+}
+
 func (rce *RunControlEntry) PostToTailSheet(message string) {
 	// TODO
 }
