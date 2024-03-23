@@ -4,7 +4,11 @@
 
 package kexec
 
-import "khalehla/pkg"
+import (
+	"fmt"
+	"io"
+	"khalehla/pkg"
+)
 
 /*
 TIP:
@@ -145,4 +149,28 @@ func (rce *RunControlEntry) PostToPrint(text string, lineSkip uint) {
 
 func (rce *RunControlEntry) PostToTailSheet(message string) {
 	// TODO
+}
+
+func (rce *RunControlEntry) Dump(dest io.Writer, indent string) {
+	runType := ""
+	if rce.IsBatch() {
+		runType = "BATCH"
+	} else if rce.IsDemand() {
+		runType = "DEMAND"
+	} else if rce.IsTIP() {
+		runType = "TIP"
+	} else if rce.IsExec() {
+		runType = "EXEC"
+	}
+
+	_, _ = fmt.Fprintf(dest, "%v%v (%v) Acct:%v Proj:%v User:%v %v\n",
+		indent, rce.RunId, rce.OriginalRunId, rce.AccountId, rce.ProjectId, rce.UserId, runType)
+	_, _ = fmt.Fprintf(dest, "%v  rcw:%012o isPriv:%v priv:%v\n",
+		indent, rce.RunConditionWord, rce.IsPrivileged(), rce.Privileges)
+	_, _ = fmt.Fprintf(dest, "%v  defQual:%v impQual:%v\n",
+		indent, rce.ImpliedQualifier, rce.DefaultQualifier)
+	_, _ = fmt.Fprintf(dest, "%v  Facility Items:\n", indent)
+	for _, fi := range rce.FacilityItems {
+		fi.Dump(dest, indent+"    ")
+	}
 }

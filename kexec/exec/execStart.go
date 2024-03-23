@@ -40,7 +40,7 @@ func (e *Exec) performInitialBoot() {
 		return
 	}
 
-	stat := e.callCSI("@ASG,A SYS$*MFD$$")
+	stat := e.callCSI("@ASG,AX SYS$*MFD$$")
 	if stat&0_400000_000000 != 0 {
 		e.Stop(kexec.StopFileAssignErrorOccurredDuringSystemInitialization)
 		return

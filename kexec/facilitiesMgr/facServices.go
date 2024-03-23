@@ -7,6 +7,7 @@ package facilitiesMgr
 import (
 	"khalehla/hardware"
 	"khalehla/kexec"
+	"khalehla/kexec/config"
 	"khalehla/kexec/mfdMgr"
 	"khalehla/klog"
 	"strings"
@@ -44,7 +45,7 @@ func (mgr *FacilitiesManager) AssignFile(
 	optionWord uint64,
 	operandFields [][]string,
 ) (facResult *FacStatusResult, resultCode uint64) {
-	klog.LogTraceF("FacMgr", "AssignFile [%v] %v", rce.RunId, *fileSpecification)
+	klog.LogTraceF("FacMgr", "AssignFile [%v] %v", rce.RunId, fileSpecification.ToString())
 	mgr.mutex.Lock()
 	defer mgr.mutex.Unlock()
 
@@ -68,26 +69,33 @@ func (mgr *FacilitiesManager) AssignFile(
 		}
 	}
 
-	models, usage, ok := mgr.selectEquipmentModel(mnemonic, nil)
-	if !ok {
-		// This isn't going to work for us.
-		klog.LogInfoF(rce.RunId, "[%v] Mnemonic %v not configured", rce.RunId, mnemonic)
-		facResult.PostMessage(kexec.FacStatusMnemonicIsNotConfigured, []string{mnemonic})
-		resultCode |= 0_600000_000000
-		return
+	var models []hardware.NodeModel
+	var usage config.EquipmentUsage
+	if mnemonic != "" {
+		var ok bool
+		models, usage, ok = mgr.selectEquipmentModel(mnemonic, nil)
+		if !ok {
+			// This isn't going to work for us.
+			klog.LogInfoF(rce.RunId, "[%v] Mnemonic %v not configured", rce.RunId, mnemonic)
+			facResult.PostMessage(kexec.FacStatusMnemonicIsNotConfigured, []string{mnemonic})
+			resultCode |= 0_600000_000000
+			return
+		}
 	}
 
 	effectiveFSpec := mgr.resolveFileSpecification(rce, fileSpecification)
 
 	// check for option - branch on A, C/P, T, or none of the previous
-	optSubset := optionWord & (kexec.AOption | kexec.COption | kexec.POption | kexec.TOption)
-	if optSubset == kexec.AOption {
-		facResult, resultCode = mgr.assignCatalogedFile(rce, sourceIsExecRequest, effectiveFSpec, optionWord, operandFields)
-	} else if optSubset == kexec.COption || optSubset == kexec.POption {
-		facResult, resultCode = mgr.assignToBeCatalogedFile(rce, sourceIsExecRequest, effectiveFSpec, optionWord, operandFields)
-	} else if optSubset == kexec.TOption {
-		facResult, resultCode =
-			mgr.assignTemporaryFile(rce, sourceIsExecRequest, effectiveFSpec, optionWord, operandFields, models, usage)
+	aOpt := optionWord&kexec.AOption != 0
+	cOpt := optionWord&kexec.COption != 0
+	pOpt := optionWord&kexec.POption != 0
+	tOpt := optionWord&kexec.TOption != 0
+	if aOpt {
+		resultCode |= mgr.assignCatalogedFile(rce, sourceIsExecRequest, effectiveFSpec, optionWord, operandFields, facResult)
+	} else if cOpt || pOpt {
+		resultCode |= mgr.assignToBeCatalogedFile(rce, sourceIsExecRequest, effectiveFSpec, optionWord, operandFields, facResult)
+	} else if tOpt {
+		resultCode |= mgr.assignTemporaryFile(rce, sourceIsExecRequest, effectiveFSpec, optionWord, operandFields, models, usage, facResult)
 	} else {
 		// TODO No options among A,C,P,T - figure out what to do based on the rce's facility items
 		// "The options field, if left blank, defaults to the A option unless the file is already assigned,

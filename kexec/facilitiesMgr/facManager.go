@@ -19,6 +19,9 @@ import (
 	"time"
 )
 
+// FacilitiesManager does all the facilities-specific work for the exec.
+// This file contains the APIs described in the IFacilitiesManager interface.
+// All other externalized APIs are implemented in facServices, and internal functions are in facCore.
 type FacilitiesManager struct {
 	exec                         kexec.IExec
 	mutex                        sync.Mutex

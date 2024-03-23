@@ -51,7 +51,7 @@ func handleAsg(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, re
 	if !ok {
 		facResult.PostMessage(kexec.FacStatusSyntaxErrorInImage, nil)
 		resultCode = 0_600000_000000
-		klog.LogTraceF("CSI", "handleAsg stat=%012o", resultCode)
+		klog.LogTraceF("CSI", "handleAsg stat=%012o syntax", resultCode)
 		return
 	}
 
@@ -62,7 +62,7 @@ func handleAsg(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, re
 	} else {
 		facResult.PostMessage(kexec.FacStatusFilenameIsRequired, nil)
 		resultCode = 0_600000_000000
-		klog.LogTraceF("CSI", "handleAsg stat=%012o", resultCode)
+		klog.LogTraceF("CSI", "handleAsg stat=%012o fn required", resultCode)
 		return
 	}
 
@@ -74,7 +74,7 @@ func handleAsg(pkt *handlerPacket) (facResult *facilitiesMgr.FacStatusResult, re
 		}
 		facResult.PostMessage(fsCode, []string{})
 		resultCode = 0_600000_000000
-		klog.LogTraceF("CSI", "handleAsg stat=%012o", resultCode)
+		klog.LogTraceF("CSI", "handleAsg stat=%012o bad parse", resultCode)
 		return
 	}
 

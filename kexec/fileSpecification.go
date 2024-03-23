@@ -6,6 +6,7 @@ package kexec
 
 import (
 	"fmt"
+	"khalehla/klog"
 )
 
 type FileSpecification struct {
@@ -30,6 +31,7 @@ func (fs *FileSpecification) parseQualifierAndFilename(p *Parser) (fsCode FacSta
 		ch, _ := p.ParseNextCharacter()
 		if !fs.HasAsterisk && IsValidQualifierChar(ch) {
 			if len(fs.Qualifier) == 12 {
+				klog.LogTrace("Exec", "Parse:qualifier too long")
 				return FacStatusSyntaxErrorInImage, false
 			} else {
 				fs.Qualifier += string(rune(ch))
@@ -39,6 +41,7 @@ func (fs *FileSpecification) parseQualifierAndFilename(p *Parser) (fsCode FacSta
 
 		if fs.HasAsterisk && IsValidFilenameChar(ch) {
 			if len(fs.Filename) == 12 {
+				klog.LogTrace("Exec", "Parse:filename too long")
 				return FacStatusSyntaxErrorInImage, false
 			} else {
 				fs.Filename += string(rune(ch))
@@ -48,6 +51,7 @@ func (fs *FileSpecification) parseQualifierAndFilename(p *Parser) (fsCode FacSta
 
 		if ch == '*' {
 			if fs.HasAsterisk {
+				klog.LogTrace("Exec", "Parse:multiple '*'")
 				return FacStatusSyntaxErrorInImage, false
 			} else {
 				fs.HasAsterisk = true
@@ -56,6 +60,7 @@ func (fs *FileSpecification) parseQualifierAndFilename(p *Parser) (fsCode FacSta
 	}
 
 	if len(fs.Filename) == 0 {
+		klog.LogTrace("Exec", "Parse:filename required")
 		return FacStatusFilenameIsRequired, false
 	}
 
@@ -76,12 +81,14 @@ func (fs *FileSpecification) parseAbsoluteCycle(p *Parser) (found bool, fsCode F
 	p.SkipSpaces()
 	value, found, err := p.ParseUnsignedInteger()
 	if err != nil || !found {
+		klog.LogTrace("Exec", "Parse:abs cycle error")
 		fsCode = FacStatusSyntaxErrorInImage
 		ok = false
 		return
 	}
 
 	if value < 1 || value > 999 {
+		klog.LogTrace("Exec", "Parse:Illegal abs cycle")
 		fsCode = FacStatusIllegalValueForFCycle
 		ok = false
 		return
@@ -89,6 +96,7 @@ func (fs *FileSpecification) parseAbsoluteCycle(p *Parser) (found bool, fsCode F
 
 	p.SkipSpaces()
 	if !p.ParseSpecificCharacter(')') {
+		klog.LogTrace("Exec", "Parse:Abs cycle missing ')'")
 		fsCode = FacStatusIllegalValueForFCycle
 		ok = false
 		return
@@ -101,6 +109,7 @@ func (fs *FileSpecification) parseAbsoluteCycle(p *Parser) (found bool, fsCode F
 func (fs *FileSpecification) parseRelativeCycle(p *Parser) (found bool, fsCode FacStatusCode, ok bool) {
 	found = false
 	fsCode = FacStatusComplete
+	ok = true
 
 	p.MarkPosition()
 	if !p.ParseSpecificCharacter('(') {
@@ -128,6 +137,7 @@ func (fs *FileSpecification) parseRelativeCycle(p *Parser) (found bool, fsCode F
 	p.SkipSpaces()
 	value, found, err := p.ParseUnsignedInteger()
 	if err != nil || !found {
+		klog.LogTrace("Exec", "Parse:Bad rel cycle")
 		fsCode = FacStatusSyntaxErrorInImage
 		ok = false
 		return
@@ -135,6 +145,7 @@ func (fs *FileSpecification) parseRelativeCycle(p *Parser) (found bool, fsCode F
 
 	p.SkipSpaces()
 	if !p.ParseSpecificCharacter(')') {
+		klog.LogTrace("Exec", "Parse:Rel cycle missing ')'")
 		fsCode = FacStatusSyntaxErrorInImage
 		ok = false
 		return
@@ -146,6 +157,7 @@ func (fs *FileSpecification) parseRelativeCycle(p *Parser) (found bool, fsCode F
 			found = true
 			return
 		} else {
+			klog.LogTrace("Exec", "Parse:Illegal rel cycle")
 			fsCode = FacStatusIllegalValueForFCycle
 			ok = false
 			return
@@ -156,6 +168,7 @@ func (fs *FileSpecification) parseRelativeCycle(p *Parser) (found bool, fsCode F
 			ok = false
 			return
 		} else {
+			klog.LogTrace("Exec", "Parse.Illegal rel cycle")
 			fs.FileCycleSpec = NewRelativeFileCycleSpecification(int(value) * -1)
 			found = true
 			return
@@ -177,6 +190,7 @@ func (fs *FileSpecification) parseCycle(p *Parser) (fsCode FacStatusCode, ok boo
 func (fs *FileSpecification) parseKey(p *Parser) (key string, err error) {
 	key, _ = p.ParseUntil(",./; ")
 	if !IsValidReadWriteKey(key) {
+		klog.LogTrace("Exec", "Parse:Invalid key")
 		err = fmt.Errorf("invalid key")
 	}
 	return
@@ -230,6 +244,8 @@ func (fs *FileSpecification) CouldBeInternalName() bool {
 // If successful, we return a pointer to the FileSpecification in fs, with ok == true.
 // If we find something, but encounter an error during parsing, we return ok == false and something descriptive in code.
 func ParseFileSpecification(p *Parser) (fs *FileSpecification, fsCode FacStatusCode, ok bool) {
+	klog.LogTraceF("Exec", "ParseFileSpecification '%v'", p.text)
+
 	fs = nil
 	fsCode = 0
 	ok = true
@@ -241,22 +257,26 @@ func ParseFileSpecification(p *Parser) (fs *FileSpecification, fsCode FacStatusC
 	fs = &FileSpecification{}
 	fsCode, ok = fs.parseQualifierAndFilename(p)
 	if !ok {
+		klog.LogTrace("Exec", "Parse:Failed parseQualifierAndFilename")
 		return
 	}
 
 	fsCode, ok = fs.parseCycle(p)
 	if !ok {
+		klog.LogTrace("Exec", "Parse:Failed parseCycle")
 		return
 	}
 
 	fsCode, ok = fs.parseKeys(p)
 	if !ok {
+		klog.LogTrace("Exec", "Parse:Failed parseKeys")
 		return
 	}
 
 	// eat terminating '.' if it exists
 	p.ParseSpecificCharacter('.')
 
+	klog.LogTrace("Exec", "Parse:OK")
 	return
 }
 
@@ -269,4 +289,29 @@ func CopyFileSpecification(fs *FileSpecification) *FileSpecification {
 		ReadKey:       fs.ReadKey,
 		WriteKey:      fs.WriteKey,
 	}
+}
+
+func (fs *FileSpecification) HasFileCycleSpecification() bool {
+	return fs.FileCycleSpec != nil
+}
+
+func (fs *FileSpecification) ToString() string {
+	str := fs.Qualifier
+	if fs.HasAsterisk {
+		str += "*"
+	}
+	str += fs.Filename
+	if fs.FileCycleSpec != nil {
+		if fs.FileCycleSpec.IsRelative() {
+			sign := ""
+			if *fs.FileCycleSpec.RelativeCycle > 0 {
+				sign = "+"
+			}
+			str += fmt.Sprintf("(%v%v)", sign, *fs.FileCycleSpec.RelativeCycle)
+		} else if fs.FileCycleSpec.IsAbsolute() {
+			str += fmt.Sprintf("(%v)", *fs.FileCycleSpec.AbsoluteCycle)
+		}
+	}
+	str += fmt.Sprintf("/%v/%v", fs.ReadKey, fs.WriteKey)
+	return str
 }

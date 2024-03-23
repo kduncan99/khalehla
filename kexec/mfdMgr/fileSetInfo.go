@@ -109,7 +109,7 @@ func (fsi *FileSetInfo) populateFromLeadItems(leadItem0 []pkg.Word36, leadItem1 
 	absCycle := fsi.HighestAbsolute
 	lx := 0
 	wx := 11 + fsi.NumberOfSecurityWords
-	for ax := 0; ax < int(fsi.MaxCycleRange); ax++ {
+	for ax := 0; ax < int(fsi.CurrentRange); ax++ {
 		if wx == 28 {
 			if leadItem1 == nil {
 				break

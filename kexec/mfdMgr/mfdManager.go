@@ -15,7 +15,7 @@ import (
 
 // MFDManager is essentially the file system
 //
-// Fixed Pool things
+// # Fixed Pool things
 //
 // MFD-Relative addresses refer to a particular MFD-relative sector.
 // Such addresses are formatted (octally) as 00llllttttss
@@ -35,11 +35,14 @@ import (
 // list for each individual pack.
 //
 // For reference:
-//  U001 search item
-//  U010 lead item 0
-//  U100 main item 0
-//	U000 lead item 1 (U==0), main item sector {n}, DAD table
-
+//
+//	 U001 search item
+//	 U010 lead item 0
+//	 U100 main item 0
+//		U000 lead item 1 (U==0), main item sector {n}, DAD table
+//
+// This file contains the APIs described by IMFDManager.
+// Other external APIs are in mfdServices and internal functions are in mfdCore.
 type MFDManager struct {
 	exec                       kexec.IExec
 	mutex                      sync.Mutex

@@ -4,15 +4,21 @@
 
 package kexec
 
+import (
+	"fmt"
+	"io"
+)
+
 // FacilitiesItem structs are store in the RCE for all assigned facilities
 type FacilitiesItem interface {
 
 	// TODO does a fac item have an attached internal name?
 
+	Dump(dest io.Writer, indent string)
 	GetQualifier() string
 	GetFilename() string
 	GetEquipmentCode() uint
-	GetAttributes() uint
+	GetAttributes() FacItemAttributes
 	GetRelativeCycle() int  // zero if none specified
 	GetAbsoluteCycle() uint // zero if none specified
 	IsDisk() bool
@@ -46,6 +52,28 @@ so kexec will not consider them in facilities code.
          020 file is temporary
          010 internal Name is a use Name
 
+
+*/
+
+type FacItemAttributes struct {
+	TapeLabelingIsSupported   bool
+	FileIsTemporary           bool
+	InternalFileNameIsUseName bool
+	IsLargeFile               bool
+}
+
+type FacItemFileMode struct {
+	IsExclusivelyAssigned bool
+	IsReadKeyNeeded       bool
+	IsWriteKeyNeeded      bool
+	IsWriteInhibited      bool
+	IsReadInhibited       bool
+	IsWordAddressable     bool
+}
+
+// -----------------------------------------------------------------------
+
+/*
 Sector-formatted mass storage
 +06,S2  file mode
          040 exclusively assigned
@@ -70,7 +98,182 @@ Sector-formatted mass storage
 +012,S4 total pack count if removable (63 -> 63 or greater)
 +012,S5 equipment code - same as +06,S1
 +012,S6 subcode - zero
+*/
 
+type SectorAddressableFacilityItem struct {
+	Qualifier     string
+	Filename      string
+	EquipmentCode uint
+	RelativeCycle int
+	AbsoluteCycle uint
+	Attributes    FacItemAttributes
+	FileMode      FacItemFileMode
+	// TODO I think the following should not be here - they're in the MFD already, and only needed for ER FITEM$
+	Granularity            Granularity
+	InitialReserve         uint64 // in granules
+	MaxGranules            uint64
+	HighestTrackReferenced uint64
+	HighestGranuleAssigned uint64
+	TotalPackCount         uint // if removable
+}
+
+func (fi *SectorAddressableFacilityItem) Dump(dest io.Writer, indent string) {
+	_, _ = fmt.Fprintf(dest, "%vSector %v*%v abs=%v rel=%v equip=%03o\n",
+		indent, fi.Qualifier, fi.Filename, fi.AbsoluteCycle, fi.RelativeCycle, fi.EquipmentCode)
+
+	_, _ = fmt.Fprintf(dest, "%v  Attributes: tpLbl:%v temp:%v intUse:%v large:%v\n",
+		indent,
+		fi.Attributes.TapeLabelingIsSupported,
+		fi.Attributes.FileIsTemporary,
+		fi.Attributes.InternalFileNameIsUseName,
+		fi.Attributes.IsLargeFile)
+
+	_, _ = fmt.Fprintf(dest, "%v  Mode: xAsg:%v rKey:%v wKey:%v wInh:%v rInh:%v wad:%v\n",
+		indent,
+		fi.FileMode.IsExclusivelyAssigned,
+		fi.FileMode.IsReadKeyNeeded,
+		fi.FileMode.IsWriteKeyNeeded,
+		fi.FileMode.IsWriteInhibited,
+		fi.FileMode.IsReadInhibited,
+		fi.FileMode.IsWordAddressable)
+
+	_, _ = fmt.Fprintf(dest, "%v  gran:%v rsv:%v max:%v hTrk:%v hGrn:%v packs:%v\n",
+		indent, fi.Granularity, fi.InitialReserve, fi.MaxGranules,
+		fi.HighestTrackReferenced, fi.HighestGranuleAssigned, fi.TotalPackCount)
+}
+
+func (fi *SectorAddressableFacilityItem) GetQualifier() string {
+	return fi.Qualifier
+}
+
+func (fi *SectorAddressableFacilityItem) GetFilename() string {
+	return fi.Filename
+}
+
+func (fi *SectorAddressableFacilityItem) GetEquipmentCode() uint {
+	return fi.EquipmentCode
+}
+
+func (fi *SectorAddressableFacilityItem) GetAttributes() FacItemAttributes {
+	return fi.Attributes
+}
+
+func (fi *SectorAddressableFacilityItem) GetRelativeCycle() int {
+	return fi.RelativeCycle
+}
+
+func (fi *SectorAddressableFacilityItem) GetAbsoluteCycle() uint {
+	return fi.AbsoluteCycle
+}
+
+func (fi *SectorAddressableFacilityItem) IsDisk() bool {
+	return true
+}
+
+func (fi *SectorAddressableFacilityItem) IsTape() bool {
+	return false
+}
+
+// -----------------------------------------------------------------------
+
+/*
+Word addressable
++06,S2  file mode
+         040 exclusively assigned
+         020 read key needed
+         010 write key needed
+         004 write inhibited
+         002 read inhibited
+         001 word-addressable (always set)
++06,S3  granularity
+         zero -> track, nonzero -> position
++06,S4  relative file-cycle
++06,T3  absolute file-cycle
++07,S1  attributes
+         020 file is temporary
+         010 internal Name is a use Name
+         004 shared file
++010,W  length of file in words
++011,W  maximum file length in words
++012,S4 total pack count if removable (63 -> 63 or greater)
++012,S5 equipment code - same as +06,S1
++012,S6 subcode - zero
+*/
+
+type WordAddressableFacilityItem struct {
+	Qualifier     string
+	Filename      string
+	EquipmentCode uint
+	RelativeCycle int
+	AbsoluteCycle uint
+	Attributes    FacItemAttributes
+	FileMode      FacItemFileMode
+	// TODO I think the following should not be here - they're in the MFD already, and only needed for ER FITEM$
+	Granularity       Granularity
+	LengthOfFile      uint64 // in words
+	MaximumFileLength uint64 // in words
+	TotalPackCount    uint   // if removable
+}
+
+func (fi *WordAddressableFacilityItem) Dump(dest io.Writer, indent string) {
+	_, _ = fmt.Fprintf(dest, "%vSector %v*%v abs=%v rel=%v equip=%03o\n",
+		indent, fi.Qualifier, fi.Filename, fi.AbsoluteCycle, fi.RelativeCycle, fi.EquipmentCode)
+
+	_, _ = fmt.Fprintf(dest, "%v  Attributes: [tpLbl:%v temp:%v intUse:%v large:%v\n",
+		indent,
+		fi.Attributes.TapeLabelingIsSupported,
+		fi.Attributes.FileIsTemporary,
+		fi.Attributes.InternalFileNameIsUseName,
+		fi.Attributes.IsLargeFile)
+
+	_, _ = fmt.Fprintf(dest, "%v  Mode: xAsg:%v rKey:%v wKey:%v wInh:%v rInh:%v wad:%v\n",
+		indent,
+		fi.FileMode.IsExclusivelyAssigned,
+		fi.FileMode.IsReadKeyNeeded,
+		fi.FileMode.IsWriteKeyNeeded,
+		fi.FileMode.IsWriteInhibited,
+		fi.FileMode.IsReadInhibited,
+		fi.FileMode.IsWordAddressable)
+
+	_, _ = fmt.Fprintf(dest, "%v  gran:%v len:%v max:%v packs:%v\n",
+		indent, fi.Granularity, fi.LengthOfFile, fi.MaximumFileLength, fi.TotalPackCount)
+}
+
+func (fi *WordAddressableFacilityItem) GetQualifier() string {
+	return fi.Qualifier
+}
+
+func (fi *WordAddressableFacilityItem) GetFilename() string {
+	return fi.Filename
+}
+
+func (fi *WordAddressableFacilityItem) GetEquipmentCode() uint {
+	return fi.EquipmentCode
+}
+
+func (fi *WordAddressableFacilityItem) GetAttributes() FacItemAttributes {
+	return fi.Attributes
+}
+
+func (fi *WordAddressableFacilityItem) GetRelativeCycle() int {
+	return fi.RelativeCycle
+}
+
+func (fi *WordAddressableFacilityItem) GetAbsoluteCycle() uint {
+	return fi.AbsoluteCycle
+}
+
+func (fi *WordAddressableFacilityItem) IsDisk() bool {
+	return true
+}
+
+func (fi *WordAddressableFacilityItem) IsTape() bool {
+	return false
+}
+
+// -----------------------------------------------------------------------
+
+/*
 Magnetic tape peripherals
 +06,S2  file mode
          040 exclusively assigned
@@ -96,82 +299,37 @@ Magnetic tape peripherals
 +012,T3 blocks extended
 +013,W  current reel number
 +014,W  next reel number
-
-Word addressable
-+06,S2  file mode
-         040 exclusively assigned
-         020 read key needed
-         010 write key needed
-         004 write inhibited
-         002 read inhibited
-         001 word-addressable (always set)
-+06,S3  granularity
-         zero -> track, nonzero -> position
-+06,S4  relative file-cycle
-+06,T3  absolute file-cycle
-+07,S1  attributes
-         020 file is temporary
-         010 internal Name is a use Name
-         004 shared file
-+010,W  length of file in words
-+011,W  maximum file length in words
-+012,S4 total pack count if removable (63 -> 63 or greater)
-+012,S5 equipment code - same as +06,S1
-+012,S6 subcode - zero
 */
-
-// -----------------------------------------------------------------------
-
-type MassStorageFacilityItem struct {
-	Qualifier     string
-	Filename      string
-	EquipmentCode uint
-	Attributes    uint
-	RelativeCycle int
-	AbsoluteCycle uint
-}
-
-func (fi *MassStorageFacilityItem) GetQualifier() string {
-	return fi.Qualifier
-}
-
-func (fi *MassStorageFacilityItem) GetFilename() string {
-	return fi.Filename
-}
-
-func (fi *MassStorageFacilityItem) GetEquipmentCode() uint {
-	return fi.EquipmentCode
-}
-
-func (fi *MassStorageFacilityItem) GetAttributes() uint {
-	return fi.Attributes
-}
-
-func (fi *MassStorageFacilityItem) GetRelativeCycle() int {
-	return fi.RelativeCycle
-}
-
-func (fi *MassStorageFacilityItem) GetAbsoluteCycle() uint {
-	return fi.AbsoluteCycle
-}
-
-func (fi *MassStorageFacilityItem) IsDisk() bool {
-	return true
-}
-
-func (fi *MassStorageFacilityItem) IsTape() bool {
-	return false
-}
-
-// -----------------------------------------------------------------------
 
 type TapeFacilityItem struct {
 	Qualifier     string
 	Filename      string
 	EquipmentCode uint
-	Attributes    uint
 	RelativeCycle int
 	AbsoluteCycle uint
+	Attributes    FacItemAttributes
+	// TODO I think the following should not be here - they're elsewhere already, and only needed for ER FITEM$
+	TotalReelCount    uint
+	LogicalChannel    uint
+	NoiseConstant     uint
+	ExpirationPeriod  uint
+	ReelIndex         uint
+	FilesExtended     uint
+	BlocksExtended    uint
+	CurrentReelNumber string
+	NextReelNumber    string
+}
+
+func (fi *TapeFacilityItem) Dump(dest io.Writer, indent string) {
+	_, _ = fmt.Fprintf(dest, "%vTape %v*%v abs=%v rel=%v equip=%03o\n",
+		indent, fi.Qualifier, fi.Filename, fi.AbsoluteCycle, fi.RelativeCycle, fi.EquipmentCode)
+
+	_, _ = fmt.Fprintf(dest, "%v  Attributes: tpLbl:%v temp:%v intUse:%v large:%v\n",
+		indent,
+		fi.Attributes.TapeLabelingIsSupported,
+		fi.Attributes.FileIsTemporary,
+		fi.Attributes.InternalFileNameIsUseName,
+		fi.Attributes.IsLargeFile)
 }
 
 func (fi *TapeFacilityItem) GetQualifier() string {
@@ -186,7 +344,7 @@ func (fi *TapeFacilityItem) GetEquipmentCode() uint {
 	return fi.EquipmentCode
 }
 
-func (fi *TapeFacilityItem) GetAttributes() uint {
+func (fi *TapeFacilityItem) GetAttributes() FacItemAttributes {
 	return fi.Attributes
 }
 

@@ -244,7 +244,7 @@ func (mgr *FacilitiesManager) canDropFileCycle(
 	return true
 }
 
-// checkIllegalOptionCombination checks to see if more than one of the given options are provided.
+// checkIllegalOptionCombination checks to see if more than one of the exclusive options have been specified.
 func checkIllegalOptionCombination(
 	rce *kexec.RunControlEntry,
 	givenOptions uint64,
@@ -252,23 +252,35 @@ func checkIllegalOptionCombination(
 	facResult *FacStatusResult,
 	sourceIsExec bool,
 ) bool {
-	bit := uint64(kexec.AOption)
-	letter := 'A'
+	leftBit := uint64(kexec.AOption)
+	leftOpt := 'A'
 	ok := true
 
-	var firstOption string
-	var secondOption string
-	for {
-		if bit&givenOptions != 0 && bit&mutuallyExclusiveOptions == 0 {
-			if len(firstOption) > 0 {
-				secondOption = string(letter)
-				facResult.PostMessage(kexec.FacStatusIllegalOptionCombination, []string{firstOption, secondOption})
-				ok = false
-				break
-			} else {
-				firstOption = string(letter)
+	for leftBit != uint64(kexec.ZOption) {
+		if leftBit&givenOptions != 0 {
+			rightBit := leftBit >> 1
+			rightOpt := leftOpt + 1
+			for {
+				if rightBit&givenOptions != 0 {
+					mask := leftBit | rightBit
+					if mutuallyExclusiveOptions&mask == mask {
+						facResult.PostMessage(
+							kexec.FacStatusIllegalOptionCombination,
+							[]string{string(leftOpt), string(rightOpt)})
+						ok = false
+					}
+				}
+				if rightOpt == kexec.ZOption {
+					break
+				} else {
+					rightBit >>= 1
+					rightOpt++
+				}
 			}
 		}
+
+		leftBit >>= 1
+		leftOpt++
 	}
 
 	if !ok {
@@ -500,6 +512,7 @@ func (mgr *FacilitiesManager) assignWait(
 	xOption := optionWord&kexec.XOption != 0
 	zOption := optionWord&kexec.ZOption != 0
 
+	// TODO also, waiting on reel number (already assigned to another run)
 	rollbackRequested := false
 	waitingForDiskUnit := false
 	waitingForTapeUnit := false
@@ -640,12 +653,12 @@ func (mgr *FacilitiesManager) assignCatalogedFixedFileToRun(
 	rce *kexec.RunControlEntry,
 	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
-	fsInfo *mfdMgr.FixedFileCycleInfo,
+	fcInfo *mfdMgr.FixedFileCycleInfo,
 	facResult *FacStatusResult,
 ) (resultCode uint64) {
 	resultCode = 0
 	if optionWord&(kexec.EOption|kexec.YOption) == 0 {
-		resultCode |= mgr.assignWait(rce, 0, fsInfo, facResult)
+		resultCode |= mgr.assignWait(rce, 0, fcInfo, facResult)
 	}
 
 	// Check for hold for fcycle conflict
@@ -655,8 +668,28 @@ func (mgr *FacilitiesManager) assignCatalogedFixedFileToRun(
 	// (except file-already-assigned - we should already have taken care of that)
 	// TODO
 
-	// Create facility item
-	// TODO
+	// Create facility item and add it to the rce
+	relCycle := 0
+	if fileSpecification.HasFileCycleSpecification() && fileSpecification.FileCycleSpec.IsRelative() {
+		relCycle = *fileSpecification.FileCycleSpec.RelativeCycle
+	}
+
+	fi := &kexec.SectorAddressableFacilityItem{
+		Qualifier:              fcInfo.Qualifier,
+		Filename:               fcInfo.Filename,
+		EquipmentCode:          036, // sector-addressable mass storage
+		RelativeCycle:          relCycle,
+		AbsoluteCycle:          fcInfo.AbsoluteFileCycle,
+		Attributes:             kexec.FacItemAttributes{},
+		FileMode:               kexec.FacItemFileMode{},
+		Granularity:            fcInfo.PCHARFlags.Granularity,
+		InitialReserve:         fcInfo.InitialGranulesReserved,
+		MaxGranules:            fcInfo.MaxGranules,
+		HighestTrackReferenced: fcInfo.HighestTrackWritten,
+		HighestGranuleAssigned: fcInfo.HighestGranuleAssigned,
+		TotalPackCount:         0,
+	}
+	rce.FacilityItems = append(rce.FacilityItems, fi)
 
 	return
 }
@@ -667,7 +700,8 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
-) (facResult *FacStatusResult, resultCode uint64) {
+	facResult *FacStatusResult,
+) (resultCode uint64) {
 	klog.LogTraceF("FacMgr", "assignCatalogedFile [%v]", rce.RunId)
 
 	mm := mgr.exec.GetMFDManager().(*mfdMgr.MFDManager)
@@ -687,7 +721,7 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 		return
 	}
 
-	// TODO check read/write keys
+	// TODO check read/write keys (we don't know cycle yet, so we cannot check for private access)
 
 	// for already assigned files, see ECL 4.3 for security access validation
 	//   see ECL 7.2.4 for changing certain fields
@@ -703,7 +737,11 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 		E:242333 Assignment of units of the requested equipment type is not allowed.
 	*/
 
-	if fileSpecification.FileCycleSpec.IsRelative() && *fileSpecification.FileCycleSpec.AbsoluteCycle != 0 {
+	if fileSpecification.HasFileCycleSpecification() &&
+		fileSpecification.FileCycleSpec.IsRelative() &&
+		*fileSpecification.FileCycleSpec.AbsoluteCycle != 0 {
+		// E:252033 F-cycle of +1 is illegal with A option.
+
 		// TODO assignCatalogedFile() handle relative file cycle
 		// The following needs to be excised into a separate function so other top-level assign functions can use it.
 		//
@@ -736,7 +774,8 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 	}
 
 	var absCycle uint
-	if fileSpecification.FileCycleSpec.IsAbsolute() {
+	if fileSpecification.HasFileCycleSpecification() &&
+		fileSpecification.FileCycleSpec.IsAbsolute() {
 		absCycle = *fileSpecification.FileCycleSpec.AbsoluteCycle
 	} else {
 		// caller either specified relative cycle 0, or did not specify any cycle.
@@ -760,10 +799,25 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 	// See if the thing exists, and if it does, assign it
 	for _, ci := range fsInfo.CycleInfo {
 		if ci.AbsoluteCycle == absCycle {
-			// TODO
-			//  What if it is to-be-cataloged? pretend it does not yet exist? try experiment
+			if ci.ToBeCataloged {
+				// It is to-be-cataloged, and thus does not yet exist.
+			}
 
-			// TODO check private status - can we access the thing?
+			fcInfo, foo := mm.GetFileCycleInfo(ci.FileCycleIdentifier)
+			if foo != mfdMgr.MFDSuccessful {
+				klog.LogFatalF("FacMgr",
+					"MFDMgr could not find file cycle info for cycle which should exist %012o",
+					ci.FileCycleIdentifier)
+				mgr.exec.Stop(kexec.StopFacilitiesComplex)
+				return
+			}
+
+			// Private file violation?
+			if !mgr.canAccessFileCycle(rce, fcInfo) {
+				facResult.PostMessage(kexec.FacStatusIncorrectPrivacyKey, nil)
+				resultCode |= 0_400000_020000
+				return
+			}
 
 			// TODO
 			//  W:121433 File is cataloged as a read-only file.
@@ -796,9 +850,13 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 			//  28	File specified on the @ASG control statement has been disabled because the file was assigned during a system failure.
 			//  29*	File specified on the @ASG control statement has been disabled because the file has been rolled out and the
 			//      backup copy is unrecoverable, unless an @ENABLE command, followed by an @ASG,A command, is used to retry the loading operation.
+
+			resultCode |= mgr.assignCatalogedFixedFileToRun(rce, fileSpecification, optionWord, fcInfo, facResult)
+			return
 		}
 	}
 
+	// Did not find the cycle - complain that it does not exist
 	facResult.PostMessage(kexec.FacStatusFileIsNotCataloged, nil)
 	resultCode |= 0_400010_000000
 	klog.LogTraceF("FacMgr", "[%v] file does not exist", rce.RunId)
@@ -814,7 +872,8 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 	operandFields [][]string,
 	models []hardware.NodeModel,
 	usage config.EquipmentUsage,
-) (facResult *FacStatusResult, resultCode uint64) {
+	facResult *FacStatusResult,
+) (resultCode uint64) {
 	klog.LogTraceF("FacMgr", "assignTemporaryFile [%v]", rce.RunId)
 
 	// For temporary files, we ignore any provided read/write keys.
@@ -940,7 +999,8 @@ func (mgr *FacilitiesManager) assignToBeCatalogedFile(
 	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
-) (facResult *FacStatusResult, resultCode uint64) {
+	facResult *FacStatusResult,
+) (resultCode uint64) {
 	klog.LogTraceF("FacMgr", "assignToBeCatalogedFile [%v]", rce.RunId)
 
 	// TODO implement assignToBeCatalogedFile()

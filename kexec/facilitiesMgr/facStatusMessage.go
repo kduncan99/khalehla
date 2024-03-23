@@ -99,6 +99,7 @@ func importTemplates() map[kexec.FacStatusCode]*FacStatusMessageTemplate {
 	importErrorTemplate(result, kexec.FacStatusIllegalOptionCombination, "Illegal option combination %v%v.")
 	importErrorTemplate(result, kexec.FacStatusIllegalValueForFCycle, "Illegal value specified for F-cycle.")
 	importErrorTemplate(result, kexec.FacStatusIllegalValueForGranularity, "Illegal value specified for granularity.")
+	importErrorTemplate(result, kexec.FacStatusIncorrectPrivacyKey, "Incorrect privacy key for private file.")
 	importErrorTemplate(result, kexec.FacStatusIncorrectReadKey, "Incorrect read key.")
 	importErrorTemplate(result, kexec.FacStatusIncorrectWriteKey, "Incorrect write key.")
 	importErrorTemplate(result, kexec.FacStatusInternalNameRequired, "Internal Name is required.")

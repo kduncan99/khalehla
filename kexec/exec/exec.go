@@ -327,6 +327,11 @@ func (e *Exec) PerformDump(fullFlag bool) (string, error) {
 	}
 	_, _ = fmt.Fprintf(dumpFile, "  %v\n", str)
 
+	_, _ = fmt.Fprintf(dumpFile, "  Run Control Entries:\n")
+	for _, rce := range e.runControlTable {
+		rce.Dump(dumpFile, "    ")
+	}
+
 	// TODO something different when fullFlag is set
 
 	e.consoleMgr.Dump(dumpFile, "")

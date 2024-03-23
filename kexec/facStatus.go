@@ -59,6 +59,7 @@ const (
 	FacStatusMaximumIsLessThanInitialReserve         = 0247433
 	FacStatusIOptionOnlyAllowed                      = 0250733
 	FacStatusPlacementFieldNotAllowed                = 0252133
+	FacStatusIncorrectPrivacyKey                     = 0252533
 	FacStatusIncorrectReadKey                        = 0253333
 	FacStatusFileNotCatalogedWithReadKey             = 0253433
 	FacStatusRelativeFCycleConflict                  = 0253733
