@@ -23,11 +23,10 @@ type FixedFileCycleInfo struct {
 	FileFlags                FileFlags
 	PCHARFlags               PCHARFlags
 	AssignMnemonic           string
-	InitialSmoqueLink        uint64
+	InitialSMOQUELink        uint64
 	NumberOfTimesAssigned    uint64
 	InhibitFlags             InhibitFlags
 	AssignedIndicator        uint64
-	AbsoluteFCycle           uint64
 	TimeOfLastReference      uint64
 	TimeCataloged            uint64
 	InitialGranulesReserved  uint64
@@ -105,11 +104,11 @@ func (fci *FixedFileCycleInfo) populateFromMainItems(mainItems [][]pkg.Word36) {
 	fci.FileFlags.ExtractFrom(mainItems[0][014].GetS3())
 	fci.PCHARFlags.ExtractFrom(mainItems[0][015].GetS1())
 	fci.AssignMnemonic = strings.TrimRight(mainItems[0][016].ToStringAsFieldata(), " ")
-	fci.InitialSmoqueLink = mainItems[0][017].GetH1()
+	fci.InitialSMOQUELink = mainItems[0][017].GetH1()
 	fci.NumberOfTimesAssigned = mainItems[0][017].GetH2()
 	fci.InhibitFlags.ExtractFrom(mainItems[0][021].GetS2())
 	fci.AssignedIndicator = mainItems[0][021].GetT2()
-	fci.AbsoluteFCycle = mainItems[0][021].GetT3()
+	fci.AbsoluteFileCycle = uint(mainItems[0][021].GetT3())
 	fci.TimeOfLastReference = mainItems[0][022].GetW()
 	fci.TimeCataloged = mainItems[0][023].GetW()
 	fci.InitialGranulesReserved = mainItems[0][024].GetH1()
@@ -117,8 +116,6 @@ func (fci *FixedFileCycleInfo) populateFromMainItems(mainItems [][]pkg.Word36) {
 	fci.HighestGranuleAssigned = mainItems[0][026].GetH1()
 	fci.HighestTrackWritten = mainItems[0][027].GetH1()
 	fci.UnitSelectionIndicators.ExtractFrom(mainItems[0][033].GetH1())
-
-	fci.AbsoluteFCycle = mainItems[1][07].GetT3()
 	fci.BackupInfo.TimeBackupCreated = mainItems[1][010].GetW()
 	fci.BackupInfo.FASBits = mainItems[1][011].GetS2()
 	fci.BackupInfo.NumberOfTextBlocks = mainItems[1][011].GetH2()

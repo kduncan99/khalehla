@@ -18,11 +18,10 @@ type RemovableFileCycleInfo struct {
 	FileFlags                FileFlags
 	PCHARFlags               PCHARFlags
 	AssignMnemonic           string
-	InitialSmoqueLink        uint64
+	InitialSMOQUELink        uint64
 	NumberOfTimesAssigned    uint64
 	InhibitFlags             InhibitFlags
 	AssignedIndicator        uint64
-	AbsoluteFCycle           uint64
 	TimeOfLastReference      uint64
 	TimeCataloged            uint64
 	InitialGranulesReserved  uint64
