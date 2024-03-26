@@ -96,6 +96,64 @@ func NewExecRunControlEntry(
 		0)
 }
 
+func (rce *RunControlEntry) DeleteUseItem(
+	filename string,
+) {
+	delete(rce.UseItems, filename)
+}
+
+// TODO obsolete?
+//// FindFacilitiesItem takes a qualifier-resolved FileSpecification and attempts to find an associated facilities item.
+//// If checkUseItems is true, we loop through UseItems if and as appropriate as part of the search.
+//// If return nil for facItem, there is not associated assigned file.
+//// If we return false for foundUseItem, we did not find a use item (or were not asked to do so).
+//// Any combination of nil or facItem, and true or false, are possible.
+//func (rce *RunControlEntry) FindFacilitiesItem(
+//	fileSpec *FileSpecification,
+//	checkUseItems bool,
+//) (facItem FacilitiesItem, foundUseItem bool) {
+//	fileSpec = nil
+//	foundUseItem = false
+//	effectiveSpec := fileSpec
+//
+//	if checkUseItems {
+//		for effectiveSpec.CouldBeInternalName() {
+//			useItem, ok := rce.UseItems[facItem.GetFilename()]
+//			if ok {
+//				foundUseItem = true
+//				effectiveSpec = useItem.FileSpecification
+//			} else {
+//				break
+//			}
+//		}
+//	}
+//
+//	for _, fi := range rce.FacilityItems {
+//		if effectiveSpec.MatchesFacilitiesItem(fi) {
+//			facItem = fi
+//			return
+//		}
+//	}
+//
+//	return
+//}
+
+// FindUseItem checks the given fileSpec, and if it refers to a use item, we return that use item.
+// Otherwise, we return nil.
+func (rce *RunControlEntry) FindUseItem(
+	fileSpec *FileSpecification,
+) (useItem *UseItem) {
+	if fileSpec.CouldBeInternalName() {
+		useItem, ok := rce.UseItems[fileSpec.Filename]
+		if ok {
+			return useItem
+		}
+	}
+	return nil
+}
+
+// HasPrivilege indicates whether (for fundamental security) the run has a particular privilege.
+// The exec always has all privileges.
 func (rce *RunControlEntry) HasPrivilege(privilege Privilege) bool {
 	if rce.IsExec() {
 		return true
@@ -149,6 +207,38 @@ func (rce *RunControlEntry) PostToPrint(text string, lineSkip uint) {
 
 func (rce *RunControlEntry) PostToTailSheet(message string) {
 	// TODO
+}
+
+// ResolveFileSpecification follows use item table to find the final external file name
+// entry which applies to the caller, and fills in an effective qualifier if necessary.
+func (rce *RunControlEntry) ResolveFileSpecification(
+	fileSpecification *FileSpecification,
+	checkUseItems bool,
+) *FileSpecification {
+	result := fileSpecification
+	if checkUseItems {
+		for result.CouldBeInternalName() {
+			useItem, ok := rce.UseItems[result.Filename]
+			if !ok {
+				break
+			}
+
+			result = useItem.FileSpecification
+		}
+	}
+
+	if len(result.Qualifier) == 0 {
+		var qual string
+		if result.HasAsterisk {
+			qual = rce.ImpliedQualifier
+		} else {
+			qual = rce.DefaultQualifier
+		}
+		result = CopyFileSpecification(result)
+		result.Qualifier = qual
+	}
+
+	return result
 }
 
 func (rce *RunControlEntry) Dump(dest io.Writer, indent string) {

@@ -65,6 +65,7 @@ func importTemplates() map[kexec.FacStatusCode]*FacStatusMessageTemplate {
 
 	// warning
 	importWarningTemplate(result, kexec.FacStatusFileAlreadyAssigned, "File is already assigned.")
+	importWarningTemplate(result, kexec.FacStatusFilenameNotKnown, "Filename not known to this run.")
 	importWarningTemplate(result, kexec.FacStatusFilenameNotUnique, "Filename not unique.")
 
 	// error

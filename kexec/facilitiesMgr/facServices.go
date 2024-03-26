@@ -83,7 +83,7 @@ func (mgr *FacilitiesManager) AssignFile(
 		}
 	}
 
-	effectiveFSpec := mgr.resolveFileSpecification(rce, fileSpecification)
+	effectiveFSpec := rce.ResolveFileSpecification(fileSpecification, true)
 
 	// check for option - branch on A, C/P, T, or none of the previous
 	aOpt := optionWord&kexec.AOption != 0
@@ -151,7 +151,7 @@ func (mgr *FacilitiesManager) CatalogFile(
 	facResult = NewFacResult()
 	resultCode = 0
 
-	effectiveFSpec := mgr.resolveFileSpecification(rce, fileSpecification)
+	effectiveFSpec := rce.ResolveFileSpecification(fileSpecification, true)
 
 	// See if there is already a fileset
 	mm := mgr.exec.GetMFDManager().(*mfdMgr.MFDManager)
@@ -265,9 +265,37 @@ func CheckIllegalOptions(
 	return ok
 }
 
+// FreeFile releases a file or a use item (or some combination thereof) from the current run.
+// Behavior (assume cycles 1, 2, and 3 exist):
+//
+//	asg t. free t(0), t., t(-0), t(+0), t(3) all work
+//	asg t(3). ONLY free t(3) works
+//	asg t(2). ONLY free t(2) works
+//	asg t(-1). free t(-1) and t(2) works
+//
+// Options
+//
+//	A - releases the internal use filename, but leaves the attached file assigned
+//	B - same as A, but if no other use names are attached, the external file is free'd
+//	D - deletes and frees the file if cataloged, frees it if temporary, prevents cataloging if C or U option assign
+//	I - inhibits cataloging for C or U option assign
+//	R - releases the file, but maintains all use names (C/U options cause catalog to take effect here)
+//	S - releases the file from the run, but keeps the tape unit assigned
+//	X - releases exclusive use if assigned A or X; otherwise releases the file
+//
+// Mass storage files to be cataloged:    Blank, A, B, D, I, R, X*
+// Already cataloged mass storage files:  Blank, A, B, D, R, X
+// Temporary mass storage files:          Blank, A, B, D, R, X*
+// Tape files to be cataloged:            Blank, A, B, D, I, R, S
+// Already cataloged tape files:          Blank, A, B, D, R, S
+// Temporary tape files:                  Blank, A, B, D, R, S
+// Tape devices:                          Blank, A, B, D, R, X*
+// Internal file name:                    Blank, A, B, R, S, X*
+// * Allowed, but has no effect
 func (mgr *FacilitiesManager) FreeFile(
 	rce *kexec.RunControlEntry,
-	fileSpecification kexec.FileSpecification,
+	sourceIsExecRequest bool,
+	fileSpecification *kexec.FileSpecification,
 	optionWord uint64,
 	operandFields [][]string,
 ) (facResult *FacStatusResult, resultCode uint64) {
@@ -278,11 +306,52 @@ func (mgr *FacilitiesManager) FreeFile(
 	facResult = NewFacResult()
 	resultCode = 0
 
-	// TODO implement FreeFile()
-
-	if resultCode&0_400000_000000 == 0 {
-		facResult.PostMessage(kexec.FacStatusComplete, []string{"FREE"})
+	if !mgr.checkSubFields(operandFields, asgDiskFSIs) {
+		facResult.PostMessage(kexec.FacStatusUndefinedFieldOrSubfield, nil)
+		resultCode |= 0_600000_000000
+		klog.LogTraceF("FacMgr", "FreeFile exit resultCode %012o", resultCode)
+		return
 	}
+
+	validMask := uint64(kexec.AOption | kexec.BOption | kexec.DOption |
+		kexec.IOption | kexec.ROption | kexec.SOption | kexec.XOption)
+	if !CheckIllegalOptions(rce, optionWord, validMask, facResult, sourceIsExecRequest) {
+		resultCode = 0_600000_000000
+		return
+	}
+
+	effectiveSpec := fileSpecification
+	aOpt := optionWord&kexec.AOption != 0
+	bOpt := optionWord&kexec.BOption != 0
+
+	// Did the caller specify a use name?
+	useItem := rce.FindUseItem(fileSpecification)
+	if useItem != nil {
+		if aOpt || bOpt {
+			// release the use item only
+			rce.DeleteUseItem(fileSpecification.Filename)
+			if bOpt {
+				// If there is a fac item, and if it has no other use items, release that as well.
+				// TODO releaseFacItem(useItem.FileSpecification) (do not resolve)
+			}
+
+			facResult.PostMessage(kexec.FacStatusComplete, []string{"FREE"})
+			return
+		}
+
+		// chase use items to find an effective fileSpec then drop through
+		effectiveSpec = rce.ResolveFileSpecification(effectiveSpec, true)
+	}
+
+	if aOpt || bOpt {
+		klog.LogInfoF("FacMgr", "A or B option on non-internal name [%v]", fileSpecification.ToString())
+		facResult.PostMessage(kexec.FacStatusInternalNameRequired, nil)
+		resultCode |= 0_400000_000000
+		return
+	}
+
+	// TODO releaseFacItem(effectiveSpec) (do not resolve)
+
 	return
 }
 

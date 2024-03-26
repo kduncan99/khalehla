@@ -181,6 +181,9 @@ var catRemovableFSIs = newFieldSubfieldIndices().
 	add(1, 3).
 	addAll(2)
 
+var freeFSIs = newFieldSubfieldIndices().
+	add(0, 0)
+
 var useFSIs = newFieldSubfieldIndices().
 	add(0, 0).
 	add(1, 0)
@@ -270,7 +273,7 @@ func checkIllegalOptionCombination(
 						ok = false
 					}
 				}
-				if rightOpt == kexec.ZOption {
+				if rightBit == kexec.ZOption {
 					break
 				} else {
 					rightBit >>= 1
@@ -405,36 +408,6 @@ func (mgr *FacilitiesManager) getSubField(operandFields [][]string, fieldIndex i
 	} else {
 		return ""
 	}
-}
-
-// resolveFileSpecification follows use item table to find the final external file name
-// entry which applies to the caller, and fills in an effective qualifier if necessary.
-func (mgr *FacilitiesManager) resolveFileSpecification(
-	rce *kexec.RunControlEntry,
-	fileSpecification *kexec.FileSpecification,
-) *kexec.FileSpecification {
-	result := fileSpecification
-	for result.CouldBeInternalName() {
-		useItem, ok := rce.UseItems[result.Filename]
-		if !ok {
-			break
-		}
-
-		result = useItem.FileSpecification
-	}
-
-	if len(result.Qualifier) == 0 {
-		var qual string
-		if result.HasAsterisk {
-			qual = rce.ImpliedQualifier
-		} else {
-			qual = rce.DefaultQualifier
-		}
-		result = kexec.CopyFileSpecification(result)
-		result.Qualifier = qual
-	}
-
-	return result
 }
 
 // selectEquipmentModel accepts an equipment mnemonic (likely from a control statement)
@@ -668,6 +641,13 @@ func (mgr *FacilitiesManager) assignCatalogedFixedFileToRun(
 	// (except file-already-assigned - we should already have taken care of that)
 	// TODO
 
+	// Accelerate the fc info
+	mfdResult := mgr.exec.GetMFDManager().(*mfdMgr.MFDManager).AccelerateFileCycle(fcInfo.FileCycleIdentifier)
+	if mfdResult != mfdMgr.MFDSuccessful {
+		mgr.exec.Stop(kexec.StopFacilitiesComplex)
+		return
+	}
+
 	// Create facility item and add it to the rce
 	relCycle := 0
 	if fileSpecification.HasFileCycleSpecification() && fileSpecification.FileCycleSpec.IsRelative() {
@@ -740,7 +720,7 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 	if fileSpecification.HasFileCycleSpecification() &&
 		fileSpecification.FileCycleSpec.IsRelative() &&
 		*fileSpecification.FileCycleSpec.AbsoluteCycle != 0 {
-		// E:252033 F-cycle of +1 is illegal with A option.
+		// TODO E:252033 F-cycle of +1 is illegal with A option.
 
 		// TODO assignCatalogedFile() handle relative file cycle
 		// The following needs to be excised into a separate function so other top-level assign functions can use it.
@@ -910,14 +890,14 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 				if !prevFacItem.IsDisk() {
 					facResult.PostMessage(kexec.FacStatusAttemptToChangeGenericType, nil)
 					resultCode |= 0_600000_000000
-					klog.LogInfoF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
+					klog.LogTraceF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 					return
 				}
 			} else if usage == config.EquipmentUsageTape {
 				if !prevFacItem.IsTape() {
 					facResult.PostMessage(kexec.FacStatusAttemptToChangeGenericType, nil)
 					resultCode |= 0_600000_000000
-					klog.LogInfoF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
+					klog.LogTraceF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 					return
 				}
 			}
@@ -927,7 +907,7 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 
 		facResult.PostMessage(kexec.FacStatusFileAlreadyAssigned, nil)
 		resultCode |= 0_100000_000000
-		klog.LogInfoF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
+		klog.LogTraceF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 		return
 	}
 
@@ -937,14 +917,14 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 		allowedOpts := uint64(kexec.IOption | kexec.TOption | kexec.ZOption)
 		if !CheckIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
 			resultCode |= 0_600000_000000
-			klog.LogInfoF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
+			klog.LogTraceF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 			return
 		}
 
 		if !mgr.checkSubFields(operandFields, asgDiskFSIs) {
 			facResult.PostMessage(kexec.FacStatusUndefinedFieldOrSubfield, nil)
 			resultCode |= 0_600000_000000
-			klog.LogInfoF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
+			klog.LogTraceF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 			return
 		}
 	} else if usage == config.EquipmentUsageTape {
@@ -954,14 +934,14 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 			kexec.TOption | kexec.VOption | kexec.WOption | kexec.XOption | kexec.ZOption)
 		if !CheckIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
 			resultCode |= 0_600000_000000
-			klog.LogInfoF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
+			klog.LogTraceF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 			return
 		}
 
 		if !mgr.checkSubFields(operandFields, asgTapeFSIs) {
 			facResult.PostMessage(kexec.FacStatusUndefinedFieldOrSubfield, nil)
 			resultCode |= 0_600000_000000
-			klog.LogInfoF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
+			klog.LogTraceF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 			return
 		}
 	}
@@ -971,7 +951,7 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 		if facItem.GetFilename() == fileSpecification.Filename {
 			facResult.PostMessage(kexec.FacStatusFilenameNotUnique, nil)
 			resultCode |= 0_004000_000000
-			klog.LogInfoF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
+			klog.LogTraceF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 			break
 		}
 	}
@@ -989,7 +969,7 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 		// TODO check for tape unit availability (hold condition)
 	}
 
-	klog.LogInfoF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
+	klog.LogTraceF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 	return
 }
 

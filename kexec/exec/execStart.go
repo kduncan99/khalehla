@@ -38,6 +38,7 @@ func (e *Exec) copyTapeFile(tapeFileName string, systemFileName string) {
 //	SYS$*RUN$
 //	SYS$*RLIB$
 func (e *Exec) loadSystemLibrary() {
+	klog.LogTrace("Exec", "loadSystemLibrary")
 	reelNumber := ""
 	for !kexec.IsValidReelNumber(reelNumber) {
 		msg := "Enter reel number of system library tape"
@@ -53,11 +54,13 @@ func (e *Exec) loadSystemLibrary() {
 	}
 
 	if e.stopFlag {
+		klog.LogTrace("Exec", "loadSystemLibrary early exit")
 		return
 	}
 
 	stat := e.callCSI(fmt.Sprintf("@ASG,TJ LIB.,%v,%v", e.configuration.TapeDefaultMnemonic, reelNumber))
 	if e.stopFlag {
+		klog.LogTrace("Exec", "loadSystemLibrary early exit")
 		return
 	} else if stat&0_400000_000000 != 0 {
 		klog.LogFatalF("Exec", "Cannot assign tape unit for library tape:%012o", stat)
@@ -70,6 +73,7 @@ func (e *Exec) loadSystemLibrary() {
 		e.configuration.LibInitialReserve,
 		e.configuration.LibMaximumSize))
 	if e.stopFlag {
+		klog.LogTrace("Exec", "loadSystemLibrary early exit")
 		return
 	} else if stat&0_400000_000000 != 0 {
 		klog.LogFatalF("Exec", "Cannot catalog SYS$*LIB$ file:%012o", stat)
@@ -79,6 +83,7 @@ func (e *Exec) loadSystemLibrary() {
 
 	e.copyTapeFile("LIB", "SYS$*LIB$")
 	if e.stopFlag {
+		klog.LogTrace("Exec", "loadSystemLibrary early exit")
 		return
 	}
 
@@ -87,6 +92,7 @@ func (e *Exec) loadSystemLibrary() {
 		e.configuration.RunInitialReserve,
 		e.configuration.RunMaximumSize))
 	if e.stopFlag {
+		klog.LogTrace("Exec", "loadSystemLibrary early exit")
 		return
 	} else if stat&0_400000_000000 != 0 {
 		klog.LogFatalF("Exec", "Cannot catalog SYS$*RUN$ file:%012o", stat)
@@ -96,6 +102,7 @@ func (e *Exec) loadSystemLibrary() {
 
 	stat = e.callCSI("@ASG,AX SYS$*RUN$")
 	if e.stopFlag {
+		klog.LogTrace("Exec", "loadSystemLibrary early exit")
 		return
 	} else if stat&0_400000_000000 != 0 {
 		klog.LogFatalF("Exec", "Cannot assign SYS$*RUN$ file:%012o", stat)
@@ -105,12 +112,14 @@ func (e *Exec) loadSystemLibrary() {
 
 	e.copyTapeFile("LIB", "SYS$*RUN$")
 	if e.stopFlag {
+		klog.LogTrace("Exec", "loadSystemLibrary early exit")
 		return
 	}
 
 	stat = e.callCSI(fmt.Sprintf("@CAT,G SYS$*RLIB$(+1),%v/128/TRK/9999",
 		e.configuration.MassStorageDefaultMnemonic))
 	if e.stopFlag {
+		klog.LogTrace("Exec", "loadSystemLibrary early exit")
 		return
 	} else if stat&0_400000_000000 != 0 {
 		klog.LogFatalF("Exec", "Cannot catalog SYS$*RLIB$ file:%012o", stat)
@@ -120,6 +129,7 @@ func (e *Exec) loadSystemLibrary() {
 
 	stat = e.callCSI("@ASG,AX SYS$*RLIB$")
 	if e.stopFlag {
+		klog.LogTrace("Exec", "loadSystemLibrary early exit")
 		return
 	} else if stat&0_400000_000000 != 0 {
 		klog.LogFatalF("Exec", "Cannot assign SYS$*RLIB$ file:%012o", stat)
@@ -129,6 +139,7 @@ func (e *Exec) loadSystemLibrary() {
 
 	e.copyTapeFile("LIB", "SYS$*RLIB$")
 	if e.stopFlag {
+		klog.LogTrace("Exec", "loadSystemLibrary early exit")
 		return
 	}
 
@@ -136,6 +147,7 @@ func (e *Exec) loadSystemLibrary() {
 	e.callCSI("@FREE,X SYS$*LIB$")
 	e.callCSI("@FREE,X SYS$*RUN$")
 	e.callCSI("@FREE,X SYS$*RLIB$")
+	klog.LogTrace("Exec", "loadSystemLibrary normal exit")
 }
 
 // performInitialBoot is invoked on the first session initiated by the application.
@@ -157,15 +169,16 @@ func (e *Exec) performInitialBoot() {
 		}
 
 		// Catalog SYS$*DLOC$
-		stat := e.callCSI(fmt.Sprintf("@CAT,G SYS$*DLOC$(+1)/RDKDLC/WRKDLC,%v",
-			e.configuration.DLOCAssignMnemonic))
-		if e.stopFlag {
-			return
-		} else if stat&0_400000_000000 != 0 {
-			klog.LogFatalF("Exec", "Cannot catalog SYS$*DLOC$ file:%012o", stat)
-			e.Stop(kexec.StopFileAssignErrorOccurredDuringSystemInitialization)
-			return
-		}
+		// TODO uncomment
+		//stat := e.callCSI(fmt.Sprintf("@CAT,G SYS$*DLOC$(+1)/RDKDLC/WRKDLC,%v",
+		//	e.configuration.DLOCAssignMnemonic))
+		//if e.stopFlag {
+		//	return
+		//} else if stat&0_400000_000000 != 0 {
+		//	klog.LogFatalF("Exec", "Cannot catalog SYS$*DLOC$ file:%012o", stat)
+		//	e.Stop(kexec.StopFileAssignErrorOccurredDuringSystemInitialization)
+		//	return
+		//}
 
 	} else {
 		e.mfdMgr.RecoverMassStorage()

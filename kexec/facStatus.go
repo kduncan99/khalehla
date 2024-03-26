@@ -35,6 +35,7 @@ const (
 	FacStatusRunHeldForDisketteMount                 = 002233
 	FacStatusComplete                                = 002333
 	FacStatusFileAlreadyAssigned                     = 0120133
+	FacStatusFilenameNotKnown                        = 0120433
 	FacStatusFilenameNotUnique                       = 0120533
 	FacStatusMnemonicIsNotConfigured                 = 0201033
 	FacStatusIllegalOptionCombination                = 0201433

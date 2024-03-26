@@ -295,6 +295,38 @@ func (fs *FileSpecification) HasFileCycleSpecification() bool {
 	return fs.FileCycleSpec != nil
 }
 
+//TODO obsolete?
+//func (fs *FileSpecification) Matches(fs2 *FileSpecification) bool {
+//	if fs.Qualifier == fs2.Qualifier && fs.Filename == fs2.Filename {
+//		if fs.FileCycleSpec != nil && fs2.FileCycleSpec != nil &&  fs.FileCycleSpec.Matches(fs2.FileCycleSpec) {
+//			return true
+//		} else if fs.FileCycleSpec == nil && fs2.FileCycleSpec == nil {
+//			return true
+//		}
+//	}
+//	return false
+//}
+
+//TODO obsolete?
+//func (fs *FileSpecification) MatchesFacilitiesItem(facItem FacilitiesItem) bool {
+//	if fs.Qualifier == facItem.GetQualifier() && fs.Filename == facItem.GetFilename() {
+//		if fs.FileCycleSpec != nil {
+//			if fs.FileCycleSpec.IsRelative() {
+//				if *fs.FileCycleSpec.RelativeCycle != 0 {
+//					return *fs.FileCycleSpec.RelativeCycle == facItem.GetRelativeCycle()
+//				} else {
+//					// relative cycle 0, which will not match anything for a fac item search
+//					return false
+//				}
+//			} else if fs.FileCycleSpec.IsAbsolute() {
+//			} else {
+//			}
+//		}
+//	}
+//
+//	return false
+//}
+
 func (fs *FileSpecification) ToString() string {
 	str := fs.Qualifier
 	if fs.HasAsterisk {

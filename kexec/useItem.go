@@ -4,6 +4,9 @@
 
 package kexec
 
+// UseItem for keeping track of @USE for a run.
+// Ensure that the fileSpec has a qualifier...
+// i.e., resolve implied or default qualifiers before posting the useItem.
 type UseItem struct {
 	InternalFilename  string
 	FileSpecification *FileSpecification

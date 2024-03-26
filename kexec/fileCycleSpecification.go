@@ -39,3 +39,13 @@ func (fcs *FileCycleSpecification) IsRelative() bool {
 func (fcs *FileCycleSpecification) IsAbsolute() bool {
 	return fcs.AbsoluteCycle != nil
 }
+
+func (fcs *FileCycleSpecification) Matches(fcs2 *FileCycleSpecification) bool {
+	if fcs.IsRelative() && fcs2.IsRelative() && *fcs.RelativeCycle == *fcs2.RelativeCycle {
+		return true
+	} else if fcs.IsAbsolute() && fcs2.IsAbsolute() && *fcs.AbsoluteCycle == *fcs2.AbsoluteCycle {
+		return true
+	} else {
+		return false
+	}
+}
