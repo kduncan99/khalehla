@@ -1486,7 +1486,7 @@ func populateMassStorageMainItem0(
 
 	mainItem0[016].FromStringToFieldata(mnemonic)
 
-	mainItem0[021].SetH1(inhibitFlags.Compose())
+	mainItem0[021].SetS2(inhibitFlags.Compose())
 	mainItem0[021].SetT3(absoluteCycle)
 
 	swTimeNow := kexec.GetSWTimeFromSystemTime(time.Now())

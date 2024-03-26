@@ -39,22 +39,8 @@ func (mgr *MFDManager) AccelerateFileCycle(
 	}
 
 	// increment total times assigned *and* assigned indicator
-	fmt.Printf("[%v%v*%v%v]:was %06o %06o\n",
-		mainItem0[1].ToStringAsFieldata(),
-		mainItem0[2].ToStringAsFieldata(),
-		mainItem0[3].ToStringAsFieldata(),
-		mainItem0[4].ToStringAsFieldata(),
-		mainItem0[017].GetH1(),
-		mainItem0[021].GetT2()) // TODO remove
 	mainItem0[017].SetH1(mainItem0[017].GetH1() + 1)
 	mainItem0[021].SetT2(mainItem0[021].GetT2() + 1)
-	fmt.Printf("[%v%v*%v%v]:now %06o %06o\n",
-		mainItem0[1].ToStringAsFieldata(),
-		mainItem0[2].ToStringAsFieldata(),
-		mainItem0[3].ToStringAsFieldata(),
-		mainItem0[4].ToStringAsFieldata(),
-		mainItem0[017].GetH1(),
-		mainItem0[021].GetT2()) // TODO remove
 	mgr.markDirectorySectorDirty(mainItem0Addr)
 
 	_, err = mgr.loadFileAllocationSet(mainItem0Addr)
