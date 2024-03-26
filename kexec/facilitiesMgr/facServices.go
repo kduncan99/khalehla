@@ -108,6 +108,7 @@ func (mgr *FacilitiesManager) AssignFile(
 		facResult.PostMessage(kexec.FacStatusComplete, []string{"ASG"})
 	}
 
+	mgr.exec.GetMFDManager().(*mfdMgr.MFDManager).PurgeDirectory()
 	klog.LogTraceF(rce.RunId, "AssignFile resultCode %012o", resultCode)
 	return
 }
@@ -157,6 +158,7 @@ func (mgr *FacilitiesManager) CatalogFile(
 	mm := mgr.exec.GetMFDManager().(*mfdMgr.MFDManager)
 	fsIdent, mfdResult := mm.GetFileSetIdentifier(effectiveFSpec.Qualifier, effectiveFSpec.Filename)
 	if mfdResult == mfdMgr.MFDInternalError {
+		klog.LogTrace("FacMgr", "CatalogFile early exit")
 		return
 	}
 
@@ -221,6 +223,7 @@ func (mgr *FacilitiesManager) CatalogFile(
 	}
 
 	mm.PurgeDirectory()
+	klog.LogTraceF(rce.RunId, "CatalogFile resultCode %012o", resultCode)
 	return
 }
 

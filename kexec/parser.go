@@ -139,6 +139,12 @@ func (pi *Parser) ResetPosition() {
 	pi.mark = 0
 }
 
+func (pi *Parser) SkipNext() {
+	if !pi.IsAtEnd() {
+		pi.index++
+	}
+}
+
 func (pi *Parser) SkipSpaces() int {
 	count := 0
 	for !pi.IsAtEnd() {

@@ -169,16 +169,15 @@ func (e *Exec) performInitialBoot() {
 		}
 
 		// Catalog SYS$*DLOC$
-		// TODO uncomment
-		//stat := e.callCSI(fmt.Sprintf("@CAT,G SYS$*DLOC$(+1)/RDKDLC/WRKDLC,%v",
-		//	e.configuration.DLOCAssignMnemonic))
-		//if e.stopFlag {
-		//	return
-		//} else if stat&0_400000_000000 != 0 {
-		//	klog.LogFatalF("Exec", "Cannot catalog SYS$*DLOC$ file:%012o", stat)
-		//	e.Stop(kexec.StopFileAssignErrorOccurredDuringSystemInitialization)
-		//	return
-		//}
+		stat := e.callCSI(fmt.Sprintf("@CAT,G SYS$*DLOC$(+1)/RDKDLC/WRKDLC,%v",
+			e.configuration.DLOCAssignMnemonic))
+		if e.stopFlag {
+			return
+		} else if stat&0_400000_000000 != 0 {
+			klog.LogFatalF("Exec", "Cannot catalog SYS$*DLOC$ file:%012o", stat)
+			e.Stop(kexec.StopFileAssignErrorOccurredDuringSystemInitialization)
+			return
+		}
 
 	} else {
 		e.mfdMgr.RecoverMassStorage()

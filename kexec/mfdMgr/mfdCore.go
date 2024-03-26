@@ -1127,7 +1127,7 @@ func (mgr *MFDManager) getMFDBlock(address kexec.MFDRelativeAddress) ([]pkg.Word
 	ldatAndTrack := address & 0_007777_777700
 	data, ok := mgr.cachedTracks[ldatAndTrack]
 	if !ok {
-		klog.LogFatalF("MFDMgr", "getMFDBlock address:%v is not in cache", address)
+		klog.LogFatalF("MFDMgr", "getMFDBlock address:%012o is not in cache", address)
 		mgr.exec.Stop(kexec.StopDirectoryErrors)
 		return nil, fmt.Errorf("internal error")
 	}
@@ -1149,7 +1149,7 @@ func (mgr *MFDManager) getMFDSector(address kexec.MFDRelativeAddress) ([]pkg.Wor
 	ldatAndTrack := address & 0_007777_777700
 	data, ok := mgr.cachedTracks[ldatAndTrack]
 	if !ok {
-		klog.LogFatalF("MFDMgr", "getMFDSector address:%v is not in cache", address)
+		klog.LogFatalF("MFDMgr", "getMFDSector address:%012o is not in cache", address)
 		mgr.exec.Stop(kexec.StopDirectoryErrors)
 		return nil, fmt.Errorf("internal error")
 	}

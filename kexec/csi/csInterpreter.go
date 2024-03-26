@@ -97,12 +97,12 @@ func HandleControlStatement(
 		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
 		return
 
-	case "@CAT":
+	case "CAT":
 		facResult, resultCode = handleCat(&pkt)
 		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
 		return
 
-	case "@CKPT":
+	case "CKPT":
 		if pkt.isTip || source == CSTSourceERCSI {
 			klog.LogWarningF("CSKeyin",
 				"CS '%v' not allowed for TIP or ER CSI$", rce.RunId, pcs.originalStatement)
@@ -118,12 +118,12 @@ func HandleControlStatement(
 		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
 		return
 
-	case "@FREE":
+	case "FREE":
 		facResult, resultCode = handleFree(&pkt)
 		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
 		return
 
-	case "@LOG":
+	case "LOG":
 		if source == CSTSourceERCSI {
 			klog.LogWarningF("CSKeyin",
 				"CS '%v' not allowed for ER CSI$", rce.RunId, pcs.originalStatement)
@@ -139,22 +139,22 @@ func HandleControlStatement(
 		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
 		return
 
-	case "@MODE":
+	case "MODE":
 		facResult, resultCode = handleMode(&pkt)
 		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
 		return
 
-	case "@QUAL":
+	case "QUAL":
 		facResult, resultCode = handleQual(&pkt)
 		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
 		return
 
-	case "@RSTRT":
+	case "RSTRT":
 		facResult, resultCode = handleRstrt(&pkt)
 		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
 		return
 
-	case "@START":
+	case "START":
 		if source == CSTSourceERCSI {
 			klog.LogWarningF("CSKeyin",
 				"CS '%v' not allowed for ER CSI$", rce.RunId, pcs.originalStatement)
@@ -170,7 +170,7 @@ func HandleControlStatement(
 		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
 		return
 
-	case "@SYM":
+	case "SYM":
 		if source == CSTSourceERCSI {
 			klog.LogWarningF("CSKeyin",
 				"CS '%v' not allowed for ER CSI$", rce.RunId, pcs.originalStatement)
@@ -186,7 +186,7 @@ func HandleControlStatement(
 		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
 		return
 
-	case "@SYMCN":
+	case "SYMCN":
 		if pkt.isTip || source == CSTSourceERCSI {
 			klog.LogWarningF("CSKeyin",
 				"CS '%v' not allowed for TIP or ER CSI$", rce.RunId, pcs.originalStatement)
@@ -202,7 +202,7 @@ func HandleControlStatement(
 		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
 		return
 
-	case "@USE":
+	case "USE":
 		facResult, resultCode = handleUse(&pkt)
 		klog.LogTraceF("CSI", "HandleControlStatement stat=%012o", resultCode)
 		return
@@ -210,7 +210,7 @@ func HandleControlStatement(
 
 	// syntax error
 	klog.LogWarningF("CSKeyin",
-		"CS '%v' invalid control statement", rce.RunId, pcs.originalStatement)
+		"[%v] CS '%v' invalid control statement", rce.RunId, pcs.originalStatement)
 	rce.PostContingency(012, 04, 040)
 
 	facResult = facilitiesMgr.NewFacResult()
@@ -264,7 +264,7 @@ func ParseControlStatement(
 		working = working[:ix]
 	}
 
-	// find masterspace
+	// find master-space
 	p := kexec.NewParser(working)
 	if p.IsAtEnd() || !p.ParseSpecificCharacter('@') {
 		// does not start with '@' - invalid statement
@@ -385,9 +385,11 @@ func ParseControlStatement(
 			opx++
 			opy = 0
 			cutSet = " /,"
+			p.SkipNext()
 			p.SkipSpaces()
 		} else {
 			opy++
+			p.SkipNext()
 			p.SkipSpaces()
 		}
 	}

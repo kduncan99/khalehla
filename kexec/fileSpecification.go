@@ -57,6 +57,10 @@ func (fs *FileSpecification) parseQualifierAndFilename(p *Parser) (fsCode FacSta
 				fs.HasAsterisk = true
 			}
 		}
+
+		if ch == '.' || ch == '(' || ch == '/' {
+			break
+		}
 	}
 
 	if len(fs.Filename) == 0 {
