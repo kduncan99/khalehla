@@ -81,7 +81,7 @@ func (mgr *MFDManager) allocateDirectorySector(
 	//		pack with the least number of sectors
 	//		anything available
 	chosenAddress := kexec.InvalidLink
-	chosenSectorsUsed := uint64(0)
+	chosenPackSectorsUsed := uint64(0)
 	for addr := range mgr.freeMFDSectors {
 		ldat := getLDATIndexFromMFDAddress(addr)
 		desc := mgr.fixedPackDescriptors[ldat]
@@ -93,9 +93,9 @@ func (mgr *MFDManager) allocateDirectorySector(
 				break
 			}
 
-			if desc.mfdSectorsUsed < chosenSectorsUsed {
+			if chosenAddress == kexec.InvalidLink || desc.mfdSectorsUsed < chosenPackSectorsUsed {
 				chosenAddress = addr
-				chosenSectorsUsed = desc.mfdSectorsUsed
+				chosenPackSectorsUsed = desc.mfdSectorsUsed
 			}
 		}
 	}
@@ -1347,20 +1347,23 @@ func (mgr *MFDManager) loadFileAllocationSet(
 		fileWordAddress := dadItem[02].GetW()
 		fileWordLimit := dadItem[03].GetW()
 		ex := 0
-		dx := 3
+		dx := 4
 		for ex < 8 && fileWordAddress < fileWordLimit {
 			devAddr := kexec.DeviceRelativeWordAddress(dadItem[dx].GetW())
 			words := dadItem[dx+1].GetW()
 			ldat := kexec.LDATIndex(dadItem[dx+2].GetH2())
 			if ldat != 0_400000 {
-				re := NewFileAllocation(hardware.TrackId(fileWordAddress/1792),
+				re := NewFileAllocation(
+					hardware.TrackId(fileWordAddress/1792),
 					hardware.TrackCount(words/1792),
 					ldat,
 					hardware.TrackId(devAddr/1792))
 				fae.mergeIntoFileAllocationSet(re)
 			}
+
+			fileWordAddress += words
 			ex++
-			dx++
+			dx += 3
 		}
 
 		dadAddr = kexec.MFDRelativeAddress(dadItem[0].GetW())
@@ -1813,7 +1816,7 @@ func (mgr *MFDManager) writeFileAllocationEntryUpdatesForFileCycle(mainItem0Addr
 						holeTracks := this.FileRegion.TrackId - nextTrackId
 						ey := ex*3 + 4
 
-						current[ey].SetW(uint64(nextTrackId) * 1792)
+						current[ey].SetW(0)
 						current[ey+1].SetW(uint64(holeTracks) * 1792)
 						// TODO if removable, set bit 16 in +02,H1
 						current[ey+2].SetH2(uint64(kexec.InvalidLDAT))
@@ -1827,7 +1830,7 @@ func (mgr *MFDManager) writeFileAllocationEntryUpdatesForFileCycle(mainItem0Addr
 					}
 				} else {
 					ey := ex*3 + 4
-					current[ey].SetW(uint64(this.FileRegion.TrackId) * 1792)
+					current[ey].SetW(uint64(this.DeviceTrackId) * 1792)
 					current[ey+1].SetW(uint64(this.FileRegion.TrackCount * 1792))
 					// TODO if removable, set bit 16 in +02,H1
 					current[ey+2].SetH2(uint64(this.LDATIndex))

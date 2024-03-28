@@ -1080,7 +1080,7 @@ func (mgr *FacilitiesManager) catalogCommon(
 	// If there isn't an existing fileset, create one.
 	mm := exec.GetMFDManager().(*mfdMgr.MFDManager)
 	if fileSetInfo == nil {
-		_, result := mm.CreateFileSet(
+		fsIdent, result := mm.CreateFileSet(
 			mfdMgr.FileTypeFixed,
 			fileSpecification.Qualifier,
 			fileSpecification.Filename,
@@ -1094,6 +1094,7 @@ func (mgr *FacilitiesManager) catalogCommon(
 			exec.Stop(kexec.StopFacilitiesComplex)
 			return false
 		}
+		fileSetInfo, _ = mm.GetFileSetInfo(fsIdent)
 	} else {
 		if !canCatalogFile(rce, fileSetInfo, fileSpecification, sourceIsExecRequest, facResult, resultCode) {
 			return false

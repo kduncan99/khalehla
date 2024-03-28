@@ -155,15 +155,19 @@ func (mgr *FacilitiesManager) CatalogFile(
 	effectiveFSpec := rce.ResolveFileSpecification(fileSpecification, true)
 
 	// See if there is already a fileset
+	var fsInfo *mfdMgr.FileSetInfo
 	mm := mgr.exec.GetMFDManager().(*mfdMgr.MFDManager)
 	fsIdent, mfdResult := mm.GetFileSetIdentifier(effectiveFSpec.Qualifier, effectiveFSpec.Filename)
 	if mfdResult == mfdMgr.MFDInternalError {
 		klog.LogTrace("FacMgr", "CatalogFile early exit")
 		return
+	} else if mfdResult == mfdMgr.MFDSuccessful {
+		fsInfo, mfdResult = mm.GetFileSetInfo(fsIdent)
+		if mfdResult == mfdMgr.MFDInternalError {
+			klog.LogTrace("FacMgr", "CatalogFile early exit")
+			return
+		}
 	}
-
-	var fsInfo *mfdMgr.FileSetInfo
-	fsInfo, mfdResult = mm.GetFileSetInfo(fsIdent)
 
 	// Resolve the mnemonic (or lack of one) to a short list of acceptable node models
 	// and a guide as to the usage of the model (sector, word, tape).
