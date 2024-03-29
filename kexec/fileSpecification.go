@@ -312,7 +312,7 @@ func (fs *FileSpecification) HasFileCycleSpecification() bool {
 //}
 
 //TODO obsolete?
-//func (fs *FileSpecification) MatchesFacilitiesItem(facItem FacilitiesItem) bool {
+//func (fs *FileSpecification) MatchesFacilitiesItem(facItem IFacilitiesItem) bool {
 //	if fs.Qualifier == facItem.GetQualifier() && fs.Filename == facItem.GetFilename() {
 //		if fs.FileCycleSpec != nil {
 //			if fs.FileCycleSpec.IsRelative() {

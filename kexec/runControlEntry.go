@@ -51,7 +51,7 @@ type RunControlEntry struct {
 	RunType          RunType
 	Privileges       map[Privilege]bool
 	UseItems         map[string]*UseItem
-	FacilityItems    []FacilitiesItem
+	FacilityItems    []IFacilitiesItem
 }
 
 func newRunControlEntry(
@@ -75,7 +75,7 @@ func newRunControlEntry(
 		RunType:          runType,
 		Privileges:       make(map[Privilege]bool),
 		UseItems:         make(map[string]*UseItem),
-		FacilityItems:    make([]FacilitiesItem, 0),
+		FacilityItems:    make([]IFacilitiesItem, 0),
 	}
 }
 
@@ -111,7 +111,7 @@ func (rce *RunControlEntry) DeleteUseItem(
 //func (rce *RunControlEntry) FindFacilitiesItem(
 //	fileSpec *FileSpecification,
 //	checkUseItems bool,
-//) (facItem FacilitiesItem, foundUseItem bool) {
+//) (facItem IFacilitiesItem, foundUseItem bool) {
 //	fileSpec = nil
 //	foundUseItem = false
 //	effectiveSpec := fileSpec

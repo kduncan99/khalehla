@@ -859,7 +859,7 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 	// For temporary files, we ignore any provided read/write keys.
 	// Check fac items to see if an item already exists with the given specification.
 	alreadyAssigned := false
-	var prevFacItem kexec.FacilitiesItem
+	var prevFacItem kexec.IFacilitiesItem
 	for _, facItem := range rce.FacilityItems {
 		if facItem.GetQualifier() == fileSpecification.Qualifier &&
 			facItem.GetFilename() == fileSpecification.Filename {
@@ -971,6 +971,16 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 
 	klog.LogTraceF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 	return
+}
+
+// attachUnit attaches a unit (tape or disk) to a particular run.
+// Used primarily for attaching fixed/removable disk units to the exec (or rarely to a run),
+// or to attach tape units to a run (or sometimes to the exec).
+func (mgr *FacilitiesManager) attachUnit(
+	rce *kexec.RunControlEntry,
+	nodeId hardware.NodeIdentifier,
+) {
+
 }
 
 func (mgr *FacilitiesManager) assignToBeCatalogedFile(

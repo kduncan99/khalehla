@@ -9,8 +9,8 @@ import (
 	"io"
 )
 
-// FacilitiesItem structs are store in the RCE for all assigned facilities
-type FacilitiesItem interface {
+// IFacilitiesItem structs are store in the RCE for all assigned facilities
+type IFacilitiesItem interface {
 
 	// TODO does a fac item have an attached internal name?
 
