@@ -181,10 +181,11 @@ func (mgr *MFDManager) Dump(dest io.Writer, indent string) {
 	}
 
 	_, _ = fmt.Fprintf(dest, "%v  Assigned file allocations:\n", indent)
-	for _, fae := range mgr.acceleratedFileAllocations {
+	for _, faSet := range mgr.acceleratedFileAllocations {
+		highest, _ := faSet.GetHighestTrackAllocated()
 		_, _ = fmt.Fprintf(dest, "%v    mainItem:%012o 1stDAD:%012o upd:%v highestTrkAlloc:%012o\n",
-			indent, fae.MainItem0Address, fae.DadItem0Address&0_077777_777777, fae.IsUpdated, fae.HighestTrackAllocated)
-		for _, fileAlloc := range fae.FileAllocations {
+			indent, faSet.MainItem0Address, faSet.DadItem0Address&0_077777_777777, faSet.IsUpdated, highest)
+		for _, fileAlloc := range faSet.FileAllocations {
 			_, _ = fmt.Fprintf(dest, "%v      fileTrkId:%012o trkCount:%06o ldat:%06o devTrkId:%012o\n",
 				indent, fileAlloc.FileRegion.TrackId, fileAlloc.FileRegion.TrackCount, fileAlloc.LDATIndex, fileAlloc.DeviceTrackId)
 		}

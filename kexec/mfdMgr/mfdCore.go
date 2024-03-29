@@ -370,10 +370,6 @@ func (mgr *MFDManager) allocateSpecificTrack(
 
 	fileAlloc := NewFileAllocation(fileTrackId, trackCount, ldatIndex, deviceTrackId)
 	fas.mergeIntoFileAllocationSet(fileAlloc)
-
-	if fileTrackId > fas.HighestTrackAllocated {
-		fas.HighestTrackAllocated = fileTrackId
-	}
 	fas.IsUpdated = true
 
 	return nil
@@ -765,6 +761,7 @@ func (mgr *MFDManager) convertFileRelativeTrackId(
 	mainItem0Address kexec.MFDRelativeAddress,
 	fileTrackId hardware.TrackId,
 ) (kexec.LDATIndex, hardware.TrackId, error) {
+	klog.LogTraceF("MFDMgr", "convertFileRelativeTrackId(mainItem0Addr=%012o fileTid=%012o", mainItem0Address, fileTrackId)
 
 	fas, ok := mgr.acceleratedFileAllocations[mainItem0Address]
 	if !ok {
@@ -775,7 +772,8 @@ func (mgr *MFDManager) convertFileRelativeTrackId(
 
 	ldat := kexec.LDATIndex(0_400000)
 	devTrackId := hardware.TrackId(0)
-	if fileTrackId <= fas.HighestTrackAllocated {
+	highestAllocated, hasHighest := fas.GetHighestTrackAllocated()
+	if hasHighest && fileTrackId <= highestAllocated {
 		for _, fileAlloc := range fas.FileAllocations {
 			if fileTrackId < fileAlloc.FileRegion.TrackId {
 				// list is ascending - if we get here, there's no point in continuing
@@ -786,11 +784,13 @@ func (mgr *MFDManager) convertFileRelativeTrackId(
 				// found a good region - update results and stop looking
 				ldat = fileAlloc.LDATIndex
 				devTrackId = fileAlloc.DeviceTrackId + (fileTrackId - fileAlloc.FileRegion.TrackId)
+				klog.LogTraceF("MFDMgr", "convertFileRelativeTrackId returning ldat=%06o devTid=%012o", ldat, devTrackId)
 				return ldat, devTrackId, nil
 			}
 		}
 	}
 
+	klog.LogTraceF("MFDMgr", "convertFileRelativeTrackId returning ldat=%06o devTid=%012o", ldat, devTrackId)
 	return ldat, devTrackId, nil
 }
 

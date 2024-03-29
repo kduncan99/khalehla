@@ -12,23 +12,36 @@ import (
 // FileAllocationSet describes the current allocation of tracks to a particular file instance.
 // These exist in-memory for every file which is currently assigned.
 type FileAllocationSet struct {
-	DadItem0Address       kexec.MFDRelativeAddress
-	MainItem0Address      kexec.MFDRelativeAddress
-	IsUpdated             bool
-	HighestTrackAllocated hardware.TrackId
-	FileAllocations       []*FileAllocation // these are kept in order by TrackRegion.TrackId
+	DadItem0Address  kexec.MFDRelativeAddress
+	MainItem0Address kexec.MFDRelativeAddress
+	IsUpdated        bool
+	FileAllocations  []*FileAllocation // these are kept in order by TrackRegion.TrackId
 }
 
 func NewFileAllocationSet(
 	mainItem0Address kexec.MFDRelativeAddress,
 	dadItem0Address kexec.MFDRelativeAddress) *FileAllocationSet {
 	return &FileAllocationSet{
-		DadItem0Address:       dadItem0Address,
-		MainItem0Address:      mainItem0Address,
-		IsUpdated:             false,
-		HighestTrackAllocated: 0,
-		FileAllocations:       make([]*FileAllocation, 0),
+		DadItem0Address:  dadItem0Address,
+		MainItem0Address: mainItem0Address,
+		IsUpdated:        false,
+		FileAllocations:  make([]*FileAllocation, 0),
 	}
+}
+
+// GetHighestTrackAllocated calculates the highest track accounted for by the file allocations.
+// returns the trackId and ok==true if there are any allocations, or 0 and ok==false otherwise.
+func (fas *FileAllocationSet) GetHighestTrackAllocated() (trackId hardware.TrackId, ok bool) {
+	faCount := len(fas.FileAllocations)
+	if faCount > 0 {
+		lastFa := fas.FileAllocations[faCount-1]
+		trackId = hardware.TrackId(uint64(lastFa.FileRegion.TrackId)+uint64(lastFa.FileRegion.TrackCount)) - 1
+		ok = true
+	} else {
+		trackId = 0
+		ok = false
+	}
+	return
 }
 
 func (fas *FileAllocationSet) appendEntry(alloc *FileAllocation) {
