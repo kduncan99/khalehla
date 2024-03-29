@@ -973,16 +973,6 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 	return
 }
 
-// attachUnit attaches a unit (tape or disk) to a particular run.
-// Used primarily for attaching fixed/removable disk units to the exec (or rarely to a run),
-// or to attach tape units to a run (or sometimes to the exec).
-func (mgr *FacilitiesManager) attachUnit(
-	rce *kexec.RunControlEntry,
-	nodeId hardware.NodeIdentifier,
-) {
-
-}
-
 func (mgr *FacilitiesManager) assignToBeCatalogedFile(
 	rce *kexec.RunControlEntry,
 	sourceIsExecRequest bool,
@@ -1014,6 +1004,18 @@ func (mgr *FacilitiesManager) assignToBeCatalogedFile(
 	*/
 
 	return
+}
+
+// attachUnit attaches a unit (tape or disk) to a particular run.
+// Used primarily for attaching fixed/removable disk units to the exec (or rarely to a run),
+// or to attach tape units to a run (or sometimes to the exec).
+// It is the caller's responsibility to properly detach a unit before attaching it somewhere else.
+func (mgr *FacilitiesManager) attachUnit(
+	rce *kexec.RunControlEntry,
+	nodeId hardware.NodeIdentifier,
+) {
+	klog.LogTraceF("FacMgr", "attachUnit(nodeId=%v runid=%s)", nodeId, rce.RunId)
+	mgr.attachments[nodeId] = rce
 }
 
 func (mgr *FacilitiesManager) catalogCommon(
@@ -1353,6 +1355,23 @@ func (mgr *FacilitiesManager) catalogTapeFile(
 	return nil, 0
 }
 
+// detachUnit detaches the unit from the attached run, if any.
+// set force to true if this is not a result of the run doing a voluntary @FREE.
+// if force is set, the run is aborted.
+func (mgr *FacilitiesManager) detachUnit(
+	nodeId hardware.NodeIdentifier,
+	force bool,
+) {
+	klog.LogTraceF("FacMgr", "detachUnit(nodeId=%v)", nodeId)
+	rce, ok := mgr.attachments[nodeId]
+	if ok {
+		if force {
+			klog.LogInfoF("FacMgr", "detachUnit forcing removal from run %s", rce.RunId)
+			// TODO abort (err?) the run unless it is the exec
+		}
+	}
+}
+
 func (mgr *FacilitiesManager) getNodeStatusString(nodeId hardware.NodeIdentifier) string {
 	accStr := "   "
 	nm := mgr.exec.GetNodeManager().(*nodeMgr.NodeManager)
@@ -1377,7 +1396,8 @@ func (mgr *FacilitiesManager) getNodeStatusString(nodeId hardware.NodeIdentifier
 	diskAttr, ok := mgr.inventory.disks[nodeId]
 	if ok {
 		//	[[*] [R|F] PACKID pack-id]
-		if diskAttr.AssignedTo != nil {
+		_, ok := mgr.attachments[diskAttr.Identifier]
+		if ok {
 			str += " * "
 		} else {
 			str += "   "
@@ -1396,15 +1416,17 @@ func (mgr *FacilitiesManager) getNodeStatusString(nodeId hardware.NodeIdentifier
 		}
 	}
 
-	// ta, ok := mgr.inventory.tapes[deviceId]
-	// if ok {
-	//	if ta.AssignedTo != nil {
-	//		//	[* RUNID run-id REEL reel [RING|NORING] [POS [*]ffff[+|-][*]bbbbbb | POS LOST]]
-	//		str += "* RUNID " + ta.AssignedTo.RunId + " REEL " + ta.reelNumber
-	//		// TODO RING | NORING in FS display for tape unit
-	//		// TODO POS in FS display for tape unit
-	//	}
-	// }
+	tapeAttr, ok := mgr.inventory.tapes[nodeId]
+	if ok {
+		rce, ok := mgr.attachments[tapeAttr.Identifier]
+		if ok {
+			// [* RUNID run-id REEL reel [RING|NORING] [POS [*]ffff[+|-][*]bbbbbb | POS LOST]]
+			str += "* RUNID " + rce.RunId
+			// TODO REEL reel
+			// TODO RING | NORING in FS display for tape unit
+			// TODO POS in FS display for tape unit
+		}
+	}
 
 	return str
 }

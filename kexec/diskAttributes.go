@@ -12,7 +12,6 @@ type DiskAttributes struct {
 	Identifier    hardware.NodeIdentifier
 	Name          string
 	Status        FacNodeStatus
-	AssignedTo    *RunControlEntry
 	PackLabelInfo *PackLabelInfo
 	IsPrepped     bool
 	IsFixed       bool

@@ -28,6 +28,7 @@ type FacilitiesManager struct {
 	threadDone                   bool
 	inventory                    *inventory
 	deviceReadyNotificationQueue map[hardware.NodeIdentifier]bool
+	attachments                  map[hardware.NodeIdentifier]*kexec.RunControlEntry
 }
 
 func NewFacilitiesManager(exec kexec.IExec) *FacilitiesManager {
@@ -107,17 +108,8 @@ func (mgr *FacilitiesManager) GetNodeStatusString(nodeId hardware.NodeIdentifier
 }
 
 func (mgr *FacilitiesManager) IsDeviceAssigned(deviceId hardware.NodeIdentifier) bool {
-	dAttr, ok := mgr.inventory.disks[deviceId]
-	if ok {
-		return dAttr.AssignedTo != nil
-	}
-
-	tAttr, ok := mgr.inventory.tapes[deviceId]
-	if ok {
-		return tAttr.AssignedTo != nil
-	}
-
-	return false
+	_, ok := mgr.attachments[deviceId]
+	return ok
 }
 
 func (mgr *FacilitiesManager) NotifyDeviceReady(nodeIdentifier hardware.NodeIdentifier, isReady bool) {
