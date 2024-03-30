@@ -70,7 +70,7 @@ type IFacilitiesManager interface {
 	Initialize() error // invoked when the application is starting up
 	Stop()             // invoked when the exec is stopping
 	GetDiskAttributes(identifier hardware.NodeIdentifier) (*DiskAttributes, bool)
-	GetNodeAttributes(nodeId hardware.NodeIdentifier) (NodeAttributes, bool)
+	GetNodeAttributes(nodeId hardware.NodeIdentifier) (INodeAttributes, bool)
 	SetNodeStatus(nodeId hardware.NodeIdentifier, status FacNodeStatus) bool
 }
 

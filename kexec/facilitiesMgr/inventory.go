@@ -7,21 +7,20 @@ package facilitiesMgr
 import (
 	"khalehla/hardware"
 	"khalehla/kexec"
-	"khalehla/kexec/mfdMgr"
 	"khalehla/kexec/nodeMgr"
 )
 
 type inventory struct {
-	nodes map[hardware.NodeIdentifier]kexec.NodeAttributes
+	nodes map[hardware.NodeIdentifier]kexec.INodeAttributes
 	disks map[hardware.NodeIdentifier]*kexec.DiskAttributes
-	tapes map[hardware.NodeIdentifier]*mfdMgr.TapeAttributes
+	tapes map[hardware.NodeIdentifier]*kexec.TapeAttributes
 }
 
 func newInventory() *inventory {
 	i := &inventory{
-		nodes: make(map[hardware.NodeIdentifier]kexec.NodeAttributes),
+		nodes: make(map[hardware.NodeIdentifier]kexec.INodeAttributes),
 		disks: make(map[hardware.NodeIdentifier]*kexec.DiskAttributes),
-		tapes: make(map[hardware.NodeIdentifier]*mfdMgr.TapeAttributes),
+		tapes: make(map[hardware.NodeIdentifier]*kexec.TapeAttributes),
 	}
 	return i
 }
@@ -40,7 +39,7 @@ func (i *inventory) injectNode(nodeInfo nodeMgr.NodeInfo) {
 			i.nodes[devId] = attr
 			i.disks[devId] = attr
 		case hardware.NodeDeviceTape:
-			attr := &mfdMgr.TapeAttributes{
+			attr := &kexec.TapeAttributes{
 				Identifier: devInfo.GetNodeIdentifier(),
 				Name:       devInfo.GetNodeName(),
 				Status:     kexec.FacNodeStatusUp,

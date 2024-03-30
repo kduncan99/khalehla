@@ -476,7 +476,7 @@ func (mgr *FacilitiesManager) assignWait(
 	rce *kexec.RunControlEntry,
 	optionWord uint64,
 	fsInfo *mfdMgr.FixedFileCycleInfo, // nil if we are waiting on temporary file
-	// TODO equipment type, code, whatever in case we need a disk or tape unit
+	usage config.EquipmentUsage,
 	facResult *FacStatusResult,
 ) (resultCode uint64) {
 	klog.LogTraceF("FacMgr", "[%v] assignWait", rce.RunId)
@@ -499,6 +499,8 @@ func (mgr *FacilitiesManager) assignWait(
 	var waitingOnRollbackStart time.Time
 	waitStartTime := time.Now()
 	lastMessageSent := waitStartTime.Add(time.Duration(-5) * time.Minute)
+
+	tapeUnits := make([]hardware.NodeIdentifier, 0)
 
 	for {
 		// Cataloged file involved?
@@ -557,14 +559,28 @@ func (mgr *FacilitiesManager) assignWait(
 				if !waitingForXUse {
 					waitingForXUseStart = time.Now()
 					waitingForXUse = true
-					// TODO set wait for XUse in RCE
+					// TODO set wait for XUse in RCE (could be more than one, if multiple activities)
 				}
 			} else {
 				if waitingForXUse {
-					// TODO clear wait for XUse in RCE
+					// TODO clear wait for XUse in RCE (could be more than one)
 					waitingForXUse = false
 				}
 			}
+		}
+
+		if (usage == config.EquipmentUsageTape) && (len(tapeUnits) == 0) {
+			// TODO we're waiting for 1 or 2 tape units
+			//   If we can get them, attach them and note them in tapeUnits
+			//   Otherwise, set waitingForTapeUnit
+		}
+
+		if usage == config.EquipmentUsageWordAddressableMassStorage ||
+			usage == config.EquipmentUsageSectorAddressableMassStorage {
+			// TODO are we removable and needing a pack mounted?
+			//   If so, look for a free disk unit
+			//     if we can get it, attach it and note it in (tbd)
+			//     Otherwise, set waitingForDiskUnit
 		}
 
 		if !waitingForDiskUnit && !waitingForTapeUnit && !waitingOnRollback && !waitingOnXUseRelease && !waitingForXUse {
@@ -843,6 +859,10 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 	return
 }
 
+// TODO For tape files, we assign the unit first, then we have some other subsequent bit
+//  which is responsible for deciding how/what reel number(s) to mount.
+//  But what does that look like?
+
 // assignTemporaryFile is invoked for any @ASG,T situation.
 func (mgr *FacilitiesManager) assignTemporaryFile(
 	rce *kexec.RunControlEntry,
@@ -928,7 +948,6 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 			return
 		}
 	} else if usage == config.EquipmentUsageTape {
-
 		allowedOpts := uint64(kexec.EOption | kexec.FOption | kexec.HOption | kexec.IOption | kexec.JOption |
 			kexec.LOption | kexec.MOption | kexec.NOption | kexec.OOption | kexec.ROption | kexec.SOption |
 			kexec.TOption | kexec.VOption | kexec.WOption | kexec.XOption | kexec.ZOption)
@@ -965,8 +984,8 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 		// TODO For Mass Storage, we need to honor allocation requests and set up a local allocation table
 		// TODO For Removable, we may need to wait for pack mount(s)
 	} else if usage == config.EquipmentUsageTape {
-		// TODO check for the reel already assigned to some other run (hold condition)
 		// TODO check for tape unit availability (hold condition)
+		// TODO check for the reel already assigned to some other run (hold condition)
 	}
 
 	klog.LogTraceF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)

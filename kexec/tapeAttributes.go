@@ -2,11 +2,10 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package mfdMgr
+package kexec
 
 import (
 	"khalehla/hardware"
-	"khalehla/kexec"
 )
 
 type ReelAttributes struct {
@@ -17,12 +16,12 @@ type ReelAttributes struct {
 type TapeAttributes struct {
 	Identifier hardware.NodeIdentifier
 	Name       string
-	Status     kexec.FacNodeStatus
-	AssignedTo *kexec.RunControlEntry
+	Status     FacNodeStatus
+	AssignedTo *RunControlEntry
 	ReelAttrs  *ReelAttributes
 }
 
-func (ta *TapeAttributes) GetFacNodeStatus() kexec.FacNodeStatus {
+func (ta *TapeAttributes) GetFacNodeStatus() FacNodeStatus {
 	return ta.Status
 }
 
@@ -42,6 +41,6 @@ func (ta *TapeAttributes) GetNodeName() string {
 	return ta.Name
 }
 
-func (ta *TapeAttributes) SetFacNodeStatus(status kexec.FacNodeStatus) {
+func (ta *TapeAttributes) SetFacNodeStatus(status FacNodeStatus) {
 	ta.Status = status
 }

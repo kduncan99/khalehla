@@ -85,12 +85,12 @@ func (mgr *FacilitiesManager) GetDiskAttributes(nodeId hardware.NodeIdentifier) 
 	return attr.(*kexec.DiskAttributes), ok
 }
 
-func (mgr *FacilitiesManager) GetNodeAttributes(nodeId hardware.NodeIdentifier) (kexec.NodeAttributes, bool) {
+func (mgr *FacilitiesManager) GetNodeAttributes(nodeId hardware.NodeIdentifier) (kexec.INodeAttributes, bool) {
 	attr, ok := mgr.inventory.nodes[nodeId]
 	return attr, ok
 }
 
-func (mgr *FacilitiesManager) GetNodeAttributesByName(name string) (kexec.NodeAttributes, bool) {
+func (mgr *FacilitiesManager) GetNodeAttributesByName(name string) (kexec.INodeAttributes, bool) {
 	for _, nodeAttr := range mgr.inventory.nodes {
 		if nodeAttr.GetNodeName() == name {
 			return nodeAttr, true
