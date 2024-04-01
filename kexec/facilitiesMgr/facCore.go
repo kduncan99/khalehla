@@ -9,6 +9,7 @@ import (
 	"khalehla/hardware"
 	"khalehla/kexec"
 	"khalehla/kexec/config"
+	"khalehla/kexec/facItems"
 	"khalehla/kexec/mfdMgr"
 	"khalehla/kexec/nodeMgr"
 	"khalehla/klog"
@@ -863,7 +864,63 @@ func (mgr *FacilitiesManager) assignCatalogedFile(
 //  which is responsible for deciding how/what reel number(s) to mount.
 //  But what does that look like?
 
+// TODO what happens when two activities assign the same rolled-out file?
+//  cannot simply return already-assigned...
+
+// holdForDiskFile() waits for the various states of availability for a cataloged fixed disk file assign,
+// specific to a particular activity.
+// We do not interact with the system console (that is done elsewhere), and we only send
+// PRINT$ messages for batch/demand while in control mode (i.e., not doing ER CSF$).
+// We specifically do holds here for:
+//   rollback of file
+//   cataloged file need for exclusive use (someone else has the file assigned)
+//   cataloged file exclusive use release (someone else has x-use)
+// Nothing else applies.
+
+func holdForDiskFile(
+	rce *kexec.RunControlEntry,
+	facItem facItems.IFacilitiesItem,
+	sourceIsExecRequest bool,
+	facResult *FacStatusResult,
+) (resultCode uint64) {
+	if facItem.GetOptionWord()&kexec.EOption != 0 || facItem.GetOptionWord()&kexec.YOption != 0 {
+		if facItem.GetOptionWord()&kexec.ZOption != 0 {
+			// TODO if file is rolled out, start rollback.
+			//   do not wait - instead return bad status
+		} else {
+			// todo wait
+		}
+	}
+	return
+}
+
+// holdForTape() waits for the various states of availability for a tape or tape unit assign,
+// specific to a particular activity.
+// We do not interact with the system console (that is done elsewhere), and we only send
+// PRINT$ messages for batch/demand while in control mode (i.e., not doing ER CSF$).
+// We do not do holds on reel numbers here - that is done subsequent to file and unit assignation.
+// We specifically do holds here for:
+//   tape unit availability
+//   cataloged file need for exclusive use (someone else has the file assigned)
+//   cataloged file exclusive use release (someone else has x-use)
+// Nothing else applies.
+
+func holdForTape(
+	rce *kexec.RunControlEntry,
+	facItem facItems.IFacilitiesItem,
+	sourceIsExecRequest bool,
+	facResult *FacStatusResult,
+) (resultCode uint64) {
+	if facItem.GetOptionWord()&kexec.ZOption != 0 {
+		// TODO do not wait - instead return bad status
+	} else {
+		// todo wait
+	}
+	return
+}
+
 // assignTemporaryFile is invoked for any @ASG,T situation.
+
 func (mgr *FacilitiesManager) assignTemporaryFile(
 	rce *kexec.RunControlEntry,
 	sourceIsExecRequest bool,
@@ -871,36 +928,36 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 	optionWord uint64,
 	operandFields [][]string,
 	models []hardware.NodeModel,
-	usage config.EquipmentUsage,
+	usage config.EquipmentUsage, // TODO does this account for unit assigns? I'm not sure...
 	facResult *FacStatusResult,
 ) (resultCode uint64) {
-	klog.LogTraceF("FacMgr", "assignTemporaryFile [%v]", rce.RunId)
+	klog.LogTraceF("FacMgr", "[%v] assignTemporaryFile", rce.RunId)
+	defer klog.LogTraceF("FacMgr", "[%v] assignTemporaryFile result %012o", rce.RunId, resultCode)
+
+	// What type of assign are we doing?
+	var isDiskFile bool
+	var isDiskUnit bool
+	var isTapeFile bool
+	var isTapeUnit bool
 
 	// For temporary files, we ignore any provided read/write keys.
-	// Check fac items to see if an item already exists with the given specification.
-	alreadyAssigned := false
-	var prevFacItem kexec.IFacilitiesItem
-	for _, facItem := range rce.FacilityItems {
-		if facItem.GetQualifier() == fileSpecification.Qualifier &&
-			facItem.GetFilename() == fileSpecification.Filename {
-			if fileSpecification.FileCycleSpec == nil {
-				if facItem.GetRelativeCycle() == 0 && facItem.GetAbsoluteCycle() == 0 {
-					alreadyAssigned = true
-				}
-			} else if fileSpecification.FileCycleSpec.IsRelative() {
-				alreadyAssigned = *fileSpecification.FileCycleSpec.RelativeCycle == facItem.GetRelativeCycle()
-			} else if fileSpecification.FileCycleSpec.IsAbsolute() {
-				alreadyAssigned = *fileSpecification.FileCycleSpec.AbsoluteCycle == facItem.GetAbsoluteCycle()
-			}
+	// Check fac items to see if a facilities item already exists with the given specification.
+	var prevFacItem facItems.IFacilitiesItem
+	var absSpec *uint
+	var relSpec *int
+	if fileSpecification.HasFileCycleSpecification() {
+		absSpec = fileSpecification.FileCycleSpec.AbsoluteCycle
+		relSpec = fileSpecification.FileCycleSpec.RelativeCycle
+	}
 
-			if alreadyAssigned {
-				prevFacItem = facItem
-				break
-			}
+	for _, facItem := range rce.FacilityItems {
+		if facItems.FacilityItemMatches(facItem, fileSpecification.Qualifier, fileSpecification.Filename, absSpec, relSpec) {
+			prevFacItem = facItem
+			break
 		}
 	}
 
-	if alreadyAssigned {
+	if prevFacItem != nil {
 		// Check whether caller is attempting to change the general file type
 		// or to apply a non-conforming equipment type.
 		equipSpecified := len(operandFields) >= 2 && len(operandFields[1][0]) > 0
@@ -910,59 +967,72 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 				if !prevFacItem.IsDisk() {
 					facResult.PostMessage(kexec.FacStatusAttemptToChangeGenericType, nil)
 					resultCode |= 0_600000_000000
-					klog.LogTraceF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 					return
 				}
 			} else if usage == config.EquipmentUsageTape {
 				if !prevFacItem.IsTape() {
 					facResult.PostMessage(kexec.FacStatusAttemptToChangeGenericType, nil)
 					resultCode |= 0_600000_000000
-					klog.LogTraceF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 					return
 				}
 			}
-
-			// TODO incompatible equipment? (among the matching general type)
 		}
 
-		facResult.PostMessage(kexec.FacStatusFileAlreadyAssigned, nil)
-		resultCode |= 0_100000_000000
-		klog.LogTraceF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
+		// Check hold condition
+		if isDiskFile {
+			resultCode |= holdForDisk(rce, prevFacItem, sourceIsExecRequest, facResult)
+		} else if isDiskUnit {
+			resultCode != holdForDiskUnit(rce, prevFacItem, sourceIsExecRequest, facResult)
+		} else if isTapeFile || isTapeUnit {
+			resultCode |= holdForTape(rce, prevFacItem, sourceIsExecRequest, facResult)
+		}
+
+		if resultCode&0_400000_000000 != 0 {
+			return
+		}
+
+		// If we're still okay
+		if resultCode&0_400000_000000 == 0 {
+			facResult.PostMessage(kexec.FacStatusFileAlreadyAssigned, nil)
+			resultCode |= 0_100000_000000
+		}
+
 		return
 	}
 
-	if usage == config.EquipmentUsageSectorAddressableMassStorage ||
-		usage == config.EquipmentUsageWordAddressableMassStorage {
-
+	// File is not already assigned - is it fixed, removable, tape?
+	if isDiskFile {
 		allowedOpts := uint64(kexec.IOption | kexec.TOption | kexec.ZOption)
 		if !CheckIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
 			resultCode |= 0_600000_000000
-			klog.LogTraceF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 			return
 		}
 
 		if !mgr.checkSubFields(operandFields, asgDiskFSIs) {
 			facResult.PostMessage(kexec.FacStatusUndefinedFieldOrSubfield, nil)
 			resultCode |= 0_600000_000000
-			klog.LogTraceF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 			return
 		}
-	} else if usage == config.EquipmentUsageTape {
+
+		// TODO For Mass Storage, we need to honor allocation requests and set up a local allocation table
+		// TODO For Removable, we may need to wait for pack mount(s) (but not here, maybe?)
+	} else if isTapeFile {
 		allowedOpts := uint64(kexec.EOption | kexec.FOption | kexec.HOption | kexec.IOption | kexec.JOption |
 			kexec.LOption | kexec.MOption | kexec.NOption | kexec.OOption | kexec.ROption | kexec.SOption |
 			kexec.TOption | kexec.VOption | kexec.WOption | kexec.XOption | kexec.ZOption)
 		if !CheckIllegalOptions(rce, optionWord, allowedOpts, facResult, rce.IsExec()) {
 			resultCode |= 0_600000_000000
-			klog.LogTraceF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 			return
 		}
 
 		if !mgr.checkSubFields(operandFields, asgTapeFSIs) {
 			facResult.PostMessage(kexec.FacStatusUndefinedFieldOrSubfield, nil)
 			resultCode |= 0_600000_000000
-			klog.LogTraceF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 			return
 		}
+
+		// TODO check duplicate reel numbers specified
+		// TODO check for requested tape reel is already assigned by this run.
 	}
 
 	// Is filename not unique?
@@ -970,25 +1040,10 @@ func (mgr *FacilitiesManager) assignTemporaryFile(
 		if facItem.GetFilename() == fileSpecification.Filename {
 			facResult.PostMessage(kexec.FacStatusFilenameNotUnique, nil)
 			resultCode |= 0_004000_000000
-			klog.LogTraceF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 			break
 		}
 	}
 
-	// TODO check duplicate reel numbers specified
-	// TODO check for requested tape reel is already assigned by this run.
-
-	// Do usage-specific stuff
-	if usage == config.EquipmentUsageSectorAddressableMassStorage ||
-		usage == config.EquipmentUsageWordAddressableMassStorage {
-		// TODO For Mass Storage, we need to honor allocation requests and set up a local allocation table
-		// TODO For Removable, we may need to wait for pack mount(s)
-	} else if usage == config.EquipmentUsageTape {
-		// TODO check for tape unit availability (hold condition)
-		// TODO check for the reel already assigned to some other run (hold condition)
-	}
-
-	klog.LogTraceF("FacMgr", "assignTemporaryFile exit resultCode %012o", resultCode)
 	return
 }
 

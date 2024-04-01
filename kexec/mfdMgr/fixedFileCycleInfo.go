@@ -5,6 +5,7 @@
 package mfdMgr
 
 import (
+	"khalehla/kexec"
 	"khalehla/pkg"
 	"strings"
 )
@@ -37,7 +38,7 @@ type FixedFileCycleInfo struct {
 	QuotaGroupGranules       []uint64
 	BackupInfo               BackupInfo
 	DiskPackEntries          []DiskPackEntry
-	FileAllocations          []FileAllocation
+	FileAllocations          []kexec.FileAllocation
 }
 
 func (fci *FixedFileCycleInfo) GetFileSetIdentifier() FileSetIdentifier {

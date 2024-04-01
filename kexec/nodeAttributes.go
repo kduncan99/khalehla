@@ -6,8 +6,6 @@ package kexec
 
 import "khalehla/hardware"
 
-// Because this has FacNodeStatus, it needs to be somewhere in kexec
-
 type INodeAttributes interface {
 	GetFacNodeStatus() FacNodeStatus
 	GetNodeCategoryType() hardware.NodeCategoryType

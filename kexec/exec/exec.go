@@ -21,6 +21,8 @@ import (
 
 const Version = "v1.0.0"
 
+var CurrentExec *Exec = nil
+
 type Exec struct {
 	configuration *config.Configuration
 	consoleMgr    kexec.IConsoleManager
@@ -49,6 +51,7 @@ func NewExec(cfg *config.Configuration) *Exec {
 	e.nodeMgr = nodeMgr.NewNodeManager(e)
 	e.phase = kexec.ExecPhaseNotStarted
 
+	CurrentExec = e
 	return e
 }
 

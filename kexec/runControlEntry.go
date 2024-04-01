@@ -7,6 +7,7 @@ package kexec
 import (
 	"fmt"
 	"io"
+	"khalehla/kexec/facItems"
 	"khalehla/pkg"
 )
 
@@ -51,7 +52,7 @@ type RunControlEntry struct {
 	RunType          RunType
 	Privileges       map[Privilege]bool
 	UseItems         map[string]*UseItem
-	FacilityItems    []IFacilitiesItem
+	FacilityItems    []facItems.IFacilitiesItem
 }
 
 func newRunControlEntry(
@@ -75,7 +76,7 @@ func newRunControlEntry(
 		RunType:          runType,
 		Privileges:       make(map[Privilege]bool),
 		UseItems:         make(map[string]*UseItem),
-		FacilityItems:    make([]IFacilitiesItem, 0),
+		FacilityItems:    make([]facItems.IFacilitiesItem, 0),
 	}
 }
 
@@ -103,15 +104,15 @@ func (rce *RunControlEntry) DeleteUseItem(
 }
 
 // TODO obsolete?
-//// FindFacilitiesItem takes a qualifier-resolved FileSpecification and attempts to find an associated facilities item.
-//// If checkUseItems is true, we loop through UseItems if and as appropriate as part of the search.
-//// If return nil for facItem, there is not associated assigned file.
-//// If we return false for foundUseItem, we did not find a use item (or were not asked to do so).
-//// Any combination of nil or facItem, and true or false, are possible.
-//func (rce *RunControlEntry) FindFacilitiesItem(
+// // FindFacilitiesItem takes a qualifier-resolved FileSpecification and attempts to find an associated facilities item.
+// // If checkUseItems is true, we loop through UseItems if and as appropriate as part of the search.
+// // If return nil for facItem, there is not associated assigned file.
+// // If we return false for foundUseItem, we did not find a use item (or were not asked to do so).
+// // Any combination of nil or facItem, and true or false, are possible.
+// func (rce *RunControlEntry) FindFacilitiesItem(
 //	fileSpec *FileSpecification,
 //	checkUseItems bool,
-//) (facItem IFacilitiesItem, foundUseItem bool) {
+// ) (facItem IFacilitiesItem, foundUseItem bool) {
 //	fileSpec = nil
 //	foundUseItem = false
 //	effectiveSpec := fileSpec
@@ -136,7 +137,7 @@ func (rce *RunControlEntry) DeleteUseItem(
 //	}
 //
 //	return
-//}
+// }
 
 // FindUseItem checks the given fileSpec, and if it refers to a use item, we return that use item.
 // Otherwise, we return nil.

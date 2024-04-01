@@ -4,6 +4,8 @@
 
 package mfdMgr
 
+import "khalehla/kexec"
+
 type RemovableFileCycleInfo struct {
 	FileSetIdentifier        FileSetIdentifier
 	FileCycleIdentifier      FileCycleIdentifier
@@ -33,7 +35,7 @@ type RemovableFileCycleInfo struct {
 	QuotaGroupGranules       []uint64
 	BackupInfo               BackupInfo
 	DiskPackEntries          []DiskPackEntry
-	FileAllocations          []FileAllocation
+	FileAllocations          []kexec.FileAllocation
 }
 
 func (fci *RemovableFileCycleInfo) GetFileSetIdentifier() FileSetIdentifier {

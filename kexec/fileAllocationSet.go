@@ -2,25 +2,24 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package mfdMgr
+package kexec
 
 import (
 	"khalehla/hardware"
-	"khalehla/kexec"
 )
 
 // FileAllocationSet describes the current allocation of tracks to a particular file instance.
 // These exist in-memory for every file which is currently assigned.
 type FileAllocationSet struct {
-	DadItem0Address  kexec.MFDRelativeAddress
-	MainItem0Address kexec.MFDRelativeAddress
+	DadItem0Address  MFDRelativeAddress
+	MainItem0Address MFDRelativeAddress
 	IsUpdated        bool
 	FileAllocations  []*FileAllocation // these are kept in order by TrackRegion.TrackId
 }
 
 func NewFileAllocationSet(
-	mainItem0Address kexec.MFDRelativeAddress,
-	dadItem0Address kexec.MFDRelativeAddress) *FileAllocationSet {
+	mainItem0Address MFDRelativeAddress,
+	dadItem0Address MFDRelativeAddress) *FileAllocationSet {
 	return &FileAllocationSet{
 		DadItem0Address:  dadItem0Address,
 		MainItem0Address: mainItem0Address,
@@ -63,14 +62,14 @@ func (fas *FileAllocationSet) removeEntryAt(index int) {
 	fas.FileAllocations = temp
 }
 
-// extractRegionFromFileAllocationSet extracts the allocation described by the given region
+// ExtractRegionFromFileAllocationSet extracts the allocation described by the given region
 // from this file allocation set.
 // Caller MUST ensure that the requested region is a subset (or a match) of exactly one existing entry.
 // Returns LDAT index and first device-relative track ID
 // corresponding to the pack which contained the indicated region.
-func (fas *FileAllocationSet) extractRegionFromFileAllocationSet(
-	region *kexec.TrackRegion,
-) (ldatIndex kexec.LDATIndex, deviceTrackId hardware.TrackId) {
+func (fas *FileAllocationSet) ExtractRegionFromFileAllocationSet(
+	region *TrackRegion,
+) (ldatIndex LDATIndex, deviceTrackId hardware.TrackId) {
 	for rex, fileAlloc := range fas.FileAllocations {
 		if fileAlloc.FileRegion.TrackId == region.TrackId {
 			ldatIndex = fileAlloc.LDATIndex
@@ -112,15 +111,15 @@ func (fas *FileAllocationSet) extractRegionFromFileAllocationSet(
 		}
 	}
 
-	ldatIndex = kexec.InvalidLDAT
+	ldatIndex = InvalidLDAT
 	return
 }
 
-// mergeIntoFileAllocationSet puts a new fileAlloc into the fas at the appropriate location.
+// MergeIntoFileAllocationSet puts a new fileAlloc into the fas at the appropriate location.
 // if it appends to an existing fileAlloc, then just update that fileAlloc.
 // we are only called by other code in this file, and those callers *MUST* ensure no overlaps occur.
 // In practical terms, this means do NOT allocate a track which is already allocated.
-func (fas *FileAllocationSet) mergeIntoFileAllocationSet(newEntry *FileAllocation) {
+func (fas *FileAllocationSet) MergeIntoFileAllocationSet(newEntry *FileAllocation) {
 	for rex, fileAlloc := range fas.FileAllocations {
 		if newEntry.FileRegion.TrackId < fileAlloc.FileRegion.TrackId {
 			// the new entry appears before the indexed entry and after the previous entry
@@ -163,9 +162,9 @@ func (fas *FileAllocationSet) mergeIntoFileAllocationSet(newEntry *FileAllocatio
 	fas.IsUpdated = true
 }
 
-// findPrecedingAllocation retrieves the FileAllocation which immediately precedes or contains the
+// FindPrecedingAllocation retrieves the FileAllocation which immediately precedes or contains the
 // indicated file-relative track id. If we return nil, there is no such FileAllocation.
-func (fas *FileAllocationSet) findPrecedingAllocation(
+func (fas *FileAllocationSet) FindPrecedingAllocation(
 	fileTrackId hardware.TrackId,
 ) (alloc *FileAllocation) {
 	alloc = nil
@@ -179,8 +178,8 @@ func (fas *FileAllocationSet) findPrecedingAllocation(
 	return
 }
 
-// getHighestTrackAssigned finds that value from the FileAllocationSet
-func (fas *FileAllocationSet) getHighestTrackAssigned() hardware.TrackId {
+// GetHighestTrackAssigned finds that value from the FileAllocationSet
+func (fas *FileAllocationSet) GetHighestTrackAssigned() hardware.TrackId {
 	entryCount := len(fas.FileAllocations)
 	if entryCount == 0 {
 		return 0
@@ -197,7 +196,7 @@ func (fas *FileAllocationSet) getHighestTrackAssigned() hardware.TrackId {
 // If we return false, no allocation exists (the space has not (yet) been allocated).
 func (fas *FileAllocationSet) resolveFileRelativeTrackId(
 	fileTrackId hardware.TrackId,
-) (kexec.LDATIndex, hardware.TrackId, bool) {
+) (LDATIndex, hardware.TrackId, bool) {
 	for _, fa := range fas.FileAllocations {
 		highestAllocTrack := hardware.TrackId(uint64(fa.FileRegion.TrackId) + uint64(fa.FileRegion.TrackCount) - 1)
 		if fileTrackId >= fa.FileRegion.TrackId && fileTrackId <= highestAllocTrack {

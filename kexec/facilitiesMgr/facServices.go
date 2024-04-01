@@ -69,6 +69,7 @@ func (mgr *FacilitiesManager) AssignFile(
 		}
 	}
 
+	// TODO does this make more sense in the more-specific routines in facCore?
 	var models []hardware.NodeModel
 	var usage config.EquipmentUsage
 	if mnemonic != "" {

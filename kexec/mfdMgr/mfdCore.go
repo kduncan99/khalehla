@@ -210,7 +210,7 @@ func (mgr *MFDManager) allocateFileSpace(
 		return MFDInternalError
 	}
 
-	highestTrack := faSet.getHighestTrackAssigned()
+	highestTrack := faSet.GetHighestTrackAssigned()
 
 	// Find the existing allocation immediately preceding this one.
 	// If there is no such allocation (we are a sparse file or an empty one)
@@ -218,7 +218,7 @@ func (mgr *MFDManager) allocateFileSpace(
 	// Otherwise, try to extend the allocation.
 	frTrackId := fileRelativeTrackId
 	remaining := trackCount
-	fa := faSet.findPrecedingAllocation(fileRelativeTrackId)
+	fa := faSet.FindPrecedingAllocation(fileRelativeTrackId)
 	if fa != nil {
 		pDesc, ok := mgr.fixedPackDescriptors[fa.LDATIndex]
 		if !ok {
@@ -230,8 +230,8 @@ func (mgr *MFDManager) allocateFileSpace(
 		baseTrackId := fa.DeviceTrackId + hardware.TrackId(fa.FileRegion.TrackCount)
 		allocated := pDesc.freeSpaceTable.AllocateTracksFromTrackId(baseTrackId, remaining)
 		if allocated > 0 {
-			alloc := NewFileAllocation(frTrackId, allocated, fa.LDATIndex, baseTrackId)
-			faSet.mergeIntoFileAllocationSet(alloc)
+			alloc := kexec.NewFileAllocation(frTrackId, allocated, fa.LDATIndex, baseTrackId)
+			faSet.MergeIntoFileAllocationSet(alloc)
 			frTrackId += hardware.TrackId(allocated)
 			remaining -= allocated
 		}
@@ -246,8 +246,8 @@ func (mgr *MFDManager) allocateFileSpace(
 		}
 
 		for _, region := range packRegions {
-			alloc := NewFileAllocation(frTrackId, region.TrackCount, region.LDATIndex, region.TrackId)
-			faSet.mergeIntoFileAllocationSet(alloc)
+			alloc := kexec.NewFileAllocation(frTrackId, region.TrackCount, region.LDATIndex, region.TrackId)
+			faSet.MergeIntoFileAllocationSet(alloc)
 			frTrackId += hardware.TrackId(region.TrackCount)
 		}
 	}
@@ -368,8 +368,8 @@ func (mgr *MFDManager) allocateSpecificTrack(
 		return fmt.Errorf("fas not loaded")
 	}
 
-	fileAlloc := NewFileAllocation(fileTrackId, trackCount, ldatIndex, deviceTrackId)
-	fas.mergeIntoFileAllocationSet(fileAlloc)
+	fileAlloc := kexec.NewFileAllocation(fileTrackId, trackCount, ldatIndex, deviceTrackId)
+	fas.MergeIntoFileAllocationSet(fileAlloc)
 	fas.IsUpdated = true
 
 	return nil
@@ -458,7 +458,7 @@ func (mgr *MFDManager) bootstrapMFD() error {
 	// including *particularly* the file allocation table.
 	// We need to create one allocation region for each pack's initial directory track.
 	highestMFDTrackId := hardware.TrackId(0)
-	fas := NewFileAllocationSet(mainItem0Addr, 0_400000_000000)
+	fas := kexec.NewFileAllocationSet(mainItem0Addr, 0_400000_000000)
 	mgr.acceleratedFileAllocations[mainItem0Addr] = fas
 
 	for ldat, desc := range mgr.fixedPackDescriptors {
@@ -1326,14 +1326,14 @@ func (mgr *MFDManager) initializeRemovable(disks map[*nodeMgr.DiskDeviceInfo]*ke
 // CALL UNDER LOCK
 func (mgr *MFDManager) loadFileAllocationSet(
 	mainItem0Address kexec.MFDRelativeAddress,
-) (*FileAllocationSet, error) {
+) (*kexec.FileAllocationSet, error) {
 	mainItem0, err := mgr.getMFDSector(mainItem0Address)
 	if err != nil {
 		return nil, err
 	}
 
 	dadAddr := kexec.MFDRelativeAddress(mainItem0[0])
-	fae := &FileAllocationSet{
+	fae := &kexec.FileAllocationSet{
 		DadItem0Address:  dadAddr,
 		MainItem0Address: mainItem0Address,
 	}
@@ -1353,12 +1353,12 @@ func (mgr *MFDManager) loadFileAllocationSet(
 			words := dadItem[dx+1].GetW()
 			ldat := kexec.LDATIndex(dadItem[dx+2].GetH2())
 			if ldat != 0_400000 {
-				re := NewFileAllocation(
+				re := kexec.NewFileAllocation(
 					hardware.TrackId(fileWordAddress/1792),
 					hardware.TrackCount(words/1792),
 					ldat,
 					hardware.TrackId(devAddr/1792))
-				fae.mergeIntoFileAllocationSet(re)
+				fae.MergeIntoFileAllocationSet(re)
 			}
 
 			fileWordAddress += words
@@ -1690,7 +1690,7 @@ func (mgr *MFDManager) releaseFileCycleTrackRegion(
 		return MFDInternalError
 	}
 
-	ldat, devTrackId := fas.extractRegionFromFileAllocationSet(region)
+	ldat, devTrackId := fas.ExtractRegionFromFileAllocationSet(region)
 	if ldat == kexec.InvalidLDAT {
 		klog.LogFatalF("MFDMgr", "convertFileRelativeTrackId Cannot extract alloc for address %012o", mainItem0Address)
 		mgr.exec.Stop(kexec.StopDirectoryErrors)

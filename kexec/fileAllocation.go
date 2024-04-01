@@ -2,26 +2,25 @@
 // Copyright © 2023-2024 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
-package mfdMgr
+package kexec
 
 import (
 	"khalehla/hardware"
-	"khalehla/kexec"
 )
 
 type FileAllocation struct {
-	FileRegion    kexec.TrackRegion
-	LDATIndex     kexec.LDATIndex
+	FileRegion    TrackRegion
+	LDATIndex     LDATIndex
 	DeviceTrackId hardware.TrackId
 }
 
 func NewFileAllocation(
 	fileTrackId hardware.TrackId,
 	trackCount hardware.TrackCount,
-	ldatIndex kexec.LDATIndex,
+	ldatIndex LDATIndex,
 	deviceTrackId hardware.TrackId) *FileAllocation {
 	return &FileAllocation{
-		FileRegion: kexec.TrackRegion{
+		FileRegion: TrackRegion{
 			TrackId:    fileTrackId,
 			TrackCount: trackCount,
 		},

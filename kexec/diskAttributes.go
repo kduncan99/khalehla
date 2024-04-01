@@ -6,8 +6,6 @@ package kexec
 
 import "khalehla/hardware"
 
-// Because this as FacNodeStatus, it needs to be somewhere in kexec
-
 type DiskAttributes struct {
 	Identifier    hardware.NodeIdentifier
 	Name          string
