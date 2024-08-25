@@ -16,6 +16,8 @@ import (
 //
 //	In a departure from the architecture guide, we *do* allow this in basic mode as well as extended.
 //	This is mainly for unit test purposes, and may change at any point.
+//
+// TODO See System Console Messages Appendix A.3
 func InitiateAutoRecovery(e *InstructionEngine) (completed bool) {
 	if e.activityStatePacket.GetDesignatorRegister().GetProcessorPrivilege() > 0 {
 		i := pkg.NewInvalidInstructionInterrupt(pkg.InvalidInstructionBadPP)
