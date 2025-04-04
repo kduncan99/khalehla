@@ -1,6 +1,6 @@
-// Khalehla Project
+// khalehla Project
 // tiny assembler
-// Copyright © 2023 by Kurt Duncan, BearSnake LLC
+// Copyright © 2023-2025 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
 package tasm

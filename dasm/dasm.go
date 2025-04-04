@@ -1,17 +1,19 @@
-// Khalehla Project
+// khalehla Project
 // disassembler
-// Copyright © 2023 by Kurt Duncan, BearSnake LLC
+// Copyright © 2023-2025 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
 package dasm
 
 import (
 	"fmt"
-	"khalehla/pkg"
+
+	"khalehla/common"
+	"khalehla/hardware"
 	"khalehla/tasm"
 )
 
-// Disassembler is a simple disassembler which assists in Khalehla development
+// Disassembler is a simple disassembler which assists in khalehla development
 
 type Disassembler struct {
 }
@@ -20,11 +22,11 @@ func NewDisassembler() *Disassembler {
 	return &Disassembler{}
 }
 
-func (da *Disassembler) DisassembleStorage(storage *pkg.MainStorage, executable *tasm.Executable) {
+func (da *Disassembler) DisassembleStorage(storage *hardware.MainStorage, executable *tasm.Executable) {
 	//	TODO I think we need BDTables as a parameter as well...?
 }
 
-func DisassembleInstruction(asp *pkg.ActivityStatePacket) string {
+func DisassembleInstruction(asp *common.ActivityStatePacket) string {
 	var s string
 	var ok bool
 	iw := asp.GetCurrentInstruction()

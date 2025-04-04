@@ -1,13 +1,14 @@
-// Khalehla Project
+// khalehla Project
 // disassembler
-// Copyright © 2023 by Kurt Duncan, BearSnake LLC
+// Copyright © 2023-2025 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
 package dasm
 
 import (
 	"fmt"
-	"khalehla/pkg"
+
+	"khalehla/common"
 )
 
 type AFieldUsage int
@@ -38,7 +39,7 @@ const (
 )
 
 type Interpreter interface {
-	Interpret(word *pkg.InstructionWord, basicMode bool, quarterWordMode bool) (string, bool)
+	Interpret(word *common.InstructionWord, basicMode bool, quarterWordMode bool) (string, bool)
 	IsInstruction() bool
 }
 
@@ -54,7 +55,7 @@ var aFieldPrefix = map[AFieldUsage]string{
 	XRegister: "X",
 }
 
-func (ft *FunctionTable) Interpret(iw *pkg.InstructionWord, basicMode bool, quarterWordMode bool) (string, bool) {
+func (ft *FunctionTable) Interpret(iw *common.InstructionWord, basicMode bool, quarterWordMode bool) (string, bool) {
 	var function Interpreter
 	var ok bool
 
@@ -93,19 +94,19 @@ type Instruction struct {
 
 func (i *Instruction) getGRSString(addr uint64) string {
 	if !i.noGRSAddress {
-		if addr < pkg.X12 {
+		if addr < common.X12 {
 			return fmt.Sprintf("X%d", addr)
-		} else if addr >= pkg.A0 && addr <= pkg.A15 {
-			return fmt.Sprintf("A%d", addr-pkg.A0)
-		} else if addr >= pkg.R0 && addr <= pkg.R15 {
-			return fmt.Sprintf("R%d", addr-pkg.R0)
+		} else if addr >= common.A0 && addr <= common.A15 {
+			return fmt.Sprintf("A%d", addr-common.A0)
+		} else if addr >= common.R0 && addr <= common.R15 {
+			return fmt.Sprintf("R%d", addr-common.R0)
 		}
 	}
 
 	return ""
 }
 
-func (i *Instruction) Interpret(iw *pkg.InstructionWord, basicMode bool, quarterWordMode bool) (string, bool) {
+func (i *Instruction) Interpret(iw *common.InstructionWord, basicMode bool, quarterWordMode bool) (string, bool) {
 	str := i.mnemonic
 	var immediate bool
 
@@ -116,7 +117,7 @@ func (i *Instruction) Interpret(iw *pkg.InstructionWord, basicMode bool, quarter
 		} else {
 			str += jFieldThirdWord[iw.GetJ()]
 		}
-		immediate = (iw.GetX() == 0) && ((iw.GetJ() == pkg.JFieldU) || (iw.GetJ() == pkg.JFieldXU))
+		immediate = (iw.GetX() == 0) && ((iw.GetJ() == common.JFieldU) || (iw.GetJ() == common.JFieldXU))
 	}
 	str = fmt.Sprintf("%-10s", str)
 

@@ -1,14 +1,15 @@
-// Khalehla Project
+// khalehla Project
 // tiny assembler
-// Copyright © 2023 by Kurt Duncan, BearSnake LLC
+// Copyright © 2023-2025 by Kurt Duncan, BearSnake LLC
 // All Rights Reserved
 
 package tasm
 
 import (
 	"fmt"
-	"khalehla/pkg"
 	"strings"
+
+	pkg2 "khalehla/old/pkg"
 )
 
 type Executable struct {
@@ -150,11 +151,11 @@ func (e *Executable) LinkSimple(segments map[uint64]*Segment, extendedMode bool)
 		}
 	}
 
-	bd := pkg.NewBankDescriptor(
+	bd := pkg2.NewBankDescriptor(
 		false,
-		pkg.NewAccessLock(0, 0),
-		pkg.NewAccessPermissions(true, true, true),
-		pkg.NewAccessPermissions(true, true, true),
+		pkg2.NewAccessLock(0, 0),
+		pkg2.NewAccessPermissions(true, true, true),
+		pkg2.NewAccessPermissions(true, true, true),
 		nil, // this has to be filled in when the bank is loaded
 		false,
 		lowerLimit,
@@ -216,11 +217,11 @@ func (e *Executable) LinkBankPerSegment(segments map[uint64]*Segment, extendedMo
 				}
 			}
 
-			bd := pkg.NewBankDescriptor(
+			bd := pkg2.NewBankDescriptor(
 				false,
-				pkg.NewAccessLock(0, 0),
-				pkg.NewAccessPermissions(canEnter, true, canWrite),
-				pkg.NewAccessPermissions(canEnter, true, canWrite),
+				pkg2.NewAccessLock(0, 0),
+				pkg2.NewAccessPermissions(canEnter, true, canWrite),
+				pkg2.NewAccessPermissions(canEnter, true, canWrite),
 				nil, // this has to be filled in when the bank is loaded
 				false,
 				lowerLimit,
@@ -321,7 +322,7 @@ func addFractional(baseValue uint64, addend2 uint64, startingBit uint64, bitCoun
 	mask := uint64(1<<bitCount) - 1
 	shift := 36 - startingBit - bitCount
 	shiftedMask := mask << shift
-	shiftedNotMask := (^shiftedMask) & pkg.NegativeZero
+	shiftedNotMask := (^shiftedMask) & pkg2.NegativeZero
 
 	addend1 := (baseValue & shiftedMask) >> shift
 	sum := addend1 + addend2
