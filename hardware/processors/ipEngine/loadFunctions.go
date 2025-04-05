@@ -226,7 +226,7 @@ func LoadNegativeMagnitudeAccumulator(e *InstructionEngine) (completed bool) {
 		e.PostInterrupt(result.interrupt)
 		return false
 	} else if result.complete {
-		result.operand = common.Magnitude(result.operand)
+		result.operand = common.Negate(common.Magnitude(result.operand))
 		ci := e.GetCurrentInstruction()
 		e.GetExecOrUserARegister(ci.GetA()).SetW(result.operand)
 	}

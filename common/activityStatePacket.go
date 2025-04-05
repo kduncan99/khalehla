@@ -11,7 +11,7 @@ type ActivityStatePacket struct {
 	//	(relative to B0 in extended mode, or to one of B12-B15 in basic mode)
 	programAddressRegister *ProgramAddressRegister
 
-	//	Current operational modes of the ipEngineOld
+	//	Current operational modes of the ipEngine
 	designatorRegister *DesignatorRegister
 
 	//	Interrupt status information, mid-execution control information, pending interrupt indicators,

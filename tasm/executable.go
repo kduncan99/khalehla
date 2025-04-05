@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"strings"
 
-	pkg2 "khalehla/old/pkg"
+	"khalehla/common"
 )
 
 type Executable struct {
@@ -151,11 +151,11 @@ func (e *Executable) LinkSimple(segments map[uint64]*Segment, extendedMode bool)
 		}
 	}
 
-	bd := pkg2.NewBankDescriptor(
+	bd := common.NewBankDescriptor(
 		false,
-		pkg2.NewAccessLock(0, 0),
-		pkg2.NewAccessPermissions(true, true, true),
-		pkg2.NewAccessPermissions(true, true, true),
+		common.NewAccessLock(0, 0),
+		common.NewAccessPermissions(true, true, true),
+		common.NewAccessPermissions(true, true, true),
 		nil, // this has to be filled in when the bank is loaded
 		false,
 		lowerLimit,
@@ -217,11 +217,11 @@ func (e *Executable) LinkBankPerSegment(segments map[uint64]*Segment, extendedMo
 				}
 			}
 
-			bd := pkg2.NewBankDescriptor(
+			bd := common.NewBankDescriptor(
 				false,
-				pkg2.NewAccessLock(0, 0),
-				pkg2.NewAccessPermissions(canEnter, true, canWrite),
-				pkg2.NewAccessPermissions(canEnter, true, canWrite),
+				common.NewAccessLock(0, 0),
+				common.NewAccessPermissions(canEnter, true, canWrite),
+				common.NewAccessPermissions(canEnter, true, canWrite),
 				nil, // this has to be filled in when the bank is loaded
 				false,
 				lowerLimit,
@@ -322,7 +322,7 @@ func addFractional(baseValue uint64, addend2 uint64, startingBit uint64, bitCoun
 	mask := uint64(1<<bitCount) - 1
 	shift := 36 - startingBit - bitCount
 	shiftedMask := mask << shift
-	shiftedNotMask := (^shiftedMask) & pkg2.NegativeZero
+	shiftedNotMask := (^shiftedMask) & common.NegativeZero
 
 	addend1 := (baseValue & shiftedMask) >> shift
 	sum := addend1 + addend2
