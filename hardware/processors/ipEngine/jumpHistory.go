@@ -6,7 +6,6 @@ package ipEngine
 
 import (
 	"khalehla/common"
-	"khalehla/hardware"
 )
 
 const (
@@ -19,7 +18,7 @@ var jhInterrupt = common.NewJumpHistoryFullInterrupt()
 // JumpHistory tracks the most recent jump-from addresses for a task.
 // It is part of the instruction processor context.
 type JumpHistory struct {
-	stack            []hardware.VirtualAddress
+	stack            []common.VirtualAddress
 	stackIndex       int // index of the next stack entry to be written
 	interruptPending bool
 	overflow         bool
@@ -28,10 +27,10 @@ type JumpHistory struct {
 func (jh *JumpHistory) Clear() {
 	jh.stackIndex = 0
 	jh.overflow = false
-	jh.stack = make([]hardware.VirtualAddress, JumpHistoryStackSize)
+	jh.stack = make([]common.VirtualAddress, JumpHistoryStackSize)
 }
 
-func (jh *JumpHistory) GetEntries() (result []hardware.VirtualAddress) {
+func (jh *JumpHistory) GetEntries() (result []common.VirtualAddress) {
 	if jh.overflow {
 		left := jh.stack[jh.stackIndex+1:]
 		right := jh.stack[:jh.stackIndex]
@@ -44,7 +43,7 @@ func (jh *JumpHistory) GetEntries() (result []hardware.VirtualAddress) {
 	return
 }
 
-func (jh *JumpHistory) StoreEntry(address hardware.VirtualAddress) (interrupt common.Interrupt) {
+func (jh *JumpHistory) StoreEntry(address common.VirtualAddress) (interrupt common.Interrupt) {
 	interrupt = nil
 
 	jh.stack[jh.stackIndex] = address
