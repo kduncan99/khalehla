@@ -30,7 +30,7 @@ type StorageLockClient interface {
 
 type storageLockKey uint64
 
-func newStorageLockKey(address VirtualAddress) storageLockKey {
+func newStorageLockKey(address common.VirtualAddress) storageLockKey {
 	return storageLockKey(address.GetComposite())
 }
 
@@ -224,7 +224,7 @@ func (ms *MainStorage) Resize(segmentIndex uint, length uint64) (interrupt commo
 	return
 }
 
-func (ms *MainStorage) Lock(address VirtualAddress, client StorageLockClient) bool {
+func (ms *MainStorage) Lock(address common.VirtualAddress, client StorageLockClient) bool {
 	ms.mutex.Lock()
 	defer ms.mutex.Unlock()
 
@@ -238,7 +238,7 @@ func (ms *MainStorage) Lock(address VirtualAddress, client StorageLockClient) bo
 	return true
 }
 
-func (ms *MainStorage) LockWait(address VirtualAddress, client StorageLockClient) {
+func (ms *MainStorage) LockWait(address common.VirtualAddress, client StorageLockClient) {
 	ms.mutex.Lock()
 	defer ms.mutex.Unlock()
 
@@ -256,7 +256,7 @@ func (ms *MainStorage) LockWait(address VirtualAddress, client StorageLockClient
 	}
 }
 
-func (ms *MainStorage) ReleaseLocks(address VirtualAddress, client StorageLockClient) bool {
+func (ms *MainStorage) ReleaseLocks(address common.VirtualAddress, client StorageLockClient) bool {
 	ms.mutex.Lock()
 	defer ms.mutex.Unlock()
 

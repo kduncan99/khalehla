@@ -6,7 +6,6 @@ package ipEngine
 
 import (
 	"khalehla/common"
-	"khalehla/hardware"
 )
 
 const (
@@ -690,7 +689,7 @@ func step12(bm *BankManipulator) bool {
 func step13(bm *BankManipulator) bool {
 	if bm.isLXJInstruction && (bm.transferMode == BasicToBasicTransfer) {
 		parPCNext := bm.engine.activityStatePacket.GetProgramAddressRegister().GetProgramCounter() + 1
-		value := hardware.TranslateToBasicMode(bm.priorBankLevel, bm.priorBankDescriptorIndex, parPCNext).GetComposite()
+		value := common.TranslateToBasicMode(bm.priorBankLevel, bm.priorBankDescriptorIndex, parPCNext).GetComposite()
 		value |= bm.baseRegisterIndex << 33
 		bm.engine.SetExecOrUserXRegister(bm.lxjXRegisterIndex, value)
 	} else if (bm.instructionType == CALLInstruction) && (bm.transferMode == ExtendedToBasicTransfer) {

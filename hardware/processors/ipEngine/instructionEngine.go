@@ -69,7 +69,7 @@ type GetOperandResult struct {
 	sourceIsGRS             bool
 	sourceBaseRegisterIndex uint
 	sourceRelativeAddress   uint64
-	sourceVirtualAddress    hardware.VirtualAddress
+	sourceVirtualAddress    common.VirtualAddress
 	sourceAbsoluteAddress   *common.AbsoluteAddress
 	interrupt               common.Interrupt
 }
@@ -93,7 +93,7 @@ type ConsecutiveOperandsResult struct {
 	source                  []common.Word36
 	sourceBaseRegisterIndex uint
 	sourceRelativeAddress   uint64
-	sourceVirtualAddress    hardware.VirtualAddress
+	sourceVirtualAddress    common.VirtualAddress
 	sourceAbsoluteAddress   *common.AbsoluteAddress
 	interrupt               common.Interrupt
 }
@@ -645,7 +645,7 @@ func (e *InstructionEngine) GetInstructionPoint() InstructionPoint {
 }
 
 // GetJumpHistory retrieves all cached jump history entries, and clears the history
-func (e *InstructionEngine) GetJumpHistory() []hardware.VirtualAddress {
+func (e *InstructionEngine) GetJumpHistory() []common.VirtualAddress {
 	return e.jumpHistory.GetEntries()
 }
 
@@ -1252,7 +1252,7 @@ func (e *InstructionEngine) clearStorageLocks() {
 	e.mainStorage.ReleaseAllLocks(e)
 }
 
-func (e *InstructionEngine) createJumpHistoryEntry(address hardware.VirtualAddress) {
+func (e *InstructionEngine) createJumpHistoryEntry(address common.VirtualAddress) {
 	interrupt := e.jumpHistory.StoreEntry(address)
 	if interrupt != nil {
 		e.PostInterrupt(interrupt)
@@ -1419,7 +1419,7 @@ func (e *InstructionEngine) flipDesignatorRegisterBit31() {
 	dr.SetBasicModeBaseRegisterSelection(!dr.GetBasicModeBaseRegisterSelection())
 }
 
-func (e *InstructionEngine) getCurrentVirtualAddress() hardware.VirtualAddress {
+func (e *InstructionEngine) getCurrentVirtualAddress() common.VirtualAddress {
 	dr := e.GetDesignatorRegister()
 	if dr.IsBasicModeEnabled() {
 		brx := e.baseRegisterIndexForFetch
@@ -1428,11 +1428,11 @@ func (e *InstructionEngine) getCurrentVirtualAddress() hardware.VirtualAddress {
 		}
 
 		abte := e.activeBaseTable[brx]
-		return hardware.TranslateToBasicMode(abte.bankLevel, abte.bankDescriptorIndex, abte.subsetSpecification)
+		return common.TranslateToBasicMode(abte.bankLevel, abte.bankDescriptorIndex, abte.subsetSpecification)
 	} else {
 		brx := e.getEffectiveBaseRegisterIndex() & 017
 		abte := e.activeBaseTable[brx]
-		return hardware.NewExtendedModeVirtualAddress(abte.bankLevel, abte.bankDescriptorIndex, abte.subsetSpecification)
+		return common.NewExtendedModeVirtualAddress(abte.bankLevel, abte.bankDescriptorIndex, abte.subsetSpecification)
 	}
 }
 
@@ -1570,7 +1570,7 @@ func (e *InstructionEngine) resolveRelativeAddress(useU bool) (relAddr uint64, c
 
 func (e *InstructionEngine) translateAddress(
 	baseRegisterIndex uint,
-	relativeAddress uint64) (virAddr hardware.VirtualAddress, absAddr *common.AbsoluteAddress, interrupt common.Interrupt) {
+	relativeAddress uint64) (virAddr common.VirtualAddress, absAddr *common.AbsoluteAddress, interrupt common.Interrupt) {
 
 	var level uint64
 	var bdi uint64
@@ -1597,9 +1597,9 @@ func (e *InstructionEngine) translateAddress(
 	bDesc := bReg.GetBankDescriptor()
 	offset += relativeAddress - bDesc.GetLowerLimitNormalized()
 	if bDesc.GetBankType() == common.BasicModeBankDescriptor {
-		virAddr = hardware.TranslateToBasicMode(level, bdi, offset)
+		virAddr = common.TranslateToBasicMode(level, bdi, offset)
 	} else if bDesc.GetBankType() == common.ExtendedModeBankDescriptor {
-		virAddr = hardware.NewExtendedModeVirtualAddress(level, bdi, offset)
+		virAddr = common.NewExtendedModeVirtualAddress(level, bdi, offset)
 	} else {
 		interrupt = common.NewAddressingExceptionInterrupt(common.AddressingExceptionFatal, level, bdi)
 		return
